@@ -10,7 +10,29 @@ import scipy
 import scipy.sparse
 
 def trajectory_to_count_matrix(traj, n_states=None, lag_time=1, sliding_window=True):
-    # check trajectory is 1d array
+    """Count transitions between states in a single trajectory.
+    
+    Parameters
+    ----------
+    traj : (N, ) array
+        A 1-D array containing a sequence of state indices.
+    n_states : int, default=None
+        The number of states. This is useful for controlling the dimensions 
+        of the transition count matrix in cases where the input trajectory 
+        does not necessarily visit every state.
+    lag_time : int, default=1
+        The lag time (i.e. observation interval) for counting transitions.
+    sliding_window : bool, default=True
+        Whether to use a sliding window for counting transitions or to take 
+        every lag_time'th state.
+        
+    Returns
+    -------
+    C : (n_states, n_states) array
+        A transition count matrix.
+    """
+    
+    # TODO: check trajectory is 1d array
 
     if n_states is None:
         n_states = traj.max() + 1
@@ -32,6 +54,20 @@ def trajectories_to_count_matrix(trajs, n_states=None, lag_time=1, sliding_windo
     return
     
 def _normalize_rows(C):
+    """Normalize every row of a transition count matrix to obtain a transition
+    probability matrix.
+    
+    Parameters
+    ----------
+    C : (n_states, n_states) array
+        A transition count matrix.
+        
+    Returns
+    -------
+    T : (n_states, n_states) array
+        A row-normalized transition probability matrix.
+    """
+    
     n_states = C.shape[0]
     
     if scipy.sparse.isspmatrix(C):
@@ -50,12 +86,28 @@ def _normalize_rows(C):
     return T
     
 def count_matrix_to_probabilities(C, symmetrization=None):
+    """Infer a transition probability matrix from a transition count matrix
+    using the specified method to enforce microscopic reversibility.
+    
+    Parameters
+    ----------
+    C : (n_states, n_states) array
+        A transition count matrix.
+    symmetrization : {None, 'transpose', 'mle'}
+        Method to use to enforce microscopic reversibility.
+        
+    Returns
+    -------
+    T : (n_states, n_states) array
+        A row-normalized transition probability matrix.
+    """
+    
     if symmetrization is None:
         T = _normalize_rows(C)
     elif symmetrization is "transpose":
         C_sym = C + C.T
         T = _normalize_rows(C_sym)
-    elif symmetrization is "MLE":
+    elif symmetrization is "mle":
         print("MLE option not yet implemented")
         return
     else:
@@ -63,6 +115,4 @@ def count_matrix_to_probabilities(C, symmetrization=None):
         return
         
     return T
-    
-
     
