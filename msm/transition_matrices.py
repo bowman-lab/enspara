@@ -1,9 +1,9 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Mon Jul 25 20:33:12 2016
+# Author: Gregory R. Bowman <gregoryrbowman@gmail.com>
+# Contributors:
+# Copyright (c) 2016, Washington University
+# All rights reserved.
 
-@author: gbowman
-"""
+from __future__ import print_function, division, absolute_import
 
 import numpy as np
 import scipy
@@ -52,7 +52,7 @@ def _normalize_rows(C):
 def count_matrix_to_probabilities(C, symmetrization=None):
     if symmetrization is None:
         T = _normalize_rows(C)
-    elif symmetrization in [None, "transpose"]:
+    elif symmetrization is "transpose":
         C_sym = C + C.T
         T = _normalize_rows(C_sym)
     elif symmetrization is "MLE":

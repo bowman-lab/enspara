@@ -1,9 +1,7 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Fri Jul 29 20:31:21 2016
-
-@author: gbowman
-"""
+# Author: Gregory R. Bowman <gregoryrbowman@gmail.com>
+# Contributors:
+# Copyright (c) 2016, Washington University
+# All rights reserved.
 
 from __future__ import print_function, division, absolute_import
 
