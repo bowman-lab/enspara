@@ -14,7 +14,7 @@ def trajectory_to_count_matrix(traj, n_states=None, lag_time=1, sliding_window=T
     
     Parameters
     ----------
-    traj : (N, ) array
+    traj : array, shape=(traj_len, ) 
         A 1-D array containing a sequence of state indices.
     n_states : int, default=None
         The number of states. This is useful for controlling the dimensions 
@@ -28,7 +28,7 @@ def trajectory_to_count_matrix(traj, n_states=None, lag_time=1, sliding_window=T
         
     Returns
     -------
-    C : (n_states, n_states) array
+    C :  array, shape=(n_states, n_states)
         A transition count matrix.
     """
     
@@ -59,12 +59,12 @@ def _normalize_rows(C):
     
     Parameters
     ----------
-    C : (n_states, n_states) array
+    C : array, shape=(n_states, n_states)
         A transition count matrix.
         
     Returns
     -------
-    T : (n_states, n_states) array
+    T : array, shape=(n_states, n_states)
         A row-normalized transition probability matrix.
     """
     
@@ -91,14 +91,14 @@ def count_matrix_to_probabilities(C, symmetrization=None):
     
     Parameters
     ----------
-    C : (n_states, n_states) array
+    C : array, shape=(n_states, n_states)
         A transition count matrix.
     symmetrization : {None, 'transpose', 'mle'}
         Method to use to enforce microscopic reversibility.
         
     Returns
     -------
-    T : (n_states, n_states) array
+    T : array, shape=(n_states, n_states)
         A row-normalized transition probability matrix.
     """
     

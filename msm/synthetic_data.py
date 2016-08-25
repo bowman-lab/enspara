@@ -14,7 +14,7 @@ def synthetic_trajectory(T, start_state, n_steps):
     
     Parameters
     ----------
-    T : (n_states, n_states) array
+    T : array, shape=(n_states, n_states)
         A row-normalized transition probability matrix.
     start_state : int
         State to start the trajectory from.
@@ -25,7 +25,7 @@ def synthetic_trajectory(T, start_state, n_steps):
         
     Returns
     -------
-    traj : (n_steps, ) array
+    traj : array, shape=(n_steps, ) 
         A 1-D array containing a sequence of state indices (integers).
     """
     traj = -1*np.ones(n_steps, dtype=int)
@@ -55,20 +55,20 @@ def synthetic_ensemble(T, init_pops, n_steps, observable_per_state=None):
     
     Parameter
     ----------
-    T : (n_states, n_states) array
+    T : array, shape=(n_states, n_states)
         A row-normalized transition probability matrix.
-    init_pops : (n_states, ) array
+    init_pops : array, shape=(n_states, )
         The initial probabilities of every state.
     n_steps : int
         Number of steps to advance the ensemble. This includes the starting 
         populations, so n_steps=2 would result in a trajectory consisting of
         the starting state and one step forward in time.
-    observable_per_state : (n_states, ) array, default=None
+    observable_per_state : array, shape=(n_states, ), default=None
         An array of floats representing some observable for each state.
         
     Returns
     -------
-    out : (n_steps, ...) array
+    out : array, shape=(n_steps, ...)
         An array representing the time evolution of an ensemble. If 
         observable_per_state is specified, this is a 1-D array containing the
         population-weighted average observable as a function of time. 
