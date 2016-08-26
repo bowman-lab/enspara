@@ -1,7 +1,9 @@
 # Author: Gregory R. Bowman <gregoryrbowman@gmail.com>
 # Contributors:
-# Copyright (c) 2016, Washington University
+# Copyright (c) 2016, Washington University in St. Louis
 # All rights reserved.
+# Unauthorized copying of this file, via any medium is strictly prohibited
+# Proprietary and confidential
 
 from __future__ import print_function, division, absolute_import
 
