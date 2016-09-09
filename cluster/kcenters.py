@@ -12,9 +12,10 @@ from ..traj_manipulation import sloopy_concatenate_trjs
 from .utils import assign_to_nearest_center, _get_distance_method,\
     _partition_list
 
+from .exception import ImproperlyConfigured
+
 import mdtraj as md
 import numpy as np
-import sys
 
 
 def _kcenters_helper(
@@ -22,8 +23,8 @@ def _kcenters_helper(
         cluster_centers=None, random_first_center=False, verbose=True):
 
     if n_clusters is None and dist_cutoff is None:
-        print("Error: Must specify 'n_clusters' and/or 'distance_cutoff'")
-        sys.exit()
+        raise ImproperlyConfigured(
+            "KCenters must specify 'n_clusters' and/or 'distance_cutoff'")
     elif n_clusters is None and dist_cutoff is not None:
         n_clusters = np.inf
     elif n_clusters is not None and dist_cutoff is None:
