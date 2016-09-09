@@ -11,9 +11,10 @@ import numpy as np
 import scipy
 import scipy.sparse
 
+
 def synthetic_trajectory(T, start_state, n_steps):
     """Simulate a single trajectory using kinetic Monte Carlo.
-    
+
     Parameters
     ----------
     T : array, shape=(n_states, n_states)
@@ -24,37 +25,38 @@ def synthetic_trajectory(T, start_state, n_steps):
         Number of steps in the trajectory. This includes the starting state,
         so n_steps=2 would result in a trajectory consisting of the starting
         state and one additional state.
-        
+
     Returns
     -------
-    traj : array, shape=(n_steps, ) 
+    traj : array, shape=(n_steps, )
         A 1-D array containing a sequence of state indices (integers).
     """
     traj = -1*np.ones(n_steps, dtype=int)
     traj[0] = start_state
-    
+
     for i in range(n_steps-1):
         current_state = traj[i]
         if scipy.sparse.isspmatrix(T):
-            p = T[current_state,:].toarray()
+            p = T[current_state, :].toarray()
         else:
-            p = T[current_state,:]
+            p = T[current_state, :]
         new_state = np.where(scipy.random.multinomial(1, p) == 1)[0][0]
         traj[i+1] = new_state
 
     return traj
 
+
 def synthetic_ensemble(T, init_pops, n_steps, observable_per_state=None):
     """Simulate the time evolution of an ensemble.
-    
+
     The time that elapses for each step is the lag time of the input transition
     probability matrix.
-    
+
     If observable_per_state is specified, this is a 1-D array containing the
     population-weighted average observable as a function of time. Otherwise,
     this is a 2-D array where each row contains the populations of each state
     as a function of time.
-    
+
     Parameter
     ----------
     T : array, shape=(n_states, n_states)
@@ -62,28 +64,28 @@ def synthetic_ensemble(T, init_pops, n_steps, observable_per_state=None):
     init_pops : array, shape=(n_states, )
         The initial probabilities of every state.
     n_steps : int
-        Number of steps to advance the ensemble. This includes the starting 
+        Number of steps to advance the ensemble. This includes the starting
         populations, so n_steps=2 would result in a trajectory consisting of
         the starting state and one step forward in time.
     observable_per_state : array, shape=(n_states, ), default=None
         An array of floats representing some observable for each state.
-        
+
     Returns
     -------
     out : array, shape=(n_steps, ...)
-        An array representing the time evolution of an ensemble. If 
+        An array representing the time evolution of an ensemble. If
         observable_per_state is specified, this is a 1-D array containing the
-        population-weighted average observable as a function of time. 
+        population-weighted average observable as a function of time.
         Otherwise, this is a 2-D array where each row contains the populations
         of each state as a function of time.
     """
-    
+
     # turn transitions probability matrix into linear operator
     if scipy.sparse.issparse(T):
         T_op = scipy.sparse.linalg.aslinearoperator(T.tocsr())
     else:
         T_op = scipy.sparse.linalg.aslinearoperator(T)
-        
+
     p = init_pops.copy()
     if observable_per_state is not None:
         observations = [p.dot(observable_per_state)]
@@ -95,9 +97,7 @@ def synthetic_ensemble(T, init_pops, n_steps, observable_per_state=None):
         for i in range(n_steps-1):
             p = T_op.rmatvec(p)
             observations.append(p)
-            
+
     observations = np.array(observations)
-    
+
     return p, observations
-    
-    
