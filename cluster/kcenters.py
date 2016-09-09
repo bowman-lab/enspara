@@ -9,22 +9,24 @@
 from __future__ import print_function, division, absolute_import
 
 from ..traj_manipulation import sloopy_concatenate_trjs
-from .utils import assign_to_nearest_center, _get_distance_method, _partition_list
+from .utils import assign_to_nearest_center, _get_distance_method,\
+    _partition_list
 
 import mdtraj as md
 import numpy as np
 import sys
 
+
 def _kcenters_helper(
-    traj, distance_method, n_clusters=None, dist_cutoff=None, 
-    cluster_centers=None, random_first_center=False, verbose=True):
-        
-    if n_clusters==None and dist_cutoff==None:
-        print("Error: Must specify 'n_clusters' and/or 'distance_cutoff'") 
+        traj, distance_method, n_clusters=None, dist_cutoff=None,
+        cluster_centers=None, random_first_center=False, verbose=True):
+
+    if n_clusters is None and dist_cutoff is None:
+        print("Error: Must specify 'n_clusters' and/or 'distance_cutoff'")
         sys.exit()
-    elif n_clusters==None and dist_cutoff!=None:
+    elif n_clusters is None and dist_cutoff is not None:
         n_clusters = np.inf
-    elif n_clusters!=None and dist_cutoff==None:
+    elif n_clusters is not None and dist_cutoff is None:
         dist_cutoff = 0
 
     new_center_index = 0
@@ -36,14 +38,15 @@ def _kcenters_helper(
     max_distance = np.inf
     cluster_num = 0
 
-    if cluster_centers != None:
+    if cluster_centers is not None:
         if verbose:
             print("Updating assignments to previous cluster centers")
-        cluster_center_inds, assignments, distances = assign_to_nearest_center(traj, cluster_centers, distance_method)
+        cluster_center_inds, assignments, distances = assign_to_nearest_center(
+            traj, cluster_centers, distance_method)
         cluster_num = len(cluster_center_inds) + 1
         new_center_index = np.argmax(distances)
         max_distance = np.max(distances)
-        
+
     while (cluster_num < n_clusters) and (max_distance > dist_cutoff):
         dist = distance_method(traj, traj[new_center_index])
         inds = (dist < distances)
@@ -54,35 +57,37 @@ def _kcenters_helper(
         max_distance = np.max(distances)
         if verbose:
             print(
-                "kCenters cluster "+str(cluster_num)+" will continue until max-distance, "+
-                '{0:0.6f}'.format(max_distance)+", falls below "+'{0:0.6f}'.format(dist_cutoff)+
+                "kCenters cluster "+str(cluster_num) +
+                " will continue until max-distance, " +
+                '{0:0.6f}'.format(max_distance) + ", falls below " +
+                '{0:0.6f}'.format(dist_cutoff) +
                 " or num-clusters reaches "+str(n_clusters))
         cluster_num += 1
     cluster_centers = traj[cluster_center_inds]
-    
+
     return cluster_center_inds, assignments, distances
-    
+
+
 def kcenters(
-        traj_lst, metric='rmsd', n_clusters=None, dist_cutoff=None, 
-        cluster_centers=None, random_first_center=False, delete_trjs=True, 
+        traj_lst, metric='rmsd', n_clusters=None, dist_cutoff=None,
+        cluster_centers=None, random_first_center=False, delete_trjs=True,
         verbose=True):
-    
+
     distance_method = _get_distance_method(metric)
-    
+
     traj_lengths = [len(t) for t in traj_lst]
     if isinstance(traj_lst[0], md.Trajectory):
         traj = sloopy_concatenate_trjs(traj_lst, delete_trjs=delete_trjs)
     else:
         traj = np.concatenate(traj_lst)
-        
+
     cluster_center_inds, assignments, distances = _kcenters_helper(
         traj, distance_method, n_clusters=n_clusters, dist_cutoff=dist_cutoff,
-        cluster_centers=cluster_centers, 
-        random_first_center=random_first_center, verbose=verbose) 
+        cluster_centers=cluster_centers,
+        random_first_center=random_first_center, verbose=verbose)
 
     cluster_centers = traj[cluster_center_inds]
     assignments = _partition_list(assignments, traj_lengths)
     distances = _partition_list(distances, traj_lengths)
-    
+
     return cluster_centers, assignments, distances
-    

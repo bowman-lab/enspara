@@ -14,13 +14,14 @@ import numpy as np
 import sys
 import types
 
+
 def assign_to_nearest_center(traj, cluster_centers, distance_method):
     n_frames = len(traj)
     assignments = np.zeros(n_frames, dtype=int)
     distances = np.empty(n_frames, dtype=float)
     distances.fill(np.inf)
     cluster_center_inds = []
-    
+
     cluster_num = 0
     for center in cluster_centers:
         dist = distance_method(traj, center)
@@ -30,9 +31,10 @@ def assign_to_nearest_center(traj, cluster_centers, distance_method):
         new_center_index = np.argmin(dist)
         cluster_center_inds.append(new_center_index)
         cluster_num += 1
-        
+
     return cluster_center_inds, assignments, distances
-    
+
+
 def _get_distance_method(metric):
     if metric == 'rmsd':
         return md.rmsd
@@ -45,12 +47,13 @@ def _get_distance_method(metric):
     else:
         print("Error: invalid metric")
         sys.exit(0)
-    
-def _partition_list(list_to_partition,partition_lengths):
+
+
+def _partition_list(list_to_partition, partition_lengths):
     if np.sum(partition_lengths) != len(list_to_partition):
         print(
-            "Error: List of length "+len(list_to_partition)+
-            " does not equal lengths to partition "+
+            "Error: List of length "+len(list_to_partition) +
+            " does not equal lengths to partition " +
             str(np.sum(partition_lengths)))
         sys.exit()
     partitioned_list = []
@@ -60,4 +63,3 @@ def _partition_list(list_to_partition,partition_lengths):
         partitioned_list.append(list_to_partition[start:stop])
         start = stop
     return np.array(partitioned_list)
-    
