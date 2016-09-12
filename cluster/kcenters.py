@@ -25,12 +25,9 @@ def _kcenters_helper(
     if n_clusters is None and dist_cutoff is None:
         raise ImproperlyConfigured(
             "KCenters must specify 'n_clusters' xor 'distance_cutoff'")
-    if n_clusters is not None and dist_cutoff is not None:
-        raise ImproperlyConfigured(
-            "KCenters cannot specify both `n_clusters` and `distance_cutoff`.")
-    elif dist_cutoff is not None:
+    elif n_clusters is None and dist_cutoff is not None:
         n_clusters = np.inf
-    elif n_clusters is not None:
+    elif n_clusters is not None and dist_cutoff is None:
         dist_cutoff = 0
 
     new_center_index = 0
