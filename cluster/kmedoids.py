@@ -41,9 +41,11 @@ def _kmedoids_update(
 
 
 def kmedoids(
-        traj_lst, n_clusters, metric='rmsd', n_iters=5,
+        traj_lst, n_clusters, metric='rmsd', n_iters,
         delete_trjs=True, verbose=True):
 
+    # TODO: this block of code is repeated between all three basic clustering
+    # schemes
     distance_method = _get_distance_method(metric)
 
     traj_lengths = [len(t) for t in traj_lst]
@@ -51,6 +53,8 @@ def kmedoids(
         traj = sloopy_concatenate_trjs(traj_lst, delete_trjs=delete_trjs)
     else:
         traj = np.concatenate(traj_lst)
+    # /ENDBLOCK
+
     n_frames = len(traj)
 
     cluster_center_inds = np.random.random_integers(0, n_frames-1, n_clusters)
@@ -63,8 +67,11 @@ def kmedoids(
             traj, distance_method, cluster_center_inds, assignments,
             distances, verbose=verbose)
 
+    # TODO: this block of code is repeated between all three basic clustering
+    # schemes
     cluster_centers = traj[cluster_center_inds]
     assignments = _partition_list(assignments, traj_lengths)
     distances = _partition_list(distances, traj_lengths)
 
     return cluster_centers, assignments, distances
+    # /ENDBLOCK

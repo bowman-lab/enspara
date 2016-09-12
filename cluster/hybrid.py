@@ -33,8 +33,11 @@ def _hybrid_medoids_update(
 
 
 def hybrid(
-        traj_lst, n_clusters=None, dist_cutoff=None, metric='rmsd', n_iters=5,
+        traj_lst, n_clusters=None, dist_cutoff=None, metric='rmsd', n_iters,
         random_first_center=False, delete_trjs=True, verbose=True):
+
+    # TODO: this block of code is repeated between all three basic clustering
+    # schemes
 
     distance_method = _get_distance_method(metric)
 
@@ -43,6 +46,7 @@ def hybrid(
         traj = sloopy_concatenate_trjs(traj_lst, delete_trjs=delete_trjs)
     else:
         traj = np.concatenate(traj_lst)
+    # /ENDBLOCK
 
     cluster_center_inds, assignments, distances = _kcenters_helper(
         traj, distance_method, n_clusters=n_clusters, dist_cutoff=dist_cutoff,
@@ -53,8 +57,11 @@ def hybrid(
             traj, distance_method, cluster_center_inds, assignments,
             distances, verbose=verbose)
 
+    # TODO: this block of code is repeated between all three basic clustering
+    # schemes
     cluster_centers = traj[cluster_center_inds]
     assignments = _partition_list(assignments, traj_lengths)
     distances = _partition_list(distances, traj_lengths)
 
     return cluster_centers, assignments, distances
+    # /ENDBLOCK
