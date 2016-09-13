@@ -8,7 +8,7 @@
 
 from __future__ import print_function, division, absolute_import
 
-from ..traj_manipulation import sloopy_concatenate_trjs
+from stag.traj_manipulation import sloopy_concatenate_trjs
 from .utils import assign_to_nearest_center, _get_distance_method,\
     _partition_list
 

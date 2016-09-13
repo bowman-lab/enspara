@@ -41,7 +41,7 @@ def _kmedoids_update(
 
 
 def kmedoids(
-        traj_lst, n_clusters, metric='rmsd', n_iters,
+        traj_lst, n_iters, n_clusters, metric='rmsd',
         delete_trjs=True, verbose=True):
 
     # TODO: this block of code is repeated between all three basic clustering

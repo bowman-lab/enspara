@@ -1,3 +1,3 @@
 from __future__ import print_function, division, absolute_import
 
-import .traj_manipulation
+from .traj_manipulation import *

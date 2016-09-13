@@ -1,5 +1,5 @@
 from __future__ import print_function, division, absolute_import
 
-import hybrid
-import kcenters
-import kmedoids
+from . import hybrid
+from . import kcenters
+from . import kmedoids
