@@ -39,10 +39,10 @@ def assign_to_nearest_center(traj, cluster_centers, distance_method):
 def _get_distance_method(metric):
     if metric == 'rmsd':
         return md.rmsd
-    elif isinstance(metric, str):
-        def f(X, Y):
-            return libdistance.dist(X, Y, metric)
-        return f
+    # elif isinstance(metric, str):
+    #     def f(X, Y):
+    #         return libdistance.dist(X, Y, metric)
+    #     return f
     elif isinstance(metric, types.FunctionType):
         return metric
     else:
