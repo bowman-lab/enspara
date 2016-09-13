@@ -12,7 +12,7 @@ from stag.traj_manipulation import sloopy_concatenate_trjs
 from .utils import assign_to_nearest_center, _get_distance_method,\
     _partition_list
 
-from .exception import ImproperlyConfigured
+from ..exception import ImproperlyConfigured
 
 import mdtraj as md
 import numpy as np

@@ -9,11 +9,11 @@
 from __future__ import print_function, division, absolute_import
 
 import mdtraj as md
-import msmbuilder.libdistance as libdistance
+# import msmbuilder.libdistance as libdistance
 import numpy as np
 import types
 
-from .exception import ImproperlyConfigured, DataInvalid
+from ..exception import ImproperlyConfigured, DataInvalid
 
 
 def assign_to_nearest_center(traj, cluster_centers, distance_method):
