@@ -8,6 +8,8 @@
 
 from __future__ import print_function, division, absolute_import
 
+import sys
+
 from stag.traj_manipulation import sloopy_concatenate_trjs
 from .utils import assign_to_nearest_center, _get_distance_method,\
     _partition_list
@@ -19,8 +21,8 @@ import numpy as np
 
 
 def _kcenters_helper(
-        traj, distance_method, n_clusters=None, dist_cutoff=None,
-        cluster_centers=None, random_first_center=False, verbose=True):
+        traj, distance_method, n_clusters, dist_cutoff,
+        cluster_centers, random_first_center, output):
 
     if n_clusters is None and dist_cutoff is None:
         raise ImproperlyConfigured(
@@ -40,8 +42,8 @@ def _kcenters_helper(
     cluster_num = 0
 
     if cluster_centers is not None:
-        if verbose:
-            print("Updating assignments to previous cluster centers")
+        if output:
+            output.write("Updating assignments to previous cluster centers\n")
         cluster_center_inds, assignments, distances = assign_to_nearest_center(
             traj, cluster_centers, distance_method)
         cluster_num = len(cluster_center_inds) + 1
@@ -56,13 +58,13 @@ def _kcenters_helper(
         cluster_center_inds.append(new_center_index)
         new_center_index = np.argmax(distances)
         max_distance = np.max(distances)
-        if verbose:
-            print(
+        if output:
+            output.write(
                 "kCenters cluster "+str(cluster_num) +
                 " will continue until max-distance, " +
                 '{0:0.6f}'.format(max_distance) + ", falls below " +
                 '{0:0.6f}'.format(dist_cutoff) +
-                " or num-clusters reaches "+str(n_clusters))
+                " or num-clusters reaches "+str(n_clusters)+'\n')
         cluster_num += 1
     cluster_centers = traj[cluster_center_inds]
 
@@ -72,7 +74,7 @@ def _kcenters_helper(
 def kcenters(
         traj_lst, metric='rmsd', n_clusters=None, dist_cutoff=None,
         cluster_centers=None, random_first_center=False, delete_trjs=True,
-        verbose=True):
+        output=sys.stdout):
 
     # TODO: this block of code is repeated between all three basic clustering
     # schemes
@@ -88,7 +90,7 @@ def kcenters(
     cluster_center_inds, assignments, distances = _kcenters_helper(
         traj, distance_method, n_clusters=n_clusters, dist_cutoff=dist_cutoff,
         cluster_centers=cluster_centers,
-        random_first_center=random_first_center, verbose=verbose)
+        random_first_center=random_first_center, output=output)
 
     # TODO: this block of code is repeated between all three basic clustering
     # schemes

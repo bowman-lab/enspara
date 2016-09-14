@@ -7,6 +7,8 @@
 
 from __future__ import print_function, division, absolute_import
 
+import sys
+
 from ..traj_manipulation import sloopy_concatenate_trjs
 from .utils import assign_to_nearest_center, _get_distance_method,\
     _partition_list
@@ -17,7 +19,7 @@ import numpy as np
 
 def _kmedoids_update(
         traj, distance_method, cluster_center_inds, assignments,
-        distances, verbose=True):
+        distances, output):
 
     n_clusers = len(cluster_center_inds)
     n_frames = len(traj)
@@ -42,7 +44,7 @@ def _kmedoids_update(
 
 def kmedoids(
         traj_lst, n_iters, n_clusters, metric='rmsd',
-        delete_trjs=True, verbose=True):
+        delete_trjs=True, output=sys.stdout):
 
     # TODO: this block of code is repeated between all three basic clustering
     # schemes
@@ -65,7 +67,7 @@ def kmedoids(
     for i in range(n_iters):
         cluster_center_inds, assignments, distances = _kmedoids_update(
             traj, distance_method, cluster_center_inds, assignments,
-            distances, verbose=verbose)
+            distances, output=output)
 
     # TODO: this block of code is repeated between all three basic clustering
     # schemes

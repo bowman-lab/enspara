@@ -9,9 +9,7 @@
 from __future__ import print_function, division, absolute_import
 
 import mdtraj as md
-# import msmbuilder.libdistance as libdistance
 import numpy as np
-import types
 
 from ..exception import ImproperlyConfigured, DataInvalid
 
@@ -39,11 +37,19 @@ def assign_to_nearest_center(traj, cluster_centers, distance_method):
 def _get_distance_method(metric):
     if metric == 'rmsd':
         return md.rmsd
-    # elif isinstance(metric, str):
-    #     def f(X, Y):
-    #         return libdistance.dist(X, Y, metric)
-    #     return f
-    elif isinstance(metric, types.FunctionType):
+    elif isinstance(metric, str):
+        try:
+            import msmbuilder.libdistance as libdistance
+        except ImportError:
+            raise ImproperlyConfigured(
+                "To use '{}' as a clustering metric, STAG ".format(metric) +
+                "uses MSMBuilder3's libdistance, but we weren't able to " +
+                "import msmbuilder.libdistance.")
+
+        def f(X, Y):
+            return libdistance.dist(X, Y, metric)
+        return f
+    elif callable(metric):
         return metric
     else:
         raise ImproperlyConfigured(
@@ -56,10 +62,22 @@ def _partition_list(list_to_partition, partition_lengths):
             "List of length " + len(list_to_partition) +
             " does not equal lengths to partition " +
             str(np.sum(partition_lengths)))
-    partitioned_list = []
+
+    partitioned_list = np.full(
+        shape=(len(partition_lengths), max(partition_lengths)),
+        dtype=list_to_partition.dtype,
+        fill_value=np.nan)
+
     start = 0
     for num in range(len(partition_lengths)):
         stop = start+partition_lengths[num]
-        partitioned_list.append(list_to_partition[start:stop])
+        np.copyto(partitioned_list[num][0:stop-start],
+                  list_to_partition[start:stop])
         start = stop
-    return np.array(partitioned_list)
+
+    # this call will mask out all 'invalid' values of partitioned list, in this
+    # case all the np.nan values that represent the padding used to make the
+    # array square.
+    partitioned_list = np.ma.fix_invalid(partitioned_list)
+
+    return partitioned_list

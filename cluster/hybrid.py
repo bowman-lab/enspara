@@ -7,6 +7,8 @@
 
 from __future__ import print_function, division, absolute_import
 
+import sys
+
 from .kcenters import _kcenters_helper
 from .kmedoids import _kmedoids_update
 from ..traj_manipulation import sloopy_concatenate_trjs
@@ -18,11 +20,11 @@ import numpy as np
 
 def _hybrid_medoids_update(
         traj, distance_method, cluster_center_inds, assignments, distances,
-        verbose=True):
+        output):
 
     proposed_center_inds, proposed_assignments, proposed_distances =\
         _kmedoids_update(traj, distance_method, cluster_center_inds,
-                         assignments, distances, verbose=verbose)
+                         assignments, distances, output)
 
     max_orig_dist_to_center = distances.max()
     max_proposed_dist_to_center = proposed_distances.max()
@@ -34,7 +36,7 @@ def _hybrid_medoids_update(
 
 def hybrid(
         traj_lst, n_iters, n_clusters=None, dist_cutoff=None, metric='rmsd',
-        random_first_center=False, delete_trjs=True, verbose=True):
+        random_first_center=False, delete_trjs=True, output=sys.stdout):
 
     # TODO: this block of code is repeated between all three basic clustering
     # schemes
@@ -50,12 +52,12 @@ def hybrid(
 
     cluster_center_inds, assignments, distances = _kcenters_helper(
         traj, distance_method, n_clusters=n_clusters, dist_cutoff=dist_cutoff,
-        random_first_center=random_first_center, verbose=verbose)
+        random_first_center=random_first_center, output=output)
 
     for i in range(n_iters):
         cluster_center_inds, assignments, distances = _hybrid_medoids_update(
             traj, distance_method, cluster_center_inds, assignments,
-            distances, verbose=verbose)
+            distances, output=output)
 
     # TODO: this block of code is repeated between all three basic clustering
     # schemes
