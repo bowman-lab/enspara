@@ -35,7 +35,7 @@ def _hybrid_medoids_update(
 
 
 def hybrid(
-        traj_lst, n_iters, n_clusters=None, dist_cutoff=None, metric='rmsd',
+        traj_lst, n_iters=5, n_clusters=None, dist_cutoff=None, metric='rmsd',
         random_first_center=False, delete_trjs=True, output=sys.stdout):
 
     # TODO: this block of code is repeated between all three basic clustering
