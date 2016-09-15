@@ -66,7 +66,7 @@ def _partition_list(list_to_partition, partition_lengths):
     partitioned_list = np.full(
         shape=(len(partition_lengths), max(partition_lengths)),
         dtype=list_to_partition.dtype,
-        fill_value=np.nan)
+        fill_value=-1)
 
     start = 0
     for num in range(len(partition_lengths)):
@@ -78,6 +78,6 @@ def _partition_list(list_to_partition, partition_lengths):
     # this call will mask out all 'invalid' values of partitioned list, in this
     # case all the np.nan values that represent the padding used to make the
     # array square.
-    partitioned_list = np.ma.fix_invalid(partitioned_list)
+    partitioned_list = np.ma.masked_less(partitioned_list, 0, copy=False)
 
     return partitioned_list

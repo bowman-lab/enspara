@@ -96,7 +96,9 @@ def kcenters(
     # schemes
     cluster_centers = traj[cluster_center_inds]
     assignments = _partition_list(assignments, traj_lengths)
+    assert np.all(assignments >= 0)
     distances = _partition_list(distances, traj_lengths)
+    assert np.all(distances >= 0)
 
     return cluster_centers, assignments, distances
     # /ENDBLOCK
