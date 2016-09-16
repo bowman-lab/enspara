@@ -9,6 +9,7 @@
 from __future__ import print_function, division, absolute_import
 
 from functools import wraps
+import sys
 
 import mdtraj as md
 import numpy as np
@@ -50,6 +51,7 @@ def find_cluster_centers(traj_lst, distances):
             format(len(traj_lst), distances.shape))
 
     center_indices = np.argwhere(distances == 0)
+
     centers = [traj_lst[trj_indx][frame] for (trj_indx, frame)
                in center_indices]
 
@@ -70,11 +72,18 @@ def requires_concatenated_trajectories(cluster_algo):
     '''
 
     @wraps(cluster_algo)  # @wraps corrects f.__name__ and whatnot
-    def run_func(traj_lst, metric='rmsd', delete_trjs=False, *args, **kwargs):
+    def cluster_fn(traj_lst, metric='rmsd', delete_trjs=False,
+                   output=sys.stdout, *args, **kwargs):
+
+        assert hasattr(output, 'write'), "The parameter 'output' must provide a 'write' method for doing output."
         distance_method = _get_distance_method(metric)
 
         if not delete_trjs:
-            atom_count = sum([t.n_atoms*t.n_frames for t in traj_lst])
+            if hasattr(traj_lst[0], 'n_atoms'):
+                atom_count = sum([t.n_atoms*t.n_frames for t in traj_lst])
+            else:
+                atom_count = sum([reduce(lambda x, y: x*y, t.shape)
+                                  for t in traj_lst])
             # TODO: this warning is currently set too low. If you're
             # enountering this error needlessly, bump it up!
             if atom_count > 1e8:
@@ -91,7 +100,7 @@ def requires_concatenated_trajectories(cluster_algo):
 
         # go, cluster, go!
         cluster_center_inds, assignments, distances = cluster_algo(
-            traj, distance_method=distance_method, **kwargs)
+            traj, distance_method=distance_method, output=output, **kwargs)
 
         # de-concatenate the trajectories, assert their validity
         assignments = _partition_list(assignments, traj_lengths)
@@ -104,7 +113,7 @@ def requires_concatenated_trajectories(cluster_algo):
         # structures, but molecule subsets (i.e. all Ca atoms).
         return assignments, distances
 
-    return run_func
+    return cluster_fn
 
 
 def _get_distance_method(metric):

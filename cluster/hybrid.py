@@ -48,6 +48,7 @@ def hybrid(
         cluster_center_inds, assignments, distances = _hybrid_medoids_update(
             traj, distance_method, cluster_center_inds, assignments,
             distances, output=output)
-        output.write("KMedoids update %s of %s\n" % (i, n_iters))
+        if output:
+            output.write("KMedoids update %s of %s\n" % (i, n_iters))
 
     return cluster_centers, assignments, distances

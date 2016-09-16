@@ -18,11 +18,11 @@ def _kmedoids_update(
         traj, distance_method, cluster_center_inds, assignments,
         distances, output):
 
-    n_clusers = len(cluster_center_inds)
+    n_clusters = len(cluster_center_inds)
     n_frames = len(traj)
 
-    proposed_center_inds = np.zeros(n_clusers, dtype=int)
-    for i in range(n_clusers):
+    proposed_center_inds = np.zeros(n_clusters, dtype=int)
+    for i in range(n_clusters):
         state_inds = np.where(assignments == i)[0]
         proposed_center_inds[i] = np.random.choice(state_inds)
     proposed_cluster_centers = traj[proposed_center_inds]
@@ -44,7 +44,14 @@ def kmedoids(traj, distance_method, n_clusters, n_iters=5, output=sys.stdout):
 
     n_frames = len(traj)
 
-    cluster_center_inds = np.random.random_integers(0, n_frames-1, n_clusters)
+    # for short lists, np.random.random_integers sometimes forgets to assign
+    # something to each cluster. This will simply repeat the assignments if
+    # that is the case.
+    cluster_center_inds = np.array([])
+    while len(np.unique(cluster_center_inds)) < n_clusters:
+        cluster_center_inds = np.random.random_integers(0, n_frames-1,
+                                                        n_clusters)
+
     cluster_centers = traj[cluster_center_inds]
     cluster_center_inds, assignments, distances = assign_to_nearest_center(
         traj, cluster_centers, distance_method)
