@@ -9,11 +9,8 @@ from __future__ import print_function, division, absolute_import
 
 import sys
 
-from ..traj_manipulation import sloopy_concatenate_trjs
-from .utils import assign_to_nearest_center, _get_distance_method,\
-    _partition_list
+from .utils import assign_to_nearest_center, requires_concatenated_trajectories
 
-import mdtraj as md
 import numpy as np
 
 
@@ -42,20 +39,8 @@ def _kmedoids_update(
         return cluster_center_inds, assignments, distances
 
 
-def kmedoids(
-        traj_lst, n_clusters, n_iters=5, metric='rmsd',
-        delete_trjs=True, output=sys.stdout):
-
-    # TODO: this block of code is repeated between all three basic clustering
-    # schemes
-    distance_method = _get_distance_method(metric)
-
-    traj_lengths = [len(t) for t in traj_lst]
-    if isinstance(traj_lst[0], md.Trajectory):
-        traj = sloopy_concatenate_trjs(traj_lst, delete_trjs=delete_trjs)
-    else:
-        traj = np.concatenate(traj_lst)
-    # /ENDBLOCK
+@requires_concatenated_trajectories
+def kmedoids(traj, distance_method, n_clusters, n_iters=5, output=sys.stdout):
 
     n_frames = len(traj)
 
@@ -68,12 +53,6 @@ def kmedoids(
         cluster_center_inds, assignments, distances = _kmedoids_update(
             traj, distance_method, cluster_center_inds, assignments,
             distances, output=output)
-
-    # TODO: this block of code is repeated between all three basic clustering
-    # schemes
-    cluster_centers = traj[cluster_center_inds]
-    assignments = _partition_list(assignments, traj_lengths)
-    distances = _partition_list(distances, traj_lengths)
+        output.write("KMedoids update %s\n" % i)
 
     return cluster_centers, assignments, distances
-    # /ENDBLOCK

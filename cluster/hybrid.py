@@ -11,11 +11,7 @@ import sys
 
 from .kcenters import _kcenters_helper
 from .kmedoids import _kmedoids_update
-from ..traj_manipulation import sloopy_concatenate_trjs
-from .utils import _get_distance_method, _partition_list
-
-import mdtraj as md
-import numpy as np
+from .utils import requires_concatenated_trajectories
 
 
 def _hybrid_medoids_update(
@@ -34,38 +30,24 @@ def _hybrid_medoids_update(
         return cluster_center_inds, assignments, distances
 
 
+@requires_concatenated_trajectories
 def hybrid(
-        traj_lst, n_iters=5, n_clusters=None, dist_cutoff=None, metric='rmsd',
-        random_first_center=False, delete_trjs=True, cluster_centers=None,
-        output=sys.stdout):
-
-    # TODO: this block of code is repeated between all three basic clustering
-    # schemes
-
-    distance_method = _get_distance_method(metric)
-
-    traj_lengths = [len(t) for t in traj_lst]
-    if isinstance(traj_lst[0], md.Trajectory):
-        traj = sloopy_concatenate_trjs(traj_lst, delete_trjs=delete_trjs)
-    else:
-        traj = np.concatenate(traj_lst)
-    # /ENDBLOCK
+        traj, distance_method, n_iters=5, n_clusters=None, dist_cutoff=None,
+        random_first_center=False, cluster_centers=None, output=sys.stdout):
 
     cluster_center_inds, assignments, distances = _kcenters_helper(
-        traj, distance_method, n_clusters=n_clusters, dist_cutoff=dist_cutoff,
+        traj,
+        distance_method,
+        n_clusters=n_clusters,
+        dist_cutoff=dist_cutoff,
         cluster_centers=cluster_centers,
-        random_first_center=random_first_center, output=output)
+        random_first_center=random_first_center,
+        output=output)
 
     for i in range(n_iters):
         cluster_center_inds, assignments, distances = _hybrid_medoids_update(
             traj, distance_method, cluster_center_inds, assignments,
             distances, output=output)
-
-    # TODO: this block of code is repeated between all three basic clustering
-    # schemes
-    cluster_centers = traj[cluster_center_inds]
-    assignments = _partition_list(assignments, traj_lengths)
-    distances = _partition_list(distances, traj_lengths)
+        output.write("KMedoids update %s of %s\n" % (i, n_iters))
 
     return cluster_centers, assignments, distances
-    # /ENDBLOCK

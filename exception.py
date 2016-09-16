@@ -5,7 +5,7 @@ class ImproperlyConfigured(Exception):
 
 class DataInvalid(Exception):
     '''
-    The data looks structurally invalid (mismatched array lengths, negative
-    numbers were natural numbers are expected, etc).
+    The data looks structurally invalid (mismatched array lengths,
+    negative numbers were natural numbers are expected, etc).
     '''
     pass

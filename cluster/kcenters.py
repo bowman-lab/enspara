@@ -10,13 +10,10 @@ from __future__ import print_function, division, absolute_import
 
 import sys
 
-from stag.traj_manipulation import sloopy_concatenate_trjs
-from .utils import assign_to_nearest_center, _get_distance_method,\
-    _partition_list
+from .utils import assign_to_nearest_center, requires_concatenated_trajectories
 
 from ..exception import ImproperlyConfigured
 
-import mdtraj as md
 import numpy as np
 
 
@@ -71,34 +68,14 @@ def _kcenters_helper(
     return cluster_center_inds, assignments, distances
 
 
+@requires_concatenated_trajectories
 def kcenters(
-        traj_lst, metric='rmsd', n_clusters=None, dist_cutoff=None,
-        cluster_centers=None, random_first_center=False, delete_trjs=True,
-        output=sys.stdout):
-
-    # TODO: this block of code is repeated between all three basic clustering
-    # schemes
-    distance_method = _get_distance_method(metric)
-
-    traj_lengths = [len(t) for t in traj_lst]
-    if isinstance(traj_lst[0], md.Trajectory):
-        traj = sloopy_concatenate_trjs(traj_lst, delete_trjs=delete_trjs)
-    else:
-        traj = np.concatenate(traj_lst)
-    # /ENDBLOCK
+        traj, distance_method, n_clusters=None, dist_cutoff=None,
+        cluster_centers=None, random_first_center=False, output=sys.stdout):
 
     cluster_center_inds, assignments, distances = _kcenters_helper(
         traj, distance_method, n_clusters=n_clusters, dist_cutoff=dist_cutoff,
         cluster_centers=cluster_centers,
         random_first_center=random_first_center, output=output)
 
-    # TODO: this block of code is repeated between all three basic clustering
-    # schemes
-    cluster_centers = traj[cluster_center_inds]
-    assignments = _partition_list(assignments, traj_lengths)
-    assert np.all(assignments >= 0)
-    distances = _partition_list(distances, traj_lengths)
-    assert np.all(distances >= 0)
-
     return cluster_centers, assignments, distances
-    # /ENDBLOCK
