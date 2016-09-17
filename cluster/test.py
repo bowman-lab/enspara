@@ -231,5 +231,32 @@ class TestNumpyClustering(unittest.TestCase):
             raise
 
 
+class TestUtils(unittest.TestCase):
+
+    def test_find_cluster_centers(self):
+
+        N_TRJS = 20
+        many_trjs = [md.load(get_fn('frame0.xtc'), top=get_fn('native.pdb'))
+                     for i in range(N_TRJS)]
+
+        distances = np.ones((N_TRJS, len(many_trjs[0])))
+
+        center_inds = [(0, 0), (5, 2), (15, 300)]
+
+        for ind in center_inds:
+            distances[center_inds[0], center_inds[1]] = 0
+
+        centers = cluster.utils.find_cluster_centers(many_trjs, distances)
+
+        # we should get back the same number of centers as there are zeroes
+        # in the distances matrix
+        self.assertEqual(len(centers), np.count_nonzero(distances == 0))
+
+        for indx in center_inds:
+            expected_xyz = many_trjs[indx[0]][indx[1]].xyz
+            self.assertTrue(np.any(
+                expected_xyz == np.array([c.xyz for c in centers])))
+
+
 if __name__ == '__main__':
     unittest.main()

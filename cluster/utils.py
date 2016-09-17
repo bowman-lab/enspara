@@ -144,7 +144,9 @@ def requires_concatenated_trajectories(cluster_algo):
 
         # finish timing.
         end = time.clock()
-        output.write("Clustering took %s seconds." % (end - start))
+        output.write(
+            "Clustering took %s seconds for %s trajectories." %
+            ((end - start), len(traj_lst)))
 
         # we don't return cluster_centers because it's potentially confusing
         # in the case where cluster_centers are not actually complete
