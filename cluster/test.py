@@ -102,6 +102,24 @@ class TestTrajClustering(unittest.TestCase):
         self.assertAlmostEqual(np.average(dists), 0.10387578309920734)
         self.assertAlmostEqual(np.std(dists), 0.018355072790569946)
 
+    def test_delete_trjs(self):
+        N_TRJS = 20
+        many_trjs = [md.load(self.trj_fname, top=self.top_fname)
+                     for i in range(N_TRJS)]
+        self.assertEqual(len(many_trjs), N_TRJS)
+
+        assigns, dists = cluster.kcenters(
+            many_trjs,
+            metric='rmsd',
+            dist_cutoff=0.1,
+            cluster_centers=None,
+            random_first_center=False,
+            delete_trjs=True,
+            output=open(os.devnull, 'w')
+            )
+
+        self.assertTrue(all([t is None for t in many_trjs]))
+
 
 class TestNumpyClustering(unittest.TestCase):
 

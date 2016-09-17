@@ -39,6 +39,28 @@ def assign_to_nearest_center(traj, cluster_centers, distance_method):
     return cluster_center_inds, assignments, distances
 
 
+def load_cluster_centers(traj_f_list, top, distances):
+    '''
+    Use the distances matrix to calcuate which of the trajectories in the
+    input traj_f_list are a cluster center, load ONLY the relevant frames, and
+    return a list.
+    '''
+
+    if len(traj_f_list) != distances.shape[0]:
+        raise DataInvalid(
+            "Expected len(traj_f_list) {} to match distances.shape[0] ({})".
+            format(len(traj_f_list), distances.shape))
+
+    center_indices = np.argwhere(distances == 0)
+
+    centers = [md.load(traj_f_list[trj_indx], top=top, frame=frame)
+               for (trj_indx, frame) in center_indices]
+
+    assert len(centers) == center_indices.shape[0]
+
+    return centers
+
+
 def find_cluster_centers(traj_lst, distances):
     '''
     Use the distances matrix to calculate which of the trajectories in
@@ -61,9 +83,9 @@ def find_cluster_centers(traj_lst, distances):
     return centers
 
 
-def _delete_trajs_warning(traj_lst):
+def _delete_trajs_warning(traj_lst, write_to=sys.stdout):
     '''
-    Inspect traj_list and determine 
+    Inspect traj_list and determine if the user should be warned.
     '''
     if hasattr(traj_lst[0], 'n_atoms'):
         atom_count = sum([t.n_atoms*t.n_frames for t in traj_lst])
@@ -73,9 +95,10 @@ def _delete_trajs_warning(traj_lst):
     # TODO: this warning is currently set too low. If you're
     # enountering this error needlessly, bump it up!
     if atom_count > 1e8:
-        print("WARNING: There are a lot of atoms/frames (%s "
-              "atom-frames) in this system. Consider using"
-              "delete_trjs=True to save memory." % atom_count)
+        sys.stdout.write(
+            "WARNING: There are a lot of atoms/frames (%s "
+            "atom-frames) in this system. Consider using"
+            "delete_trjs=True to save memory.\n" % atom_count)
 
 
 def requires_concatenated_trajectories(cluster_algo):
