@@ -10,7 +10,7 @@ from __future__ import print_function, division, absolute_import
 
 from functools import wraps
 import sys
-import timeit
+import time
 
 import mdtraj as md
 import numpy as np
@@ -94,7 +94,7 @@ def requires_concatenated_trajectories(cluster_algo):
                    output=sys.stdout, *args, **kwargs):
 
         # cache start time for use at the end
-        start = timeit.timeit()
+        start = time.clock()
 
         if not delete_trjs:
             _delete_trajs_warning(traj_lst)
@@ -120,7 +120,7 @@ def requires_concatenated_trajectories(cluster_algo):
         assert np.all(distances >= 0)
 
         # finish timing.
-        end = timeit.timeit()
+        end = time.clock()
         output.write("Clustering took %s seconds." % (end - start))
 
         # we don't return cluster_centers because it's potentially confusing
