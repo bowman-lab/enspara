@@ -10,6 +10,7 @@ from __future__ import print_function, division, absolute_import
 
 from functools import wraps
 import sys
+import timeit
 
 import mdtraj as md
 import numpy as np
@@ -60,6 +61,23 @@ def find_cluster_centers(traj_lst, distances):
     return centers
 
 
+def _delete_trajs_warning(traj_lst):
+    '''
+    Inspect traj_list and determine 
+    '''
+    if hasattr(traj_lst[0], 'n_atoms'):
+        atom_count = sum([t.n_atoms*t.n_frames for t in traj_lst])
+    else:
+        atom_count = sum([reduce(lambda x, y: x*y, t.shape)
+                          for t in traj_lst])
+    # TODO: this warning is currently set too low. If you're
+    # enountering this error needlessly, bump it up!
+    if atom_count > 1e8:
+        print("WARNING: There are a lot of atoms/frames (%s "
+              "atom-frames) in this system. Consider using"
+              "delete_trjs=True to save memory." % atom_count)
+
+
 def requires_concatenated_trajectories(cluster_algo):
     '''
     This decorator takes a cluster_algorithm and wraps it in boilerplate code
@@ -75,21 +93,14 @@ def requires_concatenated_trajectories(cluster_algo):
     def cluster_fn(traj_lst, metric='rmsd', delete_trjs=False,
                    output=sys.stdout, *args, **kwargs):
 
-        assert hasattr(output, 'write'), "The parameter 'output' must provide a 'write' method for doing output."
-        distance_method = _get_distance_method(metric)
+        # cache start time for use at the end
+        start = timeit.timeit()
 
         if not delete_trjs:
-            if hasattr(traj_lst[0], 'n_atoms'):
-                atom_count = sum([t.n_atoms*t.n_frames for t in traj_lst])
-            else:
-                atom_count = sum([reduce(lambda x, y: x*y, t.shape)
-                                  for t in traj_lst])
-            # TODO: this warning is currently set too low. If you're
-            # enountering this error needlessly, bump it up!
-            if atom_count > 1e8:
-                print("WARNING: There are a lot of atoms/frames (%s "
-                      "atom-frames) in this system. Consider using"
-                      "delete_trjs=True to save memory." % atom_count)
+            _delete_trajs_warning(traj_lst)
+
+        assert hasattr(output, 'write'), "The parameter 'output' must provide a 'write' method for doing output."
+        distance_method = _get_distance_method(metric)
 
         # concatenate trajectories
         traj_lengths = [len(t) for t in traj_lst]
@@ -107,6 +118,10 @@ def requires_concatenated_trajectories(cluster_algo):
         assert np.all(assignments >= 0)
         distances = _partition_list(distances, traj_lengths)
         assert np.all(distances >= 0)
+
+        # finish timing.
+        end = timeit.timeit()
+        output.write("Clustering took %s seconds." % (end - start))
 
         # we don't return cluster_centers because it's potentially confusing
         # in the case where cluster_centers are not actually complete
