@@ -52,9 +52,8 @@ def kmedoids(traj, distance_method, n_clusters, n_iters=5, output=sys.stdout):
         cluster_center_inds = np.random.random_integers(0, n_frames-1,
                                                         n_clusters)
 
-    cluster_centers = traj[cluster_center_inds]
     cluster_center_inds, assignments, distances = assign_to_nearest_center(
-        traj, cluster_centers, distance_method)
+        traj, traj[cluster_center_inds], distance_method)
 
     for i in range(n_iters):
         cluster_center_inds, assignments, distances = _kmedoids_update(
@@ -62,4 +61,4 @@ def kmedoids(traj, distance_method, n_clusters, n_iters=5, output=sys.stdout):
             distances, output=output)
         output.write("KMedoids update %s\n" % i)
 
-    return cluster_centers, assignments, distances
+    return cluster_center_inds, assignments, distances

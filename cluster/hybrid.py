@@ -33,14 +33,15 @@ def _hybrid_medoids_update(
 @requires_concatenated_trajectories
 def hybrid(
         traj, distance_method, n_iters=5, n_clusters=None, dist_cutoff=None,
-        random_first_center=False, cluster_centers=None, output=sys.stdout):
+        random_first_center=False, init_cluster_centers=None,
+        output=sys.stdout):
 
     cluster_center_inds, assignments, distances = _kcenters_helper(
         traj,
         distance_method,
         n_clusters=n_clusters,
         dist_cutoff=dist_cutoff,
-        cluster_centers=cluster_centers,
+        cluster_centers=init_cluster_centers,
         random_first_center=random_first_center,
         output=output)
 
@@ -51,4 +52,4 @@ def hybrid(
         if output:
             output.write("KMedoids update %s of %s\n" % (i, n_iters))
 
-    return cluster_centers, assignments, distances
+    return cluster_center_inds, assignments, distances
