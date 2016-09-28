@@ -71,11 +71,12 @@ def _kcenters_helper(
 @requires_concatenated_trajectories
 def kcenters(
         traj, distance_method, n_clusters=None, dist_cutoff=None,
-        cluster_centers=None, random_first_center=False, output=sys.stdout):
+        init_cluster_centers=None, random_first_center=False,
+        output=sys.stdout):
 
     cluster_center_inds, assignments, distances = _kcenters_helper(
         traj, distance_method, n_clusters=n_clusters, dist_cutoff=dist_cutoff,
-        cluster_centers=cluster_centers,
+        cluster_centers=init_cluster_centers,
         random_first_center=random_first_center, output=output)
 
-    return cluster_centers, assignments, distances
+    return cluster_center_inds, assignments, distances

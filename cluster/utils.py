@@ -11,12 +11,17 @@ from __future__ import print_function, division, absolute_import
 from functools import wraps
 import sys
 import time
+from collections import namedtuple
 
 import mdtraj as md
 import numpy as np
 
 from ..exception import ImproperlyConfigured, DataInvalid
 from ..traj_manipulation import sloopy_concatenate_trjs
+
+
+Clustering = namedtuple(
+    'Clustering', ['center_indices', 'assignments', 'distances'])
 
 
 def assign_to_nearest_center(traj, cluster_centers, distance_method):
@@ -137,10 +142,17 @@ def requires_concatenated_trajectories(cluster_algo):
             traj, distance_method=distance_method, output=output, **kwargs)
 
         # de-concatenate the trajectories, assert their validity
+        cluster_center_inds = _partition_indices(
+            cluster_center_inds, traj_lengths)
         assignments = _partition_list(assignments, traj_lengths)
         assert np.all(assignments >= 0)
         distances = _partition_list(distances, traj_lengths)
         assert np.all(distances >= 0)
+
+        cluster_result = Clustering(
+            assignments=assignments,
+            distances=distances,
+            center_indices=cluster_center_inds)
 
         # finish timing.
         end = time.clock()
@@ -148,12 +160,31 @@ def requires_concatenated_trajectories(cluster_algo):
             "Clustering took %s seconds for %s trajectories.\n" %
             ((end - start), len(traj_lst)))
 
-        # we don't return cluster_centers because it's potentially confusing
-        # in the case where cluster_centers are not actually complete
-        # structures, but molecule subsets (i.e. all Ca atoms).
-        return assignments, distances
+        return cluster_result
 
     return cluster_fn
+
+
+def _partition_indices(indices, traj_lengths):
+    '''
+    Similar to _partition_list in function, this function uses
+    `traj_lengths` to determine which 2d trajectory-list index matches
+    the given 1d concatenated trajectory index for each index in
+    indices.
+    '''
+
+    partitioned_indices = []
+    for index in indices:
+        trj_index = 0
+        for traj_len in traj_lengths:
+            if traj_len > index:
+                partitioned_indices.append((trj_index, index))
+                break
+            else:
+                index -= traj_len
+                trj_index += 1
+
+    return partitioned_indices
 
 
 def _get_distance_method(metric):
