@@ -21,7 +21,7 @@ from ..traj_manipulation import sloopy_concatenate_trjs
 
 
 Clustering = namedtuple(
-    'Clustering', ['cluster_center_indices', 'assignments', 'distances'])
+    'Clustering', ['center_indices', 'assignments', 'distances'])
 
 
 def assign_to_nearest_center(traj, cluster_centers, distance_method):
@@ -152,7 +152,7 @@ def requires_concatenated_trajectories(cluster_algo):
         cluster_result = Clustering(
             assignments=assignments,
             distances=distances,
-            cluster_center_indices=cluster_center_inds)
+            center_indices=cluster_center_inds)
 
         # finish timing.
         end = time.clock()
