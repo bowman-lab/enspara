@@ -48,7 +48,8 @@ def load_as_concatenated(filenames, topology, processes=None, debug=False):
 
     full_shape = (sum(lengths), shape[1], shape[2])
     # mp.Arrays are one-dimensional, so multiply the shape together for size
-    shared_array = mp.Array(ctypes.c_double, reduce(mul, full_shape, 1))
+    shared_array = mp.Array(ctypes.c_double, reduce(mul, full_shape, 1),
+                            lock=False)
 
     proc_list = []
     with closing(mp.Pool(processes=processes, initializer=init,
@@ -76,7 +77,8 @@ def init(shared_array_):
 
 
 def tonumpyarray(mp_arr):
-    return np.frombuffer(mp_arr.get_obj())
+    # mp_arr.get_obj if Array is locking, otherwise mp_arr.
+    return np.frombuffer(mp_arr)
 
 
 def load_to_position(spec, top, arr_shape):
