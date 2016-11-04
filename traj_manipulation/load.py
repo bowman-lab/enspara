@@ -25,7 +25,7 @@ def sound_trajectory(trj, top):
             frame = start+(base**iteration)
 
             try:
-                t = md.load(trj, top=top, frame=frame)
+                md.load(trj, top=top, frame=frame)
                 search_space[0] = frame
             except IndexError:
                 search_space[1] = frame
