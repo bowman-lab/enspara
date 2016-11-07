@@ -16,7 +16,7 @@ import numpy as np
 
 def _kmedoids_update(
         traj, distance_method, cluster_center_inds, assignments,
-        distances, output):
+        distances):
 
     n_clusters = len(cluster_center_inds)
     n_frames = len(traj)

@@ -23,7 +23,7 @@ def _kcenters_helper(
 
     if n_clusters is None and dist_cutoff is None:
         raise ImproperlyConfigured(
-            "KCenters must specify 'n_clusters' xor 'distance_cutoff'")
+            "KCenters must specify 'n_clusters' or 'distance_cutoff'")
     elif n_clusters is None and dist_cutoff is not None:
         n_clusters = np.inf
     elif n_clusters is not None and dist_cutoff is None:
@@ -49,6 +49,11 @@ def _kcenters_helper(
 
     while (cluster_num < n_clusters) and (max_distance > dist_cutoff):
         dist = distance_method(traj, traj[new_center_index])
+
+        # scipy distance metrics return shape (n, 1) instead of (n), which
+        # causes breakage here.
+        assert len(dist.shape) == len(distances.shape)
+
         inds = (dist < distances)
         distances[inds] = dist[inds]
         assignments[inds] = cluster_num

@@ -8,19 +8,73 @@
 from __future__ import print_function, division, absolute_import
 
 import sys
+import time
+import os
 
 from .kcenters import _kcenters_helper
 from .kmedoids import _kmedoids_update
 from .utils import requires_concatenated_trajectories
 
+from ..exception import ImproperlyConfigured
+
+
+class KHybrid(object):
+
+    def __init__(self, metric, n_clusters=None, cluster_radius=None,
+                 kmedoids_updates=5, verbose=False):
+
+        if n_clusters is None and cluster_radius is None:
+            raise ImproperlyConfigured("Either n_clusters or cluster_radius "
+                                       "is required for KHybrid clustering")
+
+        self.metric = metric
+        self.kmedoids_updates = kmedoids_updates
+        self.n_clusters = n_clusters
+        self.cluster_radius = cluster_radius
+        self.verbose = verbose
+
+    def fit(self, X):
+
+        starttime = time.clock()
+
+        if self.verbose:
+            output = sys.stdout
+        else:
+            output = open(os.devnull, 'w')
+
+        cluster_center_inds, assignments, distances = _kcenters_helper(
+            X,
+            distance_method=self.metric,
+            n_clusters=self.n_clusters,
+            dist_cutoff=self.cluster_radius,
+            random_first_center=False,
+            cluster_centers=None,
+            output=output)
+
+        for i in range(self.kmedoids_updates):
+            output.write("KMedoids update %s of %s\n" %
+                         (i, self.kmedoids_updates))
+
+            cluster_center_inds, assignments, distances = \
+                _hybrid_medoids_update(
+                    X,
+                    distance_method=self.metric,
+                    cluster_center_inds=cluster_center_inds,
+                    assignments=assignments,
+                    distances=distances)
+
+        self.runtime_ = time.clock() - starttime
+        self.labels_ = assignments
+        self.distances_ = distances
+        self.cluster_center_indices_ = cluster_center_inds
+
 
 def _hybrid_medoids_update(
-        traj, distance_method, cluster_center_inds, assignments, distances,
-        output):
+        traj, distance_method, cluster_center_inds, assignments, distances):
 
     proposed_center_inds, proposed_assignments, proposed_distances =\
         _kmedoids_update(traj, distance_method, cluster_center_inds,
-                         assignments, distances, output)
+                         assignments, distances)
 
     max_orig_dist_to_center = distances.max()
     max_proposed_dist_to_center = proposed_distances.max()
@@ -48,7 +102,7 @@ def hybrid(
     for i in range(n_iters):
         cluster_center_inds, assignments, distances = _hybrid_medoids_update(
             traj, distance_method, cluster_center_inds, assignments,
-            distances, output=output)
+            distances)
         if output:
             output.write("KMedoids update %s of %s\n" % (i, n_iters))
 

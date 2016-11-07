@@ -1,5 +1,6 @@
-# Author: Maxwell I. Zimmerman <mizimmer@wustl.edu>,
-#         Gregory R. Bowman <gregoryrbowman@gmail.com>
+# Authors: Maxwell I. Zimmerman <mizimmer@wustl.edu>,
+#          Gregory R. Bowman <gregoryrbowman@gmail.com>,
+#          Justin R. Porter <justinrporter@gmail.com>
 # Contributors:
 # Copyright (c) 2016, Washington University in St. Louis
 # All rights reserved.
@@ -69,8 +70,7 @@ def load_cluster_centers(traj_f_list, top, distances):
 def find_cluster_centers(traj_lst, distances):
     '''
     Use the distances matrix to calculate which of the trajectories in
-    traj_lst are the center of a cluster. Return a list of md.Trajectory
-    objects.
+    traj_lst are the center of a cluster. Return a list of indices.
     '''
 
     if len(traj_lst) != distances.shape[0]:
@@ -102,7 +102,7 @@ def _delete_trajs_warning(traj_lst, write_to=sys.stdout):
     if atom_count > 1e8:
         sys.stdout.write(
             "WARNING: There are a lot of atoms/frames (%s "
-            "atom-frames) in this system. Consider using"
+            "atom-frames) in this system. Consider using "
             "delete_trjs=True to save memory.\n" % atom_count)
 
 
@@ -130,12 +130,19 @@ def requires_concatenated_trajectories(cluster_algo):
         assert hasattr(output, 'write'), "The parameter 'output' must provide a 'write' method for doing output."
         distance_method = _get_distance_method(metric)
 
+
         # concatenate trajectories
         traj_lengths = [len(t) for t in traj_lst]
-        if isinstance(traj_lst[0], md.Trajectory):
+        concat_start = time.clock()
+
+        if isinstance(traj_lst[0], md.Trajectory) and len(traj_lst) > 0:
             traj = sloopy_concatenate_trjs(traj_lst, delete_trjs=delete_trjs)
         else:
             traj = np.concatenate(traj_lst)
+
+        output.write("Concatenated in %s seconds.\n" %
+                     (time.clock() - concat_start))
+
 
         # go, cluster, go!
         cluster_center_inds, assignments, distances = cluster_algo(
