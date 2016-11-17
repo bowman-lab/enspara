@@ -7,6 +7,7 @@ import time
 import subprocess as sp
 from multiprocessing import Pool
 
+
 def _save_states(centers_info):
     states = centers_info['state']
     confs = centers_info['conf']
@@ -14,16 +15,17 @@ def _save_states(centers_info):
     traj_filename = centers_info['trj_filename'][0]
     output_directory = centers_info['output'][0]
     topology = centers_info['topology'][0]
-    traj = md.load(traj_filename,top=topology)
+    traj = md.load(traj_filename, top=topology)
     for num in range(len(states)):
-        pdb_filename = output_directory+"State"+str(states[num])+"-"+\
-            str(confs[num])+".pdb"
+        pdb_filename = "{dir}State{state}-{conf}.pdb".format(
+            dir=output_directory, state=states[num], conf=confs[num])
         center = traj[frames[num]]
         center.save_pdb(pdb_filename)
-    return
+
 
 def save_states(
-        assignments, distances, state_nums=None, traj_filenames='./Trajectories/*.xtc',
+        assignments, distances, state_nums=None,
+        traj_filenames='./Trajectories/*.xtc',
         output_directory='./PDBs/', topology='prot_masses.pdb',
         largest_center=np.inf, n_confs=1, n_processes=1, verbose=True):
     '''
@@ -33,35 +35,38 @@ def save_states(
     are saved, the center is saved as conf-0 and the rest are random
     conformations.
     '''
+
     t0 = time.time()
     if state_nums is None:
         state_nums = np.unique(assignments)
-        state_nums = state_nums[np.where(state_nums!=-1)]
-    # Get full pathway to input and output directories and ensure that they exist
-    if type(traj_filenames)==str:
+        state_nums = state_nums[np.where(state_nums != -1)]
+
+    # Get full pathway to input and output directories and ensure that they
+    # exist
+    if type(traj_filenames) == str:
         traj_filenames = np.array(
             [os.path.abspath(trj) for trj in glob.glob(traj_filenames)])
     output_directory = os.path.abspath(output_directory)+"/"
     if not os.path.exists(output_directory):
-        sp.check_call(["mkdir",output_directory])
+        sp.check_call(["mkdir", output_directory])
     # reduce the number of conformations to search through
-    reduced_iis = np.where((distances>-0.1)*(distances<largest_center))
+    reduced_iis = np.where((distances>-0.1)*(distances < largest_center))
     reduced_assignments = assignments[reduced_iis]
     reduced_distances = distances[reduced_iis]
     centers_location = []
     for state in state_nums:
-        state_iis = np.where(reduced_assignments==state)
+        state_iis = np.where(reduced_assignments == state)
         nconfs_in_state = len(state_iis[0])
         if nconfs_in_state >= n_confs:
             center_picks = np.array([0])
             center_picks = np.append(
                 center_picks,
                 np.random.choice(
-                    range(1,nconfs_in_state),n_confs-1,replace=False))
+                    range(1, nconfs_in_state), n_confs-1, replace=False))
         else:
             center_picks = np.array([0])
             center_picks = np.append(
-                center_picks, np.random.choice(nconfs_in_state, nconfs-1))
+                center_picks, np.random.choice(nconfs_in_state, n_confs - 1))
         state_centers = np.argsort(reduced_distances[state_iis])[center_picks]
         # Obtain information on conformation locations within trajectories
         traj_locations = reduced_iis[0][state_iis[0][state_centers]]
@@ -73,23 +78,25 @@ def save_states(
                     state, conf_num, traj_num,
                     frame_nums[conf_num], traj_filenames[traj_num],
                     output_directory, topology))
-    if type(topology)==str:
+    if type(topology) == str:
         centers_location = np.array(
             centers_location, dtype=[
-                ('state','int'), ('conf','int'), ('traj_num','int'),
-                ('frame','int'), ('trj_filename',np.str_,500), ('output',np.str_,500),
-                ('topology',np.str_,500)])
+                ('state', 'int'), ('conf', 'int'), ('traj_num', 'int'),
+                ('frame', 'int'), ('trj_filename', np.str_, 500),
+                ('output', np.str_, 500),
+                ('topology', np.str_, 500)])
     else:
         centers_location = np.array(
             centers_location, dtype=[
-                ('state','int'), ('conf','int'), ('traj_num','int'),
-                ('frame','int'), ('trj_filename',np.str_,500), ('output',np.str_,500),
-                ('topology',type(topology))])
+                ('state', 'int'), ('conf', 'int'), ('traj_num', 'int'),
+                ('frame', 'int'), ('trj_filename', np.str_, 500),
+                ('output', np.str_, 500),
+                ('topology', type(topology))])
     unique_trajs = np.unique(centers_location['traj_num'])
     partitioned_centers_info = []
     for traj in unique_trajs:
         partitioned_centers_info.append(
-            centers_location[np.where(centers_location['traj_num']==traj)])
+            centers_location[np.where(centers_location['traj_num'] == traj)])
     if verbose:
         print("  Saving states!")
     pool = Pool(processes=n_processes)
@@ -100,4 +107,3 @@ def save_states(
         t1 = time.time()
         print("    Finished in "+str(t1-t0)+" sec")
     return
- 
