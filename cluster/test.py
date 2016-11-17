@@ -1,12 +1,14 @@
 import unittest
 
 import os
+import tempfile
 
 import numpy as np
 import mdtraj as md
 from mdtraj.testing import get_fn
 
 import stag.cluster as cluster
+import stag.cluster.save_states as save_states
 
 import matplotlib
 matplotlib.use('TkAgg')  # req'd for some environments.
@@ -232,6 +234,31 @@ class TestNumpyClustering(unittest.TestCase):
             scatter(x_centers, y_centers, s=40, c='y')
             show()
             raise
+
+
+class TestSaveStates(unittest.TestCase):
+
+    def setUp(self):
+        self.trj_fname = get_fn('frame0.xtc')
+        self.top_fname = get_fn('native.pdb')
+
+    def test_unique_state_extraction(self):
+        '''
+        Check to makes sure we get the unique states from the trajectory
+        correctly
+        '''
+
+        states = [0, 1, 2, 3, 4]
+        assignments = np.random.choice(states, (100000))
+
+        self.assertTrue(
+            all(save_states.unique_states(assignments) == states))
+
+        states = [-1, 0, 1, 2, 3, 4]
+        assignments = np.random.choice(states, (100000))
+
+        self.assertTrue(
+            all(save_states.unique_states(assignments) == states[1:]))
 
 
 class TestUtils(unittest.TestCase):

@@ -23,6 +23,16 @@ def _save_states(centers_info):
         center.save_pdb(pdb_filename)
 
 
+def unique_states(assignments):
+    '''
+    Search assignments array and return a list of the state ids within.
+    '''
+
+    state_nums = np.unique(assignments)
+    state_nums = state_nums[np.where(state_nums != -1)]
+    return state_nums
+
+
 def save_states(
         assignments, distances, state_nums=None,
         traj_filenames='./Trajectories/*.xtc',
@@ -38,8 +48,7 @@ def save_states(
 
     t0 = time.time()
     if state_nums is None:
-        state_nums = np.unique(assignments)
-        state_nums = state_nums[np.where(state_nums != -1)]
+        state_nums = unique_states(assignments)
 
     # Get full pathway to input and output directories and ensure that they
     # exist
