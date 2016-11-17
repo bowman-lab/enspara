@@ -41,7 +41,7 @@ class TestTrajClustering(unittest.TestCase):
         self.assertAlmostEqual(
             np.average(result.distances), 0.083686112175266184, delta=0.005)
         self.assertAlmostEqual(
-            np.std(result.distances), 0.018754008455304401, delta=0.002)
+            np.std(result.distances), 0.018754008455304401, delta=0.005)
 
     def test_hybrid(self):
         N_CLUSTERS = 5
