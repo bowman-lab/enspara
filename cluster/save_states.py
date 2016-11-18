@@ -23,7 +23,7 @@ def _save_states(centers_info):
     return
 
 def save_states(
-        state_nums, assignments, distances, traj_filenames='./Trajectories/*.xtc',
+        assignments, distances, state_nums=None, traj_filenames='./Trajectories/*.xtc',
         output_directory='./PDBs/', topology='prot_masses.pdb',
         largest_center=np.inf, n_confs=1, n_processes=1, verbose=True):
     '''
@@ -34,6 +34,9 @@ def save_states(
     conformations.
     '''
     t0 = time.time()
+    if state_nums is None:
+        state_nums = np.unique(assignments)
+        state_nums = state_nums[np.where(state_nums!=-1)]
     # Get full pathway to input and output directories and ensure that they exist
     if type(traj_filenames)==str:
         traj_filenames = np.array(
