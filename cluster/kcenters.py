@@ -9,12 +9,47 @@
 from __future__ import print_function, division, absolute_import
 
 import sys
+import time
+import os
 
 from .utils import assign_to_nearest_center, requires_concatenated_trajectories
 
 from ..exception import ImproperlyConfigured
 
 import numpy as np
+
+
+class KCenters(object):
+
+    def __init__(self, metric, n_clusters, cluster_radius, verbose=False):
+
+        if n_clusters is None and cluster_radius is None:
+            raise ImproperlyConfigured("Either n_clusters or cluster_radius "
+                                       "is required for KHybrid clustering")
+
+        self.metric = metric
+        self.n_clusters = n_clusters
+        self.cluster_radius = cluster_radius
+
+        self.output = sys.stdout if verbose else open(os.devnull, 'w')
+
+    def fit(self, X):
+
+        t0 = time.clock()
+
+        cluster_center_inds, assignments, distances = _kcenters_helper(
+            X,
+            distance_method=self.metric,
+            n_clusters=self.n_clusters,
+            dist_cutoff=self.cluster_radius,
+            random_first_center=False,
+            cluster_centers=None,
+            output=self.output)
+
+        self.runtime_ = time.clock() - t0
+        self.labels_ = assignments
+        self.distances_ = distances
+        self.cluster_center_indices_ = cluster_center_inds
 
 
 def _kcenters_helper(
