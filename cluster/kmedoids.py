@@ -1,3 +1,4 @@
+
 # Author: Gregory R. Bowman <gregoryrbowman@gmail.com>
 # Contributors:
 # Copyright (c) 2016, Washington University in St. Louis
@@ -8,6 +9,7 @@
 from __future__ import print_function, division, absolute_import
 
 import sys
+import os
 
 from .utils import assign_to_nearest_center, requires_concatenated_trajectories
 
@@ -16,7 +18,7 @@ import numpy as np
 
 def _kmedoids_update(
         traj, distance_method, cluster_center_inds, assignments,
-        distances):
+        distances, output=os.devnull):
 
     n_clusters = len(cluster_center_inds)
     n_frames = len(traj)
