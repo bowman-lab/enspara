@@ -13,7 +13,8 @@ import os
 
 from .kcenters import _kcenters_helper
 from .kmedoids import _kmedoids_update
-from .utils import requires_concatenated_trajectories
+from .utils import requires_concatenated_trajectories, _partition_list, \
+    _partition_indices
 
 from ..exception import ImproperlyConfigured
 
@@ -67,6 +68,15 @@ class KHybrid(object):
         self.labels_ = assignments
         self.distances_ = distances
         self.cluster_center_indices_ = cluster_center_inds
+
+    def partitioned_labels(self, lengths):
+        return _partition_list(self.labels_, lengths)
+
+    def partitioned_distances(self, lengths):
+        return _partition_list(self.distances_, lengths)
+
+    def partitioned_center_indices(self, lengths):
+        return _partition_indices(self.cluster_center_indices_, lengths)
 
 
 def _hybrid_medoids_update(

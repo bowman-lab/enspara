@@ -22,6 +22,39 @@ class TestTrajClustering(unittest.TestCase):
 
         self.trj = md.load(self.trj_fname, top=self.top_fname)
 
+    def test_khybrid_scipy(self):
+        N_CLUSTERS = 5
+
+        clustering = cluster.KHybrid(
+            metric=md.rmsd,
+            n_clusters=N_CLUSTERS,
+            kmedoids_updates=1000)
+
+        clustering.fit(self.trj)
+
+        self.assertEqual(len(np.unique(clustering.labels_)), N_CLUSTERS)
+        self.assertEqual(len(np.unique(clustering.labels_)), N_CLUSTERS)
+
+        self.assertAlmostEqual(
+            np.average(clustering.distances_), 0.083686112175266184,
+            delta=0.005)
+        self.assertAlmostEqual(
+            np.std(clustering.distances_), 0.018754008455304401,
+            delta=0.005)
+
+        with self.assertRaises(cluster.utils.DataInvalid):
+            clustering.partitioned_distances([5, 10])
+
+        pdist = clustering.partitioned_distances([len(self.trj)-100, 100])
+        self.assertTrue(np.all(pdist[0] == clustering.distances_[0:-100]))
+
+        passign = clustering.partitioned_labels([len(self.trj)-100, 100])
+        self.assertTrue(np.all(passign[0] == clustering.labels_[0:-100]))
+
+        pindices = clustering.partitioned_center_indices(
+            [len(self.trj)-100, 100])
+        self.assertEqual(len(pindices[0]), 2)
+
     def test_kmedoids(self):
         N_CLUSTERS = 5
 
