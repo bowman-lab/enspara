@@ -53,8 +53,7 @@ def load_frames(indices, filenames, **kwargs):
     additional kwargs are passed on to md.load_frame.
     '''
 
-    if 'stride' in kwargs:
-        stride = int(kwargs['stride'])
+    stride = kwargs.pop('stride', 1)
 
     centers = [md.load_frame(filenames[i], index=j*stride, **kwargs)
                for i, j in indices]
