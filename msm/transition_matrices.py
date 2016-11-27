@@ -10,6 +10,7 @@ from __future__ import print_function, division, absolute_import
 import numpy as np
 import scipy
 import scipy.sparse
+import scipy.sparse.linalg
 
 
 def trajectory_to_count_matrix(
@@ -127,3 +128,41 @@ def count_matrix_to_probabilities(C, symmetrization=None):
         return
 
     return T
+
+
+def eigenspectra(T, n_eigs=None, left=True, maxiter=100000, tol=1E-30):
+    if n_eigs is None:
+        n_eigs = T.shape[0]
+    elif n_eigs < 2:
+        raise ValueError('n_eig must be greater than or equal to 2') 
+
+    if scipy.sparse.issparse(T):
+        if left:
+            vals, vecs = scipy.sparse.linalg.eigs(T.T.tocsr(), n_eigs, which="LR", maxiter=maxiter, tol=tol)
+        else:
+            vals, vecs = scipy.sparse.linalg.eigs(T.tocsr(), n_eigs, which="LR", maxiter=maxiter, tol=tol)
+    else:
+        if left:
+            vals, vecs = scipy.linalg.eig(T.T)
+        else:
+            vals, vecs = scipy.linalg.eig(T)
+
+    order = np.argsort(-np.real(vals))
+    vals = vals[order]
+    vecs = vecs[:, order]
+
+    # normalize the first eigenvector to obtain the equilibrium populations
+    vecs[:, 0] /= vecs[:, 0].sum()
+
+    vals = np.real(vals[:n_eigs])
+    vecs = np.real(vecs[:, :n_eigs])
+
+    return vals, vecs
+
+
+def eq_probs(T, maxiter=100000, tol=1E-30):
+    val, vec = eigenspectra(T, n_eigs=3, left=True, maxiter=maxiter, tol=tol)
+    
+    return vec[:, 0]
+
+
