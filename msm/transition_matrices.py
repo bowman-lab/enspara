@@ -52,16 +52,29 @@ def trajectory_to_count_matrix(
     transitions = np.row_stack((start_states, end_states))
     counts = np.ones(transitions.shape[1], dtype=int)
     C = scipy.sparse.coo_matrix((counts, transitions),
-                                shape=(n_states, n_states))
+                                shape=(n_states, n_states), dtype=int)
 
-    return C.to_lil()
+    return C.tolil()
 
 
 def trajectories_to_count_matrix(
         trajs, n_states=None, lag_time=1, sliding_window=True):
     # trajectories is list of arrays (with possibly different lengths)
-    raise NotImplementedError()
-    return
+    
+    if n_states is None:
+        n_states = 0
+        for traj in trajs:
+            traj_n_states = traj.max() + 1
+            if traj_n_states > n_states:
+                n_states = traj_n_states
+    
+    C = scipy.sparse.lil_matrix((n_states, n_states), dtype=int)
+    for traj in trajs:
+        traj_C = trajectory_to_count_matrix(
+        traj, n_states=n_states, lag_time=lag_time, sliding_window=sliding_window)
+        C += traj_C
+    
+    return C
 
 
 def _normalize_rows(C):
@@ -127,7 +140,7 @@ def count_matrix_to_probabilities(C, symmetrization=None):
         print("Invalid symmetrization option in count_matrix_to_probabilities")
         return
 
-    return T
+    return T.tolil()
 
 
 def eigenspectra(T, n_eigs=None, left=True, maxiter=100000, tol=1E-30):
