@@ -60,20 +60,21 @@ def trajectory_to_count_matrix(
 def trajectories_to_count_matrix(
         trajs, n_states=None, lag_time=1, sliding_window=True):
     # trajectories is list of arrays (with possibly different lengths)
-    
+
     if n_states is None:
         n_states = 0
         for traj in trajs:
             traj_n_states = traj.max() + 1
             if traj_n_states > n_states:
                 n_states = traj_n_states
-    
+
     C = scipy.sparse.lil_matrix((n_states, n_states), dtype=int)
     for traj in trajs:
         traj_C = trajectory_to_count_matrix(
-        traj, n_states=n_states, lag_time=lag_time, sliding_window=sliding_window)
+            traj, n_states=n_states, lag_time=lag_time,
+            sliding_window=sliding_window)
         C += traj_C
-    
+
     return C
 
 
@@ -147,13 +148,15 @@ def eigenspectra(T, n_eigs=None, left=True, maxiter=100000, tol=1E-30):
     if n_eigs is None:
         n_eigs = T.shape[0]
     elif n_eigs < 2:
-        raise ValueError('n_eig must be greater than or equal to 2') 
+        raise ValueError('n_eig must be greater than or equal to 2')
 
     if scipy.sparse.issparse(T):
         if left:
-            vals, vecs = scipy.sparse.linalg.eigs(T.T.tocsr(), n_eigs, which="LR", maxiter=maxiter, tol=tol)
+            vals, vecs = scipy.sparse.linalg.eigs(
+                T.T.tocsr(), n_eigs, which="LR", maxiter=maxiter, tol=tol)
         else:
-            vals, vecs = scipy.sparse.linalg.eigs(T.tocsr(), n_eigs, which="LR", maxiter=maxiter, tol=tol)
+            vals, vecs = scipy.sparse.linalg.eigs(
+                T.tocsr(), n_eigs, which="LR", maxiter=maxiter, tol=tol)
     else:
         if left:
             vals, vecs = scipy.linalg.eig(T.T)
@@ -175,7 +178,5 @@ def eigenspectra(T, n_eigs=None, left=True, maxiter=100000, tol=1E-30):
 
 def eq_probs(T, maxiter=100000, tol=1E-30):
     val, vec = eigenspectra(T, n_eigs=3, left=True, maxiter=maxiter, tol=tol)
-    
+
     return vec[:, 0]
-
-
