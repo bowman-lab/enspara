@@ -7,6 +7,6 @@ import numpy as np
 
 setup(
   name='Statistical Trajectory Analysis and Guidance',
-  ext_modules=cythonize("geometry/euc_dist.pyx"),
+  ext_modules=cythonize("stag/geometry/euc_dist.pyx"),
   include_dirs=[np.get_include()]
 )
