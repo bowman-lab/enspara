@@ -9,20 +9,13 @@
 
 from __future__ import print_function, division, absolute_import
 
-from functools import wraps
 import sys
-import time
 from collections import namedtuple
 
 import mdtraj as md
 import numpy as np
 
 from ..exception import ImproperlyConfigured, DataInvalid
-from ..traj_manipulation import sloopy_concatenate_trjs
-
-
-Clustering = namedtuple(
-    'Clustering', ['center_indices', 'assignments', 'distances'])
 
 
 def assign_to_nearest_center(traj, cluster_centers, distance_method):
@@ -97,72 +90,6 @@ def _delete_trajs_warning(traj_lst, write_to=sys.stdout):
             "WARNING: There are a lot of atoms/frames (%s "
             "atom-frames) in this system. Consider using "
             "delete_trjs=True to save memory.\n" % atom_count)
-
-
-def requires_concatenated_trajectories(cluster_algo):
-    '''
-    This decorator takes a cluster_algorithm and wraps it in boilerplate code
-    that needs to precede/follow any clustering algorithm. In particular, it
-    concatenates and de-concatenate (repartition) trajectories before and after
-    running, and it determines the distance_metric callable. It also filters
-    out the cluster centers return value, to prevent silliness. It also offers
-    the parameter `delete_trjs` which will delete the trajectories in traj_lst
-    as it works to preserve memory.
-    '''
-
-    @wraps(cluster_algo)  # @wraps corrects f.__name__ and whatnot
-    def cluster_fn(traj_lst, metric='rmsd', delete_trjs=False,
-                   output=sys.stdout, *args, **kwargs):
-
-        # cache start time for use at the end
-        start = time.clock()
-
-        if not delete_trjs:
-            _delete_trajs_warning(traj_lst)
-
-        assert hasattr(output, 'write'), "The parameter 'output' must provide a 'write' method for doing output."
-        distance_method = _get_distance_method(metric)
-
-
-        # concatenate trajectories
-        traj_lengths = [len(t) for t in traj_lst]
-        concat_start = time.clock()
-
-        if isinstance(traj_lst[0], md.Trajectory) and len(traj_lst) > 0:
-            traj = sloopy_concatenate_trjs(traj_lst, delete_trjs=delete_trjs)
-        else:
-            traj = np.concatenate(traj_lst)
-
-        output.write("Concatenated in %s seconds.\n" %
-                     (time.clock() - concat_start))
-
-
-        # go, cluster, go!
-        cluster_center_inds, assignments, distances = cluster_algo(
-            traj, distance_method=distance_method, output=output, **kwargs)
-
-        # de-concatenate the trajectories, assert their validity
-        cluster_center_inds = _partition_indices(
-            cluster_center_inds, traj_lengths)
-        assignments = _partition_list(assignments, traj_lengths)
-        assert np.all(assignments >= 0)
-        distances = _partition_list(distances, traj_lengths)
-        assert np.all(distances >= 0)
-
-        cluster_result = Clustering(
-            assignments=assignments,
-            distances=distances,
-            center_indices=cluster_center_inds)
-
-        # finish timing.
-        end = time.clock()
-        output.write(
-            "Clustering took %s seconds for %s trajectories.\n" %
-            ((end - start), len(traj_lst)))
-
-        return cluster_result
-
-    return cluster_fn
 
 
 def _partition_indices(indices, traj_lengths):
