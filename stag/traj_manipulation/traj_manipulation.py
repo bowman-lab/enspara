@@ -11,9 +11,15 @@ from copy import deepcopy
 
 import mdtraj as md
 import numpy as np
+import warnings
 
 
 def sloopy_concatenate_trjs(traj_lst, delete_trjs=False):
+    warnings.warn(
+        'This function is grows quadratically in data size. Consider using'
+        'the usually-faster load_as_concatenated function instead.',
+        RuntimeWarning)
+
     top = deepcopy(traj_lst[0].top)
     if delete_trjs:
         xyz = deepcopy(traj_lst[0].xyz)

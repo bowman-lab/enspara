@@ -11,9 +11,10 @@ import sys
 import time
 import os
 
-from .kcenters import _kcenters_helper
+from .kcenters import _kcenters_helper, KCenters
 from .kmedoids import _kmedoids_update
-from .utils import requires_concatenated_trajectories
+from .utils import requires_concatenated_trajectories, _partition_list, \
+    _partition_indices
 
 from ..exception import ImproperlyConfigured
 
@@ -31,29 +32,27 @@ class KHybrid(object):
         self.kmedoids_updates = kmedoids_updates
         self.n_clusters = n_clusters
         self.cluster_radius = cluster_radius
-        self.verbose = verbose
+
+        self.kcenters = KCenters(
+            metric=self.metric, n_clusters=self.n_clusters,
+            cluster_radius=self.cluster_radius)
+
+        self.output = sys.stdout if verbose else open(os.devnull, 'w')
+        self.kcenters.output = self.output
 
     def fit(self, X):
 
         starttime = time.clock()
 
-        if self.verbose:
-            output = sys.stdout
-        else:
-            output = open(os.devnull, 'w')
+        self.kcenters.fit(X)
 
-        cluster_center_inds, assignments, distances = _kcenters_helper(
-            X,
-            distance_method=self.metric,
-            n_clusters=self.n_clusters,
-            dist_cutoff=self.cluster_radius,
-            random_first_center=False,
-            cluster_centers=None,
-            output=output)
+        cluster_center_inds = self.kcenters.cluster_center_indices_
+        assignments = self.kcenters.labels_
+        distances = self.kcenters.distances_
 
         for i in range(self.kmedoids_updates):
-            output.write("KMedoids update %s of %s\n" %
-                         (i, self.kmedoids_updates))
+            self.output.write("KMedoids update %s of %s\n" %
+                              (i, self.kmedoids_updates))
 
             cluster_center_inds, assignments, distances = \
                 _hybrid_medoids_update(
@@ -63,10 +62,20 @@ class KHybrid(object):
                     assignments=assignments,
                     distances=distances)
 
-        self.runtime_ = time.clock() - starttime
         self.labels_ = assignments
         self.distances_ = distances
         self.cluster_center_indices_ = cluster_center_inds
+
+        self.runtime_ = time.clock() - starttime
+
+    def partitioned_labels(self, lengths):
+        return _partition_list(self.labels_, lengths)
+
+    def partitioned_distances(self, lengths):
+        return _partition_list(self.distances_, lengths)
+
+    def partitioned_center_indices(self, lengths):
+        return _partition_indices(self.cluster_center_indices_, lengths)
 
 
 def _hybrid_medoids_update(

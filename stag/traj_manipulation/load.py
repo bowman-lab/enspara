@@ -28,7 +28,8 @@ def sound_trajectory(trj, **kwargs):
             try:
                 md.load(trj, frame=frame, **kwargs)
                 search_space[0] = frame
-            except IndexError:
+            except (IndexError, IOError):
+                # TODO: why is it IndexError sometimes, and IOError others?
                 search_space[1] = frame
                 break
 

@@ -45,25 +45,18 @@ def assign_to_nearest_center(traj, cluster_centers, distance_method):
     return cluster_center_inds, assignments, distances
 
 
-def load_cluster_centers(traj_f_list, top, distances):
+def load_frames(indices, filenames, **kwargs):
     '''
-    Use the distances matrix to calcuate which of the trajectories in the
-    input traj_f_list are a cluster center, load ONLY the relevant frames, and
-    return a list.
+    Given a list of trajectory file names (`filenames`) and tuples
+    indicating trajectory number and frame number (`center indices`),
+    load the given frames into a list of md.Trajectory objects. All
+    additional kwargs are passed on to md.load_frame.
     '''
 
-    if len(traj_f_list) != distances.shape[0]:
-        raise DataInvalid(
-            "Expected len(traj_f_list) {} to match distances.shape[0] ({})".
-            format(len(traj_f_list), distances.shape))
+    stride = kwargs.pop('stride', 1)
 
-    center_indices = np.argwhere(distances == 0)
-
-    centers = [md.load(traj_f_list[trj_indx], top=top, frame=frame)
-               for (trj_indx, frame) in center_indices]
-
-    assert len(centers) == center_indices.shape[0]
-
+    centers = [md.load_frame(filenames[i], index=j*stride, **kwargs)
+               for i, j in indices]
     return centers
 
 
@@ -219,9 +212,8 @@ def _get_distance_method(metric):
 def _partition_list(list_to_partition, partition_lengths):
     if np.sum(partition_lengths) != len(list_to_partition):
         raise DataInvalid(
-            "List of length " + len(list_to_partition) +
-            " does not equal lengths to partition " +
-            str(np.sum(partition_lengths)))
+            "List of length {} does not equal lengths to partition {}.".format(
+                list_to_partition, partition_lengths))
 
     partitioned_list = np.full(
         shape=(len(partition_lengths), max(partition_lengths)),
