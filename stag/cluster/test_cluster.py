@@ -149,22 +149,22 @@ class TestNumpyClustering(unittest.TestCase):
     def setUp(self):
 
         g1 = self.generators[0]
-        s1_x_coords = np.random.normal(loc=g1[0], scale=1, size=10)
-        s1_y_coords = np.random.normal(loc=g1[1], scale=1, size=10)
+        s1_x_coords = np.random.normal(loc=g1[0], scale=1, size=20)
+        s1_y_coords = np.random.normal(loc=g1[1], scale=1, size=20)
         s1_xy_coords = np.zeros((10, 2))
         s1_xy_coords[:, 0] = s1_x_coords
         s1_xy_coords[:, 1] = s1_y_coords
 
         g2 = self.generators[1]
-        s2_x_coords = np.random.normal(loc=g2[0], scale=1, size=10)
-        s2_y_coords = np.random.normal(loc=g2[1], scale=1, size=10)
+        s2_x_coords = np.random.normal(loc=g2[0], scale=1, size=20)
+        s2_y_coords = np.random.normal(loc=g2[1], scale=1, size=20)
         s2_xy_coords = np.zeros((10, 2))
         s2_xy_coords[:, 0] = s2_x_coords
         s2_xy_coords[:, 1] = s2_y_coords
 
         g3 = self.generators[2]
-        s3_x_coords = np.random.normal(loc=g3[0], scale=1, size=10)
-        s3_y_coords = np.random.normal(loc=g3[1], scale=1, size=10)
+        s3_x_coords = np.random.normal(loc=g3[0], scale=1, size=20)
+        s3_y_coords = np.random.normal(loc=g3[1], scale=1, size=20)
         s3_xy_coords = np.zeros((10, 2))
         s3_xy_coords[:, 0] = s3_x_coords
         s3_xy_coords[:, 1] = s3_y_coords
