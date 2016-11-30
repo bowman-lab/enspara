@@ -11,11 +11,14 @@ import sys
 import time
 import os
 
-from .kcenters import _kcenters_helper, KCenters
-from .kmedoids import _kmedoids_update
-from stag.util import partition_list, partition_indices
+import numpy as np
 
-from stag.exception import ImproperlyConfigured
+from .kcenters import kcenters, KCenters
+from .kmedoids import _kmedoids_update
+from .util import _get_distance_method
+
+from ..util import partition_list, partition_indices
+from ..exception import ImproperlyConfigured
 
 
 class KHybrid(object):
@@ -93,16 +96,18 @@ def _hybrid_medoids_update(
 
 
 def hybrid(
-        traj, distance_method, n_iters=5, n_clusters=None, dist_cutoff=None,
-        random_first_center=False, init_cluster_centers=None,
-        output=sys.stdout):
+        traj, distance_method, n_iters=5, n_clusters=np.inf,
+        dist_cutoff=0, random_first_center=False,
+        init_cluster_centers=None, output=sys.stdout):
 
-    cluster_center_inds, assignments, distances = _kcenters_helper(
-        traj,
-        distance_method,
-        n_clusters=n_clusters,
-        dist_cutoff=dist_cutoff,
-        cluster_centers=init_cluster_centers,
+    if output is None:
+        output = os.devnull
+
+    distance_method = _get_distance_method(distance_method)
+
+    cluster_center_inds, assignments, distances = kcenters(
+        traj, distance_method, n_clusters=n_clusters, dist_cutoff=dist_cutoff,
+        init_cluster_centers=init_cluster_centers,
         random_first_center=random_first_center,
         output=output)
 

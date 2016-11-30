@@ -1,15 +1,20 @@
+cimport cython
 from cython import boundscheck
 
 import numpy as np
 cimport numpy as np
 
+ctypedef fused number:
+    cython.double
+    cython.long
+
 @boundscheck(False)
-def euclidean_distance(double[:, :] X, double[:] Y, double[:] XX=None):
+def euclidean_distance(number[:, :] X, number[:] Y, number[:] XX=None):
     '''
-    Computes the euclidean distance between a 2d array of doubles (`X`)
-    and a 1d array of doubles (`Y`), which has dimensions of a column in
+    Computes the euclidean distance between a 2d array of numbers (`X`)
+    and a 1d array of numbers (`Y`), which has dimensions of a column in
     `X`. This function computes the euclidean distance between them.
-    Another 1d array of doubles (`XX`) can be a precomputed dot product
+    Another 1d array of numbers (`XX`) can be a precomputed dot product
     of X with itself. This can provide substantial speedup when X is
     large.
 

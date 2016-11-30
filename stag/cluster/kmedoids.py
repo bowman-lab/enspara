@@ -11,7 +11,7 @@ from __future__ import print_function, division, absolute_import
 import sys
 import os
 
-from .utils import assign_to_nearest_center
+from .util import assign_to_nearest_center, _get_distance_method
 
 import numpy as np
 
@@ -43,6 +43,8 @@ def _kmedoids_update(
 
 def kmedoids(traj, distance_method, n_clusters, n_iters=5, output=sys.stdout):
 
+    distance_method = _get_distance_method(distance_method)
+
     n_frames = len(traj)
 
     # for short lists, np.random.random_integers sometimes forgets to assign
@@ -50,8 +52,7 @@ def kmedoids(traj, distance_method, n_clusters, n_iters=5, output=sys.stdout):
     # that is the case.
     cluster_center_inds = np.array([])
     while len(np.unique(cluster_center_inds)) < n_clusters:
-        cluster_center_inds = np.random.random_integers(0, n_frames-1,
-                                                        n_clusters)
+        cluster_center_inds = np.random.randint(0, n_frames, n_clusters)
 
     cluster_center_inds, assignments, distances = assign_to_nearest_center(
         traj, traj[cluster_center_inds], distance_method)

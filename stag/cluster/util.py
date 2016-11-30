@@ -9,13 +9,13 @@
 
 from __future__ import print_function, division, absolute_import
 
-import sys
 from collections import namedtuple
 
 import mdtraj as md
 import numpy as np
 
 from ..exception import ImproperlyConfigured, DataInvalid
+from ..util import partition_list, partition_indices
 
 
 def assign_to_nearest_center(traj, cluster_centers, distance_method):
@@ -59,15 +59,21 @@ def find_cluster_centers(traj_lst, distances):
     traj_lst are the center of a cluster. Return a list of indices.
     '''
 
-    if len(traj_lst) != distances.shape[0]:
+    if len(traj_lst) != len(distances):
         raise DataInvalid(
-            "Expected len(traj_lst) {} to match distances.shape[0] ({})".
+            "Expected len(traj_lst) ({}) to match len(distances) ({})".
             format(len(traj_lst), distances.shape))
 
     center_indices = np.argwhere(distances == 0)
 
-    centers = [traj_lst[trj_indx][frame] for (trj_indx, frame)
-               in center_indices]
+    try:
+        # 3D case (trj index, frame)
+        centers = [traj_lst[trj_indx][frame] for (trj_indx, frame)
+                   in center_indices]
+    except ValueError:
+        # 2D case (just frame)
+        centers = [traj_lst[trj_indx] for (trj_indx)
+                   in center_indices]
 
     assert len(centers) == center_indices.shape[0]
 

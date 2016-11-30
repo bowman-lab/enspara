@@ -4,7 +4,8 @@ import numpy as np
 import mdtraj as md
 from mdtraj.testing import get_fn
 
-from load import load_as_concatenated
+from .load import load_as_concatenated
+from .array import partition_indices
 
 
 class TestParallelLoad(unittest.TestCase):
@@ -46,6 +47,20 @@ class TestParallelLoad(unittest.TestCase):
 
         self.assertTrue(np.all(expected == xyz))
         self.assertEqual(expected.shape, xyz.shape)
+
+
+class TestPartition(unittest.TestCase):
+
+    def test_partition_indices(self):
+
+        indices = [0, 10, 15, 37, 100]
+        trj_lens = [10, 20, 100]
+
+        partit_indices = partition_indices(indices, trj_lens)
+
+        self.assertEqual(
+            partit_indices,
+            [(0, 0), (1, 0), (1, 5), (2, 7), (2, 70)])
 
 
 if __name__ == '__main__':

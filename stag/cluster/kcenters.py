@@ -12,11 +12,11 @@ import sys
 import time
 import os
 
-from .utils import assign_to_nearest_center
+import numpy as np
+
+from .util import assign_to_nearest_center, _get_distance_method
 
 from ..exception import ImproperlyConfigured
-
-import numpy as np
 
 
 class KCenters(object):
@@ -100,12 +100,18 @@ def _kcenters_helper(
 
 
 def kcenters(
-        traj, distance_method, n_clusters=None, dist_cutoff=None,
+        traj, distance_method, n_clusters=np.inf, dist_cutoff=0,
         init_cluster_centers=None, random_first_center=False,
         output=sys.stdout):
 
+    if (n_clusters is np.inf) and (dist_cutoff is 0):
+            raise ImproperlyConfigured("Either n_clusters or cluster_radius "
+                                       "is required for KHybrid clustering")
+
     if output is None:
         output = os.devnull
+
+    distance_method = _get_distance_method(distance_method)
 
     if n_clusters is None and dist_cutoff is None:
         raise ImproperlyConfigured(

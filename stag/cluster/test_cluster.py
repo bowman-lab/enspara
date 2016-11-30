@@ -1,14 +1,20 @@
-import unittest
+from __future__ import print_function, division, absolute_import
 
 import os
-import tempfile
+import unittest
 
 import numpy as np
 import mdtraj as md
 from mdtraj.testing import get_fn
 
-import stag.cluster as cluster
-import stag.cluster.save_states as save_states
+from . import save_states
+
+from .hybrid import KHybrid, hybrid
+from .kcenters import KCenters, kcenters
+from .kmedoids import kmedoids
+from .util import find_cluster_centers
+
+from ..exception import DataInvalid
 
 import matplotlib
 matplotlib.use('TkAgg')  # req'd for some environments.
@@ -25,7 +31,7 @@ class TestTrajClustering(unittest.TestCase):
     def test_khybrid_scipy(self):
         N_CLUSTERS = 5
 
-        clustering = cluster.KHybrid(
+        clustering = KHybrid(
             metric=md.rmsd,
             n_clusters=N_CLUSTERS,
             kmedoids_updates=1000)
@@ -42,7 +48,7 @@ class TestTrajClustering(unittest.TestCase):
             np.std(clustering.distances_), 0.018754008455304401,
             delta=0.005)
 
-        with self.assertRaises(cluster.utils.DataInvalid):
+        with self.assertRaises(DataInvalid):
             clustering.partitioned_distances([5, 10])
 
         pdist = clustering.partitioned_distances([len(self.trj)-100, 100])
@@ -58,102 +64,82 @@ class TestTrajClustering(unittest.TestCase):
     def test_kmedoids(self):
         N_CLUSTERS = 5
 
-        result = cluster.kmedoids(
-            [self.trj],
-            metric='rmsd',
+        cluster_center_inds, assignments, distances = kmedoids(
+            self.trj,
+            distance_method='rmsd',
             n_clusters=N_CLUSTERS,
-            delete_trjs=False,
             n_iters=1000,
             output=open(os.devnull, 'w')
             )
 
         # kcenters will always produce the same number of clusters on
         # this input data (unchanged by kmedoids updates)
-        self.assertEqual(len(np.unique(result.assignments)), N_CLUSTERS)
+        self.assertEqual(len(np.unique(assignments)), N_CLUSTERS)
 
         self.assertAlmostEqual(
-            np.average(result.distances), 0.083686112175266184, delta=0.005)
+            np.average(distances), 0.083686112175266184, delta=0.005)
         self.assertAlmostEqual(
-            np.std(result.distances), 0.018754008455304401, delta=0.005)
+            np.std(distances), 0.018754008455304401, delta=0.005)
 
     def test_hybrid(self):
         N_CLUSTERS = 5
 
-        result = cluster.hybrid(
-            [self.trj],
-            metric='rmsd',
+        cluster_center_inds, assignments, distances = hybrid(
+            self.trj,
+            distance_method='rmsd',
             init_cluster_centers=None,
             n_clusters=N_CLUSTERS,
             random_first_center=False,
-            delete_trjs=False,
             n_iters=100,
             output=open(os.devnull, 'w')
             )
 
         # kcenters will always produce the same number of clusters on
         # this input data (unchanged by kmedoids updates)
-        self.assertEqual(len(np.unique(result.assignments)), N_CLUSTERS)
+        self.assertEqual(len(np.unique(assignments)), N_CLUSTERS)
 
         self.assertAlmostEqual(
-            np.average(result.distances), 0.083686112175266184, delta=0.005)
+            np.average(distances), 0.083686112175266184, delta=0.005)
         self.assertAlmostEqual(
-            np.std(result.distances), 0.018754008455304401, delta=0.005)
+            np.std(distances), 0.018754008455304401, delta=0.005)
 
     def test_kcenters_maxdist(self):
-        result = cluster.kcenters(
-            [self.trj],
-            metric='rmsd',
+        cluster_center_inds, assignments, distances = kcenters(
+            self.trj,
+            distance_method='rmsd',
             init_cluster_centers=None,
             dist_cutoff=0.1,
             random_first_center=False,
-            delete_trjs=False,
             output=open(os.devnull, 'w')
             )
 
-        self.assertEqual(len(np.unique(result.assignments)), 17)
+        self.assertEqual(len(np.unique(assignments)), 17)
 
         # this is simlar to asserting the distribution of distances.
         # since KCenters is deterministic, this shouldn't ever change?
-        self.assertAlmostEqual(np.average(result.distances), 0.074690734158752686)
-        self.assertAlmostEqual(np.std(result.distances), 0.018754008455304401)
+        self.assertAlmostEqual(np.average(distances),
+                               0.074690734158752686)
+        self.assertAlmostEqual(np.std(distances), 0.018754008455304401)
 
     def test_kcenters_nclust(self):
         N_CLUSTERS = 3
 
-        result = cluster.kcenters(
-            [self.trj],
-            metric='rmsd',
+        cluster_center_inds, assignments, distances = kcenters(
+            self.trj,
+            distance_method='rmsd',
             n_clusters=N_CLUSTERS,
             init_cluster_centers=None,
             random_first_center=False,
-            delete_trjs=False,
             output=open(os.devnull, 'w')
             )
 
-        self.assertEqual(len(np.unique(result.assignments)), N_CLUSTERS)
+        self.assertEqual(len(np.unique(assignments)), N_CLUSTERS)
 
         # this is simlar to asserting the distribution of distances.
         # since KCenters is deterministic, this shouldn't ever change?
-        self.assertAlmostEqual(np.average(result.distances), 0.10387578309920734)
-        self.assertAlmostEqual(np.std(result.distances), 0.018355072790569946)
-
-    def test_delete_trjs(self):
-        N_TRJS = 20
-        many_trjs = [md.load(self.trj_fname, top=self.top_fname)
-                     for i in range(N_TRJS)]
-        self.assertEqual(len(many_trjs), N_TRJS)
-
-        cluster.kcenters(
-            many_trjs,
-            metric='rmsd',
-            dist_cutoff=0.1,
-            init_cluster_centers=None,
-            random_first_center=False,
-            delete_trjs=True,
-            output=open(os.devnull, 'w')
-            )
-
-        self.assertTrue(all([t is None for t in many_trjs]))
+        self.assertAlmostEqual(np.average(distances),
+                               0.10387578309920734)
+        self.assertAlmostEqual(np.std(distances), 0.018355072790569946)
 
 
 class TestNumpyClustering(unittest.TestCase):
@@ -191,51 +177,48 @@ class TestNumpyClustering(unittest.TestCase):
         self.traj_lst = [s1_xy_coords, s2_xy_coords, s3_xy_coords]
 
     def test_hybrid(self):
-        result = cluster.hybrid(
-            self.traj_lst,
-            metric='euclidean',
+        cluster_center_inds, assignments, distances = hybrid(
+            np.concatenate(self.traj_lst),
+            distance_method='euclidean',
             n_clusters=3,
             dist_cutoff=None,
             n_iters=100,
             random_first_center=False,
-            delete_trjs=False,
             output=open(os.devnull, 'w'))
 
-        centers = cluster.utils.find_cluster_centers(
-            self.traj_lst, result.distances)
+        centers = find_cluster_centers(
+            np.concatenate(self.traj_lst), distances)
 
         self.check_generators(centers, distance=2.0)
 
     def test_kcenters(self):
-        result = cluster.kcenters(
-            self.traj_lst,
-            metric='euclidean',
+        cluster_center_inds, assignments, distances = kcenters(
+            np.concatenate(self.traj_lst),
+            distance_method='euclidean',
             n_clusters=3,
             dist_cutoff=2,
             init_cluster_centers=None,
             random_first_center=False,
-            delete_trjs=False,
             output=open(os.devnull, 'w'))
 
-        centers = cluster.utils.find_cluster_centers(
-            self.traj_lst, result.distances)
+        centers = find_cluster_centers(
+            np.concatenate(self.traj_lst), distances)
 
         self.check_generators(centers, distance=4.0)
 
     def test_kmedoids(self):
         N_CLUSTERS = 3
 
-        result = cluster.kmedoids(
-            self.traj_lst,
-            metric='euclidean',
+        cluster_center_inds, assignments, distances = kmedoids(
+            np.concatenate(self.traj_lst),
+            distance_method='euclidean',
             n_clusters=N_CLUSTERS,
-            delete_trjs=False,
             n_iters=10000,
             output=open(os.devnull, 'w'))
 
-        assert len(np.unique(result.assignments)) == N_CLUSTERS
-        centers = cluster.utils.find_cluster_centers(
-            self.traj_lst, result.distances)
+        assert len(np.unique(assignments)) == N_CLUSTERS
+        centers = find_cluster_centers(
+            np.concatenate(self.traj_lst), distances)
 
         self.check_generators(centers, distance=2.0)
 
@@ -296,17 +279,6 @@ class TestSaveStates(unittest.TestCase):
 
 class TestUtils(unittest.TestCase):
 
-    def test_partition_indices(self):
-
-        indices = [0, 10, 15, 37, 100]
-        trj_lens = [10, 20, 100]
-
-        partit_indices = cluster.utils._partition_indices(indices, trj_lens)
-
-        self.assertEqual(
-            partit_indices,
-            [(0, 0), (1, 0), (1, 5), (2, 7), (2, 70)])
-
     def test_find_cluster_centers(self):
 
         N_TRJS = 20
@@ -320,7 +292,7 @@ class TestUtils(unittest.TestCase):
         for ind in center_inds:
             distances[center_inds[0], center_inds[1]] = 0
 
-        centers = cluster.utils.find_cluster_centers(many_trjs, distances)
+        centers = find_cluster_centers(many_trjs, distances)
 
         # we should get back the same number of centers as there are zeroes
         # in the distances matrix
