@@ -11,7 +11,7 @@ from __future__ import print_function, division, absolute_import
 import sys
 import os
 
-from .utils import assign_to_nearest_center, requires_concatenated_trajectories
+from .utils import assign_to_nearest_center
 
 import numpy as np
 
@@ -41,7 +41,6 @@ def _kmedoids_update(
         return cluster_center_inds, assignments, distances
 
 
-@requires_concatenated_trajectories
 def kmedoids(traj, distance_method, n_clusters, n_iters=5, output=sys.stdout):
 
     n_frames = len(traj)

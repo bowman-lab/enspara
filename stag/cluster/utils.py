@@ -74,46 +74,6 @@ def find_cluster_centers(traj_lst, distances):
     return centers
 
 
-def _delete_trajs_warning(traj_lst, write_to=sys.stdout):
-    '''
-    Inspect traj_list and determine if the user should be warned.
-    '''
-    if hasattr(traj_lst[0], 'n_atoms'):
-        atom_count = sum([t.n_atoms*t.n_frames for t in traj_lst])
-    else:
-        atom_count = sum([reduce(lambda x, y: x*y, t.shape)
-                          for t in traj_lst])
-    # TODO: this warning is currently set too low. If you're
-    # enountering this error needlessly, bump it up!
-    if atom_count > 1e8:
-        sys.stdout.write(
-            "WARNING: There are a lot of atoms/frames (%s "
-            "atom-frames) in this system. Consider using "
-            "delete_trjs=True to save memory.\n" % atom_count)
-
-
-def _partition_indices(indices, traj_lengths):
-    '''
-    Similar to _partition_list in function, this function uses
-    `traj_lengths` to determine which 2d trajectory-list index matches
-    the given 1d concatenated trajectory index for each index in
-    indices.
-    '''
-
-    partitioned_indices = []
-    for index in indices:
-        trj_index = 0
-        for traj_len in traj_lengths:
-            if traj_len > index:
-                partitioned_indices.append((trj_index, index))
-                break
-            else:
-                index -= traj_len
-                trj_index += 1
-
-    return partitioned_indices
-
-
 def _get_distance_method(metric):
     if metric == 'rmsd':
         return md.rmsd
@@ -134,29 +94,3 @@ def _get_distance_method(metric):
     else:
         raise ImproperlyConfigured(
             "'{}' is not a recognized metric".format(metric))
-
-
-def _partition_list(list_to_partition, partition_lengths):
-    if np.sum(partition_lengths) != len(list_to_partition):
-        raise DataInvalid(
-            "List of length {} does not equal lengths to partition {}.".format(
-                list_to_partition, partition_lengths))
-
-    partitioned_list = np.full(
-        shape=(len(partition_lengths), max(partition_lengths)),
-        dtype=list_to_partition.dtype,
-        fill_value=-1)
-
-    start = 0
-    for num in range(len(partition_lengths)):
-        stop = start+partition_lengths[num]
-        np.copyto(partitioned_list[num][0:stop-start],
-                  list_to_partition[start:stop])
-        start = stop
-
-    # this call will mask out all 'invalid' values of partitioned list, in this
-    # case all the np.nan values that represent the padding used to make the
-    # array square.
-    partitioned_list = np.ma.masked_less(partitioned_list, 0, copy=False)
-
-    return partitioned_list

@@ -13,10 +13,9 @@ import os
 
 from .kcenters import _kcenters_helper, KCenters
 from .kmedoids import _kmedoids_update
-from .utils import requires_concatenated_trajectories, _partition_list, \
-    _partition_indices
+from stag.util import partition_list, partition_indices
 
-from ..exception import ImproperlyConfigured
+from stag.exception import ImproperlyConfigured
 
 
 class KHybrid(object):
@@ -69,13 +68,13 @@ class KHybrid(object):
         self.runtime_ = time.clock() - starttime
 
     def partitioned_labels(self, lengths):
-        return _partition_list(self.labels_, lengths)
+        return partition_list(self.labels_, lengths)
 
     def partitioned_distances(self, lengths):
-        return _partition_list(self.distances_, lengths)
+        return partition_list(self.distances_, lengths)
 
     def partitioned_center_indices(self, lengths):
-        return _partition_indices(self.cluster_center_indices_, lengths)
+        return partition_indices(self.cluster_center_indices_, lengths)
 
 
 def _hybrid_medoids_update(
@@ -93,7 +92,6 @@ def _hybrid_medoids_update(
         return cluster_center_inds, assignments, distances
 
 
-@requires_concatenated_trajectories
 def hybrid(
         traj, distance_method, n_iters=5, n_clusters=None, dist_cutoff=None,
         random_first_center=False, init_cluster_centers=None,
