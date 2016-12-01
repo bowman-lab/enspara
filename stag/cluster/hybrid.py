@@ -15,7 +15,7 @@ import numpy as np
 
 from .kcenters import kcenters, KCenters
 from .kmedoids import _kmedoids_update
-from .util import _get_distance_method
+from .util import _get_distance_method, ClusterResult
 
 from ..util import partition_list, partition_indices
 from ..exception import ImproperlyConfigured
@@ -48,7 +48,7 @@ class KHybrid(object):
 
         self.kcenters.fit(X)
 
-        cluster_center_inds = self.kcenters.cluster_center_indices_
+        center_inds = self.kcenters.center_indices_
         assignments = self.kcenters.labels_
         distances = self.kcenters.distances_
 
@@ -56,28 +56,23 @@ class KHybrid(object):
             self.output.write("KMedoids update %s of %s\n" %
                               (i, self.kmedoids_updates))
 
-            cluster_center_inds, assignments, distances = \
+            center_inds, assignments, distances = \
                 _hybrid_medoids_update(
                     X,
                     distance_method=self.metric,
-                    cluster_center_inds=cluster_center_inds,
+                    cluster_center_inds=center_inds,
                     assignments=assignments,
                     distances=distances)
 
         self.labels_ = assignments
         self.distances_ = distances
-        self.cluster_center_indices_ = cluster_center_inds
+        self.center_indices_ = center_inds
+        self.result_ = ClusterResult(
+            assignments=assignments,
+            distances=distances,
+            center_indices=center_inds)
 
         self.runtime_ = time.clock() - starttime
-
-    def partitioned_labels(self, lengths):
-        return partition_list(self.labels_, lengths)
-
-    def partitioned_distances(self, lengths):
-        return partition_list(self.distances_, lengths)
-
-    def partitioned_center_indices(self, lengths):
-        return partition_indices(self.cluster_center_indices_, lengths)
 
 
 def _hybrid_medoids_update(
@@ -105,7 +100,7 @@ def hybrid(
 
     distance_method = _get_distance_method(distance_method)
 
-    cluster_center_inds, assignments, distances = kcenters(
+    result = kcenters(
         traj, distance_method, n_clusters=n_clusters, dist_cutoff=dist_cutoff,
         init_cluster_centers=init_cluster_centers,
         random_first_center=random_first_center,
@@ -113,9 +108,12 @@ def hybrid(
 
     for i in range(n_iters):
         cluster_center_inds, assignments, distances = _hybrid_medoids_update(
-            traj, distance_method, cluster_center_inds, assignments,
-            distances)
+            traj, distance_method,
+            result.center_indices, result.assignments, result.distances)
         if output:
             output.write("KMedoids update %s of %s\n" % (i, n_iters))
 
-    return cluster_center_inds, assignments, distances
+    return ClusterResult(
+        center_indices=cluster_center_inds,
+        assignments=assignments,
+        distances=distances)

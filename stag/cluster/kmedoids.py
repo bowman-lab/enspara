@@ -11,7 +11,7 @@ from __future__ import print_function, division, absolute_import
 import sys
 import os
 
-from .util import assign_to_nearest_center, _get_distance_method
+from .util import assign_to_nearest_center, _get_distance_method, ClusterResult
 
 import numpy as np
 
@@ -19,6 +19,8 @@ import numpy as np
 def _kmedoids_update(
         traj, distance_method, cluster_center_inds, assignments,
         distances, output=os.devnull):
+
+    assert assignments.dtype == np.int
 
     n_clusters = len(cluster_center_inds)
     n_frames = len(traj)
@@ -63,4 +65,7 @@ def kmedoids(traj, distance_method, n_clusters, n_iters=5, output=sys.stdout):
             distances, output=output)
         output.write("KMedoids update %s\n" % i)
 
-    return cluster_center_inds, assignments, distances
+    return ClusterResult(
+        center_indices=cluster_center_inds,
+        assignments=assignments,
+        distances=distances)

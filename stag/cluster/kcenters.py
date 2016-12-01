@@ -14,7 +14,7 @@ import os
 
 import numpy as np
 
-from .util import assign_to_nearest_center, _get_distance_method
+from .util import assign_to_nearest_center, _get_distance_method, ClusterResult
 
 from ..exception import ImproperlyConfigured
 
@@ -37,7 +37,7 @@ class KCenters(object):
 
         t0 = time.clock()
 
-        cluster_center_inds, assignments, distances = kcenters(
+        self.result_ = kcenters(
             X,
             distance_method=self.metric,
             n_clusters=self.n_clusters,
@@ -46,9 +46,11 @@ class KCenters(object):
             output=self.output)
 
         self.runtime_ = time.clock() - t0
-        self.labels_ = assignments
-        self.distances_ = distances
-        self.cluster_center_indices_ = cluster_center_inds
+        self.labels_ = self.result_.assignments
+        self.distances_ = self.result_.distances
+        self.center_indices_ = self.result_.center_indices
+
+        return self.result_
 
 
 def _kcenters_helper(
@@ -126,4 +128,7 @@ def kcenters(
         cluster_centers=init_cluster_centers,
         random_first_center=random_first_center, output=output)
 
-    return cluster_center_inds, assignments, distances
+    return ClusterResult(
+        center_indices=cluster_center_inds,
+        assignments=assignments,
+        distances=distances)

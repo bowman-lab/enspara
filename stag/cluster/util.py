@@ -18,6 +18,19 @@ from ..exception import ImproperlyConfigured, DataInvalid
 from ..util import partition_list, partition_indices
 
 
+class ClusterResult(namedtuple('ClusterResult',
+                               ['center_indices',
+                                'distances',
+                                'assignments'])):
+    __slots__ = ()
+
+    def partition(self, lengths):
+        return ClusterResult(
+            assignments=partition_list(self.assignments, lengths),
+            distances=partition_list(self.distances, lengths),
+            center_indices=partition_indices(self.center_indices, lengths))
+
+
 def assign_to_nearest_center(traj, cluster_centers, distance_method):
     n_frames = len(traj)
     assignments = np.zeros(n_frames, dtype=int)
@@ -72,7 +85,7 @@ def find_cluster_centers(traj_lst, distances):
                    in center_indices]
     except ValueError:
         # 2D case (just frame)
-        centers = [traj_lst[trj_indx] for (trj_indx)
+        centers = [traj_lst[trj_indx] for trj_indx
                    in center_indices]
 
     assert len(centers) == center_indices.shape[0]
