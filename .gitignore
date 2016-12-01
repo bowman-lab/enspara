@@ -9,7 +9,7 @@ __pycache__/
 *.so
 
 # built with cython
-geometry/euc_dist.c
+stag/geometry/_euclidean_distance.c
 
 # Distribution / packaging
 .Python
