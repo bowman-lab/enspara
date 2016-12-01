@@ -17,7 +17,7 @@ from .util import find_cluster_centers
 from ..exception import DataInvalid
 
 import matplotlib
-matplotlib.use('TkAgg')  # req'd for some environments.
+matplotlib.use('TkAgg')  # req'd for some environments (esp. macOS).
 
 
 class TestTrajClustering(unittest.TestCase):
@@ -62,6 +62,11 @@ class TestTrajClustering(unittest.TestCase):
         self.assertEqual(len(presult.center_indices[0]), 2)
 
     def test_kmedoids(self):
+        '''
+        Check that pure kmedoid clustering is behaving as expected on
+        md.Trajectory objects.
+        '''
+
         N_CLUSTERS = 5
 
         result = kmedoids(
@@ -82,26 +87,34 @@ class TestTrajClustering(unittest.TestCase):
             np.std(result.distances), 0.018754008455304401, delta=0.005)
 
     def test_hybrid(self):
+        '''
+        Check that hybrid clustering is behaving as expected on
+        md.Trajectory objects.
+        '''
         N_CLUSTERS = 5
 
-        result = hybrid(
+        results = [hybrid(
             self.trj,
             distance_method='rmsd',
             init_cluster_centers=None,
             n_clusters=N_CLUSTERS,
             random_first_center=False,
-            n_iters=1000,
+            n_iters=100,
             output=open(os.devnull, 'w')
-            )
+            ) for i in range(10)]
+
+        result = results[0]
 
         # kcenters will always produce the same number of clusters on
         # this input data (unchanged by kmedoids updates)
-        self.assertEqual(len(np.unique(result.assignments)), N_CLUSTERS)
+        assert len(np.unique(result.assignments)) == N_CLUSTERS
 
-        self.assertAlmostEqual(
-            np.average(result.distances), 0.085, delta=0.01)
-        self.assertAlmostEqual(
-            np.std(result.distances), 0.018754008455304401, delta=0.005)
+        # we do this here because hybrid seems to be more unstable than the
+        # other two testing methods for some reason.
+        all_dists = np.concatenate([r.distances for r in results])
+        assert abs(np.average(all_dists) - 0.085) < 0.01
+
+        assert abs(np.std(result.distances) - 0.0187) < 0.005
 
     def test_kcenters_maxdist(self):
         result = kcenters(
