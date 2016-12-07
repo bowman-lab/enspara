@@ -14,24 +14,24 @@ import os
 
 import numpy as np
 
-from .util import assign_to_nearest_center, _get_distance_method, ClusterResult
+from .util import assign_to_nearest_center, _get_distance_method, \
+    ClusterResult, Clusterer
 
 from ..exception import ImproperlyConfigured
 
 
-class KCenters(object):
+class KCenters(Clusterer):
 
     def __init__(self, metric, n_clusters, cluster_radius, verbose=False):
+
+        super(KCenters, self).__init__(metric, verbose)
 
         if n_clusters is None and cluster_radius is None:
             raise ImproperlyConfigured("Either n_clusters or cluster_radius "
                                        "is required for KHybrid clustering")
 
-        self.metric = metric
         self.n_clusters = n_clusters
         self.cluster_radius = cluster_radius
-
-        self.output = sys.stdout if verbose else open(os.devnull, 'w')
 
     def fit(self, X):
 
@@ -46,11 +46,40 @@ class KCenters(object):
             output=self.output)
 
         self.runtime_ = time.clock() - t0
-        self.labels_ = self.result_.assignments
-        self.distances_ = self.result_.distances
-        self.center_indices_ = self.result_.center_indices
 
-        return self.result_
+
+def kcenters(
+        traj, distance_method, n_clusters=np.inf, dist_cutoff=0,
+        init_cluster_centers=None, random_first_center=False,
+        output=sys.stdout):
+
+    if (n_clusters is np.inf) and (dist_cutoff is 0):
+            raise ImproperlyConfigured("Either n_clusters or cluster_radius "
+                                       "is required for KHybrid clustering")
+
+    if output is None:
+        output = os.devnull
+
+    distance_method = _get_distance_method(distance_method)
+
+    if n_clusters is None and dist_cutoff is None:
+        raise ImproperlyConfigured(
+            "KCenters must specify 'n_clusters' or 'distance_cutoff'")
+    elif n_clusters is None and dist_cutoff is not None:
+        n_clusters = np.inf
+    elif n_clusters is not None and dist_cutoff is None:
+        dist_cutoff = 0
+
+    cluster_center_inds, assignments, distances = _kcenters_helper(
+        traj, distance_method, n_clusters=n_clusters, dist_cutoff=dist_cutoff,
+        cluster_centers=init_cluster_centers,
+        random_first_center=random_first_center, output=output)
+
+    return ClusterResult(
+        center_indices=cluster_center_inds,
+        assignments=assignments,
+        distances=distances,
+        centers=traj[cluster_center_inds])
 
 
 def _kcenters_helper(
@@ -99,36 +128,3 @@ def _kcenters_helper(
     cluster_centers = traj[cluster_center_inds]
 
     return cluster_center_inds, assignments, distances
-
-
-def kcenters(
-        traj, distance_method, n_clusters=np.inf, dist_cutoff=0,
-        init_cluster_centers=None, random_first_center=False,
-        output=sys.stdout):
-
-    if (n_clusters is np.inf) and (dist_cutoff is 0):
-            raise ImproperlyConfigured("Either n_clusters or cluster_radius "
-                                       "is required for KHybrid clustering")
-
-    if output is None:
-        output = os.devnull
-
-    distance_method = _get_distance_method(distance_method)
-
-    if n_clusters is None and dist_cutoff is None:
-        raise ImproperlyConfigured(
-            "KCenters must specify 'n_clusters' or 'distance_cutoff'")
-    elif n_clusters is None and dist_cutoff is not None:
-        n_clusters = np.inf
-    elif n_clusters is not None and dist_cutoff is None:
-        dist_cutoff = 0
-
-    cluster_center_inds, assignments, distances = _kcenters_helper(
-        traj, distance_method, n_clusters=n_clusters, dist_cutoff=dist_cutoff,
-        cluster_centers=init_cluster_centers,
-        random_first_center=random_first_center, output=output)
-
-    return ClusterResult(
-        center_indices=cluster_center_inds,
-        assignments=assignments,
-        distances=distances)

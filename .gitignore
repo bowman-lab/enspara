@@ -1,5 +1,8 @@
 sftp-config.json
 
+# nose cache
+.noseids
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

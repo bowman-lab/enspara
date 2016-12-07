@@ -13,81 +13,40 @@ import os
 
 import numpy as np
 
-from .kcenters import kcenters, KCenters
+from .kcenters import kcenters
 from .kmedoids import _kmedoids_update
-from .util import _get_distance_method, ClusterResult
+from .util import _get_distance_method, ClusterResult, Clusterer
 
-from ..util import partition_list, partition_indices
 from ..exception import ImproperlyConfigured
 
 
-class KHybrid(object):
+class KHybrid(Clusterer):
 
     def __init__(self, metric, n_clusters=None, cluster_radius=None,
                  kmedoids_updates=5, verbose=False):
+
+        super(KHybrid, self).__init__(metric, verbose)
 
         if n_clusters is None and cluster_radius is None:
             raise ImproperlyConfigured("Either n_clusters or cluster_radius "
                                        "is required for KHybrid clustering")
 
-        self.metric = metric
         self.kmedoids_updates = kmedoids_updates
         self.n_clusters = n_clusters
         self.cluster_radius = cluster_radius
-
-        self.kcenters = KCenters(
-            metric=self.metric, n_clusters=self.n_clusters,
-            cluster_radius=self.cluster_radius)
-
-        self.output = sys.stdout if verbose else open(os.devnull, 'w')
-        self.kcenters.output = self.output
 
     def fit(self, X):
 
         starttime = time.clock()
 
-        self.kcenters.fit(X)
-
-        center_inds = self.kcenters.center_indices_
-        assignments = self.kcenters.labels_
-        distances = self.kcenters.distances_
-
-        for i in range(self.kmedoids_updates):
-            self.output.write("KMedoids update %s of %s\n" %
-                              (i, self.kmedoids_updates))
-
-            center_inds, assignments, distances = \
-                _hybrid_medoids_update(
-                    X,
-                    distance_method=self.metric,
-                    cluster_center_inds=center_inds,
-                    assignments=assignments,
-                    distances=distances)
-
-        self.labels_ = assignments
-        self.distances_ = distances
-        self.center_indices_ = center_inds
-        self.result_ = ClusterResult(
-            assignments=assignments,
-            distances=distances,
-            center_indices=center_inds)
+        self.result_ = hybrid(
+            X, self.metric,
+            n_iters=self.kmedoids_updates,
+            n_clusters=self.n_clusters,
+            dist_cutoff=self.cluster_radius,
+            output=self.output)
 
         self.runtime_ = time.clock() - starttime
-
-
-def _hybrid_medoids_update(
-        traj, distance_method, cluster_center_inds, assignments, distances):
-
-    proposed_center_inds, proposed_assignments, proposed_distances =\
-        _kmedoids_update(traj, distance_method, cluster_center_inds,
-                         assignments, distances)
-
-    max_orig_dist_to_center = distances.max()
-    max_proposed_dist_to_center = proposed_distances.max()
-    if max_proposed_dist_to_center <= max_orig_dist_to_center:
-        return proposed_center_inds, proposed_assignments, proposed_distances
-    else:
-        return cluster_center_inds, assignments, distances
 
 
 def hybrid(
@@ -116,4 +75,20 @@ def hybrid(
     return ClusterResult(
         center_indices=cluster_center_inds,
         assignments=assignments,
-        distances=distances)
+        distances=distances,
+        centers=traj[cluster_center_inds])
+
+
+def _hybrid_medoids_update(
+        traj, distance_method, cluster_center_inds, assignments, distances):
+
+    proposed_center_inds, proposed_assignments, proposed_distances =\
+        _kmedoids_update(traj, distance_method, cluster_center_inds,
+                         assignments, distances)
+
+    max_orig_dist_to_center = distances.max()
+    max_proposed_dist_to_center = proposed_distances.max()
+    if max_proposed_dist_to_center <= max_orig_dist_to_center:
+        return proposed_center_inds, proposed_assignments, proposed_distances
+    else:
+        return cluster_center_inds, assignments, distances

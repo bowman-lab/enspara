@@ -10,6 +10,8 @@
 from __future__ import print_function, division, absolute_import
 
 from collections import namedtuple
+import os
+import sys
 
 import mdtraj as md
 import numpy as np
@@ -18,17 +20,41 @@ from ..exception import ImproperlyConfigured, DataInvalid
 from ..util import partition_list, partition_indices
 
 
+class Clusterer(object):
+
+    def __init__(self, metric, verbose):
+        self.metric = metric
+        self.output = sys.stdout if verbose else open(os.devnull, 'w')
+
+    def fit(self, X):
+        raise NotImplementedError("All Clusterers should implement fit().")
+
+    @property
+    def labels_(self):
+        return self.result_.assignments
+
+    @property
+    def distances_(self):
+        return self.result_.distances
+
+    @property
+    def center_indices_(self):
+        return self.result_.center_inds
+
+
 class ClusterResult(namedtuple('ClusterResult',
                                ['center_indices',
                                 'distances',
-                                'assignments'])):
+                                'assignments',
+                                'centers'])):
     __slots__ = ()
 
     def partition(self, lengths):
         return ClusterResult(
             assignments=partition_list(self.assignments, lengths),
             distances=partition_list(self.distances, lengths),
-            center_indices=partition_indices(self.center_indices, lengths))
+            center_indices=partition_indices(self.center_indices, lengths),
+            centers=self.centers)
 
 
 def assign_to_nearest_center(traj, cluster_centers, distance_method):

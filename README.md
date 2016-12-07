@@ -12,3 +12,5 @@ To run the tests, run
 ```
 nosetests
 ```
+
+You can rerun tests that failed last time with the `--failed` flag, and get extra verbose output with the `-vv` flag.

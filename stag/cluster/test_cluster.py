@@ -7,6 +7,8 @@ import numpy as np
 import mdtraj as md
 from mdtraj.testing import get_fn
 
+from nose.tools import assert_raises
+
 from . import save_states
 
 from .hybrid import KHybrid, hybrid
@@ -14,7 +16,7 @@ from .kcenters import KCenters, kcenters
 from .kmedoids import kmedoids
 from .util import find_cluster_centers
 
-from ..exception import DataInvalid
+from ..exception import DataInvalid, ImproperlyConfigured
 
 import matplotlib
 matplotlib.use('TkAgg')  # req'd for some environments (esp. macOS).
@@ -29,7 +31,13 @@ class TestTrajClustering(unittest.TestCase):
         self.trj = md.load(self.trj_fname, top=self.top_fname)
 
     def test_khybrid_object(self):
+        # '''
+        # KHybrid() clusterer should produce correct output.
+        # '''
         N_CLUSTERS = 5
+
+        with assert_raises(ImproperlyConfigured):
+            KHybrid(metric=md.rmsd, kmedoids_updates=1000)
 
         clustering = KHybrid(
             metric=md.rmsd,
@@ -38,15 +46,14 @@ class TestTrajClustering(unittest.TestCase):
 
         clustering.fit(self.trj)
 
-        self.assertEqual(len(np.unique(clustering.labels_)), N_CLUSTERS)
-        self.assertEqual(len(np.unique(clustering.labels_)), N_CLUSTERS)
+        assert hasattr(clustering, 'result_')
+        assert len(np.unique(clustering.labels_)) == N_CLUSTERS, \
+            clustering.labels_
 
         self.assertAlmostEqual(
-            np.average(clustering.distances_), 0.083686112175266184,
-            delta=0.005)
+            np.average(clustering.distances_), 0.1, delta=0.02)
         self.assertAlmostEqual(
-            np.std(clustering.distances_), 0.018754008455304401,
-            delta=0.005)
+            np.std(clustering.distances_), 0.01875, delta=0.005)
 
         with self.assertRaises(DataInvalid):
             clustering.result_.partition([5, 10])
