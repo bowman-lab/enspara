@@ -13,14 +13,36 @@ import scipy.sparse
 import scipy.sparse.linalg
 
 
-def trajectory_to_count_matrix(
-        traj, n_states=None, lag_time=1, sliding_window=True):
+def _assigns_to_counts_helper(
+        assigns_1d, n_states=None, lag_time=1, sliding_window=True):
+    # TODO: check trajectory is 1d array
+
+    if n_states is None:
+        n_states = assigns_1d.max() + 1
+
+    if sliding_window:
+        start_states = assigns_1d[:-lag_time:1]
+        end_states = assigns_1d[lag_time::1]
+    else:
+        start_states = assigns_1d[:-lag_time:lag_time]
+        end_states = assigns_1d[lag_time::lag_time]
+    transitions = np.row_stack((start_states, end_states))
+    counts = np.ones(transitions.shape[1], dtype=int)
+    C = scipy.sparse.coo_matrix((counts, transitions),
+                                shape=(n_states, n_states), dtype=int)
+
+    return C.tolil()
+
+
+def assigns_to_counts(
+        assigns, n_states=None, lag_time=1, sliding_window=True):
     """Count transitions between states in a single trajectory.
 
     Parameters
     ----------
-    traj : array, shape=(traj_len, )
-        A 1-D array containing a sequence of state indices.
+    assigns : array, shape=(traj_len, )
+        A 2-D array where each row is a trajectory consisting of a sequence 
+        of state indices.
     n_states : int, default=None
         The number of states. This is useful for controlling the
         dimensions of the transition count matrix in cases where the
@@ -37,41 +59,20 @@ def trajectory_to_count_matrix(
     C :  array, shape=(n_states, n_states)
         A transition count matrix.
     """
-
-    # TODO: check trajectory is 1d array
-
-    if n_states is None:
-        n_states = traj.max() + 1
-
-    if sliding_window:
-        start_states = traj[:-lag_time:1]
-        end_states = traj[lag_time::1]
-    else:
-        start_states = traj[:-lag_time:lag_time]
-        end_states = traj[lag_time::lag_time]
-    transitions = np.row_stack((start_states, end_states))
-    counts = np.ones(transitions.shape[1], dtype=int)
-    C = scipy.sparse.coo_matrix((counts, transitions),
-                                shape=(n_states, n_states), dtype=int)
-
-    return C.tolil()
-
-
-def trajectories_to_count_matrix(
-        trajs, n_states=None, lag_time=1, sliding_window=True):
-    # trajectories is list of arrays (with possibly different lengths)
-
+    
+    n_traj = len(assigns)
+    
     if n_states is None:
         n_states = 0
-        for traj in trajs:
-            traj_n_states = traj.max() + 1
+        for i in range(n_traj):
+            traj_n_states = assigns[i].max() + 1
             if traj_n_states > n_states:
                 n_states = traj_n_states
 
     C = scipy.sparse.lil_matrix((n_states, n_states), dtype=int)
-    for traj in trajs:
-        traj_C = trajectory_to_count_matrix(
-            traj, n_states=n_states, lag_time=lag_time,
+    for i in range(n_traj):
+        traj_C = _assigns_to_counts_helper(
+            assigns[i], n_states=n_states, lag_time=lag_time,
             sliding_window=sliding_window)
         C += traj_C
 
@@ -112,7 +113,7 @@ def _normalize_rows(C):
     return T
 
 
-def count_matrix_to_probabilities(C, symmetrization=None):
+def counts_to_probs(C, symmetrization=None):
     """Infer a transition probability matrix from a transition count matrix
     using the specified method to enforce microscopic reversibility.
 
