@@ -41,7 +41,7 @@ def assigns_to_counts(
     Parameters
     ----------
     assigns : array, shape=(traj_len, )
-        A 2-D array where each row is a trajectory consisting of a sequence 
+        A 2-D array where each row is a trajectory consisting of a sequence
         of state indices.
     n_states : int, default=None
         The number of states. This is useful for controlling the
@@ -59,9 +59,9 @@ def assigns_to_counts(
     C :  array, shape=(n_states, n_states)
         A transition count matrix.
     """
-    
+
     n_traj = len(assigns)
-    
+
     if n_states is None:
         n_states = 0
         for i in range(n_traj):

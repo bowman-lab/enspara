@@ -40,7 +40,6 @@ def synthetic_trajectory(T, start_state, n_steps):
             p = T[current_state, :].toarray()[0]
         else:
             p = T[current_state, :]
-        #new_state = np.where(scipy.random.multinomial(1, p) == 1)[0]
         new_state = np.where(scipy.random.multinomial(1, p) == 1)[0][0]
         traj[i+1] = new_state
 
