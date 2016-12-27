@@ -1,7 +1,7 @@
+import itertools
 import numpy as np
 
-from stag.exception import DataInvalid
-
+from ..exception import DataInvalid
 
 def partition_list(list_to_partition, partition_lengths):
     if np.sum(partition_lengths) != len(list_to_partition):
@@ -71,6 +71,18 @@ def _convert_from_2d(iis_ragged, lengths=None, starts=None):
     if starts is None:
         starts = np.append([0],np.cumsum(lengths)[:-1])
     first_dimension,second_dimension = iis_ragged
+    first_dimension = np.array(first_dimension)
+    second_dimension = np.array(second_dimension)
+    first_dimension_neg_iis = np.where(first_dimension<0)[0]
+    second_dimension_neg_iis = np.where(second_dimension<0)[0]
+    if len(first_dimension_neg_iis) > 0:
+        first_dimension[first_dimension_neg_iis] += len(starts)
+    if len(second_dimension_neg_iis) > 0:
+        if lengths is None:
+            print("Must supply lengths if indices are negative")
+            raise
+        second_dimension[second_dimension_neg_iis] += lengths[
+            first_dimension[second_dimension_neg_iis]]
     if lengths is not None:
         if np.any(lengths[first_dimension] < second_dimension):
             print("indices requested do not exist!..")
@@ -82,15 +94,24 @@ def _slice_to_list(slice_func, length=None):
     start = slice_func.start
     if start is None:
         start = 0
+    elif start < 0:
+        if length is None:
+            print("Must know length of array to slice negative numbers")
+        start = length+start
     stop = slice_func.stop
     if stop is None and length is None:
         print("Must know length of array to slice")
         raise
     if stop is None:
         stop = length
+    elif stop < 0:
+        stop = length+stop
     step = slice_func.step
     if step is None:
         step = 1
+    elif step < 0 and stop is None and start is None:
+        start = copy.copy(stop)
+        stop = -1
     return range(start,stop,step)
 
 def _chunk(l, n):
