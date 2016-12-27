@@ -154,28 +154,58 @@ class ragged_array(object):
     starts_ : array, [n]
         The indices of the 1d array that correspond to the first element in
         array_.
+    auto_format : bool
+        If True, the output of equalities and numerical operations will be
+        formatted to be a ragged array. If False, the output will be 1d.
+        Can switch between functionalities by calling switch_auto_format()
     """
-    def __init__(self, array):
+    def __init__(self, array, auto_format=False):
         self.array_ = np.array(array)
         self.lengths_ = np.array([len(i) for i in array])
         self.starts_ = np.append([0],np.cumsum(self.lengths_)[:-1])
         self.data_ = np.concatenate(array)
+        self.auto_format_ = auto_format
+    def switch_auto_format(self):
+        if self.auto_format_ is False:
+            print("Switching auto_format to TRUE")
+            self.auto_format_ = True
+        elif self.auto_format_ is True:
+            print("Switching auto_format to FALSE")
+            self.auto_format_ = False
     def __repr__(self):
         return self.array_.__repr__()
     def __str__(self):
         return self.array_.__str__()
     def __eq__(self, value):
-        return self.data_==value
+        if self.auto_format_:
+            return self.format(self.data_==value)
+        else:
+            return self.data_==value
     def __lt__(self, value):
-        return self.data_<value
+        if self.auto_format_:
+            return self.format(self.data_<value)
+        else:
+            return self.data_<value
     def __le__(self, value):
-        return self.data_<=value
+        if self.auto_format_:
+            return self.format(self.data_<=value)
+        else:
+            return self.data_<=value
     def __gt__(self, value):
-        return self.data_>value
+        if self.auto_format_:
+            return self.format(self.data_>value)
+        else:
+            return self.data_>value
     def __ge__(self, value):
-        return self.data_>=value
+        if self.auto_format_:
+            return self.format(self.data_>=value)
+        else:
+            return self.data_>=value
     def __ne__(self, value):
-        return self.data_!=value
+        if self.auto_format_:
+            return self.format(self.data_!=value)
+        else:
+            return self.data_!=value
     def __getitem__(self, iis):
         # If the input is a slice or pull in the first dimension, returns a
         # slice or pull of the original array. If the input is a tuple
@@ -197,21 +227,28 @@ class ragged_array(object):
                     second_dimension_iis = [second_dimension]
                 else:
                     second_dimension_iis = second_dimension
-                iis_tmp = np.array(
-                    list(
-                        itertools.product(
-                            first_dimension_iis, second_dimension_iis))).T
-                iis = (iis_tmp[0],iis_tmp[1])
-                output_unformatted = self.data_[
-                    _convert_from_2d(
-                        iis, lengths=self.lengths_, starts=self.starts_)]
-                return np.array(_chunk(output_unformatted,len(second_dimension_iis)))
             elif type(second_dimension) is slice:
-                return self.array_[first_dimension][second_dimension]
+                if type(first_dimension) is int:
+                    return self.array_[first_dimension][second_dimension]
+                else:
+                    first_dimension_iis = first_dimension
+                    second_dimension_length = \
+                        self.lengths_[first_dimension_iis].min()
+                    second_dimension_iis = _slice_to_list(
+                        second_dimension, length=second_dimension_length)
             else:
                 return self.data_[
                         _convert_from_2d(
                             iis, lengths=self.lengths_, starts=self.starts_)]
+            iis_tmp = np.array(
+                list(
+                    itertools.product(
+                        first_dimension_iis, second_dimension_iis))).T
+            iis = (iis_tmp[0],iis_tmp[1])
+            output_unformatted = self.data_[
+                _convert_from_2d(
+                    iis, lengths=self.lengths_, starts=self.starts_)]
+            return np.array(_chunk(output_unformatted,len(second_dimension_iis)))
     def __setitem__(self, iis, value):
         if (type(iis) is int) or (type(iis) is slice):
             self.array_[iis] = value
@@ -230,49 +267,74 @@ class ragged_array(object):
                     second_dimension_iis = [second_dimension]
                 else:
                     second_dimension_iis = second_dimension
-                iis_tmp = np.array(
-                    list(
-                        itertools.product(
-                            first_dimension_iis, second_dimension_iis))).T
-                iis = (iis_tmp[0],iis_tmp[1])
-                self.data_[
-                    _convert_from_2d(
-                        iis, lengths=self.lengths_, starts=self.starts_)] = value
-                self.array_ = _partition_list(self.data_,self.lengths_)
             elif type(second_dimension) is slice:
-                self.array_[first_dimension][second_dimension] = value
-                self.__init__(self.array_)
+                if type(first_dimension) is int:
+                    self.array_[first_dimension][second_dimension] = value
+                    self.__init__(self.array_)
+                else:
+                    first_dimension_iis = first_dimension
+                    second_dimension_length = \
+                        self.lengths_[first_dimension_iis].min()
+                    second_dimension_iis = _slice_to_list(
+                        second_dimension, length=second_dimension_length)
             else:
                 self.data_[
                     _convert_from_2d(
                         iis, lengths=self.lengths_, starts=self.starts_)] = value
                 self.array_ = _partition_list(self.data_,self.lengths_)
+            iis_tmp = np.array(
+                list(
+                    itertools.product(
+                        first_dimension_iis, second_dimension_iis))).T
+            iis = (iis_tmp[0],iis_tmp[1])
+            self.data_[
+                _convert_from_2d(
+                    iis, lengths=self.lengths_, starts=self.starts_)] = value
+            self.array_ = _partition_list(self.data_,self.lengths_)
     def __len__(self):
         return len(self.array_)
     def __add__(self, other):
         if type(other) is type(self):
             other = other.data_
-        return self.data_ + other
+        if self.auto_format_:
+            return self.format(self.data_ + other)
+        else:
+            return self.data_ + other
     def __sub__(self, other):
         if type(other) is type(self):
             other = other.data_
-        return self.data_ - other
+        if self.auto_format_:
+            return self.format(self.data_ - other)
+        else:
+            return self.data_ - other
     def __mul__(self, other):
         if type(other) is type(self):
             other = other.data_
-        return self.data_ * other
+        if self.auto_format_:
+            return self.format(self.data_ * other)
+        else:
+            return self.data_ * other
     def __floordiv__(self, other):
         if type(other) is type(self):
             other = other.data_
-        return self.data_ // other
+        if self.auto_format_:
+            return self.format(self.data_ // other)
+        else:
+            return self.data_ // other
     def __truediv__(self, other):
         if type(other) is type(self):
             other = other.data_
-        return self.data_ / other
+        if self.auto_format_:
+            return self.format(self.data_ / other)
+        else:
+            return self.data_ / other
     def __pow__(self, other):
         if type(other) is type(self):
             other = other.data_
-        return self.data_ ** other
+        if self.auto_format_:
+            return self.format(self.data_ ** other)
+        else:
+            return self.data_ ** other
     def format(self, values):
         return _partition_list(values,self.lengths_)
     def where(self,mask):
