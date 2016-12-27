@@ -2,7 +2,7 @@ import collections
 import itertools
 import numpy as np
 
-from ..exception import DataInvalid
+from ..exception import DataInvalid, ImproperlyConfigured
 
 def partition_list(list_to_partition, partition_lengths):
     if np.sum(partition_lengths) != len(list_to_partition):
@@ -53,8 +53,8 @@ def partition_indices(indices, traj_lengths):
 
 def _convert_from_1d(iis_flat, lengths=None, starts=None):
     if lengths is None and starts is None:
-        print("No lengths or starts supplied...")
-        raise
+        raise ImproperlyConfigured(
+            'No lengths or starts supplied')
     if starts is None:
         starts = np.append([0],np.cumsum(lengths)[:-1])
     iis_flat = iis_flat[0]
@@ -67,8 +67,8 @@ def _convert_from_1d(iis_flat, lengths=None, starts=None):
 
 def _convert_from_2d(iis_ragged, lengths=None, starts=None):
     if lengths is None and starts is None:
-        print("No lengths or starts supplied...")
-        raise
+        raise ImproperlyConfigured(
+            'No lengths or starts supplied')
     if starts is None:
         starts = np.append([0],np.cumsum(lengths)[:-1])
     first_dimension,second_dimension = iis_ragged
@@ -80,14 +80,14 @@ def _convert_from_2d(iis_ragged, lengths=None, starts=None):
         first_dimension[first_dimension_neg_iis] += len(starts)
     if len(second_dimension_neg_iis) > 0:
         if lengths is None:
-            print("Must supply lengths if indices are negative")
-            raise
+            raise ImproperlyConfigured(
+                'Must supply lengths if indices are negative.')
         second_dimension[second_dimension_neg_iis] += lengths[
             first_dimension[second_dimension_neg_iis]]
     if lengths is not None:
-        if np.any(lengths[first_dimension] < second_dimension):
-            print("indices requested do not exist!..")
-            raise
+        if np.any(lengths[first_dimension] <= second_dimension):
+            raise DataInvalid(
+                'Indices requrested do not exist')
     iis_flat = starts[first_dimension]+second_dimension
     return (iis_flat,)
 
@@ -97,12 +97,13 @@ def _slice_to_list(slice_func, length=None):
         start = 0
     elif start < 0:
         if length is None:
-            print("Must know length of array to slice negative numbers")
+            raise ImproperlyConfigured(
+                'Must supply length of array if slicing to negative indices')
         start = length+start
     stop = slice_func.stop
     if stop is None and length is None:
-        print("Must know length of array to slice")
-        raise
+        raise ImproperlyConfigured(
+            'Must supply length of array if stop is None')
     if stop is None:
         stop = length
     elif stop < 0:
@@ -124,11 +125,9 @@ def _chunk(l, n):
 
 def _partition_list(list_to_partition, partition_lengths):
     if np.sum(partition_lengths) != len(list_to_partition):
-        print(
-            "Error: List of length "+len(list_to_partition)+
-            " does not equal lengths to partition "+
-            str(np.sum(partition_lengths)))
-        raise
+        raise DataInvalid(
+            'List of length %d does not equal lengths to partition %d' \
+            % (len(list_to_partition), np.sum(patition_lengths)))
     partitioned_list = []
     start = 0
     for num in range(len(partition_lengths)):
@@ -356,5 +355,10 @@ class ragged_array(object):
     def format(self, values):
         return _partition_list(values,self.lengths_)
     def where(self,mask):
+        if self.auto_format_:
+            print(
+                "WARNING: auto_format_ is set to TRUE. Equality statments "+\
+                "with this flag will not generate desired behaviour with "+\
+                "where().")
         iis_flat = np.where(mask)
         return _convert_from_1d(iis_flat,starts=self.starts_)
