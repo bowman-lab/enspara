@@ -1,3 +1,4 @@
+import collections
 import itertools
 import numpy as np
 
@@ -135,6 +136,15 @@ def _partition_list(list_to_partition, partition_lengths):
         partitioned_list.append(list(list_to_partition[start:stop]))
         start = stop
     return np.array(partitioned_list)
+
+def _flatten(l):
+    """Flattens an array of various sized elements"""
+    for element in l:
+        if isinstance(element, collections.Iterable) and not \
+                isinstance(element, (str, bytes)):
+            yield from _flatten(element)
+        else:
+            yield element
 
 class ragged_array(object):
     """ragged_array class
@@ -278,18 +288,26 @@ class ragged_array(object):
                     second_dimension_iis = _slice_to_list(
                         second_dimension, length=second_dimension_length)
             else:
-                self.data_[
-                    _convert_from_2d(
-                        iis, lengths=self.lengths_, starts=self.starts_)] = value
+                iis_1d = _convert_from_2d(
+                    iis, lengths=self.lengths_, starts=self.starts_)
+                if hasattr(value,"__iter__"):
+                    value_1d = list(_flatten(value))
+                else:
+                    value_1d = value
+                self.data_[iis_1d] = value_1d
                 self.array_ = _partition_list(self.data_,self.lengths_)
             iis_tmp = np.array(
                 list(
                     itertools.product(
                         first_dimension_iis, second_dimension_iis))).T
             iis = (iis_tmp[0],iis_tmp[1])
-            self.data_[
-                _convert_from_2d(
-                    iis, lengths=self.lengths_, starts=self.starts_)] = value
+            iis_1d = _convert_from_2d(
+                iis,lengths=self.lengths_,starts=self.starts_)
+            if hasattr(value,"__iter__"):
+                value_1d = list(_flatten(value))
+            else:
+                value_1d = value
+            self.data_[iis_1d] = value_1d
             self.array_ = _partition_list(self.data_,self.lengths_)
     def __len__(self):
         return len(self.array_)
