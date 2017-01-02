@@ -126,8 +126,8 @@ def _chunk(l, n):
 def _partition_list(list_to_partition, partition_lengths):
     if np.sum(partition_lengths) != len(list_to_partition):
         raise DataInvalid(
-            'List of length %d does not equal lengths to partition %d' \
-            % (len(list_to_partition), np.sum(patition_lengths)))
+            'Number of elements in list (%d) does not equal' % len(list_to_partition)+\
+            ' the sum of the lengths to partition (%d)' % np.sum(partition_lengths))
     partitioned_list = []
     start = 0
     for num in range(len(partition_lengths)):
@@ -168,11 +168,16 @@ class ragged_array(object):
         formatted to be a ragged array. If False, the output will be 1d.
         Can switch between functionalities by calling switch_auto_format()
     """
-    def __init__(self, array, auto_format=False):
-        self.array_ = np.array(array)
-        self.lengths_ = np.array([len(i) for i in array])
+    def __init__(self, array, lengths=None, auto_format=False):
+        if lengths is None:
+            self.array_ = np.array(array)
+            self.lengths_ = np.array([len(i) for i in array])
+            self.data_ = np.array(list(_flatten(array)))
+        else:
+            self.array_ = _partition_list(array,lengths)
+            self.lengths_ = lengths
+            self.data_ = array
         self.starts_ = np.append([0],np.cumsum(self.lengths_)[:-1])
-        self.data_ = np.concatenate(array)
         self.auto_format_ = auto_format
     def switch_auto_format(self):
         if self.auto_format_ is False:
@@ -362,3 +367,22 @@ class ragged_array(object):
                 "where().")
         iis_flat = np.where(mask)
         return _convert_from_1d(iis_flat,starts=self.starts_)
+    def append(self,values):
+        if type(values) is type(self):
+            values = values.array_
+        concat_values = list(_flatten(values))
+        self.data_ = np.append(self.data_, concat_values)
+        if isinstance(values, collections.Iterable):
+            new_array = list(self.array_)
+            if isinstance(values[0], collections.Iterable):
+                for value in values:
+                    new_array.append(value)
+                new_lengths = np.array([len(i) for i in values])
+            else:
+                new_array.append(values)
+                new_lengths = [len(values)]
+        else:
+            raise DataInvalid('Expected an array of values or a ragged array')
+        self.array_ = np.array(new_array)
+        self.lengths_ = np.append(self.lengths_, new_lengths)
+        self.starts_ = np.append([0],np.cumsum(self.lengths_)[:-1])
