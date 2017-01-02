@@ -179,13 +179,7 @@ class ragged_array(object):
             self.data_ = array
         self.starts_ = np.append([0],np.cumsum(self.lengths_)[:-1])
         self.auto_format_ = auto_format
-    def switch_auto_format(self):
-        if self.auto_format_ is False:
-            print("Switching auto_format to TRUE")
-            self.auto_format_ = True
-        elif self.auto_format_ is True:
-            print("Switching auto_format to FALSE")
-            self.auto_format_ = False
+    # Built in functions
     def __repr__(self):
         return self.array_.__repr__()
     def __str__(self):
@@ -318,45 +312,76 @@ class ragged_array(object):
     def __add__(self, other):
         if type(other) is type(self):
             other = other.data_
-        if self.auto_format_:
-            return self.format(self.data_ + other)
-        else:
-            return self.data_ + other
+        result = self.data_.__add__(other)
+        return self.return_result(result)
+    def __radd__(self, other):
+        if type(other) is type(self):
+            other = other.data_
+        result = self.data_.__radd__(other)
+        return self.return_result(result)
     def __sub__(self, other):
         if type(other) is type(self):
             other = other.data_
-        if self.auto_format_:
-            return self.format(self.data_ - other)
-        else:
-            return self.data_ - other
+        result = self.data_.__sub__(other)
+        return self.return_result(result)
+    def __rsub__(self, other):
+        if type(other) is type(self):
+            other = other.data_
+        result = self.data_.__rsub__(other)
+        return self.return_result(result)
     def __mul__(self, other):
         if type(other) is type(self):
             other = other.data_
-        if self.auto_format_:
-            return self.format(self.data_ * other)
-        else:
-            return self.data_ * other
+        result = self.data_.__mul__(other)
+        return self.return_result(result)
+    def __rmul__(self, other):
+        if type(other) is type(self):
+            other = other.data_
+        result = self.data_.__rmul__(other)
+        return self.return_result(result)
     def __floordiv__(self, other):
         if type(other) is type(self):
             other = other.data_
-        if self.auto_format_:
-            return self.format(self.data_ // other)
-        else:
-            return self.data_ // other
+        result = self.data_.__floordiv__(other)
+        return self.return_result(result)
+    def __rfloordiv__(self, other):
+        if type(other) is type(self):
+            other = other.data_
+        result = self.data_.__rfloordiv__(other)
+        return self.return_result(result)
     def __truediv__(self, other):
         if type(other) is type(self):
             other = other.data_
-        if self.auto_format_:
-            return self.format(self.data_ / other)
-        else:
-            return self.data_ / other
+        result = self.data_.__truediv__(other)
+        return self.return_result(result)
+    def __rtruediv__(self, other):
+        if type(other) is type(self):
+            other = other.data_
+        result = self.data_.__rtruediv__(other)
+        return self.return_result(result)
     def __pow__(self, other):
         if type(other) is type(self):
             other = other.data_
+        result = self.data_.__pow__(other)
+        return self.return_result(result)
+    def __rpow__(self, other):
+        if type(other) is type(self):
+            other = other.data_
+        result = self.data_.__rpow__(other)
+        return self.return_result(result)
+    # Non-built in functions
+    def switch_auto_format(self):
+        if self.auto_format_ is False:
+            print("Switching auto_format to TRUE")
+            self.auto_format_ = True
+        elif self.auto_format_ is True:
+            print("Switching auto_format to FALSE")
+            self.auto_format_ = False
+    def return_result(self,result):
         if self.auto_format_:
-            return self.format(self.data_ ** other)
+            return self.format(result)
         else:
-            return self.data_ ** other
+            return result
     def format(self, values):
         return _partition_list(values,self.lengths_)
     def where(self,mask):
