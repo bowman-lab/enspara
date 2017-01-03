@@ -411,3 +411,9 @@ class ragged_array(object):
         self.array_ = np.array(new_array)
         self.lengths_ = np.append(self.lengths_, new_lengths)
         self.starts_ = np.append([0],np.cumsum(self.lengths_)[:-1])
+    def save(self,output_name):
+        to_save = [self.data_,self.lengths_]
+        np.save(output_name,to_save)
+    def load(input_name):
+        rag_array,lengths = np.load(input_name)
+        return ragged_array(rag_array,lengths=lengths)
