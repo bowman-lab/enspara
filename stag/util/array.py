@@ -2,6 +2,7 @@ import collections
 import itertools
 import numpy as np
 
+from mdtraj import io
 from ..exception import DataInvalid, ImproperlyConfigured
 
 def partition_list(list_to_partition, partition_lengths):
@@ -132,7 +133,7 @@ def _partition_list(list_to_partition, partition_lengths):
     start = 0
     for num in range(len(partition_lengths)):
         stop = start+partition_lengths[num]
-        partitioned_list.append(list(list_to_partition[start:stop]))
+        partitioned_list.append(list_to_partition[start:stop])
         start = stop
     return np.array(partitioned_list)
 
@@ -144,6 +145,25 @@ def _flatten(l):
             yield from _flatten(element)
         else:
             yield element
+
+def _is_iterable(iterable):
+    iterable_bool = isinstance(iterable,collections.Iterable) and not \
+        isinstance(iterable, (str,bytes))
+    return iterable_bool
+
+def _ensure_ragged_data(array):
+    if not _is_iterable(array):
+        raise DataInvalid('Must supply an array or list of arrays as input')
+    if len(array) == 0:
+        pass
+    if len(array) == 1:
+        pass
+    else:
+        for num in range(len(array)-1):
+            if _is_iterable(array[num]) != _is_iterable(array[num+1]):
+                raise DataInvalid(
+                    'The array elements in the input are not consistent.')
+    return
 
 class ragged_array(object):
     """ragged_array class
@@ -169,14 +189,35 @@ class ragged_array(object):
         Can switch between functionalities by calling switch_auto_format()
     """
     def __init__(self, array, lengths=None, auto_format=False):
-        if lengths is None:
-            self.array_ = np.array(array)
-            self.lengths_ = np.array([len(i) for i in array])
-            self.data_ = np.array(list(_flatten(array)))
+        # TODO:
+        # 1) return ragged_array objects 
+        # 2) update tests  
+        array = np.array(list(array))
+        if len(array) > 20000:
+            print(
+                "WARNING: error checking is turned off for ragged arrays "+\
+                "with first dimension greater than 20000")
         else:
-            self.array_ = _partition_list(array,lengths)
+            _ensure_ragged_data(array)
+        self.data_ = np.array(list(_flatten(array)))
+        # new array greater with >0 elements
+        if (lengths is None) and (len(array) > 0):
+            # array of arrays
+            if _is_iterable(array[0]):
+                self.lengths_ = np.array([len(i) for i in array],dtype=int)
+                self.array_ = _partition_list(self.data_, self.lengths_)
+            # array of single values
+            else:
+                self.lengths_ = np.array([len(array)],dtype=int)
+                self.array_ = self.data_.reshape((1,self.lengths_[0]))
+        # null array
+        elif lengths is None:
+            self.lengths_ = np.array([],dtype=int)
+            self.array_ = []
+        # rebuild array from 1d and lengths
+        else:
+            self.array_ = _partition_list(self.data_, lengths)
             self.lengths_ = lengths
-            self.data_ = array
         self.starts_ = np.append([0],np.cumsum(self.lengths_)[:-1])
         self.auto_format_ = auto_format
     # Built in functions
@@ -370,13 +411,6 @@ class ragged_array(object):
         result = self.data_.__rpow__(other)
         return self.return_result(result)
     # Non-built in functions
-    def switch_auto_format(self):
-        if self.auto_format_ is False:
-            print("Switching auto_format to TRUE")
-            self.auto_format_ = True
-        elif self.auto_format_ is True:
-            print("Switching auto_format to FALSE")
-            self.auto_format_ = False
     def return_result(self,result):
         if self.auto_format_:
             return self.format(result)
@@ -388,32 +422,33 @@ class ragged_array(object):
         if self.auto_format_:
             print(
                 "WARNING: auto_format_ is set to TRUE. Equality statments "+\
-                "with this flag will not generate desired behaviour with "+\
+                "with this flag will not generate desired behavior with "+\
                 "where().")
         iis_flat = np.where(mask)
         return _convert_from_1d(iis_flat,starts=self.starts_)
     def append(self,values):
         if type(values) is type(self):
             values = values.array_
-        concat_values = list(_flatten(values))
-        self.data_ = np.append(self.data_, concat_values)
-        if isinstance(values, collections.Iterable):
-            new_array = list(self.array_)
-            if isinstance(values[0], collections.Iterable):
-                for value in values:
-                    new_array.append(value)
-                new_lengths = np.array([len(i) for i in values])
-            else:
-                new_array.append(values)
-                new_lengths = [len(values)]
+        if len(self.data_) == 0:
+            self.__init__(values)
         else:
-            raise DataInvalid('Expected an array of values or a ragged array')
-        self.array_ = np.array(new_array)
-        self.lengths_ = np.append(self.lengths_, new_lengths)
-        self.starts_ = np.append([0],np.cumsum(self.lengths_)[:-1])
+            concat_values = list(_flatten(values))
+            self.data_ = np.append(self.data_, concat_values)
+            if _is_iterable(values):
+                if _is_iterable(values[0]):
+                    new_lengths = np.array([len(i) for i in values])
+                else:
+                    new_lengths = [len(values)]
+            else:
+                raise DataInvalid(
+                    'Expected an array of values or a ragged array')
+            self.lengths_ = np.append(self.lengths_, new_lengths)
+            self.array_ = _partition_list(self.data_, self.lengths_)
+            self.starts_ = np.append([0],np.cumsum(self.lengths_)[:-1])
     def save(self,output_name):
-        to_save = [self.data_,self.lengths_]
-        np.save(output_name,to_save)
+        to_save = {'array': self.data_, 'lengths': self.lengths_}
+        io.saveh(output_name,**to_save)
     def load(input_name):
-        rag_array,lengths = np.load(input_name)
-        return ragged_array(rag_array,lengths=lengths)
+        ragged_load = io.loadh(input_name)
+        return ragged_array(
+            ragged_load['array'],lengths=ragged_load['lengths'])
