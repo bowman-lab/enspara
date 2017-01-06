@@ -135,7 +135,7 @@ def _partition_list(list_to_partition, partition_lengths):
         stop = start+partition_lengths[num]
         partitioned_list.append(list_to_partition[start:stop])
         start = stop
-    return np.array(partitioned_list)
+    return partitioned_list
 
 def _flatten(l):
     """Flattens an array of various sized elements"""
@@ -183,29 +183,31 @@ class ragged_array(object):
     starts_ : array, [n]
         The indices of the 1d array that correspond to the first element in
         array_.
-    auto_format : bool
-        If True, the output of equalities and numerical operations will be
-        formatted to be a ragged array. If False, the output will be 1d.
-        Can switch between functionalities by calling switch_auto_format()
     """
-    def __init__(self, array, lengths=None, auto_format=False):
+    def __init__(self, array, lengths=None, error_checking=True):
         # TODO:
-        # 1) return ragged_array objects 
-        # 2) update tests  
-        array = np.array(list(array))
-        if len(array) > 20000:
-            print(
-                "WARNING: error checking is turned off for ragged arrays "+\
-                "with first dimension greater than 20000")
-        else:
-            _ensure_ragged_data(array)
-        self.data_ = np.array(list(_flatten(array)))
+        # 1) update tests 
+        if error_checking is True: 
+            array = np.array(list(array))
+            if len(array) > 20000:
+                print(
+                    "WARNING: error checking is turned off for ragged arrays "+\
+                    "with first dimension greater than 20000")
+            else:
+                _ensure_ragged_data(array)
+        # concatenate data if list of lists
+        if len(array) > 0:
+            if _is_iterable(array[0]):
+                self.data_ = np.concatenate(array)
+            else:
+                self.data_ = np.array(array)
         # new array greater with >0 elements
         if (lengths is None) and (len(array) > 0):
             # array of arrays
             if _is_iterable(array[0]):
                 self.lengths_ = np.array([len(i) for i in array],dtype=int)
-                self.array_ = _partition_list(self.data_, self.lengths_)
+                self.array_ = np.array(
+                    _partition_list(self.data_, self.lengths_), dtype='O')
             # array of single values
             else:
                 self.lengths_ = np.array([len(array)],dtype=int)
@@ -216,45 +218,17 @@ class ragged_array(object):
             self.array_ = []
         # rebuild array from 1d and lengths
         else:
-            self.array_ = _partition_list(self.data_, lengths)
+            self.array_ = np.array(
+                _partition_list(self.data_, lengths), dtype='O')
             self.lengths_ = lengths
         self.starts_ = np.append([0],np.cumsum(self.lengths_)[:-1])
-        self.auto_format_ = auto_format
     # Built in functions
+    def __len__(self):
+        return len(self.array_)
     def __repr__(self):
         return self.array_.__repr__()
     def __str__(self):
         return self.array_.__str__()
-    def __eq__(self, value):
-        if self.auto_format_:
-            return self.format(self.data_==value)
-        else:
-            return self.data_==value
-    def __lt__(self, value):
-        if self.auto_format_:
-            return self.format(self.data_<value)
-        else:
-            return self.data_<value
-    def __le__(self, value):
-        if self.auto_format_:
-            return self.format(self.data_<=value)
-        else:
-            return self.data_<=value
-    def __gt__(self, value):
-        if self.auto_format_:
-            return self.format(self.data_>value)
-        else:
-            return self.data_>value
-    def __ge__(self, value):
-        if self.auto_format_:
-            return self.format(self.data_>=value)
-        else:
-            return self.data_>=value
-    def __ne__(self, value):
-        if self.auto_format_:
-            return self.format(self.data_!=value)
-        else:
-            return self.data_!=value
     def __getitem__(self, iis):
         # If the input is a slice or pull in the first dimension, returns a
         # slice or pull of the original array. If the input is a tuple
@@ -329,12 +303,13 @@ class ragged_array(object):
             else:
                 iis_1d = _convert_from_2d(
                     iis, lengths=self.lengths_, starts=self.starts_)
-                if hasattr(value,"__iter__"):
-                    value_1d = list(_flatten(value))
+                if _is_iterable(value):
+                    value_1d = np.concatenate(value)
                 else:
                     value_1d = value
                 self.data_[iis_1d] = value_1d
-                self.array_ = _partition_list(self.data_,self.lengths_)
+                self.array_ = np.array(
+                    _partition_list(self.data_,self.lengths_), dtype='O')
             iis_tmp = np.array(
                 list(
                     itertools.product(
@@ -342,90 +317,59 @@ class ragged_array(object):
             iis = (iis_tmp[0],iis_tmp[1])
             iis_1d = _convert_from_2d(
                 iis,lengths=self.lengths_,starts=self.starts_)
-            if hasattr(value,"__iter__"):
-                value_1d = list(_flatten(value))
+            if _is_iterable(value):
+                value_1d = np.concatenate(value)
             else:
                 value_1d = value
             self.data_[iis_1d] = value_1d
-            self.array_ = _partition_list(self.data_,self.lengths_)
-    def __len__(self):
-        return len(self.array_)
+            self.array_ = np.array(
+                _partition_list(self.data_,self.lengths_),dtype='O')
+    def __eq__(self, other):
+        return self.map_operator('__eq__', other)
+    def __lt__(self, other):
+        return self.map_operator('__lt__', other)
+    def __le__(self, other):
+        return self.map_operator('__le__', other)
+    def __gt__(self, other):
+        return self.map_operator('__gt__', other)
+    def __ge__(self, other):
+        return self.map_operator('__ge__', other)
+    def __ne__(self, other):
+        return self.map_operator('__ne__', other)
     def __add__(self, other):
-        if type(other) is type(self):
-            other = other.data_
-        result = self.data_.__add__(other)
-        return self.return_result(result)
+        return self.map_operator('__add__', other)
     def __radd__(self, other):
-        if type(other) is type(self):
-            other = other.data_
-        result = self.data_.__radd__(other)
-        return self.return_result(result)
+        return self.map_operator('__radd__', other)
     def __sub__(self, other):
-        if type(other) is type(self):
-            other = other.data_
-        result = self.data_.__sub__(other)
-        return self.return_result(result)
+        return self.map_operator('__sub__', other)
     def __rsub__(self, other):
-        if type(other) is type(self):
-            other = other.data_
-        result = self.data_.__rsub__(other)
-        return self.return_result(result)
+        return self.map_operator('__rsub__', other)
     def __mul__(self, other):
-        if type(other) is type(self):
-            other = other.data_
-        result = self.data_.__mul__(other)
-        return self.return_result(result)
+        return self.map_operator('__mul__', other)
     def __rmul__(self, other):
-        if type(other) is type(self):
-            other = other.data_
-        result = self.data_.__rmul__(other)
-        return self.return_result(result)
-    def __floordiv__(self, other):
-        if type(other) is type(self):
-            other = other.data_
-        result = self.data_.__floordiv__(other)
-        return self.return_result(result)
-    def __rfloordiv__(self, other):
-        if type(other) is type(self):
-            other = other.data_
-        result = self.data_.__rfloordiv__(other)
-        return self.return_result(result)
+        return self.map_operator('__rmul__', other)
     def __truediv__(self, other):
-        if type(other) is type(self):
-            other = other.data_
-        result = self.data_.__truediv__(other)
-        return self.return_result(result)
+        return self.map_operator('__truediv__', other)
     def __rtruediv__(self, other):
-        if type(other) is type(self):
-            other = other.data_
-        result = self.data_.__rtruediv__(other)
-        return self.return_result(result)
+        return self.map_operator('__rtruediv__', other)
+    def __floordiv__(self, other):
+        return self.map_operator('__floordiv__', other)
+    def __rfloordiv__(self, other):
+        return self.map_operator('__rfloordiv__', other)
     def __pow__(self, other):
-        if type(other) is type(self):
-            other = other.data_
-        result = self.data_.__pow__(other)
-        return self.return_result(result)
+        return self.map_operator('__pow__', other)
     def __rpow__(self, other):
+        return self.map_operator('__rpow__', other)
+    def map_operator(self, operator, other):
         if type(other) is type(self):
             other = other.data_
-        result = self.data_.__rpow__(other)
-        return self.return_result(result)
+        new_data = getattr(self.data_, operator)(other)
+        return ragged_array(
+            array=new_data, lengths=self.lengths_, error_checking=False)
     # Non-built in functions
-    def return_result(self,result):
-        if self.auto_format_:
-            return self.format(result)
-        else:
-            return result
-    def format(self, values):
-        return _partition_list(values,self.lengths_)
-    def where(self,mask):
-        if self.auto_format_:
-            print(
-                "WARNING: auto_format_ is set to TRUE. Equality statments "+\
-                "with this flag will not generate desired behavior with "+\
-                "where().")
-        iis_flat = np.where(mask)
-        return _convert_from_1d(iis_flat,starts=self.starts_)
+    def where(mask):
+        iis_flat = np.where(mask.data_)
+        return _convert_from_1d(iis_flat,starts=mask.starts_)
     def append(self,values):
         if type(values) is type(self):
             values = values.array_
@@ -443,7 +387,8 @@ class ragged_array(object):
                 raise DataInvalid(
                     'Expected an array of values or a ragged array')
             self.lengths_ = np.append(self.lengths_, new_lengths)
-            self.array_ = _partition_list(self.data_, self.lengths_)
+            self.array_ = np.array(
+                _partition_list(self.data_, self.lengths_), dtype='O')
             self.starts_ = np.append([0],np.cumsum(self.lengths_)[:-1])
     def save(self,output_name):
         to_save = {'array': self.data_, 'lengths': self.lengths_}
