@@ -98,7 +98,7 @@ def _handle_negative_indices(
         second_dimension_neg_iis = np.where(second_dimension<0)[0]
     return first_dimension, second_dimension
 
-def _convert_from_2d(iis_ragged, lengths=None, starts=None):
+def _convert_from_2d(iis_ragged, lengths=None, starts=None, error_check=True):
     if lengths is None and starts is None:
         raise ImproperlyConfigured(
             'No lengths or starts supplied')
@@ -114,7 +114,7 @@ def _convert_from_2d(iis_ragged, lengths=None, starts=None):
     first_dimension, second_dimension = _handle_negative_indices(
         first_dimension, second_dimension, lengths=lengths, starts=starts)
     # Check for index error
-    if lengths is not None:
+    if lengths is not None and error_check:
         if np.any(lengths[first_dimension] <= second_dimension):
             raise IndexError
     iis_flat = starts[first_dimension]+second_dimension
@@ -193,6 +193,26 @@ def _ensure_ragged_data(array):
                     'The array elements in the input are not consistent.')
     return
 
+def _remove_outliers(iis, lengths):
+    first_dimension,second_dimension = iis
+    if type(first_dimension) is not np.ndarray:
+        first_dimension = np.array(first_dimension)
+    if type(second_dimension) is not np.ndarray:
+        second_dimension = np.array(second_dimension)
+    unique_firsts = np.unique(first_dimension)
+    new_lengths = np.array([],dtype=int)
+    for num in range(len(unique_firsts)):
+        max_len = lengths[unique_firsts[num]]
+        first_dimension_iis = np.where(first_dimension==unique_firsts[num])
+        iis_to_nix = first_dimension_iis[0][
+            np.where(second_dimension[first_dimension_iis] >= max_len)]
+        first_dimension = np.delete(first_dimension,iis_to_nix)
+        second_dimension = np.delete(second_dimension,iis_to_nix)
+        new_length = len(first_dimension_iis[0])-len(iis_to_nix)
+        new_lengths = np.append(new_lengths,new_length)
+    sort_iis = np.lexsort((second_dimension,first_dimension))
+    return first_dimension[sort_iis],second_dimension[sort_iis],new_lengths
+        
 class ragged_array(object):
     """ragged_array class
     
@@ -270,7 +290,7 @@ class ragged_array(object):
                     first_dimension, length=len(self.lengths_))
                 if type(second_dimension) is slice:
                     second_dimension_length = \
-                        self.lengths_[first_dimension_iis].min()
+                        self.lengths_[first_dimension_iis].max()
                     second_dimension_iis = _slice_to_list(
                         second_dimension, length=second_dimension_length)
                 elif type(second_dimension) is int:
@@ -283,7 +303,7 @@ class ragged_array(object):
                 else:
                     first_dimension_iis = first_dimension
                     second_dimension_length = \
-                        self.lengths_[first_dimension_iis].min()
+                        self.lengths_[first_dimension_iis].max()
                     second_dimension_iis = _slice_to_list(
                         second_dimension, length=second_dimension_length)
             else:
@@ -294,11 +314,15 @@ class ragged_array(object):
                 list(
                     itertools.product(
                         first_dimension_iis, second_dimension_iis))).T
-            iis = (iis_tmp[0],iis_tmp[1])
+            # If indices do not exist, remove them
+            new_first_dimension, new_second_dimension, new_lengths = \
+                _remove_outliers(iis_tmp, self.lengths_)
+            iis = (new_first_dimension, new_second_dimension)
             output_unformatted = self.data_[
                 _convert_from_2d(
-                    iis, lengths=self.lengths_, starts=self.starts_)]
-            return np.array(_chunk(output_unformatted,len(second_dimension_iis)))
+                    iis, lengths=self.lengths_,
+                    starts=self.starts_)]
+            return ragged_array(output_unformatted, lengths=new_lengths)
         elif type(iis) is type(self):
             iis = ragged_array.where(iis)
             return self.__getitem__(iis)
@@ -350,7 +374,10 @@ class ragged_array(object):
                 list(
                     itertools.product(
                         first_dimension_iis, second_dimension_iis))).T
-            iis = (iis_tmp[0],iis_tmp[1])
+            # If indices do not exist, remove them
+            new_first_dimension, new_second_dimension, new_lengths = \
+                _remove_outliers(iis_tmp, self.lengths_)
+            iis = (new_first_dimension, new_second_dimension)
             iis_1d = _convert_from_2d(
                 iis,lengths=self.lengths_,starts=self.starts_)
             if _is_iterable(value):

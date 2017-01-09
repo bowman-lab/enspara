@@ -71,6 +71,9 @@ class Test_ragged_array(unittest.TestCase):
         with assert_raises(IndexError):
             a[-3]
 
+        b = ragged_array([[23,24],[48,49,50]])
+        assert_equals(a[:,23:26],b)
+
     def test_ragged_array_iterator(self):
         src = [range(10), range(20), range(30)]
         a = ragged_array(array=src)
