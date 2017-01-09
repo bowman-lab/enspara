@@ -66,6 +66,38 @@ def _convert_from_1d(iis_flat, lengths=None, starts=None):
         for num in range(len(iis_flat))]
     return (first_dimension,second_dimension)
 
+def _handle_negative_indices(
+        first_dimension, second_dimension, lengths=None, starts=None):
+    if type(first_dimension) is not np.ndarray:
+        first_dimension = np.array(first_dimension)
+    if type(second_dimension) is not np.ndarray:
+        second_dimension = np.array(second_dimension)
+    # remove negative indices from first dimension
+    first_dimension_neg_iis = np.where(first_dimension<0)[0]
+    second_dimension_neg_iis = np.where(second_dimension<0)[0]
+    while len(first_dimension_neg_iis) > 0:
+        if first_dimension.size > 1:
+            first_dimension[first_dimension_neg_iis] += len(starts)
+        else:
+            first_dimension += len(starts)
+        first_dimension_neg_iis = np.where(first_dimension<0)[0]
+    # remove negative indices from second dimension
+    while len(second_dimension_neg_iis) > 0:
+        if lengths is None:
+            raise ImproperlyConfigured(
+                'Must supply lengths if indices are negative.')
+        if second_dimension.size > 1:
+            if first_dimension.size > 1:
+                second_dimension[second_dimension_neg_iis] += lengths[
+                    first_dimension[second_dimension_neg_iis]]
+            else:
+                second_dimension[second_dimension_neg_iis] += lengths[
+                    first_dimension]
+        else:
+            second_dimension += lengths[first_dimension]
+        second_dimension_neg_iis = np.where(second_dimension<0)[0]
+    return first_dimension, second_dimension
+
 def _convert_from_2d(iis_ragged, lengths=None, starts=None):
     if lengths is None and starts is None:
         raise ImproperlyConfigured(
@@ -75,20 +107,16 @@ def _convert_from_2d(iis_ragged, lengths=None, starts=None):
     first_dimension,second_dimension = iis_ragged
     first_dimension = np.array(first_dimension)
     second_dimension = np.array(second_dimension)
-    first_dimension_neg_iis = np.where(first_dimension<0)[0]
-    second_dimension_neg_iis = np.where(second_dimension<0)[0]
-    if len(first_dimension_neg_iis) > 0:
-        first_dimension[first_dimension_neg_iis] += len(starts)
-    if len(second_dimension_neg_iis) > 0:
-        if lengths is None:
-            raise ImproperlyConfigured(
-                'Must supply lengths if indices are negative.')
-        second_dimension[second_dimension_neg_iis] += lengths[
-            first_dimension[second_dimension_neg_iis]]
+    # Account for iis = ([0,1,2],4)
+    if first_dimension.size > 1 and second_dimension.size == 1:
+        second_dimension = np.array(
+            [second_dimension for n in first_dimension])
+    first_dimension, second_dimension = _handle_negative_indices(
+        first_dimension, second_dimension, lengths=lengths, starts=starts)
+    # Check for index error
     if lengths is not None:
         if np.any(lengths[first_dimension] <= second_dimension):
-            raise DataInvalid(
-                'Indices requrested do not exist')
+            raise IndexError
     iis_flat = starts[first_dimension]+second_dimension
     return (iis_flat,)
 
@@ -220,7 +248,7 @@ class ragged_array(object):
         else:
             self.array_ = np.array(
                 _partition_list(self.data_, lengths), dtype='O')
-            self.lengths_ = lengths
+            self.lengths_ = np.array(lengths)
         self.starts_ = np.append([0],np.cumsum(self.lengths_)[:-1])
     # Built in functions
     def __len__(self):
@@ -230,13 +258,12 @@ class ragged_array(object):
     def __str__(self):
         return self.array_.__str__()
     def __getitem__(self, iis):
-        # If the input is a slice or pull in the first dimension, returns a
-        # slice or pull of the original array. If the input is a tuple
-        # containing a list of indices or one or more slices, the 
-        # indices/slices are converted from the 2d-form to the 1d-form
-        if (type(iis) is int) or (type(iis) is slice):
+        if type(iis) is int: 
             return self.array_[iis]
-        elif type(iis) == tuple:
+        elif (type(iis) is slice) or (type(iis) is list) \
+                or (type(iis) is np.ndarray):
+            return ragged_array(self.array_[iis])
+        elif type(iis) is tuple:
             first_dimension,second_dimension = iis
             if type(first_dimension) is slice:
                 first_dimension_iis = _slice_to_list(
@@ -272,8 +299,12 @@ class ragged_array(object):
                 _convert_from_2d(
                     iis, lengths=self.lengths_, starts=self.starts_)]
             return np.array(_chunk(output_unformatted,len(second_dimension_iis)))
+        elif type(iis) is type(self):
+            iis = ragged_array.where(iis)
+            return self.__getitem__(iis)
     def __setitem__(self, iis, value):
-        if (type(iis) is int) or (type(iis) is slice):
+        if (type(iis) is int) or (type(iis) is slice) or \
+                (type(iis) is list) or (type(iis) is np.ndarray):
             self.array_[iis] = value
             self.__init__(self.array_)
         elif type(iis) == tuple:
@@ -294,6 +325,7 @@ class ragged_array(object):
                 if type(first_dimension) is int:
                     self.array_[first_dimension][second_dimension] = value
                     self.__init__(self.array_)
+                    return
                 else:
                     first_dimension_iis = first_dimension
                     second_dimension_length = \
@@ -304,12 +336,16 @@ class ragged_array(object):
                 iis_1d = _convert_from_2d(
                     iis, lengths=self.lengths_, starts=self.starts_)
                 if _is_iterable(value):
-                    value_1d = np.concatenate(value)
+                    if _is_iterable(value[0]):
+                        value_1d = np.concatenate(value)
+                    else:
+                        value_1d = value
                 else:
                     value_1d = value
                 self.data_[iis_1d] = value_1d
                 self.array_ = np.array(
                     _partition_list(self.data_,self.lengths_), dtype='O')
+                return
             iis_tmp = np.array(
                 list(
                     itertools.product(
@@ -324,6 +360,9 @@ class ragged_array(object):
             self.data_[iis_1d] = value_1d
             self.array_ = np.array(
                 _partition_list(self.data_,self.lengths_),dtype='O')
+        elif type(iis) is type(self):
+            iis = ragged_array.where(iis)
+            self.__setitem__(iis,value)
     def __eq__(self, other):
         return self.map_operator('__eq__', other)
     def __lt__(self, other):
@@ -367,6 +406,10 @@ class ragged_array(object):
         return ragged_array(
             array=new_data, lengths=self.lengths_, error_checking=False)
     # Non-built in functions
+    def all(self):
+        return np.all(self.data_)
+    def any(self):
+        return np.any(self.data_)
     def where(mask):
         iis_flat = np.where(mask.data_)
         return _convert_from_1d(iis_flat,starts=mask.starts_)
@@ -390,6 +433,8 @@ class ragged_array(object):
             self.array_ = np.array(
                 _partition_list(self.data_, self.lengths_), dtype='O')
             self.starts_ = np.append([0],np.cumsum(self.lengths_)[:-1])
+    def flatten(self):
+        return np.array(list(_flatten(self.data_)))
     def save(self,output_name):
         to_save = {'array': self.data_, 'lengths': self.lengths_}
         io.saveh(output_name,**to_save)
