@@ -1,3 +1,5 @@
+import logging
+
 import gc
 import glob
 import mdtraj as md
@@ -106,13 +108,13 @@ def save_states(
     for traj in unique_trajs:
         partitioned_centers_info.append(
             centers_location[np.where(centers_location['traj_num'] == traj)])
-    if verbose:
-        print("  Saving states!")
+
+    logging.debug("  Saving states!")
+
     pool = Pool(processes=n_processes)
     pool.map(_save_states, partitioned_centers_info)
     pool.terminate()
     gc.collect()
-    if verbose:
-        t1 = time.time()
-        print("    Finished in "+str(t1-t0)+" sec")
-    return
+
+    t1 = time.time()
+    logging.debug("    Finished in "+str(t1-t0)+" sec")
