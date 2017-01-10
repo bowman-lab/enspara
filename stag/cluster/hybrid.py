@@ -7,9 +7,8 @@
 
 from __future__ import print_function, division, absolute_import
 
-import sys
 import time
-import os
+import logging
 
 import numpy as np
 
@@ -23,9 +22,9 @@ from ..exception import ImproperlyConfigured
 class KHybrid(Clusterer):
 
     def __init__(self, metric, n_clusters=None, cluster_radius=None,
-                 kmedoids_updates=5, verbose=False):
+                 kmedoids_updates=5):
 
-        super(KHybrid, self).__init__(metric, verbose)
+        super(KHybrid, self).__init__(metric)
 
         if n_clusters is None and cluster_radius is None:
             raise ImproperlyConfigured("Either n_clusters or cluster_radius "
@@ -43,8 +42,7 @@ class KHybrid(Clusterer):
             X, self.metric,
             n_iters=self.kmedoids_updates,
             n_clusters=self.n_clusters,
-            dist_cutoff=self.cluster_radius,
-            output=self.output)
+            dist_cutoff=self.cluster_radius)
 
         self.runtime_ = time.clock() - starttime
 
@@ -52,25 +50,20 @@ class KHybrid(Clusterer):
 def hybrid(
         traj, distance_method, n_iters=5, n_clusters=np.inf,
         dist_cutoff=0, random_first_center=False,
-        init_cluster_centers=None, output=sys.stdout):
-
-    if output is None:
-        output = os.devnull
+        init_cluster_centers=None):
 
     distance_method = _get_distance_method(distance_method)
 
     result = kcenters(
         traj, distance_method, n_clusters=n_clusters, dist_cutoff=dist_cutoff,
         init_cluster_centers=init_cluster_centers,
-        random_first_center=random_first_center,
-        output=output)
+        random_first_center=random_first_center)
 
     for i in range(n_iters):
         cluster_center_inds, assignments, distances = _hybrid_medoids_update(
             traj, distance_method,
             result.center_indices, result.assignments, result.distances)
-        if output:
-            output.write("KMedoids update %s of %s\n" % (i, n_iters))
+        logging.info("KMedoids update %s of %s", i, n_iters)
 
     return ClusterResult(
         center_indices=cluster_center_inds,

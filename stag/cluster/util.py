@@ -10,8 +10,6 @@
 from __future__ import print_function, division, absolute_import
 
 from collections import namedtuple
-import os
-import sys
 
 import mdtraj as md
 import numpy as np
@@ -21,10 +19,13 @@ from ..util import partition_list, partition_indices
 
 
 class Clusterer(object):
+    '''
+    Clusterer class defines the base API for a clustering object in the
+    sklearn style.
+    '''
 
-    def __init__(self, metric, verbose):
+    def __init__(self, metric):
         self.metric = metric
-        self.output = sys.stdout if verbose else open(os.devnull, 'w')
 
     def fit(self, X):
         raise NotImplementedError("All Clusterers should implement fit().")

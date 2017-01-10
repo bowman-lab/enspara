@@ -8,15 +8,14 @@
 
 from __future__ import print_function, division, absolute_import
 
-import sys
-import os
+import logging
 
 from .util import assign_to_nearest_center, _get_distance_method, ClusterResult
 
 import numpy as np
 
 
-def kmedoids(traj, distance_method, n_clusters, n_iters=5, output=sys.stdout):
+def kmedoids(traj, distance_method, n_clusters, n_iters=5):
 
     distance_method = _get_distance_method(distance_method)
 
@@ -35,8 +34,8 @@ def kmedoids(traj, distance_method, n_clusters, n_iters=5, output=sys.stdout):
     for i in range(n_iters):
         cluster_center_inds, assignments, distances = _kmedoids_update(
             traj, distance_method, cluster_center_inds, assignments,
-            distances, output=output)
-        output.write("KMedoids update %s\n" % i)
+            distances)
+        logging.info("KMedoids update %s", i)
 
     return ClusterResult(
         center_indices=cluster_center_inds,
@@ -47,7 +46,7 @@ def kmedoids(traj, distance_method, n_clusters, n_iters=5, output=sys.stdout):
 
 def _kmedoids_update(
         traj, distance_method, cluster_center_inds, assignments,
-        distances, output=os.devnull):
+        distances):
 
     assert assignments.dtype == np.int
 
