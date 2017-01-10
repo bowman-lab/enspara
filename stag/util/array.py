@@ -291,9 +291,27 @@ class ragged_array(object):
     def __len__(self):
         return len(self.array_)
     def __repr__(self):
-        return self.array_.__repr__()
+        if len(self.array_) > 6:
+            to_return = []
+            for i in [0,1,2]:
+                to_return.append(self.array_[i].__repr__())
+            to_return.append('...')
+            for i in [-3,-2,-1]:
+                to_return.append(self.array_[i].__repr__())
+            return "\n".join(to_return)
+        else:
+            return self.array_.__repr__()
     def __str__(self):
-        return self.array_.__str__()
+        if len(self.array_) > 6:
+            to_return = []
+            for i in [0,1,2]:
+                to_return.append(self.array_[i].__str__())
+            to_return.append('...')
+            for i in [-3,-2,-1]:
+                to_return.append(self.array_[i].__str__())
+            return "\n".join(to_return)
+        else:
+            return self.array_.__str__()
     def __getitem__(self, iis):
         if type(iis) is int: 
             return self.array_[iis]
