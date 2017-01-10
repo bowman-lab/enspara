@@ -53,6 +53,7 @@ def partition_indices(indices, traj_lengths):
     return partitioned_indices
 
 def _convert_from_1d(iis_flat, lengths=None, starts=None):
+    """Given 1d indices, converts to 2d."""
     if lengths is None and starts is None:
         raise ImproperlyConfigured(
             'No lengths or starts supplied')
@@ -68,6 +69,8 @@ def _convert_from_1d(iis_flat, lengths=None, starts=None):
 
 def _handle_negative_indices(
         first_dimension, second_dimension, lengths=None, starts=None):
+    """Given 2d indices as first_dimenion and second_dimension, converts
+       any negative index to a positive one."""
     if type(first_dimension) is not np.ndarray:
         first_dimension = np.array(first_dimension)
     if type(second_dimension) is not np.ndarray:
@@ -99,6 +102,8 @@ def _handle_negative_indices(
     return first_dimension, second_dimension
 
 def _convert_from_2d(iis_ragged, lengths=None, starts=None, error_check=True):
+    """Given indices in 2d, returns the corresponding 1d indices.
+       Requires either lengths or starts."""
     if lengths is None and starts is None:
         raise ImproperlyConfigured(
             'No lengths or starts supplied')
@@ -121,6 +126,8 @@ def _convert_from_2d(iis_ragged, lengths=None, starts=None, error_check=True):
     return (iis_flat,)
 
 def _slice_to_list(slice_func, length=None):
+    """Converts a slice to a list. Requires the length of the array if
+       slicing to a negative index or there is no stopping criterion."""
     start = slice_func.start
     if start is None:
         start = 0
@@ -153,6 +160,8 @@ def _chunk(l, n):
     return chunk_list
 
 def _partition_list(list_to_partition, partition_lengths):
+    """Partitions list by partition lengths. Different from previous
+       versions in that is does not return a masked array."""
     if np.sum(partition_lengths) != len(list_to_partition):
         raise DataInvalid(
             'Number of elements in list (%d) does not equal' % len(list_to_partition)+\
@@ -175,11 +184,15 @@ def _flatten(l):
             yield element
 
 def _is_iterable(iterable):
+    """Indicates if the input is iterable but not due to being a string or
+       bytes. Returns a boolean value."""
     iterable_bool = isinstance(iterable,collections.Iterable) and not \
         isinstance(iterable, (str,bytes))
     return iterable_bool
 
 def _ensure_ragged_data(array):
+    """Raises an exception if the input is either:
+       1) not an array of arrays or 2) not a 1 dimensional array"""
     if not _is_iterable(array):
         raise DataInvalid('Must supply an array or list of arrays as input')
     if len(array) == 0:
@@ -194,6 +207,10 @@ def _ensure_ragged_data(array):
     return
 
 def _remove_outliers(iis, lengths):
+    """This is a helper function for indexing on the ragged_array. If indices
+       are non-existant, this function removes them with knowledge of the
+       lengths of each ragged array. Returns the valid indices and the
+       lengths to partition them by."""
     first_dimension,second_dimension = iis
     if type(first_dimension) is not np.ndarray:
         first_dimension = np.array(first_dimension)
@@ -201,6 +218,7 @@ def _remove_outliers(iis, lengths):
         second_dimension = np.array(second_dimension)
     unique_firsts = np.unique(first_dimension)
     new_lengths = np.array([],dtype=int)
+    # Iterate over all of the unique first dimension indices
     for num in range(len(unique_firsts)):
         max_len = lengths[unique_firsts[num]]
         first_dimension_iis = np.where(first_dimension==unique_firsts[num])
@@ -233,8 +251,7 @@ class ragged_array(object):
         array_.
     """
     def __init__(self, array, lengths=None, error_checking=True):
-        # TODO:
-        # 1) update tests 
+        # Check that input is proper (array of arrays)
         if error_checking is True: 
             array = np.array(list(array))
             if len(array) > 20000:
@@ -291,6 +308,9 @@ class ragged_array(object):
                 if type(second_dimension) is slice:
                     second_dimension_length = \
                         self.lengths_[first_dimension_iis].max()
+                    if second_dimension.stop is not None:
+                        if second_dimension.stop > second_dimension_length:
+                            raise IndexError
                     second_dimension_iis = _slice_to_list(
                         second_dimension, length=second_dimension_length)
                 elif type(second_dimension) is int:
@@ -304,6 +324,9 @@ class ragged_array(object):
                     first_dimension_iis = first_dimension
                     second_dimension_length = \
                         self.lengths_[first_dimension_iis].max()
+                    if second_dimension.stop is not None:
+                        if second_dimension.stop > second_dimension_length:
+                            raise IndexError
                     second_dimension_iis = _slice_to_list(
                         second_dimension, length=second_dimension_length)
             else:
@@ -338,7 +361,10 @@ class ragged_array(object):
                     first_dimension, length=len(self.lengths_))
                 if type(second_dimension) is slice:
                     second_dimension_length = \
-                        self.lengths_[first_dimension_iis].min()
+                        self.lengths_[first_dimension_iis].max()
+                    if second_dimension.stop is not None:
+                        if second_dimension.stop > second_dimension_length:
+                            raise IndexError
                     second_dimension_iis = _slice_to_list(
                         second_dimension, length=second_dimension_length)
                 elif type(second_dimension) is int:
@@ -353,7 +379,10 @@ class ragged_array(object):
                 else:
                     first_dimension_iis = first_dimension
                     second_dimension_length = \
-                        self.lengths_[first_dimension_iis].min()
+                        self.lengths_[first_dimension_iis].max()
+                    if second_dimension.stop is not None:
+                        if second_dimension.stop > second_dimension_length:
+                            raise IndexError
                     second_dimension_iis = _slice_to_list(
                         second_dimension, length=second_dimension_length)
             else:
