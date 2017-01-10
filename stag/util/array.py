@@ -52,20 +52,22 @@ def partition_indices(indices, traj_lengths):
 
     return partitioned_indices
 
+
 def _convert_from_1d(iis_flat, lengths=None, starts=None):
     """Given 1d indices, converts to 2d."""
     if lengths is None and starts is None:
         raise ImproperlyConfigured(
             'No lengths or starts supplied')
     if starts is None:
-        starts = np.append([0],np.cumsum(lengths)[:-1])
+        starts = np.append([0], np.cumsum(lengths)[:-1])
     iis_flat = iis_flat[0]
     first_dimension = [
         np.where(starts<=ii)[0][-1] for ii in iis_flat]
     second_dimension = [
         iis_flat[num]-starts[first_dimension[num]] \
         for num in range(len(iis_flat))]
-    return (first_dimension,second_dimension)
+    return (first_dimension, second_dimension)
+
 
 def _handle_negative_indices(
         first_dimension, second_dimension, lengths=None, starts=None):
@@ -101,6 +103,7 @@ def _handle_negative_indices(
         second_dimension_neg_iis = np.where(second_dimension<0)[0]
     return first_dimension, second_dimension
 
+
 def _convert_from_2d(iis_ragged, lengths=None, starts=None, error_check=True):
     """Given indices in 2d, returns the corresponding 1d indices.
        Requires either lengths or starts."""
@@ -108,8 +111,8 @@ def _convert_from_2d(iis_ragged, lengths=None, starts=None, error_check=True):
         raise ImproperlyConfigured(
             'No lengths or starts supplied')
     if starts is None:
-        starts = np.append([0],np.cumsum(lengths)[:-1])
-    first_dimension,second_dimension = iis_ragged
+        starts = np.append([0], np.cumsum(lengths)[:-1])
+    first_dimension, second_dimension = iis_ragged
     first_dimension = np.array(first_dimension)
     second_dimension = np.array(second_dimension)
     # Account for iis = ([0,1,2],4)
@@ -124,6 +127,7 @@ def _convert_from_2d(iis_ragged, lengths=None, starts=None, error_check=True):
             raise IndexError
     iis_flat = starts[first_dimension]+second_dimension
     return (iis_flat,)
+
 
 def _slice_to_list(slice_func, length=None):
     """Converts a slice to a list. Requires the length of the array if
@@ -150,7 +154,8 @@ def _slice_to_list(slice_func, length=None):
     elif step < 0 and stop is None and start is None:
         start = copy.copy(stop)
         stop = -1
-    return range(start,stop,step)
+    return range(start, stop, step)
+
 
 def _chunk(l, n):
     """Yield successive n-sized chunks from l."""
@@ -158,6 +163,7 @@ def _chunk(l, n):
     for i in range(0, len(l), n):
         chunk_list.append(l[i:i + n])
     return chunk_list
+
 
 def _partition_list(list_to_partition, partition_lengths):
     """Partitions list by partition lengths. Different from previous
@@ -174,6 +180,7 @@ def _partition_list(list_to_partition, partition_lengths):
         start = stop
     return partitioned_list
 
+
 def _flatten(l):
     """Flattens an array of various sized elements"""
     for element in l:
@@ -183,12 +190,14 @@ def _flatten(l):
         else:
             yield element
 
+
 def _is_iterable(iterable):
     """Indicates if the input is iterable but not due to being a string or
        bytes. Returns a boolean value."""
-    iterable_bool = isinstance(iterable,collections.Iterable) and not \
+    iterable_bool = isinstance(iterable, collections.Iterable) and not \
         isinstance(iterable, (str,bytes))
     return iterable_bool
+
 
 def _ensure_ragged_data(array):
     """Raises an exception if the input is either:
@@ -206,35 +215,75 @@ def _ensure_ragged_data(array):
                     'The array elements in the input are not consistent.')
     return
 
+
 def _remove_outliers(iis, lengths):
-    """This is a helper function for indexing on the ragged_array. If indices
+    """This is a helper function for indexing on the RaggedArray. If indices
        are non-existant, this function removes them with knowledge of the
        lengths of each ragged array. Returns the valid indices and the
        lengths to partition them by."""
-    first_dimension,second_dimension = iis
+    # make the first and second dimensions numpy arrays
+    first_dimension, second_dimension = iis
     if type(first_dimension) is not np.ndarray:
         first_dimension = np.array(first_dimension)
     if type(second_dimension) is not np.ndarray:
         second_dimension = np.array(second_dimension)
+    # get the unique first 
     unique_firsts = np.unique(first_dimension)
-    new_lengths = np.array([],dtype=int)
+    new_lengths = np.array([], dtype=int)
     # Iterate over all of the unique first dimension indices
+    # and remove outliers
     for num in range(len(unique_firsts)):
         max_len = lengths[unique_firsts[num]]
         first_dimension_iis = np.where(first_dimension==unique_firsts[num])
         iis_to_nix = first_dimension_iis[0][
             np.where(second_dimension[first_dimension_iis] >= max_len)]
-        first_dimension = np.delete(first_dimension,iis_to_nix)
-        second_dimension = np.delete(second_dimension,iis_to_nix)
+        first_dimension = np.delete(first_dimension, iis_to_nix)
+        second_dimension = np.delete(second_dimension, iis_to_nix)
         new_length = len(first_dimension_iis[0])-len(iis_to_nix)
-        new_lengths = np.append(new_lengths,new_length)
-    sort_iis = np.lexsort((second_dimension,first_dimension))
-    return first_dimension[sort_iis],second_dimension[sort_iis],new_lengths
-        
-class ragged_array(object):
-    """ragged_array class
+        new_lengths = np.append(new_lengths, new_length)
+    sort_iis = np.lexsort((second_dimension, first_dimension))
+    return first_dimension[sort_iis], second_dimension[sort_iis], new_lengths
+
+
+def _format_array_line(array_line, operator):
+    """Formats a single line of an array"""
+    formatted = getattr(array_line, operator)().split(')')[0].split('(')[-1]
+    return formatted
+
+
+def _format_array(array, operator):
+    """Formats a ragged array output"""
+    # Determine the correct formatting for the operator
+    if operator == '__repr__':
+        header = 'RaggedArray([\n'
+        aftermath = '])'
+        line_spacing = '    '
+    elif operator == '__str__':
+        header = '['
+        aftermath = ']'
+        line_spacing = ''
+    body = []
+    # If the length of the array is greater than 6, generates an elipses
+    if len(array) > 6:
+        for i in [0, 1, 2]:
+            body.append(
+                line_spacing+_format_array_line(array[i], operator))
+        body.append(line_spacing+'...')
+        for i in [-3, -2, -1]:
+            body.append(
+                line_spacing+_format_array_line(array[i], operator))
+        return "".join([header, ",\n".join(body), aftermath])
+    else:
+        for i in range(len(array)):
+            body.append(
+                line_spacing+_format_array_line(array[i], operator))
+        return "".join([header, ",\n".join(body), aftermath])
+
+
+class RaggedArray(object):
+    """RaggedArray class
     
-    The ragged array class takes an array of arrays with various lengths and
+    The RaggedArray class takes an array of arrays with various lengths and
     returns an object that allows for indexing, slicing, and querying as if a
     2d array. The array is concatenated and stored as a 1d array.
 
@@ -270,59 +319,48 @@ class ragged_array(object):
         if (lengths is None) and (len(array) > 0):
             # array of arrays
             if _is_iterable(array[0]):
-                self.lengths_ = np.array([len(i) for i in array],dtype=int)
+                self.lengths_ = np.array([len(i) for i in array], dtype=int)
                 self.array_ = np.array(
                     _partition_list(self.data_, self.lengths_), dtype='O')
             # array of single values
             else:
-                self.lengths_ = np.array([len(array)],dtype=int)
-                self.array_ = self.data_.reshape((1,self.lengths_[0]))
+                self.lengths_ = np.array([len(array)], dtype=int)
+                self.array_ = self.data_.reshape((1, self.lengths_[0]))
         # null array
         elif lengths is None:
-            self.lengths_ = np.array([],dtype=int)
+            self.lengths_ = np.array([], dtype=int)
             self.array_ = []
         # rebuild array from 1d and lengths
         else:
             self.array_ = np.array(
                 _partition_list(self.data_, lengths), dtype='O')
             self.lengths_ = np.array(lengths)
-        self.starts_ = np.append([0],np.cumsum(self.lengths_)[:-1])
+        self.starts_ = np.append([0], np.cumsum(self.lengths_)[:-1])
     # Built in functions
     def __len__(self):
         return len(self.array_)
     def __repr__(self):
-        if len(self.array_) > 6:
-            to_return = []
-            for i in [0,1,2]:
-                to_return.append(self.array_[i].__repr__())
-            to_return.append('...')
-            for i in [-3,-2,-1]:
-                to_return.append(self.array_[i].__repr__())
-            return "\n".join(to_return)
-        else:
-            return self.array_.__repr__()
+        return _format_array(self.array_, '__repr__')
     def __str__(self):
-        if len(self.array_) > 6:
-            to_return = []
-            for i in [0,1,2]:
-                to_return.append(self.array_[i].__str__())
-            to_return.append('...')
-            for i in [-3,-2,-1]:
-                to_return.append(self.array_[i].__str__())
-            return "\n".join(to_return)
-        else:
-            return self.array_.__str__()
+        return _format_array(self.array_, '__str__')
     def __getitem__(self, iis):
+        # ints are handled by numpy
         if type(iis) is int: 
             return self.array_[iis]
+        # slices and lists are handled by numpy, but return a RaggedArray
         elif (type(iis) is slice) or (type(iis) is list) \
                 or (type(iis) is np.ndarray):
-            return ragged_array(self.array_[iis])
+            return RaggedArray(self.array_[iis])
+        # tuples get index conversion from 2d to 1d
         elif type(iis) is tuple:
-            first_dimension,second_dimension = iis
+            first_dimension, second_dimension = iis
+            # if the first dimension is a slice, converts both sets of indices
             if type(first_dimension) is slice:
                 first_dimension_iis = _slice_to_list(
                     first_dimension, length=len(self.lengths_))
+                # if the second dimension is a slice, pick the maximum length
+                # of all arrays for conversion of slice to list. Indices that
+                # do not exist are later removed.
                 if type(second_dimension) is slice:
                     second_dimension_length = \
                         self.lengths_[first_dimension_iis].max()
@@ -331,13 +369,19 @@ class ragged_array(object):
                             raise IndexError
                     second_dimension_iis = _slice_to_list(
                         second_dimension, length=second_dimension_length)
+                # make sure the second dimension is a list
                 elif type(second_dimension) is int:
                     second_dimension_iis = [second_dimension]
                 else:
                     second_dimension_iis = second_dimension
             elif type(second_dimension) is slice:
+                # if the first dimension is an int, but the second is 
+                # a slice, numpy can handle it.
                 if type(first_dimension) is int:
                     return self.array_[first_dimension][second_dimension]
+                # if the second dimension is a slice, pick the maximum length
+                # of all arrays for conversion of slice to list. Indices that
+                # do not exist are later removed.
                 else:
                     first_dimension_iis = first_dimension
                     second_dimension_length = \
@@ -347,10 +391,14 @@ class ragged_array(object):
                             raise IndexError
                     second_dimension_iis = _slice_to_list(
                         second_dimension, length=second_dimension_length)
+            # If the indices are a tuple, but does not contain a slice,
+            # does regular conversion.
             else:
                 return self.data_[
                         _convert_from_2d(
                             iis, lengths=self.lengths_, starts=self.starts_)]
+            # combinatorically arrange all possible pairs of the
+            # different dimensions
             iis_tmp = np.array(
                 list(
                     itertools.product(
@@ -359,24 +407,34 @@ class ragged_array(object):
             new_first_dimension, new_second_dimension, new_lengths = \
                 _remove_outliers(iis_tmp, self.lengths_)
             iis = (new_first_dimension, new_second_dimension)
+            # format the slices by the correct lengths and return a new
+            # RaggedArray object
             output_unformatted = self.data_[
                 _convert_from_2d(
                     iis, lengths=self.lengths_,
                     starts=self.starts_)]
-            return ragged_array(output_unformatted, lengths=new_lengths)
+            return RaggedArray(output_unformatted, lengths=new_lengths)
+        # if the indices are of self, assumes a boolean matrix. Converts 
+        # bool to indices and recalls __getitem__
         elif type(iis) is type(self):
-            iis = ragged_array.where(iis)
+            iis = RaggedArray.where(iis)
             return self.__getitem__(iis)
     def __setitem__(self, iis, value):
+        # ints, slices, lists, and numpy objects are handled by numpy
         if (type(iis) is int) or (type(iis) is slice) or \
                 (type(iis) is list) or (type(iis) is np.ndarray):
             self.array_[iis] = value
             self.__init__(self.array_)
+        # tuples get index conversion from 2d to 1d
         elif type(iis) == tuple:
-            first_dimension,second_dimension = iis
+            first_dimension, second_dimension = iis
+            # if the first dimension is a slice, converts both sets of indices
             if type(first_dimension) is slice:
                 first_dimension_iis = _slice_to_list(
                     first_dimension, length=len(self.lengths_))
+                # if the second dimension is a slice, pick the maximum length
+                # of all arrays for conversion of slice to list. Indices that
+                # do not exist are later removed.
                 if type(second_dimension) is slice:
                     second_dimension_length = \
                         self.lengths_[first_dimension_iis].max()
@@ -385,15 +443,21 @@ class ragged_array(object):
                             raise IndexError
                     second_dimension_iis = _slice_to_list(
                         second_dimension, length=second_dimension_length)
+                # make sure the second dimension is a list
                 elif type(second_dimension) is int:
                     second_dimension_iis = [second_dimension]
                 else:
                     second_dimension_iis = second_dimension
             elif type(second_dimension) is slice:
+                # if the first dimension is an int, but the second is 
+                # a slice, numpy can handle it.
                 if type(first_dimension) is int:
                     self.array_[first_dimension][second_dimension] = value
                     self.__init__(self.array_)
                     return
+                # if the second dimension is a slice, pick the maximum length
+                # of all arrays for conversion of slice to list. Indices that
+                # do not exist are later removed.
                 else:
                     first_dimension_iis = first_dimension
                     second_dimension_length = \
@@ -403,9 +467,12 @@ class ragged_array(object):
                             raise IndexError
                     second_dimension_iis = _slice_to_list(
                         second_dimension, length=second_dimension_length)
+            # If the indices are a tuple, but does not contain a slice,
+            # does regular conversion.
             else:
                 iis_1d = _convert_from_2d(
                     iis, lengths=self.lengths_, starts=self.starts_)
+                # concatenates values if necessary
                 if _is_iterable(value):
                     if _is_iterable(value[0]):
                         value_1d = np.concatenate(value)
@@ -415,8 +482,10 @@ class ragged_array(object):
                     value_1d = value
                 self.data_[iis_1d] = value_1d
                 self.array_ = np.array(
-                    _partition_list(self.data_,self.lengths_), dtype='O')
+                    _partition_list(self.data_, self.lengths_), dtype='O')
                 return
+            # combinatorically arrange all possible pairs of the
+            # different dimensions
             iis_tmp = np.array(
                 list(
                     itertools.product(
@@ -426,17 +495,19 @@ class ragged_array(object):
                 _remove_outliers(iis_tmp, self.lengths_)
             iis = (new_first_dimension, new_second_dimension)
             iis_1d = _convert_from_2d(
-                iis,lengths=self.lengths_,starts=self.starts_)
+                iis, lengths=self.lengths_, starts=self.starts_)
             if _is_iterable(value):
                 value_1d = np.concatenate(value)
             else:
                 value_1d = value
             self.data_[iis_1d] = value_1d
             self.array_ = np.array(
-                _partition_list(self.data_,self.lengths_),dtype='O')
+                _partition_list(self.data_, self.lengths_), dtype='O')
+        # if the indices are of self, assumes a boolean matrix. Converts 
+        # bool to indices and recalls __getitem__
         elif type(iis) is type(self):
-            iis = ragged_array.where(iis)
-            self.__setitem__(iis,value)
+            iis = RaggedArray.where(iis)
+            self.__setitem__(iis, value)
     def __eq__(self, other):
         return self.map_operator('__eq__', other)
     def __lt__(self, other):
@@ -473,11 +544,15 @@ class ragged_array(object):
         return self.map_operator('__pow__', other)
     def __rpow__(self, other):
         return self.map_operator('__rpow__', other)
+    def __mod__(self, other):
+        return self.map_operator('__mod__', other)
+    def __rmod__(self, other):
+        return self.map_operator('__rmod__', other)
     def map_operator(self, operator, other):
         if type(other) is type(self):
             other = other.data_
         new_data = getattr(self.data_, operator)(other)
-        return ragged_array(
+        return RaggedArray(
             array=new_data, lengths=self.lengths_, error_checking=False)
     # Non-built in functions
     def all(self):
@@ -486,15 +561,19 @@ class ragged_array(object):
         return np.any(self.data_)
     def where(mask):
         iis_flat = np.where(mask.data_)
-        return _convert_from_1d(iis_flat,starts=mask.starts_)
-    def append(self,values):
+        return _convert_from_1d(iis_flat, starts=mask.starts_)
+    def append(self, values):
+        # if the incoming values is a RaggedArray, pull just the array
         if type(values) is type(self):
             values = values.array_
+        # if the current RaggedArray is blank, generate a new one 
+        # with the values input
         if len(self.data_) == 0:
             self.__init__(values)
         else:
             concat_values = list(_flatten(values))
             self.data_ = np.append(self.data_, concat_values)
+            # if the values are a list of arrays, add them each individually
             if _is_iterable(values):
                 if _is_iterable(values[0]):
                     new_lengths = np.array([len(i) for i in values])
@@ -503,16 +582,17 @@ class ragged_array(object):
             else:
                 raise DataInvalid(
                     'Expected an array of values or a ragged array')
+            # update variables
             self.lengths_ = np.append(self.lengths_, new_lengths)
             self.array_ = np.array(
                 _partition_list(self.data_, self.lengths_), dtype='O')
-            self.starts_ = np.append([0],np.cumsum(self.lengths_)[:-1])
+            self.starts_ = np.append([0], np.cumsum(self.lengths_)[:-1])
     def flatten(self):
         return np.array(list(_flatten(self.data_)))
-    def save(self,output_name):
+    def save(self, output_name):
         to_save = {'array': self.data_, 'lengths': self.lengths_}
-        io.saveh(output_name,**to_save)
+        io.saveh(output_name, **to_save)
     def load(input_name):
         ragged_load = io.loadh(input_name)
-        return ragged_array(
-            ragged_load['array'],lengths=ragged_load['lengths'])
+        return RaggedArray(
+            ragged_load['array'], lengths=ragged_load['lengths'])
