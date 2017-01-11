@@ -77,7 +77,7 @@ def _convert_from_1d(iis_flat, lengths=None, starts=None):
     second_dimension = [
         iis_flat[num]-starts[first_dimension[num]]
         for num in range(len(iis_flat))]
-    return (first_dimension, second_dimension)
+    return (np.array(first_dimension), np.array(second_dimension))
 
 
 def _handle_negative_indices(
@@ -256,11 +256,11 @@ def _format_array(array, operator):
     if operator == '__repr__':
         header = 'RaggedArray([\n'
         aftermath = '])'
-        line_spacing = '    '
+        line_spacing = '      '
     elif operator == '__str__':
         header = '['
         aftermath = ']'
-        line_spacing = ''
+        line_spacing = ' '
     body = []
     # If the length of the array is greater than 6, generates an elipses
     if len(array) > 6:
@@ -425,7 +425,7 @@ class RaggedArray(object):
         # if the indices are of self, assumes a boolean matrix. Converts
         # bool to indices and recalls __getitem__
         elif type(iis) is type(self):
-            iis = RaggedArray.where(iis)
+            iis = where(iis)
             return self.__getitem__(iis)
 
     def __setitem__(self, iis, value):
@@ -515,7 +515,7 @@ class RaggedArray(object):
         # if the indices are of self, assumes a boolean matrix. Converts
         # bool to indices and recalls __getitem__
         elif type(iis) is type(self):
-            iis = RaggedArray.where(iis)
+            iis = where(iis)
             self.__setitem__(iis, value)
 
     def __eq__(self, other):
