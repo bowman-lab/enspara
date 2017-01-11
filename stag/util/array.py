@@ -325,7 +325,10 @@ class RaggedArray(object):
             self._array = np.array(
                 _partition_list(self._data, lengths), dtype='O')
             self.lengths = np.array(lengths)
-        self._starts = np.append([0], np.cumsum(self.lengths)[:-1])
+
+    @property
+    def starts(self):
+        return np.append([0], np.cumsum(self.lengths)[:-1])
 
     # Built in functions
     def __len__(self):
