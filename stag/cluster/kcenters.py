@@ -18,6 +18,8 @@ from .util import assign_to_nearest_center, _get_distance_method, \
 
 from ..exception import ImproperlyConfigured
 
+logger = logging.getLogger(__name__)
+
 
 class KCenters(Clusterer):
 
@@ -90,7 +92,7 @@ def _kcenters_helper(
     cluster_num = 0
 
     if cluster_centers is not None:
-        logging.info("Updating assignments to previous cluster centers")
+        logger.info("Updating assignments to previous cluster centers")
         cluster_center_inds, assignments, distances = assign_to_nearest_center(
             traj, cluster_centers, distance_method)
         cluster_num = len(cluster_center_inds) + 1
@@ -110,7 +112,7 @@ def _kcenters_helper(
         cluster_center_inds.append(new_center_index)
         new_center_index = np.argmax(distances)
         max_distance = np.max(distances)
-        logging.info(
+        logger.info(
             "kCenters cluster "+str(cluster_num) +
             " will continue until max-distance, " +
             '{0:0.6f}'.format(max_distance) + ", falls below " +

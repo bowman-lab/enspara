@@ -18,6 +18,8 @@ from .util import _get_distance_method, ClusterResult, Clusterer
 
 from ..exception import ImproperlyConfigured
 
+logger = logging.getLogger(__name__)
+
 
 class KHybrid(Clusterer):
 
@@ -63,7 +65,7 @@ def hybrid(
         cluster_center_inds, assignments, distances = _hybrid_medoids_update(
             traj, distance_method,
             result.center_indices, result.assignments, result.distances)
-        logging.info("KMedoids update %s of %s", i, n_iters)
+        logger.info("KMedoids update %s of %s", i, n_iters)
 
     return ClusterResult(
         center_indices=cluster_center_inds,

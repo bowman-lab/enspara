@@ -14,6 +14,8 @@ from .util import assign_to_nearest_center, _get_distance_method, ClusterResult
 
 import numpy as np
 
+logger = logging.getLogger(__name__)
+
 
 def kmedoids(traj, distance_method, n_clusters, n_iters=5):
 
@@ -35,7 +37,7 @@ def kmedoids(traj, distance_method, n_clusters, n_iters=5):
         cluster_center_inds, assignments, distances = _kmedoids_update(
             traj, distance_method, cluster_center_inds, assignments,
             distances)
-        logging.info("KMedoids update %s", i)
+        logger.info("KMedoids update %s", i)
 
     return ClusterResult(
         center_indices=cluster_center_inds,
