@@ -1,13 +1,15 @@
 import multiprocessing as mp
-from itertools import count
+from itertools import count, repeat
 from contextlib import closing
 import sys
-from functools import partial
+from functools import partial, reduce
 import ctypes
 from operator import mul
 
 import numpy as np
 import mdtraj as md
+
+from ..exception import ImproperlyConfigured
 
 
 def sound_trajectory(trj, **kwargs):
@@ -36,14 +38,57 @@ def sound_trajectory(trj, **kwargs):
     return search_space[1]
 
 
-def load_as_concatenated(filenames, processes=None, debug=False, **kwargs):
+def load_as_concatenated(filenames, processes=None, args=None, **kwargs):
     '''
-    Load the given files from disk into a single numpy array. Returns a
-    tuple of trajectory lengths and xyz. All additional keyword args
-    are passed on to md.load (e.g. top, selection).
+    Load many trajectories from disk into a single numpy array.
+
+    Additional arguments to md.load are supplied as *args XOR **kwargs.
+    If *args are supplied, args and filenames must be of the same length
+    and the ith arg is applied as the kwargs to the md.load (e.g. top,
+    selection) for the ith file. If **kwargs are specified, all are
+    passed as keyword args to all calls to md.load.
+
+    Parameters
+    ----------
+    filenames : list
+        A list of relative paths to the trajectory files to be loaded.
+        The md.load function is used, and all file types md.load
+        supports are supported by this function.
+    processes : int, optional
+        The number of processes to spawn for loading in parallel.
+    args : list, optional
+        A list of dictionaries, each of which corresponds to additional
+        kwargs to be passed to each of filenames.
+
+    Returns
+    -------
+    (lengths, xyz) : tuple
+       A 2-tuple of trajectory lengths (list of ints, frames) and
+       coordinates (ndarray, shape=(n_atoms, n_frames, 3)).
+
+    See Also
+    --------
+    md.load
     '''
 
-    lengths = [sound_trajectory(f, **kwargs) for f in filenames]
+    # configure arguments to md.load
+    if kwargs and args:
+        raise ImproperlyConfigured(
+            "Additional unnamed args can only be supplied iff no "
+            "additonal keyword args are supplied")
+    elif kwargs:
+        args = repeat(kwargs)
+    elif args:
+        kwargs = args[0]
+        if len(args) != len(filenames):
+            raise ImproperlyConfigured(
+                "When add'l unnamed args are provided, len(args) == "
+                "len(filenames).")
+    else:  # not args and not kwargs
+        args = repeat([])
+        kwargs = {}
+
+    lengths = [sound_trajectory(f, **kw) for f, kw in zip(filenames, args)]
 
     root_trj = md.load(filenames[0], frame=0, **kwargs)
     shape = root_trj.xyz.shape
@@ -58,11 +103,9 @@ def load_as_concatenated(filenames, processes=None, debug=False, **kwargs):
     with closing(mp.Pool(processes=processes, initializer=init,
                          initargs=(shared_array,))) as p:
         proc = p.map_async(
-            partial(load_to_position, arr_shape=full_shape,
-                    load_kwargs=kwargs),
+            partial(load_to_position, arr_shape=full_shape),
             zip([sum(lengths[0:i]) for i in range(len(lengths))],
-                filenames)
-            )
+                filenames, args))
 
     # gather exceptions.
     proc.get()
@@ -87,13 +130,13 @@ def tonumpyarray(mp_arr):
     return np.frombuffer(mp_arr)
 
 
-def load_to_position(spec, load_kwargs, arr_shape):
+def load_to_position(spec, arr_shape):
     '''
     Load a specified file into a specified position by spec, using the
     topology top. The arr_shape parameter lets us know how big the final
     array should be.
     '''
-    (position, filename) = spec
+    (position, filename, load_kwargs) = spec
 
     xyz = md.load(filename, **load_kwargs).xyz
 

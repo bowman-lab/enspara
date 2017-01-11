@@ -243,6 +243,13 @@ class TestParallelLoad(unittest.TestCase):
         self.assertEqual(expected.shape, xyz.shape)
 
     def test_selection_load_as_concatenated(self):
+        '''
+        **kwargs should work with load_as_concatenated
+
+        Verify that when *kwargs is used in load_as_concatenated, it is
+        applied to each trajectory as it's loaded (e.g. for the purposes
+        of selection).
+        '''
 
         selection = np.array([1, 3, 6])
 
@@ -259,6 +266,33 @@ class TestParallelLoad(unittest.TestCase):
 
         self.assertTrue(np.all(expected == xyz))
         self.assertEqual(expected.shape, xyz.shape)
+
+    def test_load_as_concatenated_multiarg(self):
+        '''
+        *args should work with load_as_concatenated
+
+        Verify that when an *args is used on load_as_concatenated, each
+        arg is applied in order to each trajectory as it's loaded.
+        '''
+        selections = [np.array([1, 3, 6]), np.array([2, 4, 7])]
+
+        t1 = md.load(self.trj_fname, top=self.top, atom_indices=selections[0])
+        t2 = md.load(self.trj_fname, top=self.top, atom_indices=selections[1])
+
+        args = [
+            {'top': self.top, 'atom_indices': selections[0]},
+            {'top': self.top, 'atom_indices': selections[1]}
+            ]
+
+        lengths, xyz = load_as_concatenated(
+            [self.trj_fname]*2,
+            processes=2,
+            args=args)  # called kwargs, it's actually applied as an arg vector
+
+        expected = np.concatenate([t1.xyz, t2.xyz])
+
+        self.assertEqual(expected.shape, xyz.shape)
+        self.assertTrue(np.all(expected == xyz))
 
 
 class TestPartition(unittest.TestCase):
