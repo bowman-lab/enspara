@@ -562,7 +562,7 @@ class RaggedArray(object):
 
     def where(mask):
         iis_flat = np.where(mask._data)
-        return _convert_from_1d(iis_flat, starts=mask._starts)
+        return _convert_from_1d(iis_flat, starts=mask.starts)
 
     def append(self, values):
         # if the incoming values is a RaggedArray, pull just the array
@@ -588,7 +588,6 @@ class RaggedArray(object):
             self.lengths = np.append(self.lengths, new_lengths)
             self._array = np.array(
                 _partition_list(self._data, self.lengths), dtype='O')
-            self._starts = np.append([0], np.cumsum(self.lengths)[:-1])
 
     def flatten(self):
         return self._data.flatten()
