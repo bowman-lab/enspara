@@ -8,6 +8,14 @@ from mdtraj import io
 from ..exception import DataInvalid, ImproperlyConfigured
 
 
+def where(mask):
+    try:
+        iis_flat = np.where(mask._data)
+        return _convert_from_1d(iis_flat, starts=mask.starts)
+    except AttributeError:
+        return np.where(mask)
+
+
 def partition_list(list_to_partition, partition_lengths):
     if np.sum(partition_lengths) != len(list_to_partition):
         raise DataInvalid(
@@ -83,14 +91,16 @@ def _handle_negative_indices(
     # remove negative indices from first dimension
     first_dimension_neg_iis = np.where(first_dimension < 0)[0]
     second_dimension_neg_iis = np.where(second_dimension < 0)[0]
-    while len(first_dimension_neg_iis) > 0:
+    if len(first_dimension_neg_iis) > 0:
         if first_dimension.size > 1:
             first_dimension[first_dimension_neg_iis] += len(starts)
         else:
             first_dimension += len(starts)
-        first_dimension_neg_iis = np.where(first_dimension < 0)[0]
+        if len(np.where(first_dimension < 0)[0]) > 0:
+            # TODO: have clear error message here
+            raise IndexError()
     # remove negative indices from second dimension
-    while len(second_dimension_neg_iis) > 0:
+    if len(second_dimension_neg_iis) > 0:
         if lengths is None:
             raise ImproperlyConfigured(
                 'Must supply lengths if indices are negative.')
@@ -103,7 +113,9 @@ def _handle_negative_indices(
                     first_dimension]
         else:
             second_dimension += lengths[first_dimension]
-        second_dimension_neg_iis = np.where(second_dimension < 0)[0]
+        if len(np.where(second_dimension < 0)[0]) > 0:
+            # TODO: have clear error message here
+            raise IndexError()
     return first_dimension, second_dimension
 
 
@@ -282,12 +294,12 @@ class RaggedArray(object):
         The concatenated array.
     lengths : array, [n]
         The length of each sub-array within _array
-    _starts : array, [n]
+    starts : array, [n]
         The indices of the 1d array that correspond to the first element in
         _array.
     """
 
-    __slots__ = ('_data', '_array', 'lengths', '_starts')
+    __slots__ = ('_data', '_array', 'lengths')
 
     def __init__(self, array, lengths=None, error_checking=True):
         # Check that input is proper (array of arrays)
@@ -392,7 +404,7 @@ class RaggedArray(object):
             else:
                 return self._data[
                         _convert_from_2d(
-                            iis, lengths=self.lengths, starts=self._starts)]
+                            iis, lengths=self.lengths, starts=self.starts)]
             # combinatorically arrange all possible pairs of the
             # different dimensions
             iis_tmp = np.array(
@@ -408,7 +420,7 @@ class RaggedArray(object):
             output_unformatted = self._data[
                 _convert_from_2d(
                     iis, lengths=self.lengths,
-                    starts=self._starts)]
+                    starts=self.starts)]
             return RaggedArray(output_unformatted, lengths=new_lengths)
         # if the indices are of self, assumes a boolean matrix. Converts
         # bool to indices and recalls __getitem__
@@ -468,7 +480,7 @@ class RaggedArray(object):
             # does regular conversion.
             else:
                 iis_1d = _convert_from_2d(
-                    iis, lengths=self.lengths, starts=self._starts)
+                    iis, lengths=self.lengths, starts=self.starts)
                 # concatenates values if necessary
                 if _is_iterable(value):
                     if _is_iterable(value[0]):
@@ -492,7 +504,7 @@ class RaggedArray(object):
                 _remove_outliers(iis_tmp, self.lengths)
             iis = (new_first_dimension, new_second_dimension)
             iis_1d = _convert_from_2d(
-                iis, lengths=self.lengths, starts=self._starts)
+                iis, lengths=self.lengths, starts=self.starts)
             if _is_iterable(value):
                 value_1d = np.concatenate(value)
             else:
@@ -559,10 +571,6 @@ class RaggedArray(object):
 
     def any(self):
         return np.any(self._data)
-
-    def where(mask):
-        iis_flat = np.where(mask._data)
-        return _convert_from_1d(iis_flat, starts=mask.starts)
 
     def append(self, values):
         # if the incoming values is a RaggedArray, pull just the array

@@ -4,37 +4,36 @@ import numpy as np
 import mdtraj as md
 
 from mdtraj.testing import get_fn
-from nose.tools import assert_raises, assert_equals, assert_not_equals, \
-    assert_true, assert_is
+from nose.tools import assert_raises, assert_equals, assert_is
 from numpy.testing import assert_array_equal
 
+from . import array as ra
 from .load import load_as_concatenated
-from .array import partition_indices, ragged_array
 
-from ..exception import DataInvalid, ImproperlyConfigured
+from ..exception import DataInvalid
 
 
-class Test_ragged_array(unittest.TestCase):
+class Test_RaggedArray(unittest.TestCase):
 
-    def test_ragged_array_creation(self):
-        a = ragged_array(array=np.array(range(50)), lengths=[25, 25])
-        assert_array_equal(a.starts_, [0, 25])
+    def test_RaggedArray_creation(self):
+        a = ra.RaggedArray(array=np.array(range(50)), lengths=[25, 25])
+        assert_array_equal(a.starts, [0, 25])
 
-        a = ragged_array(array=[np.array(range(10)),
-                               np.array(range(20))])
+        a = ra.RaggedArray(array=[np.array(range(10)),
+                                  np.array(range(20))])
         assert_equals(len(a), 2)
-        assert_array_equal(a.lengths_, [10, 20])
-        assert_array_equal(a.starts_, [0, 10])
-        assert_array_equal(a.data_, np.concatenate([range(10), range(20)]))
+        assert_array_equal(a.lengths, [10, 20])
+        assert_array_equal(a.starts, [0, 10])
+        assert_array_equal(a._data, np.concatenate([range(10), range(20)]))
 
-    def test_ragged_array_bad_size(self):
+    def test_RaggedArray_bad_size(self):
 
         with assert_raises(DataInvalid):
-            ragged_array(array=np.array(range(50)), lengths=[25, 20])
+            ra.RaggedArray(array=np.array(range(50)), lengths=[25, 20])
 
-    def test_ragged_array_indexing(self):
+    def test_RaggedArray_indexing(self):
         src = np.array(range(55))
-        a = ragged_array(array=src, lengths=[25, 30])
+        a = ra.RaggedArray(array=src, lengths=[25, 30])
 
         assert_equals(a[0, 0], 0)
         assert_equals(a[0, 5], 5)
@@ -43,12 +42,12 @@ class Test_ragged_array(unittest.TestCase):
 
         with assert_raises(IndexError):
             a[0, 25]
-#        with assert_raises(IndexError):
-#            print(a[0, -26])
+        with assert_raises(IndexError):
+            a[0, -26]
         with assert_raises(IndexError):
             a[1, 30]
-#        with assert_raises(IndexError):
-#            a[1, -31]
+        with assert_raises(IndexError):
+            a[1, -31]
 
         assert_equals(a[0, 0], a[0][0])
         assert_equals(a[0, 5], a[0][5])
@@ -71,32 +70,31 @@ class Test_ragged_array(unittest.TestCase):
         with assert_raises(IndexError):
             a[-3]
 
-        b = ragged_array([[23,24],[48,49,50]])
-        assert_equals(a[:,23:26],b)
+        b = ra.RaggedArray([[23, 24],[48, 49, 50]])
+        assert_equals(a[:, 23:26], b)
 
-    def test_ragged_array_iterator(self):
+    def test_RaggedArray_iterator(self):
         src = [range(10), range(20), range(30)]
-        a = ragged_array(array=src)
+        a = ra.RaggedArray(array=src)
 
         assert_array_equal(np.concatenate([i for i in a]),
                            np.concatenate([np.array(i) for i in src]))
 
-    def test_ragged_array_slicing(self):
+    def test_RaggedArray_slicing(self):
         src = np.array(range(60))
-        a = ragged_array(array=src, lengths=[10, 20, 30])
+        a = ra.RaggedArray(array=src, lengths=[10, 20, 30])
 
         assert_array_equal(a[:].flatten(), src)
         assert_array_equal(a[0:2].flatten(), src[0:30])
         assert_array_equal(a[1:].flatten(), src[10:])
 
         assert_array_equal(a[:, 0:5].flatten(), np.concatenate((src[0:5],
-                                                      src[10:15],
-                                                      src[30:35])))
+                                                                src[10:15],
+                                                                src[30:35])))
 
-        assert_is(type(a[[0,1]]), type(a))
+        assert_is(type(a[[0, 1]]), type(a))
         assert_is(type(a[0]), type(src))
         assert_is(type(a[[0]]), type(a))
-    
 
         assert_array_equal(a[0, 5:10], src[5:10])
         assert_array_equal(a[-1, 5:10], src[35:40])
@@ -104,9 +102,9 @@ class Test_ragged_array(unittest.TestCase):
         assert_array_equal(a[2, 10:15:2], src[40:45:2])
         assert_array_equal(a[0, ::-1], src[9::-1])
 
-    def test_ragged_array_set_indexing(self):
+    def test_RaggedArray_set_indexing(self):
         src = np.array(range(60))
-        a = ragged_array(array=src, lengths=[10, 20, 30])
+        a = ra.RaggedArray(array=src, lengths=[10, 20, 30])
 
         a_sub = a[np.array([0, 2, -1])]
         assert_array_equal(a_sub[0], src[0:10])
@@ -125,7 +123,7 @@ class Test_ragged_array(unittest.TestCase):
 
     def test_subragged_data_mapping(self):
         src = np.array(range(60))
-        a = ragged_array(array=src, lengths=[10, 20, 30])
+        a = ra.RaggedArray(array=src, lengths=[10, 20, 30])
 
         b = a[1]
         b[0] = -1
@@ -133,16 +131,16 @@ class Test_ragged_array(unittest.TestCase):
 
     def test_ra_bool_indexing(self):
         src = [range(10), range(15), range(10)]
-        a = ragged_array(array=src)
+        a = ra.RaggedArray(array=src)
 
         b = (a < 5)
         print(b)
         print(a[b])
 
-    def test_ragged_array_setting(self):
+    def test_RaggedArray_setting(self):
         src = np.array(range(50))
 
-        a = ragged_array(array=src, lengths=[20, 30])
+        a = ra.RaggedArray(array=src, lengths=[20, 30])
         a[1] = range(30)
 
         assert_array_equal(a[1], range(30))
@@ -150,18 +148,18 @@ class Test_ragged_array(unittest.TestCase):
         assert_equals(a[1, 0], 0)
         assert_equals(a[1, -1], 29)
 
-        a = ragged_array(array=src, lengths=[20, 30])
+        a = ra.RaggedArray(array=src, lengths=[20, 30])
         a[0, 2:5] = np.array([11, 12, 13])
 
         assert_array_equal(a[0, 2], 11)
         assert_array_equal(a[1], src[20:])
         assert_array_equal(a[0, 2:5], np.array([11, 12, 13]))
 
-        a = ragged_array(array=src, lengths=[20, 30])
+        a = ra.RaggedArray(array=src, lengths=[20, 30])
         a[0, 2:5] = np.array([11, 12, 13])
 
         # __setitem__ using fancy indexing should succeed.
-        a = ragged_array(array=src, lengths=[20, 30])
+        a = ra.RaggedArray(array=src, lengths=[20, 30])
         a[(np.array([1, 1, 0, -1]),
            np.array([0, 3, -1, 4]))] = np.array([-1, -2, -3, -4])
 
@@ -171,13 +169,13 @@ class Test_ragged_array(unittest.TestCase):
         assert_equals(a[-1, 4], -4)
 
         # __setitem__ using fancy indexing + int should succeed.
-        a = ragged_array(array=src, lengths=[20, 30])
+        a = ra.RaggedArray(array=src, lengths=[20, 30])
         a[np.array([0, -1]), 3] = np.array([-3, -2])
         assert_equals(a[0, 3], -3)
         assert_equals(a[-1, 3], -2)
 
         # __setitem__ using int + fancy indexing should succeed.
-        a = ragged_array(array=src, lengths=[20, 30])
+        a = ra.RaggedArray(array=src, lengths=[20, 30])
         a[0, np.array([1, 2, -1])] = np.array([-3, -2, -1])
         assert_equals(a[0, 1], -3)
         assert_equals(a[0, 2], -2)
@@ -185,8 +183,8 @@ class Test_ragged_array(unittest.TestCase):
 
     def test_ra_eq(self):
         src = [range(10), range(20), range(30)]
-        a = ragged_array(array=src)
-        b = ragged_array(array=src)
+        a = ra.RaggedArray(array=src)
+        b = ra.RaggedArray(array=src)
 
         assert (a == b).all()
 
@@ -202,14 +200,24 @@ class Test_ragged_array(unittest.TestCase):
 
     def test_ra_where(self):
         src = [range(10), range(20), range(30)]
-        a = ragged_array(array=src)
+        a = ra.RaggedArray(array=src)
 
         assert_array_equal(
-            ragged_array.where(a < 5),
+            ra.where(a < 5),
             (np.array([0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2]),
              np.array([0, 1, 2, 3, 4, 0, 1, 2, 3, 4, 0, 1, 2, 3, 4])))
 
-        assert_array_equal(ragged_array.where(a < 0), (np.array([]), np.array([])))
+        assert_array_equal(
+            ra.where(a < 0),
+            np.array([[], []],))
+
+    def test_ra_where_ndarray(self):
+        '''ra.where should work on ndarrays, too'''
+        a = np.array([range(5), range(4, -1, -1)])
+
+        assert_array_equal(
+            ra.where(a == 4),
+            [[0, 1], [4, 0]])
 
 
 class TestParallelLoad(unittest.TestCase):
@@ -260,7 +268,7 @@ class TestPartition(unittest.TestCase):
         indices = [0, 10, 15, 37, 100]
         trj_lens = [10, 20, 100]
 
-        partit_indices = partition_indices(indices, trj_lens)
+        partit_indices = ra.partition_indices(indices, trj_lens)
 
         self.assertEqual(
             partit_indices,
