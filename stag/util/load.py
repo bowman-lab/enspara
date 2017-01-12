@@ -1,7 +1,9 @@
+import logging
+import sys
+
 import multiprocessing as mp
 from itertools import count, repeat
 from contextlib import closing
-import sys
 from functools import partial, reduce
 import ctypes
 from operator import mul
@@ -10,6 +12,9 @@ import numpy as np
 import mdtraj as md
 
 from ..exception import ImproperlyConfigured
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 
 def sound_trajectory(trj, **kwargs):
@@ -21,6 +26,8 @@ def sound_trajectory(trj, **kwargs):
     '''
     search_space = [0, sys.maxsize]
     base = 2
+
+    logger.debug("Sounding '%s' with args: %s", trj, kwargs)
 
     while search_space[0]+1 != search_space[1]:
         start = search_space[0]
@@ -39,8 +46,7 @@ def sound_trajectory(trj, **kwargs):
 
 
 def load_as_concatenated(filenames, processes=None, args=None, **kwargs):
-    '''
-    Load many trajectories from disk into a single numpy array.
+    '''Load many trajectories from disk into a single numpy array.
 
     Additional arguments to md.load are supplied as *args XOR **kwargs.
     If *args are supplied, args and filenames must be of the same length
@@ -85,9 +91,13 @@ def load_as_concatenated(filenames, processes=None, args=None, **kwargs):
                 "When add'l unnamed args are provided, len(args) == "
                 "len(filenames).")
     else:  # not args and not kwargs
-        args = repeat([])
+        args = repeat({})
         kwargs = {}
 
+    # cast to list to handle generators
+    filenames = list(filenames)
+
+    logger.debug("Sounding %s trajectories.", len(filenames))
     lengths = [sound_trajectory(f, **kw) for f, kw in zip(filenames, args)]
 
     root_trj = md.load(filenames[0], frame=0, **kwargs)
@@ -99,11 +109,12 @@ def load_as_concatenated(filenames, processes=None, args=None, **kwargs):
     # mp.Arrays are one-dimensional, so multiply the shape together for size
     shared_array = mp.Array(ctypes.c_double, reduce(mul, full_shape, 1),
                             lock=False)
+    logger.debug("Allocated array of shape %s", full_shape)
 
-    with closing(mp.Pool(processes=processes, initializer=init,
+    with closing(mp.Pool(processes=processes, initializer=_init,
                          initargs=(shared_array,))) as p:
         proc = p.map_async(
-            partial(load_to_position, arr_shape=full_shape),
+            partial(_load_to_position, arr_shape=full_shape),
             zip([sum(lengths[0:i]) for i in range(len(lengths))],
                 filenames, args))
 
@@ -113,35 +124,34 @@ def load_as_concatenated(filenames, processes=None, args=None, **kwargs):
     # wait for termination
     p.join()
 
-    xyz = tonumpyarray(shared_array).reshape(full_shape)
+    xyz = _tonumpyarray(shared_array).reshape(full_shape)
 
     return lengths, xyz
 
 
-def init(shared_array_):
+def _init(shared_array_):
     # for some reason, the shared array must be inhereted, not passed
     # as an argument
     global shared_array
     shared_array = shared_array_
 
 
-def tonumpyarray(mp_arr):
+def _tonumpyarray(mp_arr):
     # mp_arr.get_obj if Array is locking, otherwise mp_arr.
     return np.frombuffer(mp_arr)
 
 
-def load_to_position(spec, arr_shape):
+def _load_to_position(spec, arr_shape):
     '''
-    Load a specified file into a specified position by spec, using the
-    topology top. The arr_shape parameter lets us know how big the final
-    array should be.
+    Load a specified file into a specified position by spec. The
+    arr_shape parameter lets us know how big the final array should be.
     '''
     (position, filename, load_kwargs) = spec
 
     xyz = md.load(filename, **load_kwargs).xyz
 
     # mp.Array must be converted to numpy array and reshaped
-    arr = tonumpyarray(shared_array).reshape(arr_shape)
+    arr = _tonumpyarray(shared_array).reshape(arr_shape)
 
     # dump coordinates in.
     arr[position:position+len(xyz)] = xyz

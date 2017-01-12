@@ -136,11 +136,10 @@ def counts_to_probs(C, symmetrization=None):
         C_sym = C + C.T
         T = _normalize_rows(C_sym)
     elif symmetrization is "mle":
-        print("MLE option not yet implemented")
-        return
+        raise NotImplementedError("MLE option not yet implemented")
     else:
-        print("Invalid symmetrization option in count_matrix_to_probabilities")
-        return
+        raise NotImplementedError(
+            "Invalid symmetrization option in count_matrix_to_probabilities")
 
     return T.tolil()
 

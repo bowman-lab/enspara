@@ -80,9 +80,7 @@ class TestTrajClustering(unittest.TestCase):
             self.trj,
             distance_method='rmsd',
             n_clusters=N_CLUSTERS,
-            n_iters=1000,
-            output=open(os.devnull, 'w')
-            )
+            n_iters=1000)
 
         # kcenters will always produce the same number of clusters on
         # this input data (unchanged by kmedoids updates)
@@ -106,8 +104,7 @@ class TestTrajClustering(unittest.TestCase):
             init_cluster_centers=None,
             n_clusters=N_CLUSTERS,
             random_first_center=False,
-            n_iters=100,
-            output=open(os.devnull, 'w')
+            n_iters=100
             ) for i in range(10)]
 
         result = results[0]
@@ -129,8 +126,7 @@ class TestTrajClustering(unittest.TestCase):
             distance_method='rmsd',
             init_cluster_centers=None,
             dist_cutoff=0.1,
-            random_first_center=False,
-            output=open(os.devnull, 'w')
+            random_first_center=False
             )
 
         self.assertEqual(len(np.unique(result.assignments)), 17)
@@ -150,8 +146,7 @@ class TestTrajClustering(unittest.TestCase):
             distance_method='rmsd',
             n_clusters=N_CLUSTERS,
             init_cluster_centers=None,
-            random_first_center=False,
-            output=open(os.devnull, 'w')
+            random_first_center=False
             )
 
         self.assertEqual(len(np.unique(result.assignments)), N_CLUSTERS)
@@ -207,8 +202,7 @@ class TestNumpyClustering(unittest.TestCase):
             n_clusters=N_CLUSTERS,
             dist_cutoff=None,
             n_iters=100,
-            random_first_center=False,
-            output=open(os.devnull, 'w'))
+            random_first_center=False)
 
         assert len(result.center_indices) == N_CLUSTERS
 
@@ -224,8 +218,7 @@ class TestNumpyClustering(unittest.TestCase):
             n_clusters=3,
             dist_cutoff=2,
             init_cluster_centers=None,
-            random_first_center=False,
-            output=open(os.devnull, 'w'))
+            random_first_center=False)
 
         centers = np.concatenate(find_cluster_centers(
             np.concatenate(self.traj_lst), result.distances))
@@ -239,8 +232,7 @@ class TestNumpyClustering(unittest.TestCase):
             np.concatenate(self.traj_lst),
             distance_method='euclidean',
             n_clusters=N_CLUSTERS,
-            n_iters=10000,
-            output=open(os.devnull, 'w'))
+            n_iters=10000)
 
         assert len(np.unique(result.assignments)) == N_CLUSTERS
         assert len(result.center_indices) == N_CLUSTERS

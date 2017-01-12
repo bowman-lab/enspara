@@ -1,4 +1,5 @@
 import unittest
+import logging
 
 import numpy as np
 import mdtraj as md
@@ -227,6 +228,8 @@ class TestParallelLoad(unittest.TestCase):
         self.top_fname = get_fn('native.pdb')
         self.top = md.load(self.top_fname).top
 
+        logging.getLogger('stag.util.load').setLevel(logging.DEBUG)
+
     def test_load_as_concatenated(self):
 
         t1 = md.load(self.trj_fname, top=self.top)
@@ -237,6 +240,35 @@ class TestParallelLoad(unittest.TestCase):
             [self.trj_fname]*3,
             top=self.top,
             processes=7)
+        expected = np.concatenate([t1.xyz, t2.xyz, t3.xyz])
+
+        self.assertTrue(np.all(expected == xyz))
+        self.assertEqual(expected.shape, xyz.shape)
+
+    def test_load_as_concatenated_generator(self):
+
+        t1 = md.load(self.trj_fname, top=self.top)
+        t2 = md.load(self.trj_fname, top=self.top)
+
+        lengths, xyz = load_as_concatenated(
+            reversed([self.trj_fname, self.trj_fname]),  # returns a generator
+            top=self.top)
+
+        expected = np.concatenate([t2.xyz, t1.xyz])
+
+        self.assertTrue(np.all(expected == xyz))
+        self.assertEqual(expected.shape, xyz.shape)
+
+
+    def test_load_as_concatenated_noargs(self):
+        '''It's ok if no args are passed.'''
+
+        t1 = md.load(self.top_fname, top=self.top)
+        t2 = md.load(self.top_fname, top=self.top)
+        t3 = md.load(self.top_fname, top=self.top)
+
+        lengths, xyz = load_as_concatenated([self.top_fname]*3)
+
         expected = np.concatenate([t1.xyz, t2.xyz, t3.xyz])
 
         self.assertTrue(np.all(expected == xyz))
