@@ -1,8 +1,9 @@
 import logging
+import sys
+
 import multiprocessing as mp
 from itertools import count, repeat
 from contextlib import closing
-import sys
 from functools import partial, reduce
 import ctypes
 from operator import mul
@@ -26,7 +27,7 @@ def sound_trajectory(trj, **kwargs):
     search_space = [0, sys.maxsize]
     base = 2
 
-    logger.debug("Sounding %s with args: %s", trj, kwargs)
+    logger.debug("Sounding '%s' with args: %s", trj, kwargs)
 
     while search_space[0]+1 != search_space[1]:
         start = search_space[0]
@@ -93,7 +94,10 @@ def load_as_concatenated(filenames, processes=None, args=None, **kwargs):
         args = repeat({})
         kwargs = {}
 
-    logger.debug("Sounding %s trajectories...", len(filenames))
+    # cast to list to handle generators
+    filenames = list(filenames)
+
+    logger.debug("Sounding %s trajectories.", len(filenames))
     lengths = [sound_trajectory(f, **kw) for f, kw in zip(filenames, args)]
 
     root_trj = md.load(filenames[0], frame=0, **kwargs)

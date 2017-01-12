@@ -245,6 +245,21 @@ class TestParallelLoad(unittest.TestCase):
         self.assertTrue(np.all(expected == xyz))
         self.assertEqual(expected.shape, xyz.shape)
 
+    def test_load_as_concatenated_generator(self):
+
+        t1 = md.load(self.trj_fname, top=self.top)
+        t2 = md.load(self.trj_fname, top=self.top)
+
+        lengths, xyz = load_as_concatenated(
+            reversed([self.trj_fname, self.trj_fname]),  # returns a generator
+            top=self.top)
+
+        expected = np.concatenate([t2.xyz, t1.xyz])
+
+        self.assertTrue(np.all(expected == xyz))
+        self.assertEqual(expected.shape, xyz.shape)
+
+
     def test_load_as_concatenated_noargs(self):
         '''It's ok if no args are passed.'''
 
