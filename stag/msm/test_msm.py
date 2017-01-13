@@ -1,3 +1,4 @@
+from nose.tools import assert_true, assert_false
 from numpy.testing import assert_array_equal
 
 import numpy as np
@@ -12,7 +13,9 @@ def test_counts_to_probs_ndarray():
     probs = counts_to_probs(np.array([[0, 2, 8],
                                       [4, 2, 4],
                                       [7, 3, 0]]))
-    probs = np.round(probs.toarray(), decimals=1)
+    assert_false(scipy.sparse.isspmatrix(probs))
+
+    probs = np.round(probs, decimals=1)
 
     expected = np.array(
         [[0,   0.2, 0.8],
@@ -31,6 +34,7 @@ def test_counts_to_probs_sparse():
         [[0, 2, 8],
          [4, 2, 4],
          [7, 3, 0]]))
+    assert_true(scipy.sparse.isspmatrix(probs))
 
     expected = np.array(
         [[0,   0.2, 0.8],

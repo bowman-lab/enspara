@@ -141,7 +141,7 @@ def counts_to_probs(C, symmetrization=None):
         raise NotImplementedError(
             "Invalid symmetrization option in count_matrix_to_probabilities")
 
-    return T.tolil()
+    return T
 
 
 def eigenspectra(T, n_eigs=None, left=True, maxiter=100000, tol=1E-30):

@@ -7,7 +7,7 @@ import numpy as np
 import mdtraj as md
 from mdtraj.testing import get_fn
 
-from nose.tools import assert_raises
+from nose.tools import assert_raises, assert_less
 
 from . import save_states
 
@@ -116,9 +116,9 @@ class TestTrajClustering(unittest.TestCase):
         # we do this here because hybrid seems to be more unstable than the
         # other two testing methods for some reason.
         all_dists = np.concatenate([r.distances for r in results])
-        assert abs(np.average(all_dists) - 0.085) < 0.01
+        assert_less( abs(np.average(all_dists) - 0.085), 0.01 )
 
-        assert abs(np.std(result.distances) - 0.0187) < 0.005
+        assert_less( abs(np.std(result.distances) - 0.0187), 0.005 )
 
     def test_kcenters_maxdist(self):
         result = kcenters(
