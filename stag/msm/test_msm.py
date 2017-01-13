@@ -1,4 +1,4 @@
-from nose.tools import assert_true, assert_false
+from nose.tools import with_setup, assert_equal
 from numpy.testing import assert_array_equal
 
 import numpy as np
@@ -8,40 +8,38 @@ from .transition_matrices import counts_to_probs
 
 
 def test_counts_to_probs_ndarray():
-    '''counts_to_probs accepts ndarrays.'''
+    '''counts_to_probs accepts & returns ndarrays, spmatrix subclasses.
+    '''
 
-    probs = counts_to_probs(np.array([[0, 2, 8],
-                                      [4, 2, 4],
-                                      [7, 3, 0]]))
-    assert_false(scipy.sparse.isspmatrix(probs))
+    arr_types = [
+        np.array, scipy.sparse.lil_matrix, scipy.sparse.csr_matrix,
+        scipy.sparse.coo_matrix, scipy.sparse.csc_matrix,
+        scipy.sparse.dia_matrix, scipy.sparse.dok_matrix
+    ]
 
-    probs = np.round(probs, decimals=1)
+    for arr_type in arr_types:
 
-    expected = np.array(
-        [[0,   0.2, 0.8],
-         [0.4, 0.2, 0.4],
-         [0.7, 0.3, 0]])
+        in_m = arr_type(
+            [[0, 2, 8],
+             [4, 2, 4],
+             [7, 3, 0]])
+        out_m = counts_to_probs(in_m)
 
-    assert_array_equal(
-        probs,
-        expected)
+        assert_equal(type(in_m), type(out_m))
 
+        # cast to ndarray if necessary for comparison to correct result
+        try:
+            out_m = out_m.toarray()
+        except AttributeError:
+            pass
 
-def test_counts_to_probs_sparse():
-    '''counts_to_probs accepts lil sparse arrays'''
+        out_m = np.round(out_m, decimals=1)
 
-    probs = counts_to_probs(scipy.sparse.lil_matrix(
-        [[0, 2, 8],
-         [4, 2, 4],
-         [7, 3, 0]]))
-    assert_true(scipy.sparse.isspmatrix(probs))
+        expected = np.array(
+            [[0,   0.2, 0.8],
+             [0.4, 0.2, 0.4],
+             [0.7, 0.3, 0]])
 
-    expected = np.array(
-        [[0,   0.2, 0.8],
-         [0.4, 0.2, 0.4],
-         [0.7, 0.3, 0]])
-
-    probs = np.round(probs.toarray(), decimals=1)
-    assert_array_equal(
-        probs,
-        expected)
+        assert_array_equal(
+            out_m,
+            expected)

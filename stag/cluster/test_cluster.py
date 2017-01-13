@@ -1,6 +1,5 @@
 from __future__ import print_function, division, absolute_import
 
-import os
 import unittest
 
 import numpy as np
@@ -89,7 +88,7 @@ class TestTrajClustering(unittest.TestCase):
         self.assertAlmostEqual(
             np.average(result.distances), 0.085, delta=0.01)
         self.assertAlmostEqual(
-            np.std(result.distances), 0.018754008455304401, delta=0.005)
+            np.std(result.distances), 0.019, delta=0.005)
 
     def test_hybrid(self):
         '''
@@ -116,9 +115,13 @@ class TestTrajClustering(unittest.TestCase):
         # we do this here because hybrid seems to be more unstable than the
         # other two testing methods for some reason.
         all_dists = np.concatenate([r.distances for r in results])
-        assert_less( abs(np.average(all_dists) - 0.085), 0.01 )
+        assert_less(
+            abs(np.average(all_dists) - 0.085),
+            0.011)
 
-        assert_less( abs(np.std(result.distances) - 0.0187), 0.005 )
+        assert_less(
+            abs(np.std(result.distances) - 0.0187),
+            0.005)
 
     def test_kcenters_maxdist(self):
         result = kcenters(

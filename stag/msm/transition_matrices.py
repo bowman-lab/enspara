@@ -104,6 +104,7 @@ def _normalize_rows(C):
         inv_weights = scipy.sparse.dia_matrix((inv_weights, 0),
                                               C_csr.shape).tocsr()
         T = inv_weights.dot(C_csr)
+        T = type(C)(T)  # recast T to the input type
     else:
         weights = np.asarray(C.sum(axis=1)).flatten()
         inv_weights = np.zeros(n_states)
