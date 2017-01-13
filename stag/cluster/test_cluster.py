@@ -209,7 +209,7 @@ class TestNumpyClustering(unittest.TestCase):
         centers = np.concatenate(find_cluster_centers(
             np.concatenate(self.traj_lst), result.distances))
 
-        self.check_generators(centers, distance=2.5)
+        self.check_generators(centers, distance=4.0)
 
     def test_kcenters(self):
         result = kcenters(
