@@ -62,6 +62,8 @@ def assigns_to_counts(
 
     n_traj = len(assigns)
 
+    assigns = np.array([a[np.where(a != -1)] for a in assigns])
+
     if n_states is None:
         n_states = 0
         for i in range(n_traj):

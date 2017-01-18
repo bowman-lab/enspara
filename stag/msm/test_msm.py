@@ -4,10 +4,28 @@ from numpy.testing import assert_array_equal
 import numpy as np
 import scipy.sparse
 
-from .transition_matrices import counts_to_probs
+from .transition_matrices import counts_to_probs, assigns_to_counts
 
 
-def test_counts_to_probs_ndarray():
+def test_assigns_to_counts_negnums():
+    '''counts_to_probs ignores -1 values
+    '''
+
+    in_m = np.array(
+            [[0, 2,  0, -1],
+             [1, 2, -1, -1],
+             [1, 0,  0, 1]])
+
+    counts = assigns_to_counts(in_m)
+
+    expected = np.array([[1, 1, 1],
+                         [1, 0, 1],
+                         [1, 0, 0]])
+
+    assert_array_equal(counts.toarray(), expected)
+
+
+def test_counts_to_probs_types():
     '''counts_to_probs accepts & returns ndarrays, spmatrix subclasses.
     '''
 
