@@ -7,10 +7,16 @@
 
 from __future__ import print_function, division, absolute_import
 
+import logging
+
 import numpy as np
 import scipy
 import scipy.sparse
 import scipy.sparse.linalg
+
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 
 def _assigns_to_counts_helper(
@@ -186,8 +192,13 @@ def eigenspectra(T, n_eigs=None, left=True, maxiter=100000, tol=1E-30):
         try:
             vals, vecs = scipy.sparse.linalg.eigs(
                 T.tocsr(), n_eigs, which="LR", maxiter=maxiter, tol=tol)
-        except ValueError:
+        except ValueError as e:
+            logger.debug(
+                "Failed to compute eigenvalues with T.shape==%s and"
+                "n_eigs==%s. Error was '%s'", T.shape, n_eigs, e)
             if T.shape[0] < 1000:
+                logger.warning(
+                    "Falling back to dense matrix in eigenspectra calculation")
                 # if we error out with a sparse matrix, try a dense one
                 vals, vecs = scipy.linalg.eig(T.toarray())
             else:
