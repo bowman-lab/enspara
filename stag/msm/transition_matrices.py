@@ -7,10 +7,16 @@
 
 from __future__ import print_function, division, absolute_import
 
+import logging
+
 import numpy as np
 import scipy
 import scipy.sparse
 import scipy.sparse.linalg
+
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 
 def _assigns_to_counts_helper(
@@ -41,8 +47,8 @@ def assigns_to_counts(
     Parameters
     ----------
     assigns : array, shape=(traj_len, )
-        A 2-D array where each row is a trajectory consisting of a sequence
-        of state indices.
+        A 2-D array where each row is a trajectory consisting of a
+        sequence of state indices.
     n_states : int, default=None
         The number of states. This is useful for controlling the
         dimensions of the transition count matrix in cases where the
@@ -82,8 +88,8 @@ def assigns_to_counts(
 
 
 def _normalize_rows(C):
-    """Normalize every row of a transition count matrix to obtain a transition
-    probability matrix.
+    """Normalize every row of a transition count matrix to obtain a
+    transition probability matrix.
 
     Parameters
     ----------
@@ -117,8 +123,9 @@ def _normalize_rows(C):
 
 
 def counts_to_probs(C, symmetrization=None):
-    """Infer a transition probability matrix from a transition count matrix
-    using the specified method to enforce microscopic reversibility.
+    """Infer a transition probability matrix from a transition count
+    matrix using the specified method to enforce microscopic
+    reversibility.
 
     Parameters
     ----------
@@ -148,29 +155,55 @@ def counts_to_probs(C, symmetrization=None):
 
 
 def eigenspectra(T, n_eigs=None, left=True, maxiter=100000, tol=1E-30):
+    """Compute the eigenvectors and eigenvalues of a transition
+    probability matrix.
+
+    Parameters
+    ----------
+    T : array, shape=(n_states, n_states)
+        A transition probability matrix.
+    n_eigs : int, optional
+        The number of eigenvalues and eigenvectors to compute. If not
+        speficied, all are computed.
+    left: bool, default=False
+        Compute the left eigenvalues rather than the right eigenvalues.
+    maxiter : int, default=100000
+        Limit the maximum number of iterations used by the sparse
+        eigenvalue solver. (Used only for sparse matrices.)
+    tol : float, default=1e-30
+        Relative accuracy for eigenvalues (stopping criterion). (Used
+        only for sparse matrices.)
+
+    Returns
+    -------
+    vals, vecs : 2-tuple, (ndarray, ndarray)
+        Eigenvalues and eigenvectors for this system, respectively.
+    """
+
     if n_eigs is None:
         n_eigs = T.shape[0]
     elif n_eigs < 2:
         raise ValueError('n_eig must be greater than or equal to 2')
 
+    # left eigenvectors input processing (?)
+    T = T.T if left else T
+
+    # performance improvement for small arrays; also prevents erroring
+    # out when ndim - 2 <= n_eigs and T is sparse.
+    if T.shape[0] < 1000 and scipy.sparse.issparse(T):
+        T = T.toarray()
+
     if scipy.sparse.issparse(T):
-        if left:
-            vals, vecs = scipy.sparse.linalg.eigs(
-                T.T.tocsr(), n_eigs, which="LR", maxiter=maxiter, tol=tol)
-        else:
-            vals, vecs = scipy.sparse.linalg.eigs(
-                T.tocsr(), n_eigs, which="LR", maxiter=maxiter, tol=tol)
+        vals, vecs = scipy.sparse.linalg.eigs(
+            T.tocsr(), n_eigs, which="LR", maxiter=maxiter, tol=tol)
     else:
-        if left:
-            vals, vecs = scipy.linalg.eig(T.T)
-        else:
-            vals, vecs = scipy.linalg.eig(T)
+        vals, vecs = scipy.linalg.eig(T)
 
     order = np.argsort(-np.real(vals))
     vals = vals[order]
     vecs = vecs[:, order]
 
-    # normalize the first eigenvector to obtain the equilibrium populations
+    # normalize the first eigenvector to obtain the eq populations
     vecs[:, 0] /= vecs[:, 0].sum()
 
     vals = np.real(vals[:n_eigs])
