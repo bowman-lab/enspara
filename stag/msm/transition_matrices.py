@@ -190,7 +190,7 @@ def eigenspectra(T, n_eigs=None, left=True, maxiter=100000, tol=1E-30):
 
     # performance improvement for small arrays; also prevents erroring
     # out when ndim - 2 <= n_eigs and T is sparse.
-    if T.shape[0] < 1000 and scipy.issparse(T):
+    if T.shape[0] < 1000 and scipy.sparse.issparse(T):
         T = T.toarray()
 
     if scipy.sparse.issparse(T):
