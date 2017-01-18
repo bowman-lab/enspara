@@ -188,21 +188,14 @@ def eigenspectra(T, n_eigs=None, left=True, maxiter=100000, tol=1E-30):
     # left eigenvectors input processing (?)
     T = T.T if left else T
 
+    # performance improvement for small arrays; also prevents erroring
+    # out when ndim - 2 <= n_eigs and T is sparse.
+    if T.shape[0] < 1000 and scipy.issparse(T):
+        T = T.toarray()
+
     if scipy.sparse.issparse(T):
-        try:
-            vals, vecs = scipy.sparse.linalg.eigs(
-                T.tocsr(), n_eigs, which="LR", maxiter=maxiter, tol=tol)
-        except ValueError as e:
-            logger.debug(
-                "Failed to compute eigenvalues with T.shape==%s and"
-                "n_eigs==%s. Error was '%s'", T.shape, n_eigs, e)
-            if T.shape[0] < 1000:
-                logger.warning(
-                    "Falling back to dense matrix in eigenspectra calculation")
-                # if we error out with a sparse matrix, try a dense one
-                vals, vecs = scipy.linalg.eig(T.toarray())
-            else:
-                raise
+        vals, vecs = scipy.sparse.linalg.eigs(
+            T.tocsr(), n_eigs, which="LR", maxiter=maxiter, tol=tol)
     else:
         vals, vecs = scipy.linalg.eig(T)
 
