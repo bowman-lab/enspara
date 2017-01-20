@@ -1,4 +1,4 @@
-from nose.tools import assert_equal
+from nose.tools import assert_equal, assert_raises
 from numpy.testing import assert_array_equal, assert_allclose
 
 import numpy as np
@@ -85,6 +85,32 @@ def test_assigns_to_counts_negnums():
                          [1, 0, 0]])
 
     assert_array_equal(counts.toarray(), expected)
+
+
+def test_counts_to_probs_symm_options():
+    '''counts_to_probs handles mixed case input strings, None.
+    '''
+
+    in_m = np.array(
+        [[0, 2, 8],
+         [4, 2, 4],
+         [7, 3, 0]])
+
+    with assert_raises(NotImplementedError):
+        counts = counts_to_probs(in_m, 'mle')
+    with assert_raises(NotImplementedError):
+        counts = counts_to_probs(in_m, 'some_garbage_value')
+
+    counts = counts_to_probs(in_m, 'TranSPOSE')
+    assert_allclose(counts, np.array([[ 0.      ,  0.285714,  0.714286],
+                                      [ 0.352941,  0.235294,  0.411765],
+                                      [ 0.681818,  0.318182,  0.      ]]),
+                    rtol=1e-03)
+
+    counts = counts_to_probs(in_m, None)
+    assert_allclose(counts, np.array([[0. , 0.2, 0.8],
+                                      [0.4, 0.2, 0.4],
+                                      [0.7, 0.3, 0. ]]))
 
 
 def test_counts_to_probs_types():
