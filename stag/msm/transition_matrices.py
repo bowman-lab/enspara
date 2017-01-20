@@ -19,25 +19,15 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 
-def _assigns_to_counts_helper(
-        assigns_1d, n_states=None, lag_time=1, sliding_window=True):
-    # TODO: check trajectory is 1d array
+def transpose(C):
+    '''Symmetrize a counts matrix using the transpose method
 
-    if n_states is None:
-        n_states = assigns_1d.max() + 1
-
-    if sliding_window:
-        start_states = assigns_1d[:-lag_time:1]
-        end_states = assigns_1d[lag_time::1]
-    else:
-        start_states = assigns_1d[:-lag_time:lag_time]
-        end_states = assigns_1d[lag_time::lag_time]
-    transitions = np.row_stack((start_states, end_states))
-    counts = np.ones(transitions.shape[1], dtype=int)
-    C = scipy.sparse.coo_matrix((counts, transitions),
-                                shape=(n_states, n_states), dtype=int)
-
-    return C.tolil()
+    Parameters
+    ----------
+    C : array, shape=(n_states, n_states)
+        The matrix to symmetrize
+    '''
+    return C + C.T
 
 
 def assigns_to_counts(
@@ -131,7 +121,7 @@ def counts_to_probs(C, symmetrization=None):
     ----------
     C : array, shape=(n_states, n_states)
         A transition count matrix.
-    symmetrization : {None, 'transpose', 'mle'}
+    symmetrization : function, arguments=C
         Method to use to enforce microscopic reversibility.
 
     Returns
@@ -140,17 +130,10 @@ def counts_to_probs(C, symmetrization=None):
         A row-normalized transition probability matrix.
     """
 
-    if symmetrization is None:
-        T = _normalize_rows(C)
-    elif symmetrization.lower() == "transpose":
-        C_sym = C + C.T
-        T = _normalize_rows(C_sym)
-    elif symmetrization.lower() == "mle":
-        raise NotImplementedError("MLE option not yet implemented")
-    else:
-        raise NotImplementedError(
-            "Invalid symmetrization option %s in count_matrix_to_probabilities"
-            % symmetrization)
+    if symmetrization:
+        C = symmetrization(C)
+
+    T = _normalize_rows(C)
 
     return T
 
@@ -217,3 +200,24 @@ def eq_probs(T, maxiter=100000, tol=1E-30):
     val, vec = eigenspectra(T, n_eigs=3, left=True, maxiter=maxiter, tol=tol)
 
     return vec[:, 0]
+
+
+def _assigns_to_counts_helper(
+        assigns_1d, n_states=None, lag_time=1, sliding_window=True):
+    # TODO: check trajectory is 1d array
+
+    if n_states is None:
+        n_states = assigns_1d.max() + 1
+
+    if sliding_window:
+        start_states = assigns_1d[:-lag_time:1]
+        end_states = assigns_1d[lag_time::1]
+    else:
+        start_states = assigns_1d[:-lag_time:lag_time]
+        end_states = assigns_1d[lag_time::lag_time]
+    transitions = np.row_stack((start_states, end_states))
+    counts = np.ones(transitions.shape[1], dtype=int)
+    C = scipy.sparse.coo_matrix((counts, transitions),
+                                shape=(n_states, n_states), dtype=int)
+
+    return C.tolil()
