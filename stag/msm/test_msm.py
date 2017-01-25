@@ -1,3 +1,5 @@
+import tempfile
+
 from nose.tools import assert_equal, assert_raises
 from numpy.testing import assert_array_equal, assert_allclose
 
@@ -5,7 +7,7 @@ import numpy as np
 import scipy.sparse
 
 from .transition_matrices import counts_to_probs, assigns_to_counts, \
-    eigenspectra, transpose
+    eigenspectra, transpose, trim, TrimMapping
 from .timescales import implied_timescales
 
 
@@ -15,6 +17,32 @@ ARR_TYPES = [
     scipy.sparse.coo_matrix, scipy.sparse.csc_matrix,
     scipy.sparse.dia_matrix, scipy.sparse.dok_matrix
 ]
+
+
+def test_trim_mapping_roundtrip():
+    transformations = [(0, 0),
+                       (1, -1),
+                       (2, 1),
+                       (3, 2)]
+
+    tm = TrimMapping(transformations)
+
+    with tempfile.NamedTemporaryFile(mode='w') as f:
+        tm.write(f)
+        f.flush()
+
+        with open(f.name, 'r') as f2:
+            assert_equal(
+                f2.read().split('\n'),
+                ['original,mapped', '0,0', '1,-1', '2,1', '3,2', ''])
+        with open(f.name, 'r') as f2:
+            tm2 = TrimMapping.read(f2)
+            assert_equal(tm, tm2)
+
+    with tempfile.NamedTemporaryFile() as f:
+        tm.save(f.name)
+        tm2 = TrimMapping.load(f.name)
+        assert_equal(tm, tm2)
 
 
 def test_implied_timescales():
@@ -139,3 +167,30 @@ def test_counts_to_probs_types():
         assert_array_equal(
             out_m,
             expected)
+
+
+def test_trim():
+    # 3 connected components, one disconnected (state 4)
+    given = np.array([[1, 2, 0, 0],
+                      [2, 1, 0, 1],
+                      [0, 0, 1, 0],
+                      [0, 1, 0, 2]])
+
+    mapping, trimmed = trim(given)
+
+    expected_tcounts = np.array([[1, 2, 0],
+                                 [2, 1, 1],
+                                 [0, 1, 2]])
+    assert_array_equal(trimmed, expected_tcounts)
+
+    expected_mapping = TrimMapping([(0, 0), (1, 1), (3, 2)])
+    assert_equal(mapping, expected_mapping)
+
+    mapping, trimmed = trim(given, threshold=2)
+
+    expected_tcounts = np.array([[1, 2],
+                                 [2, 1]])
+    assert_array_equal(trimmed, expected_tcounts)
+
+    expected_mapping = TrimMapping([(0, 0), (1, 1)])
+    assert_equal(mapping, expected_mapping)

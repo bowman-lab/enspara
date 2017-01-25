@@ -8,7 +8,9 @@
 from __future__ import print_function, division, absolute_import
 import logging
 
+
 import numpy as np
+from scipy.sparse.csgraph import connected_components
 
 from .transition_matrices import counts_to_probs, assigns_to_counts, \
     eigenspectra, transpose
