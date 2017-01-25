@@ -19,6 +19,17 @@ ARR_TYPES = [
 ]
 
 
+def test_trim_mapping_construction():
+
+    tm1 = TrimMapping()
+    tm1.to_original = {0: 0, 1: 1, 2: 3, 3: 7}
+
+    tm2 = TrimMapping()
+    tm2.to_mapped = {0: 0, 1: 1, 3: 2, 7: 3}
+
+    assert_equal(tm1, tm2)
+
+
 def test_trim_mapping_roundtrip():
     transformations = [(0, 0),
                        (1, -1),

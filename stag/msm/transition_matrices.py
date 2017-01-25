@@ -22,11 +22,33 @@ logger.setLevel(logging.INFO)
 
 
 class TrimMapping:
+    """The TrimMapping maps state ids before and after ergodic trimming.
+
+    It stores the injective mapping of trimmed state ids to original
+    state ids, as well as the inverse, in its two properties.
+
+    Attributes
+    ----------
+    to_original : dict
+        Dictionary mapping post-trim state ids to original state ids.
+    to_mapped : dict
+        Dictionary mapping original state ids to post-trim state ids.
+    """
 
     __slots__ = ['to_original']
 
-    def __init__(self, transformations):
-        self.to_original = {t: o for o, t in transformations}
+    def __init__(self, transformations=None):
+        '''Construct a new TrimMapping.
+
+        Parameters
+        ----------
+        transformations : list, optional
+            A list of 2-tuples, each of the form
+            (original_state_id, trimmed_state_id).
+        '''
+
+        if transformations:
+            self.to_original = {t: o for o, t in transformations}
 
     @classmethod
     def load(cls, filename):
@@ -50,6 +72,10 @@ class TrimMapping:
     @property
     def to_mapped(self):
         return {v: k for k, v in self.to_original.items()}
+
+    @to_mapped.setter
+    def to_mapped(self, value):
+        self.to_original = {v: k for k, v in value.items()}
 
     def save(self, filename):
         with open(filename, 'w') as f:
@@ -80,6 +106,7 @@ class TrimMapping:
 
     def __str__(self):
         return "to_original:"+str(self.to_original)
+
 
 def transpose(C):
     '''Symmetrize a counts matrix using the transpose method
