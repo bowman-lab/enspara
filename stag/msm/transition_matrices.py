@@ -285,7 +285,7 @@ def eigenspectra(T, n_eigs=None, left=True, maxiter=100000, tol=1E-30):
     return vals, vecs
 
 
-def trim(counts, threshold=1, renumber_states=True):
+def trim_disconnected(counts, threshold=1, renumber_states=True):
     """Trim disconnected states from a counts matrix.
 
     Parameters
@@ -306,6 +306,10 @@ def trim(counts, threshold=1, renumber_states=True):
         The mapping between original and renumbered states (if states
         were renumbered).
     """
+
+    out_type = type(counts)
+    if scipy.sparse.issparse(counts):
+        counts = counts.toarray()
 
     thresholded_counts = np.array(counts, copy=True)
     thresholded_counts[counts < threshold] = 0
@@ -343,7 +347,7 @@ def trim(counts, threshold=1, renumber_states=True):
 
         mapping = TrimMapping(zip(keep_states, keep_states))
 
-    return mapping, trimmed_counts
+    return mapping, out_type(trimmed_counts)
 
 
 def eq_probs(T, maxiter=100000, tol=1E-30):
