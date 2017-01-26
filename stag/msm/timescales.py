@@ -10,38 +10,36 @@ import logging
 
 
 import numpy as np
-from scipy.sparse.csgraph import connected_components
 
-from .transition_matrices import counts_to_probs, assigns_to_counts, \
-    eigenspectra, transpose, trim_disconnected
+from .transition_matrices import assigns_to_counts, eigenspectra, \
+    trim_disconnected
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 
 def implied_timescales(
-        assigns, lag_times, n_imp_times=None,
-        sliding_window=True, trim=False,
-        symmetrization=transpose, n_procs=None):
+        assigns, lag_times, method, n_imp_times=None,
+        sliding_window=True, trim=False, n_procs=None):
     """Calculate the implied timescales across a range of lag times.
 
     Parameters
     ----------
     assigns : array, shape=(traj_len, )
-        A 2-D array where each row is a trajectory consisting of a sequence
-        of state indices.
+        A 2-D array where each row is a trajectory consisting of a 
+        sequence of state indices.
     lag_times : int
         The lag times (i.e. observation interval) for counting
         transitions. An eigenspectra is calculated for each lag time in
         the range [1, lag_times].
+    method : function(C) -> T
+        The function used to construct a transition probability matrix
+        from assignments.
     n_imp_times : int, optional
         the number of implied timescales to calculate for each
         lag_time. If not specified, 10% of the number of states is used.
     trim : bool, default=False
         ignore states without transitions both in and out.
-    symmetrization : { None, "transpose", "mle" }, default=None
-        symmetrize the transitions matrix using this method, or don't,
-        if None is provided.
     sliding_window : bool, default=True
         Whether to use a sliding window for counting transitions or to
         take every lag_time'th state.
@@ -79,7 +77,7 @@ def implied_timescales(
         if trim:
             mapping, C = trim_disconnected(C)
 
-        T = counts_to_probs(C, symmetrization=symmetrization)
+        T = method(C)
 
         e_vals, e_vecs = eigenspectra(
             T, n_eigs=n_imp_times+1)  # +1 accounts for eq pops
