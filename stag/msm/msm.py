@@ -176,7 +176,8 @@ class MSM:
                 return os.path.join(tempdir, fname_dict[prop])
 
             with open(os.path.join(tempdir, 'manifest.json'), 'w') as f:
-                json.dump(fname_dict, f)
+                json.dump(fname_dict, f, sort_keys=True, indent=4,
+                          separators=(',', ': '))
 
             with open(tmp_fname('mapping_'), 'w') as f:
                 self.mapping_.write(f)

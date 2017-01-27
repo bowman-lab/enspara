@@ -63,6 +63,23 @@ def test_msm_roundtrip():
             pass
 
     msmfile = tempfile.mktemp()
+    manifest_path = 'a-wierd-manifest-path.json'
+    try:
+        # specify different names for some properties
+        msm.save(msmfile)
+        assert_true(os.path.isdir(msmfile))
+
+        shutil.move(os.path.join(msmfile, 'manifest.json'),
+                    os.path.join(msmfile, manifest_path))
+
+        assert_equal(MSM.load(msmfile, manifest=manifest_path), msm)
+    finally:
+        try:
+            shutil.rmtree(msmfile)
+        except:
+            pass
+
+    msmfile = tempfile.mktemp()
     filedict = {prop: os.path.basename(tempfile.mktemp())
                 for prop in ['tprobs_', 'tcounts_', 'eq_probs_', 'mapping_']}
     try:
@@ -79,3 +96,5 @@ def test_msm_roundtrip():
             shutil.rmtree(msmfile)
         except:
             pass
+
+
