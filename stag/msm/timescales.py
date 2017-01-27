@@ -8,10 +8,12 @@
 from __future__ import print_function, division, absolute_import
 import logging
 
+
 import numpy as np
+from scipy.sparse.csgraph import connected_components
 
 from .transition_matrices import counts_to_probs, assigns_to_counts, \
-    eigenspectra, transpose
+    eigenspectra, transpose, trim_disconnected
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -73,6 +75,9 @@ def implied_timescales(
             n_states=n_states,
             lag_time=lag_time,
             sliding_window=sliding_window)
+
+        if trim:
+            mapping, C = trim_disconnected(C)
 
         T = counts_to_probs(C, symmetrization=symmetrization)
 

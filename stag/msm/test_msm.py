@@ -1,11 +1,13 @@
-from nose.tools import assert_equal, assert_raises
+import tempfile
+
+from nose.tools import assert_equal, assert_raises, assert_is
 from numpy.testing import assert_array_equal, assert_allclose
 
 import numpy as np
 import scipy.sparse
 
 from .transition_matrices import counts_to_probs, assigns_to_counts, \
-    eigenspectra, transpose
+    eigenspectra, transpose, trim_disconnected, TrimMapping
 from .timescales import implied_timescales
 
 
@@ -17,24 +19,63 @@ ARR_TYPES = [
 ]
 
 
+def test_trim_mapping_construction():
+
+    tm1 = TrimMapping()
+    tm1.to_original = {0: 0, 1: 1, 2: 3, 3: 7}
+
+    tm2 = TrimMapping()
+    tm2.to_mapped = {0: 0, 1: 1, 3: 2, 7: 3}
+
+    assert_equal(tm1, tm2)
+
+
+def test_trim_mapping_roundtrip():
+    transformations = [(0, 0),
+                       (1, -1),
+                       (2, 1),
+                       (3, 2)]
+
+    tm = TrimMapping(transformations)
+
+    with tempfile.NamedTemporaryFile(mode='w') as f:
+        tm.write(f)
+        f.flush()
+
+        with open(f.name, 'r') as f2:
+            assert_equal(
+                f2.read().split('\n'),
+                ['original,mapped', '0,0', '1,-1', '2,1', '3,2', ''])
+        with open(f.name, 'r') as f2:
+            tm2 = TrimMapping.read(f2)
+            assert_equal(tm, tm2)
+
+    with tempfile.NamedTemporaryFile() as f:
+        tm.save(f.name)
+        tm2 = TrimMapping.load(f.name)
+        assert_equal(tm, tm2)
+
+
 def test_implied_timescales():
 
     in_assigns = np.array(
         [ ([0]*30 + [1]*20 + [-1]*10),
           ([2]*20 + [-1]*5 + [1]*35),
-          ([0]*10 + [1]*30 + [2]*20),
+          ([0]*10 + [1]*30 + [2]*19 + [3]),
           ])
 
+    # test without symmetrization
     tscales = implied_timescales(in_assigns, lag_times=range(1, 5),
                                  symmetrization=None)
     expected = np.array(
-        [[1., 26.029585],
-         [2., 24.852135],
-         [3., 23.666594],
-         [4., 22.471671]])
+        [[  1.      ,  19.495726],
+         [  2.      ,  19.615267],
+         [  3.      ,  20.094898],
+         [  4.      ,  19.79665 ]])
 
     assert_allclose(tscales, expected, rtol=1e-03)
 
+    # test with explicit symmetrization
     tscales = implied_timescales(
         in_assigns, lag_times=range(1, 5), symmetrization=transpose)
     expected = np.array(
@@ -42,6 +83,15 @@ def test_implied_timescales():
          [2., 36.990989],
          [3., 35.478863],
          [4., 33.960748]])
+
+    # test with trimming
+    tscales = implied_timescales(
+        in_assigns, lag_times=range(1, 5), symmetrization=transpose, trim=True)
+    expected = np.array(
+        [[1., 25.562856],
+         [2., 24.384637],
+         [3., 23.198114],
+         [4., 22.001933]])
 
     assert_allclose(tscales, expected, rtol=1e-03)
 
@@ -139,3 +189,33 @@ def test_counts_to_probs_types():
         assert_array_equal(
             out_m,
             expected)
+
+
+def test_trim_disconnected():
+    # 3 connected components, one disconnected (state 4)
+
+    for arr_type in ARR_TYPES:
+        given = arr_type([[1, 2, 0, 0],
+                          [2, 1, 0, 1],
+                          [0, 0, 1, 0],
+                          [0, 1, 0, 2]])
+
+        mapping, trimmed = trim_disconnected(given)
+        assert_is(type(trimmed), type(given))
+
+        expected_tcounts = np.array([[1, 2, 0],
+                                     [2, 1, 1],
+                                     [0, 1, 2]])
+        assert_array_equal(trimmed, expected_tcounts)
+
+        expected_mapping = TrimMapping([(0, 0), (1, 1), (3, 2)])
+        assert_equal(mapping, expected_mapping)
+
+        mapping, trimmed = trim_disconnected(given, threshold=2)
+
+        expected_tcounts = np.array([[1, 2],
+                                     [2, 1]])
+        assert_array_equal(trimmed, expected_tcounts)
+
+        expected_mapping = TrimMapping([(0, 0), (1, 1)])
+        assert_equal(mapping, expected_mapping)

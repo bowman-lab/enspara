@@ -8,15 +8,104 @@
 from __future__ import print_function, division, absolute_import
 
 import logging
+import csv
 
 import numpy as np
 import scipy
 import scipy.sparse
 import scipy.sparse.linalg
+from scipy.sparse.csgraph import connected_components
 
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
+
+
+class TrimMapping:
+    """The TrimMapping maps state ids before and after ergodic trimming.
+
+    It stores the injective mapping of trimmed state ids to original
+    state ids, as well as the inverse, in its two properties.
+
+    Attributes
+    ----------
+    to_original : dict
+        Dictionary mapping post-trim state ids to original state ids.
+    to_mapped : dict
+        Dictionary mapping original state ids to post-trim state ids.
+    """
+
+    __slots__ = ['to_original']
+
+    def __init__(self, transformations=None):
+        '''Construct a new TrimMapping.
+
+        Parameters
+        ----------
+        transformations : list, optional
+            A list of 2-tuples, each of the form
+            (original_state_id, trimmed_state_id).
+        '''
+
+        if transformations:
+            self.to_original = {t: o for o, t in transformations}
+
+    @classmethod
+    def load(cls, filename):
+        with open(filename, 'r') as f:
+            return cls.read(f)
+
+    @classmethod
+    def read(cls, file):
+        reader = csv.reader(file)
+
+        headers = next(reader)
+        assert headers == ['original', 'mapped']
+
+        column = {h: [] for h in headers}
+        for row in reader:
+            for h, v in zip(headers, row):
+                column[h].append(int(v))
+
+        return TrimMapping(zip(column['original'], column['mapped']))
+
+    @property
+    def to_mapped(self):
+        return {v: k for k, v in self.to_original.items()}
+
+    @to_mapped.setter
+    def to_mapped(self, value):
+        self.to_original = {v: k for k, v in value.items()}
+
+    def save(self, filename):
+        with open(filename, 'w') as f:
+            self.write(f)
+
+    def write(self, file):
+        writer = csv.writer(file)
+
+        writer.writerow(['original', 'mapped'])
+        writer.writerows(sorted(self.to_mapped.items(),
+                                key=lambda x: x[0]))
+
+    def __eq__(self, other):
+
+        if self is other:
+            return True
+        elif hasattr(other, 'to_original') and hasattr(other, 'to_mapped'):
+            return (self.to_original == other.to_original) and \
+                   (self.to_mapped == other.to_mapped)
+        else:
+            try:
+                return TrimMapping(other) == self
+            except:
+                return False
+
+    def __repr__(self):
+        return str(self)
+
+    def __str__(self):
+        return "to_original:"+str(self.to_original)
 
 
 def transpose(C):
@@ -194,6 +283,71 @@ def eigenspectra(T, n_eigs=None, left=True, maxiter=100000, tol=1E-30):
     vecs = np.real(vecs[:, :n_eigs])
 
     return vals, vecs
+
+
+def trim_disconnected(counts, threshold=1, renumber_states=True):
+    """Trim disconnected states from a counts matrix.
+
+    Parameters
+    ----------
+    counts : array, shape=(n_states, n_states)
+        A 2-D array in which the position [i, j] is the number of times
+        the transition i->j was observed.
+    threshold : int, default=1
+        The number of transitions in and out of a state that are
+        required to count the state as connected.
+    renumber_states : bool, default=False
+        Should states be renumbered, reassigning new, contiguous state
+        indices after removing disconnected states.
+
+    Returns
+    -------
+    mapping:  TrimMapping
+        The mapping between original and renumbered states (if states
+        were renumbered).
+    """
+
+    out_type = type(counts)
+    if scipy.sparse.issparse(counts):
+        counts = counts.toarray()
+
+    thresholded_counts = np.array(counts, copy=True)
+    thresholded_counts[counts < threshold] = 0
+
+    n_subgraphs, labels = connected_components(thresholded_counts,
+                                               connection="strong",
+                                               directed=True)
+
+    pops = counts.sum(axis=1)
+
+    subgraph_pops = [np.sum(pops[labels == i])
+                     for i in range(n_subgraphs)]
+    maxpop_subgraph = np.argmax(subgraph_pops)
+
+    keep_states = np.where(labels == maxpop_subgraph)[0]
+
+    if renumber_states:
+        new_states = np.arange(len(keep_states))
+
+        trimmed_counts = np.zeros((len(keep_states), len(keep_states)),
+                                  dtype=counts.dtype)
+
+        trimmed_counts[np.ix_(new_states, new_states)] = \
+            counts[np.ix_(keep_states, keep_states)]
+
+        mapping = TrimMapping(zip(keep_states,
+                              range(len(trimmed_counts))))
+
+    else:
+        trim_states = np.where(labels != maxpop_subgraph)
+        trimmed_counts = np.array(counts, copy=True)
+
+        trimmed_counts[trim_states, :] = 0
+        trimmed_counts[:, trim_states] = 0
+
+        mapping = TrimMapping(zip(keep_states, keep_states))
+
+    return mapping, out_type(trimmed_counts)
 
 
 def eq_probs(T, maxiter=100000, tol=1E-30):
