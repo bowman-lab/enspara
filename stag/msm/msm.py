@@ -44,7 +44,7 @@ class MSM:
                                             range(self.n_states)))
 
         self.tprobs_ = self.method(tcounts)
-        self.eq_probs_ = eq_probs(tcounts)
+        self.eq_probs_ = eq_probs(self.tprobs_)
 
     @property
     def n_states(self):
