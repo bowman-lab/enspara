@@ -6,17 +6,21 @@
 # Proprietary and confidential
 
 from __future__ import print_function, division, absolute_import
+import logging
 
 import numpy as np
 
 from .transition_matrices import counts_to_probs, assigns_to_counts, \
-    eigenspectra
+    eigenspectra, transpose
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 
 def implied_timescales(
         assigns, lag_times, n_imp_times=None,
         sliding_window=True, trim=False,
-        symmetrization=None, n_procs=1):
+        symmetrization=transpose, n_procs=None):
     """Calculate the implied timescales across a range of lag times.
 
     Parameters
@@ -47,6 +51,10 @@ def implied_timescales(
     all_imp_times :  array, shape=(n_states, n_states)
         A transition count matrix.
     """
+
+    if n_procs is not None:
+        logger.warning(
+            "implied_timescales n_procs is currently unimplemented")
 
     # n_imp_times=None -> 10% number of states
     n_states = assigns.max() + 1

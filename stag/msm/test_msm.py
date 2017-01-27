@@ -1,11 +1,11 @@
-from nose.tools import assert_equal
+from nose.tools import assert_equal, assert_raises
 from numpy.testing import assert_array_equal, assert_allclose
 
 import numpy as np
 import scipy.sparse
 
 from .transition_matrices import counts_to_probs, assigns_to_counts, \
-    eigenspectra
+    eigenspectra, transpose
 from .timescales import implied_timescales
 
 
@@ -25,7 +25,8 @@ def test_implied_timescales():
           ([0]*10 + [1]*30 + [2]*20),
           ])
 
-    tscales = implied_timescales(in_assigns, lag_times=range(1, 5))
+    tscales = implied_timescales(in_assigns, lag_times=range(1, 5),
+                                 symmetrization=None)
     expected = np.array(
         [[1., 26.029585],
          [2., 24.852135],
@@ -35,7 +36,7 @@ def test_implied_timescales():
     assert_allclose(tscales, expected, rtol=1e-03)
 
     tscales = implied_timescales(
-        in_assigns, lag_times=range(1, 5), symmetrization='transpose')
+        in_assigns, lag_times=range(1, 5), symmetrization=transpose)
     expected = np.array(
         [[1., 38.497835],
          [2., 36.990989],
@@ -85,6 +86,27 @@ def test_assigns_to_counts_negnums():
                          [1, 0, 0]])
 
     assert_array_equal(counts.toarray(), expected)
+
+
+def test_counts_to_probs_symm_options():
+    '''counts_to_probs handles mixed case input strings, None.
+    '''
+
+    in_m = np.array(
+        [[0, 2, 8],
+         [4, 2, 4],
+         [7, 3, 0]])
+
+    counts = counts_to_probs(in_m, transpose)
+    assert_allclose(counts, np.array([[0.      ,  0.285714,  0.714286],
+                                      [0.352941,  0.235294,  0.411765],
+                                      [0.681818,  0.318182,  0.      ]]),
+                    rtol=1e-03)
+
+    counts = counts_to_probs(in_m, None)
+    assert_allclose(counts, np.array([[0. , 0.2, 0.8],
+                                      [0.4, 0.2, 0.4],
+                                      [0.7, 0.3, 0. ]]))
 
 
 def test_counts_to_probs_types():
