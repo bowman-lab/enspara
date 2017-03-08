@@ -323,11 +323,13 @@ class RaggedArray(object):
             else:
                 _ensure_ragged_data(array)
         # concatenate data if list of lists
-        if len(array) > 0:
+        if (len(array) > 0) and (lengths is None):
             if _is_iterable(array[0]):
                 self._data = np.concatenate(array)
             else:
                 self._data = np.array(array)
+        elif len(array) > 0:
+            self._data = np.array(array)
         # new array greater with >0 elements
         if (lengths is None) and (len(array) > 0):
             # array of arrays
