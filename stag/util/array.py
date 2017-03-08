@@ -16,6 +16,17 @@ def where(mask):
         return np.where(mask)
 
 
+def save(output_name, ragged_array):
+    to_save = {'array': ragged_array._data, 'lengths': ragged_array.lengths}
+    io.saveh(output_name, **to_save)
+
+
+def load(input_name):
+    ragged_load = io.loadh(input_name)
+    return RaggedArray(
+        ragged_load['array'], lengths=ragged_load['lengths'])
+
+
 def partition_list(list_to_partition, partition_lengths):
     if np.sum(partition_lengths) != len(list_to_partition):
         raise DataInvalid(
@@ -600,11 +611,3 @@ class RaggedArray(object):
     def flatten(self):
         return self._data.flatten()
 
-    def save(self, output_name):
-        to_save = {'array': self._data, 'lengths': self.lengths}
-        io.saveh(output_name, **to_save)
-
-    def load(input_name):
-        ragged_load = io.loadh(input_name)
-        return RaggedArray(
-            ragged_load['array'], lengths=ragged_load['lengths'])
