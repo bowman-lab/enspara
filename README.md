@@ -1,6 +1,45 @@
 # stag
 Statistical Trajectory Analysis and Guidance
 
+## Clustering Large Trajectory Sets
+
+Clustering usually requires a single array, but trajectories are normally fragmented in multiple files. Our `load_as_concatenated` function will load multiple trajectories into a single numpy array. The only requirement is that each trajectory have the same number of atoms. Their topologies need not match, nor must their lengths match.
+
+The `KHybrid` class, one of the clustering algorithms we implemented, follows the scikit-learn API.
+
+```python
+import mdtraj as md
+
+from stag.cluster import KHybrid
+from stag.util.load import load_as_concatenated
+
+top = md.load('path/to/trj_or_topology').top
+
+# loads a giant trajectory in parallel into a single numpy array.
+lengths, xyz = load_as_concatenated(
+    reversed(['path/to/trj1', 'path/to/trj2', ...]),
+    top=top,
+    processes=8)
+
+# configure a KHybrid (KCenters + KMedoids) clustering object
+# to use rmsd and stop creating new clusters when the maximum
+# RMSD gets to 2.5A.
+clustering = KHybrid(
+    metric=md.rmsd,
+    dist_cutoff=0.25)
+
+# md.rmsd requires an md.Trajectory object, so wrap `xyz` in
+# the topology.
+clustering.fit(md.Trajectory(xyz=xyz, topology=top))
+
+# the distances between each frame in `xyz` and the nearest cluster center
+print(clustering.distances_)
+# the cluster id for each frame in `xyz`
+print(clustering.labels_)
+# a list of the `xyz` frame index for each cluster center
+print(clustering.center_indices_)
+```
+
 ## Making an MSM
 
 ### Option 1: Use the object
