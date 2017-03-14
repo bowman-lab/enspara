@@ -23,7 +23,7 @@ tcounts = assigns_to_counts(assigns, lag_time=lag_time)
 mapping, tcounts = trim_disconnected(tcounts)
 
 tprobs = builders.transpose(tcounts)
-self.eq_probs_ = eq_probs(tprobs)
+eq_probs_ = eq_probs(tprobs)
 ```
 
 ## Logging
