@@ -1,6 +1,31 @@
 # stag
 Statistical Trajectory Analysis and Guidance
 
+## Making an MSM
+
+### Option 1: Use the object
+
+[WIP]
+
+### Option 2: Functional interface
+
+```python
+
+from stag.msm import builders
+from stag.msm.transition_matrices import assigns_to_counts, TrimMapping, \
+    eq_probs, trim_disconnected
+
+lag_time = 100
+
+tcounts = assigns_to_counts(assigns, lag_time=lag_time)
+
+#if you want to trim states without counts in both directions:
+mapping, tcounts = trim_disconnected(tcounts)
+
+tprobs = builders.transpose(tcounts)
+self.eq_probs_ = eq_probs(tprobs)
+```
+
 ## Logging
 
 STAG uses python's logging module. Each file has its own logger, which are
