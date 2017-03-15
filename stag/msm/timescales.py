@@ -26,7 +26,7 @@ def implied_timescales(
     Parameters
     ----------
     assigns : array, shape=(traj_len, )
-        A 2-D array where each row is a trajectory consisting of a 
+        A 2-D array where each row is a trajectory consisting of a
         sequence of state indices.
     lag_times : int
         The lag times (i.e. observation interval) for counting

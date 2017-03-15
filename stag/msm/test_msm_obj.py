@@ -17,21 +17,29 @@ def test_create_msm():
     in_assigns = TRIMMABLE['assigns']
 
     cases = [
-        ('normalize', TRIMMABLE['no_trimming']['msm']['normalize']),
-        ('transpose', TRIMMABLE['no_trimming']['msm']['transpose']),
-        (builders.normalize, TRIMMABLE['no_trimming']['msm']['normalize']),
-        (builders.transpose, TRIMMABLE['no_trimming']['msm']['transpose'])
+        # ({'method': 'normalize'},
+        #  TRIMMABLE['no_trimming']['msm']['normalize']),
+        # ({'method': 'transpose'},
+        #  TRIMMABLE['no_trimming']['msm']['transpose']),
+        # ({'method': builders.normalize},
+        #  TRIMMABLE['no_trimming']['msm']['normalize']),
+        # ({'method': builders.transpose},
+        #  TRIMMABLE['no_trimming']['msm']['transpose']),
+        # ({'method': builders.normalize, 'trim': True},
+        #  TRIMMABLE['trimming']['msm']['normalize']),
+        ({'method': builders.transpose, 'trim': True},
+         TRIMMABLE['trimming']['msm']['transpose'])
     ]
 
     for method, expected in cases:
-        msm = MSM(lag_time=1, method=method)
+        msm = MSM(lag_time=1, **method)
 
         assert_false(any([hasattr(msm, param) for param in
                           ['tprobs_', 'tcounts_', 'eq_probs_', 'mapping_']]))
 
         msm.fit(in_assigns)
 
-        assert_equal(msm.n_states, len(np.unique(in_assigns[in_assigns >= 0])))
+        assert_equal(msm.n_states, msm.tprobs_.shape[0])
 
         for prop, expected_value in expected.items():
             calc_value = getattr(msm, prop)

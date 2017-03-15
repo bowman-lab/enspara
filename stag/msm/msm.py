@@ -14,6 +14,10 @@ from .transition_matrices import assigns_to_counts, TrimMapping, \
 
 
 class MSM:
+    '''
+    The MSM class is an sklearn-style wrapper class for the methods in
+    the stag.msm module for construction Mark
+    '''
 
     __slots__ = ['lag_time', 'sliding_window', 'trim', 'method',
                  'tcounts_', 'tprobs_', 'eq_probs_', 'mapping_']
@@ -40,18 +44,12 @@ class MSM:
         if self.trim:
             self.mapping_, tcounts = trim_disconnected(tcounts)
         else:
-            self.mapping_ = TrimMapping(zip(range(self.n_states),
-                                            range(self.n_states)))
+            self.mapping_ = TrimMapping(zip(range(tcounts.shape[0]),
+                                            range(tcounts.shape[0])))
 
         self.tprobs_ = self.method(tcounts)
+        self.n_states_ = self.tprobs_.shape[0]
         self.eq_probs_ = eq_probs(self.tprobs_)
-
-    @property
-    def n_states(self):
-        if hasattr(self, 'tcounts_'):
-            return self.tcounts_.shape[0]
-        else:
-            return None
 
     @property
     def config(self):
@@ -197,3 +195,18 @@ class MSM:
                 raise NotImplementedError("MSMs don't do zip archives yet.")
             else:
                 shutil.copytree(tempdir, path)
+
+    def to_dataframe(self):
+        '''WORK IN PROGRESS: add counts, mapping'''
+        import pandas as pd
+
+        node_df = pd.DataFrame.from_records(
+            list(enumerate(self.eq_probs_)), columns=['id', 'population'])
+
+        node_df = node_df.set_index('id')
+
+        edge_df = pd.DataFrame.from_records(
+            zip(*sparse.find(self.tprobs_)),
+            columns=['source', 'target', 'prob'])
+
+        return node_df, edge_df

@@ -49,6 +49,28 @@ TRIMMABLE = {
             },
         },
     'trimming': {
+        'msm': {
+            'normalize': {
+                'tcounts_': np.array([[38,  2,  0,  0],
+                                      [ 0, 82,  1,  0],
+                                      [ 0,  1, 37,  1],
+                                      [ 0,  0,  0,  0]]),
+                'tprobs_': np.array([[ 0.987952,  0.012048],
+                                     [ 0.026316,  0.973684]]),
+                'eq_probs_': np.array([ 0.68595,  0.31405]),
+                'mapping_': TrimMapping([(1, 0), (2, 1)])
+            },
+            'transpose': {
+                'tcounts_': np.array([[38,  2,  0,  0],
+                                      [ 0, 82,  1,  0],
+                                      [ 0,  1, 37,  1],
+                                      [ 0,  0,  0,  0]]),
+                'tprobs_': np.array([[ 0.987952,  0.012048],
+                                     [ 0.026316,  0.973684]]),
+                'eq_probs_': np.array([ 0.68595,  0.31405]),
+                'mapping_': TrimMapping([(1, 0), (2, 1)])
+            }
+        },
         'implied_timescales': {
             'transpose': np.array(
                 [[1., 25.562856],
