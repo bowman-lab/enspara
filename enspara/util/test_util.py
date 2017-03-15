@@ -228,7 +228,7 @@ class TestParallelLoad(unittest.TestCase):
         self.top_fname = get_fn('native.pdb')
         self.top = md.load(self.top_fname).top
 
-        logging.getLogger('stag.util.load').setLevel(logging.DEBUG)
+        logging.getLogger('enspara.util.load').setLevel(logging.DEBUG)
 
     def test_load_as_concatenated(self):
 

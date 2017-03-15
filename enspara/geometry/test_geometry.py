@@ -4,7 +4,7 @@ import unittest
 
 import numpy as np
 
-from stag.geometry._euclidean_distance import euclidean_distance
+from enspara.geometry._euclidean_distance import euclidean_distance
 from sklearn.metrics.pairwise import euclidean_distances \
     as sk_euclidean_distances
 
@@ -13,7 +13,7 @@ class TestTrajClustering(unittest.TestCase):
 
     def test_euclidean_distance(self):
         '''
-        Verify that the output of stag.geometry.euclidean_distance is the same
+        Verify that the output of enspara.geometry.euclidean_distance is the same
         (albeit with a different shape) as the sklearn euclidean_distances.
         '''
 
