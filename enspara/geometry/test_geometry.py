@@ -4,7 +4,6 @@ import unittest
 
 import numpy as np
 
-from enspara.geometry._euclidean_distance import euclidean_distance
 from sklearn.metrics.pairwise import euclidean_distances \
     as sk_euclidean_distances
 
