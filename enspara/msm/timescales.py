@@ -6,17 +6,23 @@
 # Proprietary and confidential
 
 from __future__ import print_function, division, absolute_import
+import logging
+
 
 import numpy as np
+from scipy.sparse.csgraph import connected_components
 
 from .transition_matrices import counts_to_probs, assigns_to_counts, \
-    eigenspectra
+    eigenspectra, transpose, trim_disconnected
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 
 def implied_timescales(
         assigns, lag_times, n_imp_times=None,
         sliding_window=True, trim=False,
-        symmetrization=None, n_procs=1):
+        symmetrization=transpose, n_procs=None):
     """Calculate the implied timescales across a range of lag times.
 
     Parameters
@@ -48,6 +54,10 @@ def implied_timescales(
         A transition count matrix.
     """
 
+    if n_procs is not None:
+        logger.warning(
+            "implied_timescales n_procs is currently unimplemented")
+
     # n_imp_times=None -> 10% number of states
     n_states = assigns.max() + 1
 
@@ -65,6 +75,9 @@ def implied_timescales(
             n_states=n_states,
             lag_time=lag_time,
             sliding_window=sliding_window)
+
+        if trim:
+            mapping, C = trim_disconnected(C)
 
         T = counts_to_probs(C, symmetrization=symmetrization)
 
