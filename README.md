@@ -1,4 +1,4 @@
-# stag
+# enspara
 Statistical Trajectory Analysis and Guidance
 
 ## Clustering Large Trajectory Sets
@@ -10,8 +10,8 @@ The `KHybrid` class, one of the clustering algorithms we implemented, follows th
 ```python
 import mdtraj as md
 
-from stag.cluster import KHybrid
-from stag.util.load import load_as_concatenated
+from enspara.cluster import KHybrid
+from enspara.util.load import load_as_concatenated
 
 top = md.load('path/to/trj_or_topology').top
 
@@ -50,8 +50,8 @@ print(clustering.center_indices_)
 
 ```python
 
-from stag.msm import builders
-from stag.msm.transition_matrices import assigns_to_counts, TrimMapping, \
+from enspara.msm import builders
+from enspara.msm.transition_matrices import assigns_to_counts, TrimMapping, \
     eq_probs, trim_disconnected
 
 lag_time = 100
@@ -68,7 +68,7 @@ eq_probs_ = eq_probs(tprobs)
 ## Logging
 
 STAG uses python's logging module. Each file has its own logger, which are
-usually set to output files with the module name (e.g. `stag.cluster.khybrid`).
+usually set to output files with the module name (e.g. `enspara.cluster.khybrid`).
 
 They can be made louder or quieter on a per-file level by accessing the
 logger and running `logger.setLevel()`. So the following code sets the log
@@ -77,7 +77,7 @@ level of `util.load` to DEBUG.
 ```python
 import logging
 
-logging.getLogger('stag.util.load').setLevel(logging.DEBUG)
+logging.getLogger('enspara.util.load').setLevel(logging.DEBUG)
 ```
 
 # Developing
