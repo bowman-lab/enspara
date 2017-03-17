@@ -8,6 +8,7 @@ import numpy as np
 from scipy import sparse
 from scipy.io import mmwrite, mmread
 
+from ..exception import ImproperlyConfigured
 from . import builders
 from .transition_matrices import assigns_to_counts, TrimMapping, \
     eq_probs, trim_disconnected
@@ -48,8 +49,15 @@ class MSM:
                                             range(tcounts.shape[0])))
 
         self.tprobs_ = self.method(tcounts)
-        self.n_states_ = self.tprobs_.shape[0]
         self.eq_probs_ = eq_probs(self.tprobs_)
+
+    @property
+    def n_states_(self):
+        if hasattr(self, 'tprobs_'):
+            return self.tprobs_.shape[0]
+        else:
+            raise ImproperlyConfigured(
+                "MSM must be fit before it has a number of states.")
 
     @property
     def config(self):

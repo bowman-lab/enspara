@@ -17,16 +17,16 @@ def test_create_msm():
     in_assigns = TRIMMABLE['assigns']
 
     cases = [
-        # ({'method': 'normalize'},
-        #  TRIMMABLE['no_trimming']['msm']['normalize']),
-        # ({'method': 'transpose'},
-        #  TRIMMABLE['no_trimming']['msm']['transpose']),
-        # ({'method': builders.normalize},
-        #  TRIMMABLE['no_trimming']['msm']['normalize']),
-        # ({'method': builders.transpose},
-        #  TRIMMABLE['no_trimming']['msm']['transpose']),
-        # ({'method': builders.normalize, 'trim': True},
-        #  TRIMMABLE['trimming']['msm']['normalize']),
+        ({'method': 'normalize'},
+         TRIMMABLE['no_trimming']['msm']['normalize']),
+        ({'method': 'transpose'},
+         TRIMMABLE['no_trimming']['msm']['transpose']),
+        ({'method': builders.normalize},
+         TRIMMABLE['no_trimming']['msm']['normalize']),
+        ({'method': builders.transpose},
+         TRIMMABLE['no_trimming']['msm']['transpose']),
+        ({'method': builders.normalize, 'trim': True},
+         TRIMMABLE['trimming']['msm']['normalize']),
         ({'method': builders.transpose, 'trim': True},
          TRIMMABLE['trimming']['msm']['transpose'])
     ]
@@ -39,7 +39,7 @@ def test_create_msm():
 
         msm.fit(in_assigns)
 
-        assert_equal(msm.n_states, msm.tprobs_.shape[0])
+        assert_equal(msm.n_states_, msm.tprobs_.shape[0])
 
         for prop, expected_value in expected.items():
             calc_value = getattr(msm, prop)
@@ -104,5 +104,3 @@ def test_msm_roundtrip():
             shutil.rmtree(msmfile)
         except:
             pass
-
-
