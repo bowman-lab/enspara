@@ -17,7 +17,15 @@ from .transition_matrices import assigns_to_counts, TrimMapping, \
 class MSM:
     '''
     The MSM class is an sklearn-style wrapper class for the methods in
-    the stag.msm module for construction Mark
+    the enspara.msm module for construction Markov state models.
+
+    It takes a `lag_time`, the amount of time to wait to assume that two
+    frames are conditionally independant, and a `method` which is a
+    function (e.g. from `enspara.msm.builders`) that will construct the
+    transition probability matrix from the transition count matrix.
+
+    The option `trim` determines if states without a transition both in
+    and out will be excluded.
     '''
 
     __slots__ = ['lag_time', 'sliding_window', 'trim', 'method',
