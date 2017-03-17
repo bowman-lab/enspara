@@ -3,6 +3,7 @@ import shutil
 import tempfile
 import pickle
 import json
+import logging
 
 import numpy as np
 from scipy import sparse
@@ -12,6 +13,9 @@ from ..exception import ImproperlyConfigured
 from . import builders
 from .transition_matrices import assigns_to_counts, TrimMapping, \
     eq_probs, trim_disconnected
+
+
+logger = logging.getLogger(__name__)
 
 
 class MSM:
@@ -43,6 +47,11 @@ class MSM:
         self.sliding_window = True
 
     def fit(self, assigns):
+        '''Computes a transition count matrix from assigns, then trims
+        states (if applicable) and computes a mapping from new to old
+        state numbering, and then fits the transition probability matrix
+        with the given `method`.
+        '''
 
         tcounts = assigns_to_counts(
             assigns,
@@ -52,6 +61,10 @@ class MSM:
 
         if self.trim:
             self.mapping_, tcounts = trim_disconnected(tcounts)
+            logger.info(
+                "MSM trimmed %s of %s states" %
+                (self.tcounts_.shape[0] - tcounts.shape[0],
+                 self.tcounts_.shape[0]))
         else:
             self.mapping_ = TrimMapping(zip(range(tcounts.shape[0]),
                                             range(tcounts.shape[0])))
@@ -77,7 +90,11 @@ class MSM:
         }
 
     @property
-    def fit_result_(self):
+    def result_(self):
+        '''Returns a dictionary of each of the parameters fit for the
+        MSM (`tprobs`, `tcounts`, `eq_probs`, and `mapping_`).
+        '''
+
         if self.tcounts_ is not None:
             assert self.tprobs_ is not None
             assert self.mapping_ is not None
@@ -102,12 +119,12 @@ class MSM:
             if self.config != other.config:
                 return False
 
-            if self.fit_result_ is None:
+            if self.result_ is None:
                 # one is not fit, equality if neither is
-                return other.fit_result_ is None
+                return other.result_ is None
             else:
                 # eq probs can do numpy comparison (dense)
-                if not np.allclose(self.eq_probs_, other.eq_probs_):
+                if not np.all(self.eq_probs_ == other.eq_probs_):
                     return False
 
                 if self.mapping_ != other.mapping_:
@@ -131,7 +148,8 @@ class MSM:
                    not np.all(f_self[1] == f_other[1]):
                     return False
 
-                if not np.allclose(f_self[2], f_other[2]):
+                if not np.all(f_self[2] == f_other[2]):
+                    print("tprobs differs.")
                     return False
 
                 return True
@@ -142,13 +160,23 @@ class MSM:
     def __str__(self):
         s = "MSM:"+str({
                 'config': self.config,
-                'fit': self.fit_result_
+                'fit': self.result_
             })
 
         return s
 
     @classmethod
     def load(cls, path, manifest='manifest.json'):
+        '''Load an MSM object from disk into memory.
+
+        Parameters
+        ----------
+        path : str
+            The location of the root directory of the MSM seralization
+        manifest : str
+            The name of the file to save as a json manifest of the MSM
+            directory (contains the paths to each other file).
+        '''
         if not os.path.isdir(path):
             raise NotImplementedError("MSMs don't handle zip archives yet.")
 
@@ -166,12 +194,32 @@ class MSM:
         msm.tcounts_ = mmread(fname_dict['tcounts_'])
         msm.tprobs_ = mmread(fname_dict['tprobs_'])
         msm.mapping_ = TrimMapping.load(fname_dict['mapping_'])
-        with open(fname_dict['eq_probs_'], 'r') as f:
-            msm.eq_probs_ = np.array(list(map(float, f.readlines())))
+        msm.eq_probs_ = np.loadtxt(fname_dict['eq_probs_'])
 
         return msm
 
     def save(self, path, force=False, zipfile=False, **filenames):
+        '''Load an MSM object from disk into memory.
+
+        Parameters
+        ----------
+        path : str
+            The location of the root directory of the MSM seralization
+        force : bool, default=False
+            If the directory at path already exists, overwrite it.
+        zipfile : bool, default=False
+            Convert the output to a tarball-zip after writing.
+        mapping_ : str, default='mapping.csv'
+            The name to give the csv containing the mapping_ file.
+        tcounts_ : str, default='tcounts.mtx'
+            The name to give the mtx containing the tcounts_ file.
+        tprobs_ : str, default='tprobs.mtx'
+            The name to give the mtx containing the tprobs_ file.
+        eq_probs_ : str, default='eq-probs.dat'
+            The name to give the dat containing the eq_probs_ file.
+        config : str, default='config.pkl'
+            The name to give the pickled configuration.
+        '''
 
         fname_dict = {
             'mapping_': 'mapping.csv',
@@ -183,8 +231,8 @@ class MSM:
 
         fname_dict.update(filenames)
 
-        with tempfile.TemporaryDirectory(prefix=os.path.basename(path)) as \
-                tempdir:
+        with tempfile.TemporaryDirectory(prefix=os.path.basename(path)) \
+                as tempdir:
 
             def tmp_fname(prop):
                 return os.path.join(tempdir, fname_dict[prop])
@@ -198,9 +246,11 @@ class MSM:
             with open(tmp_fname('tcounts_'), 'wb') as f:
                 mmwrite(f, self.tcounts_)
             with open(tmp_fname('tprobs_'), 'wb') as f:
-                mmwrite(f, self.tprobs_)
-            with open(tmp_fname('eq_probs_'), 'w') as f:
-                f.write("\n".join(map(str, [p for p in self.eq_probs_])))
+                # mmwrite must use this number to allow for consistent
+                # round-tripping of the msm object
+                mmwrite(f, self.tprobs_, precision=20)
+            with open(tmp_fname('eq_probs_'), 'wb') as f:
+                np.savetxt(f, np.array(self.eq_probs_))
             with open(tmp_fname('config'), 'wb') as f:
                 pickle.dump(self.config, f)
 
@@ -211,18 +261,3 @@ class MSM:
                 raise NotImplementedError("MSMs don't do zip archives yet.")
             else:
                 shutil.copytree(tempdir, path)
-
-    def to_dataframe(self):
-        '''WORK IN PROGRESS: add counts, mapping'''
-        import pandas as pd
-
-        node_df = pd.DataFrame.from_records(
-            list(enumerate(self.eq_probs_)), columns=['id', 'population'])
-
-        node_df = node_df.set_index('id')
-
-        edge_df = pd.DataFrame.from_records(
-            zip(*sparse.find(self.tprobs_)),
-            columns=['source', 'target', 'prob'])
-
-        return node_df, edge_df
