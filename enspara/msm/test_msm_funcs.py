@@ -7,7 +7,7 @@ import numpy as np
 import scipy.sparse
 
 from . import builders
-from .transition_matrices import assigns_to_counts, eigenspectra, \
+from .transition_matrices import assigns_to_counts, eigenspectrum, \
    trim_disconnected, TrimMapping
 from .timescales import implied_timescales
 from .test_data import TRIMMABLE
@@ -81,8 +81,14 @@ def test_implied_timescales():
 
     assert_allclose(tscales, expected, rtol=1e-03)
 
+    tscales = implied_timescales(
+        in_assigns, lag_times=range(1, 5), method=builders.transpose,
+        trim=False, n_times=3)
 
-def test_eigenspectra_types():
+    assert_equal(tscales.shape, (4, 3))
+
+
+def test_eigenspectrum_types():
 
     expected_vals = np.array([1., 0.56457513, 0.03542487])
     expected_vecs = np.array(
@@ -97,7 +103,7 @@ def test_eigenspectra_types():
              [0.2, 0.4, 0.4]])
 
         try:
-            e_vals, e_vecs = eigenspectra(probs)
+            e_vals, e_vecs = eigenspectrum(probs)
         except ValueError:
             print("Failed on type %s" % arr_type)
             raise

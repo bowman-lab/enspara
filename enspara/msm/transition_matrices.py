@@ -155,7 +155,7 @@ def assigns_to_counts(
     return C
 
 
-def eigenspectra(T, n_eigs=None, left=True, maxiter=100000, tol=1E-30):
+def eigenspectrum(T, n_eigs=None, left=True, maxiter=100000, tol=1E-30):
     """Compute the eigenvectors and eigenvalues of a transition
     probability matrix.
 
@@ -185,6 +185,11 @@ def eigenspectra(T, n_eigs=None, left=True, maxiter=100000, tol=1E-30):
         n_eigs = T.shape[0]
     elif n_eigs < 2:
         raise ValueError('n_eig must be greater than or equal to 2')
+
+    if n_eigs > T.shape[0]:
+        logger.warning(
+            ("Trying to compute {n} eigenvalues from an {s} x {s} matrix " +
+             "yields only {s} eigenvalues.").format(n=n_eigs, s=T.shape[0]))
 
     # left eigenvectors input processing (?)
     T = T.T if left else T
@@ -282,7 +287,7 @@ def trim_disconnected(counts, threshold=1, renumber_states=True):
 
 
 def eq_probs(T, maxiter=100000, tol=1E-30):
-    val, vec = eigenspectra(T, n_eigs=3, left=True, maxiter=maxiter, tol=tol)
+    val, vec = eigenspectrum(T, n_eigs=3, left=True, maxiter=maxiter, tol=tol)
 
     return vec[:, 0]
 
