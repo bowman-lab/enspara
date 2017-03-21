@@ -17,7 +17,7 @@ top = md.load('path/to/trj_or_topology').top
 
 # loads a giant trajectory in parallel into a single numpy array.
 lengths, xyz = load_as_concatenated(
-    reversed(['path/to/trj1', 'path/to/trj2', ...]),
+    ['path/to/trj1', 'path/to/trj2', ...],
     top=top,
     processes=8)
 
