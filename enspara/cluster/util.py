@@ -40,7 +40,7 @@ class Clusterer(object):
 
     @property
     def center_indices_(self):
-        return self.result_.cluster_center_inds
+        return self.result_.center_indices
 
 
 class ClusterResult(namedtuple('ClusterResult',
