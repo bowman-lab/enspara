@@ -23,7 +23,7 @@ def process_command_line(argv):
         '--topology', required=True,
         help="The topology file for the trajectories.")
     parser.add_argument(
-        '--algorithm', required=True, choices=["kmeans", "khybrid"],
+        '--algorithm', required=True, choices=["khybrid"],
         help="The clustering algorithm to use.")
     parser.add_argument(
         '--atoms', default='name C or name O or name CA or name N or name CB',
@@ -66,12 +66,9 @@ def main(argv=None):
     lengths, xyz = load_as_concatenated(
         args.trajectories, top=top, processes=8)
 
-    # configure a KHybrid (KCenters + KMedoids) clustering object
-    # to use rmsd and stop creating new clusters when the maximum
-    # RMSD gets to 2.5A.
     clustering = KHybrid(
         metric=md.rmsd,
-        dist_cutoff=0.25)
+        dist_cutoff=args.rmsd_cutoff)
 
     # md.rmsd requires an md.Trajectory object, so wrap `xyz` in
     # the topology.
