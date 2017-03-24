@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 
 class KCenters(Clusterer):
 
-    def __init__(self, metric, n_clusters, cluster_radius):
+    def __init__(self, metric, n_clusters=None, cluster_radius=None):
 
         super(KCenters, self).__init__(metric)
 
