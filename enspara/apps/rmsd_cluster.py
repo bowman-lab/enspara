@@ -81,7 +81,8 @@ def main(argv=None):
     result = clustering.result_.partition(lengths)
 
     path_stub = os.path.join(
-        args.output, '-'.join([args.algorithm, str(args.rmsd_cutoff)]))
+        args.output, '-'.join([args.output_tag, args.algorithm,
+                               str(args.rmsd_cutoff)]))
 
     io.saveh(path_stub+'-distances.h5', result.distances)
     io.saveh(path_stub+'-assignments.h5', result.assignments)
