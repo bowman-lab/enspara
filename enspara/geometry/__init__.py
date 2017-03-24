@@ -1,4 +1,8 @@
 from __future__ import print_function, division, absolute_import
 
-from .pockets import get_pockets
-from ._euclidean_distance import euclidean_distance
+
+__all__ = ['multi_group_rmsd', 'unit_vector']
+
+from .unit_vector import *
+from .pockets import *
+from .rotamer import *
