@@ -63,12 +63,15 @@ def main(argv=None):
     top = md.load(args.topology).top
 
     # loads a giant trajectory in parallel into a single numpy array.
+    print("Loading", len(args.trajectories), "trajectories using",
+          args.processes, "processes")
+
     lengths, xyz = load_as_concatenated(
-        args.trajectories, top=top, processes=8)
+        args.trajectories, top=top, processes=args.processes)
 
     clustering = KHybrid(
         metric=md.rmsd,
-        dist_cutoff=args.rmsd_cutoff)
+        cluster_radius=args.rmsd_cutoff)
 
     # md.rmsd requires an md.Trajectory object, so wrap `xyz` in
     # the topology.
