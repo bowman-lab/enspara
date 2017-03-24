@@ -85,10 +85,10 @@ def main(argv=None):
 
     io.saveh(path_stub+'-distances.h5', result.distances)
     io.saveh(path_stub+'-assignments.h5', result.assignments)
-    io.saveh(path_stub+'-center-indices.h5', result.center_indices)
+    # io.saveh(path_stub+'-center-indices.h5', result.center_indices)
 
-    centers = sum([md.load_frame(args.trajectories[t], index=i, top=top)
-                   for t, i in result.center_indices])
+    centers = md.join([md.load_frame(args.trajectories[t], index=i, top=top)
+                       for t, i in result.center_indices])
     centers.save_hdf5(path_stub+'-centers.h5')
 
     return 0
