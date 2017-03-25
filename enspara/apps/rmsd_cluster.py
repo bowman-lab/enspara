@@ -51,7 +51,7 @@ def process_command_line(argv):
 
 
 def rmsd_hack(trj, ref, **kwargs):
-    pivot = len(trj)/2
+    pivot = int(len(trj)/2)
 
     trj1 = trj[0:pivot]
     trj2 = trj[pivot:]
