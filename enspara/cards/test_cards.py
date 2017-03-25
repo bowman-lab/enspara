@@ -28,7 +28,7 @@ N_DIHEDRALS = ROTAMER_TRJS[0].shape[1]
 def test_cards():
 
     ss_mi, dis_mi, s_d_mi, d_s_mi, inds = cards.cards(
-        [TRJ, TRJ], buffer_width=15., n_procs=1, verbose_dir="verbose_output")
+        [TRJ, TRJ], buffer_width=15., n_procs=1)
 
     # np.savetxt(TEST_DATA_DIR+'/cards_ss_mi.dat', ss_mi)
     # np.savetxt(TEST_DATA_DIR+'/cards_dis_mi.dat', dis_mi)

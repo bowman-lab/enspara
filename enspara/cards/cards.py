@@ -7,8 +7,6 @@
 
 from __future__ import print_function, division, absolute_import
 
-import os
-import pickle
 import logging
 
 import numpy as np
@@ -23,11 +21,8 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 
-def cards(trajectories, buffer_width=15, n_procs=1, verbose_dir=None):
+def cards(trajectories, buffer_width=15, n_procs=1):
     n_traj = len(trajectories)
-
-    if verbose_dir is not None and not os.path.exists(verbose_dir):
-        os.mkdir(verbose_dir)
 
     logger.debug("Assigning to rotameric states")
     rotamer_trajs = []
@@ -37,12 +32,6 @@ def cards(trajectories, buffer_width=15, n_procs=1, verbose_dir=None):
         rotamer_trajs.append(rots)
     atom_inds = inds
     rotamer_n_states = n_states
-    if verbose_dir is not None:
-        fn = os.path.join(verbose_dir, "rotamer_n_states.dat")
-        np.savetxt(fn, rotamer_n_states)
-        for i in range(n_traj):
-            fn = os.path.join(verbose_dir, "rotamer_trj%d.dat" % i)
-            np.savetxt(fn, rotamer_trajs[i])
 
     logger.debug("identifying transition times")
     transition_times = []
@@ -59,18 +48,6 @@ def cards(trajectories, buffer_width=15, n_procs=1, verbose_dir=None):
             (ordered_times[i, j], n_ordered_times[i, j],
              disordered_times[i, j], n_disordered_times[i, j]) = disorder.traj_ord_disord_times(tt)
 
-    if verbose_dir is not None:
-        fn = os.path.join(verbose_dir, "ordered_times.dat")
-        np.savetxt(fn, ordered_times)
-        fn = os.path.join(verbose_dir, "disordered_times.dat")
-        np.savetxt(fn, disordered_times)
-        fn = os.path.join(verbose_dir, "n_ordered_times.dat")
-        np.savetxt(fn, n_ordered_times)
-        fn = os.path.join(verbose_dir, "n_disordered_times.dat")
-        np.savetxt(fn, n_disordered_times)
-        fn = os.path.join(verbose_dir, "transition_times.dat")
-        pickle.dump(transition_times, open(fn, "wb"))
-
     # get average ordered and idsordered times
     logger.debug("Calculating ordered/disordered times")
     mean_ordered_times = np.zeros(n_dihedrals)
@@ -81,12 +58,6 @@ def cards(trajectories, buffer_width=15, n_procs=1, verbose_dir=None):
             n_ordered_times[:, j].sum())
         mean_disordered_times[j] = disordered_times[:, j].dot(
             n_disordered_times[:, j])/n_disordered_times[:, j].sum()
-
-    if verbose_dir is not None:
-        fn = os.path.join(verbose_dir, "mean_ordered_times.dat")
-        np.savetxt(fn, mean_ordered_times)
-        fn = os.path.join(verbose_dir, "mean_disordered_times.dat")
-        np.savetxt(fn, mean_disordered_times)
 
     logger.debug("Assigning to disordered states")
     disordered_trajs = []
@@ -100,12 +71,6 @@ def cards(trajectories, buffer_width=15, n_procs=1, verbose_dir=None):
 
         disordered_trajs.append(dis_traj)
     disorder_n_states = 2*np.ones(n_dihedrals)
-    if verbose_dir is not None:
-        fn = os.path.join(verbose_dir, "dis_n_states.dat")
-        np.savetxt(fn, disorder_n_states)
-        for i in range(n_traj):
-            fn = os.path.join(verbose_dir, "dis_trj%d.dat" % i)
-            np.savetxt(fn, disordered_trajs[i])
 
     logger.debug("Calculating structural mutual information")
     structural_mi = _mi_wrapper(
