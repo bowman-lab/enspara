@@ -11,6 +11,8 @@ from operator import mul
 import numpy as np
 import mdtraj as md
 
+from sklearn.externals.joblib import Parallel, delayed
+
 from ..exception import ImproperlyConfigured
 
 logger = logging.getLogger(__name__)
@@ -97,8 +99,10 @@ def load_as_concatenated(filenames, processes=None, args=None, **kwargs):
     # cast to list to handle generators
     filenames = list(filenames)
 
-    logger.debug("Sounding %s trajectories.", len(filenames))
-    lengths = [sound_trajectory(f, **kw) for f, kw in zip(filenames, args)]
+    logger.debug("Sounding %s trajectories with %s processes.", len(filenames),
+                 processes)
+    lengths = Parallel(n_jobs=processes)(
+        delayed(sound_trajectory)(f, **kw)for f, kw in zip(filenames, args))
 
     root_trj = md.load(filenames[0], frame=0, **kwargs)
     shape = root_trj.xyz.shape
