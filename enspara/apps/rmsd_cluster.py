@@ -2,6 +2,7 @@ import sys
 import argparse
 import os
 
+import numpy as np
 import mdtraj as md
 from mdtraj import io
 
@@ -49,10 +50,18 @@ def process_command_line(argv):
     return args
 
 
-def load_centers(trajectories, topology, center_indices):
-    '''Load the full cluster center structures from the original
-    trajectories using the center indices.
-    '''
+def rmsd_hack(trj, ref, **kwargs):
+    pivot = len(trj)/2
+
+    trj1 = trj[0:pivot]
+    trj2 = trj[pivot:]
+
+    rmsds = np.zeros(len(trj))
+
+    rmsds[0:pivot] = md.rmsd(trj1, ref, **kwargs)
+    rmsds[pivot:]  = md.rmsd(trj2, ref, **kwargs)
+
+    return rmsds
 
 
 def main(argv=None):
@@ -69,8 +78,10 @@ def main(argv=None):
     lengths, xyz = load_as_concatenated(
         args.trajectories, top=top, processes=args.processes)
 
+    print("Loading finished. Beginning clustering.")
+
     clustering = KHybrid(
-        metric=md.rmsd,
+        metric=rmsd_hack,
         cluster_radius=args.rmsd_cutoff)
 
     # md.rmsd requires an md.Trajectory object, so wrap `xyz` in
@@ -91,6 +102,9 @@ def main(argv=None):
     centers = md.join([md.load_frame(args.trajectories[t], index=i, top=top)
                        for t, i in result.center_indices])
     centers.save_hdf5(path_stub+'-centers.h5')
+
+    print("Clustered", sum(lengths), "frames into", len(centers),
+          "clusters in", clustering.runtime_, "seconds.")
 
     return 0
 
