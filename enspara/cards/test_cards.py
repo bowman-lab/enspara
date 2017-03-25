@@ -1,6 +1,10 @@
+'''Test the cards module through a couple of integration-like tests with
+large blocks of expected data in the `test_data` subdirectory.
+'''
+
 import os
 
-from nose.tools import assert_equal, assert_raises, assert_is
+from nose.tools import assert_equal
 from numpy.testing import assert_array_equal, assert_allclose
 
 import numpy as np
