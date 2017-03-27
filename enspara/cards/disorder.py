@@ -7,6 +7,8 @@
 
 import numpy as np
 
+from ..util import array as ra
+
 
 def transitions(assignments):
     """Computes the frames at which a state transition occurs for a list
@@ -14,20 +16,26 @@ def transitions(assignments):
 
     Parameters
     ----------
-    assignments : array, shape=(n_frames,)
+    assignments : array, shape=(n_frames) or (n_frames, n_trjs)
 
     Returns
     -------
-    tt : array, shape=(n_transitions, )
-       An array of the frames at which a state transition occurs. If
-       state n and n+1 differ, the transition is reported as n.
+    tt : array, shape=(n_transitions) or RA shape=(n_trjs, n_transitions)
+       If the input is one-dimensional, an array of the frames at which
+       a state transition occurs. If the input is multidimensional (i.e.
+       has more than one "row" or trajectory), a ragged array where each
+       row includes the frames at which the transition occurrs. If state
+       n and n+1 differ in assignment, the transition is reported as n.
     """
 
-    # TODO: generalize to dim > 1
-    assert len(assignments.shape) == 1
-
-    d = assignments[1:] - assignments[:-1]
-    tt = np.where(d != 0)[0]
+    if len(assignments.shape) == 1:
+        d = assignments[1:] - assignments[:-1]
+        tt = np.where(d != 0)[0]
+    else:
+        d = assignments[:, 1:] - assignments[:, :-1]
+        rows, columns = ra.where(d != 0)
+        lengths = np.bincount(rows)
+        tt = ra.RaggedArray(columns, lengths=lengths)
 
     return tt
 
