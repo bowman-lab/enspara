@@ -108,17 +108,6 @@ class TrimMapping:
         return "to_original:"+str(self.to_original)
 
 
-def transpose(C):
-    '''Symmetrize a counts matrix using the transpose method
-
-    Parameters
-    ----------
-    C : array, shape=(n_states, n_states)
-        The matrix to symmetrize
-    '''
-    return C + C.T
-
-
 def assigns_to_counts(
         assigns, n_states=None, lag_time=1, sliding_window=True):
     """Count transitions between states in a single trajectory.
@@ -166,68 +155,7 @@ def assigns_to_counts(
     return C
 
 
-def _normalize_rows(C):
-    """Normalize every row of a transition count matrix to obtain a
-    transition probability matrix.
-
-    Parameters
-    ----------
-    C : array, shape=(n_states, n_states)
-        A transition count matrix.
-
-    Returns
-    -------
-    T : array, shape=(n_states, n_states)
-        A row-normalized transition probability matrix.
-    """
-
-    n_states = C.shape[0]
-
-    if scipy.sparse.isspmatrix(C):
-        C_csr = scipy.sparse.csr_matrix(C).asfptype()
-        weights = np.asarray(C_csr.sum(axis=1)).flatten()
-        inv_weights = np.zeros(n_states)
-        inv_weights[weights > 0] = 1.0 / weights[weights > 0]
-        inv_weights = scipy.sparse.dia_matrix((inv_weights, 0),
-                                              C_csr.shape).tocsr()
-        T = inv_weights.dot(C_csr)
-        T = type(C)(T)  # recast T to the input type
-    else:
-        weights = np.asarray(C.sum(axis=1)).flatten()
-        inv_weights = np.zeros(n_states)
-        inv_weights[weights > 0] = 1.0 / weights[weights > 0]
-        T = C * inv_weights.reshape((n_states, 1))
-
-    return T
-
-
-def counts_to_probs(C, symmetrization=None):
-    """Infer a transition probability matrix from a transition count
-    matrix using the specified method to enforce microscopic
-    reversibility.
-
-    Parameters
-    ----------
-    C : array, shape=(n_states, n_states)
-        A transition count matrix.
-    symmetrization : function, arguments=C
-        Method to use to enforce microscopic reversibility.
-
-    Returns
-    -------
-    T : array, shape=(n_states, n_states)
-        A row-normalized transition probability matrix.
-    """
-
-    if symmetrization:
-        C = symmetrization(C)
-
-    T = _normalize_rows(C)
-
-    return T
-
-
-def eigenspectra(T, n_eigs=None, left=True, maxiter=100000, tol=1E-30):
+def eigenspectrum(T, n_eigs=None, left=True, maxiter=100000, tol=1E-30):
     """Compute the eigenvectors and eigenvalues of a transition
     probability matrix.
 
@@ -257,6 +185,11 @@ def eigenspectra(T, n_eigs=None, left=True, maxiter=100000, tol=1E-30):
         n_eigs = T.shape[0]
     elif n_eigs < 2:
         raise ValueError('n_eig must be greater than or equal to 2')
+
+    if n_eigs > T.shape[0]:
+        logger.warning(
+            ("Trying to compute {n} eigenvalues from an {s} x {s} matrix " +
+             "yields only {s} eigenvalues.").format(n=n_eigs, s=T.shape[0]))
 
     # left eigenvectors input processing (?)
     T = T.T if left else T
@@ -347,11 +280,14 @@ def trim_disconnected(counts, threshold=1, renumber_states=True):
 
         mapping = TrimMapping(zip(keep_states, keep_states))
 
-    return mapping, out_type(trimmed_counts)
+    if type(trimmed_counts) is not out_type:
+        trimmed_counts = out_type(trimmed_counts)
+
+    return mapping, trimmed_counts
 
 
 def eq_probs(T, maxiter=100000, tol=1E-30):
-    val, vec = eigenspectra(T, n_eigs=3, left=True, maxiter=maxiter, tol=tol)
+    val, vec = eigenspectrum(T, n_eigs=3, left=True, maxiter=maxiter, tol=tol)
 
     return vec[:, 0]
 

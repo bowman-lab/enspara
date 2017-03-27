@@ -44,7 +44,20 @@ print(clustering.center_indices_)
 
 ### Option 1: Use the object
 
-[WIP]
+```python
+from enspara.msm import MSM, builders
+
+# build the MSM fitter with a lag time of 100 (frames) and
+# using the transpose method
+msm = MSM(lag_time=100, method=builders.transpose)
+
+# fit the MSM to your assignments (a numpy ndarray or ragged array)
+msm.fit(assignments)
+
+print(msm.tcounts_)
+print(msm.tprobs_)
+print(msm.eq_probs_)
+```
 
 ### Option 2: Functional interface
 
