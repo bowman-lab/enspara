@@ -8,9 +8,27 @@
 import numpy as np
 
 
-def traj_transition_times(state_traj):
-    d = state_traj[1:] - state_traj[:-1]
+def transitions(assignments):
+    """Computes the frames at which a state transition occurs for a list
+    of state assignments.
+
+    Parameters
+    ----------
+    assignments : array, shape=(n_frames,)
+
+    Returns
+    -------
+    tt : array, shape=(n_transitions, )
+       An array of the frames at which a state transition occurs. If
+       state n and n+1 differ, the transition is reported as n.
+    """
+
+    # TODO: generalize to dim > 1
+    assert len(assignments.shape) == 1
+
+    d = assignments[1:] - assignments[:-1]
     tt = np.where(d != 0)[0]
+
     return tt
 
 

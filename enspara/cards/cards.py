@@ -43,7 +43,7 @@ def cards(trajectories, buffer_width=15, n_procs=1):
     for i in range(n_traj):
         transition_times.append([])
         for j in range(n_dihedrals):
-            tt = disorder.traj_transition_times(rotamer_trajs[i][:, j])
+            tt = disorder.transitions(rotamer_trajs[i][:, j])
             transition_times[i].append(tt)
             (ordered_times[i, j], n_ordered_times[i, j],
              disordered_times[i, j], n_disordered_times[i, j]) = disorder.traj_ord_disord_times(tt)

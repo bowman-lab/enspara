@@ -34,12 +34,6 @@ def test_cards():
     ss_mi, dis_mi, s_d_mi, d_s_mi, inds = cards.cards(
         [TRJ, TRJ], buffer_width=15., n_procs=1)
 
-    # np.savetxt(TEST_DATA_DIR+'/cards_ss_mi.dat', ss_mi)
-    # np.savetxt(TEST_DATA_DIR+'/cards_dis_mi.dat', dis_mi)
-    # np.savetxt(TEST_DATA_DIR+'/cards_s_d_mi.dat', s_d_mi)
-    # np.savetxt(TEST_DATA_DIR+'/cards_d_s_mi.dat', d_s_mi)
-    # np.savetxt(TEST_DATA_DIR+'/cards_inds.dat', inds)
-
     with open(os.path.join(TEST_DATA_DIR, 'cards_ss_mi.dat'), 'r') as f:
         assert_allclose(ss_mi, np.loadtxt(f))
     with open(os.path.join(TEST_DATA_DIR, 'cards_dis_mi.dat'), 'r') as f:
@@ -65,7 +59,7 @@ def test_transitions():
     for i in range(len(TRJS)):
         transition_times.append([])
         for j in range(N_DIHEDRALS):
-            tt = disorder.traj_transition_times(ROTAMER_TRJS[i][:, j])
+            tt = disorder.transitions(ROTAMER_TRJS[i][:, j])
             transition_times[i].append(tt)
             (ordered_times[i, j], n_ordered_times[i, j],
              disordered_times[i, j], n_disordered_times[i, j]) = disorder.traj_ord_disord_times(tt)
@@ -100,7 +94,7 @@ def test_disorder_trajectories():
     for i in range(len(TRJS)):
         transition_times.append([])
         for j in range(N_DIHEDRALS):
-            tt = disorder.traj_transition_times(ROTAMER_TRJS[i][:, j])
+            tt = disorder.transitions(ROTAMER_TRJS[i][:, j])
             transition_times[i].append(tt)
             (ordered_times[i, j], n_ordered_times[i, j],
              disordered_times[i, j], n_disordered_times[i, j]) = disorder.traj_ord_disord_times(tt)

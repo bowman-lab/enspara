@@ -1,5 +1,5 @@
 from nose.tools import assert_equal
-from numpy.testing import assert_array_equal, assert_allclose
+from numpy.testing import assert_array_equal
 
 import numpy as np
 
@@ -8,13 +8,9 @@ from . import disorder
 
 def test_transition_times():
 
-    states = np.array(
-        [[1]*5 + [2]*10 + [1]*7 + [2]*3,
-         [1]*3 + [2]*7 + [1]*10 + [2]*5 ])
-
-    print(disorder.traj_transition_times(states))
-
-    assert False
+    states = np.array([0, 0, 1, 1, 1, 2, 3, 3])
+    transitions = disorder.transitions(states)
+    assert_array_equal([1, 4, 5], transitions)
 
 
 def test_trj_ord_disord_times_one_transition():
@@ -29,10 +25,8 @@ def test_trj_ord_disord_times_one_transition():
 
 def test_trj_ord_disord_times_many_transition():
 
-    states = np.array(
-        [[1]*5 + [2]*10 + [1]*7 + [2]*3,
-         [1]*3 + [2]*7 + [1]*10 + [2]*5 ])
-    transition_times = disorder.transition_times(states)
+    transition_times = np.array([[3, 10, 15],
+                                 [5, 10, 11]])
 
     result = disorder.traj_ord_disord_times(transition_times)
 
