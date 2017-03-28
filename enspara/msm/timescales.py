@@ -8,40 +8,63 @@
 from __future__ import print_function, division, absolute_import
 import logging
 
-
 import numpy as np
-from scipy.sparse.csgraph import connected_components
 
-from .transition_matrices import counts_to_probs, assigns_to_counts, \
-    eigenspectra, transpose, trim_disconnected
+from sklearn.externals.joblib import Parallel, delayed
+
+from .transition_matrices import assigns_to_counts, eigenspectrum, \
+    trim_disconnected
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 
+def calc_imp_times(assigns, lag_time, n_states, n_times, method,
+                   sliding_window, trim):
+    '''Helper function to implied_timescales--this is the embarassingly
+    parallel part. This function computes an individual eigenspectrum
+    for a specific lag time.
+    '''
+    C = assigns_to_counts(
+        assigns,
+        n_states=n_states,
+        lag_time=lag_time,
+        sliding_window=sliding_window)
+
+    if trim:
+        mapping, C = trim_disconnected(C)
+
+    T = method(C)
+
+    e_vals, e_vecs = eigenspectrum(
+        T, n_eigs=n_times+1)  # +1 accounts for eq pops
+    imp_times = -lag_time / np.log(e_vals[1:])
+
+    return imp_times
+
+
 def implied_timescales(
-        assigns, lag_times, n_imp_times=None,
-        sliding_window=True, trim=False,
-        symmetrization=transpose, n_procs=None):
+        assigns, lag_times, method, n_times=None,
+        sliding_window=True, trim=False, n_procs=None):
     """Calculate the implied timescales across a range of lag times.
 
     Parameters
     ----------
     assigns : array, shape=(traj_len, )
-        A 2-D array where each row is a trajectory consisting of a sequence
-        of state indices.
-    lag_times : int
-        The lag times (i.e. observation interval) for counting
-        transitions. An eigenspectra is calculated for each lag time in
-        the range [1, lag_times].
-    n_imp_times : int, optional
+        A 2-D array where each row is a trajectory consisting of a
+        sequence of state indices.
+    lag_times : list
+        The lag times (i.e. observation intervals) for counting
+        transitions. An eigenspectrum is calculated for each lag time in
+        the list.
+    method : function(C) -> T
+        The function used to construct a transition probability matrix
+        from assignments.
+    n_times : int, optional
         the number of implied timescales to calculate for each
         lag_time. If not specified, 10% of the number of states is used.
     trim : bool, default=False
         ignore states without transitions both in and out.
-    symmetrization : { None, "transpose", "mle" }, default=None
-        symmetrize the transitions matrix using this method, or don't,
-        if None is provided.
     sliding_window : bool, default=True
         Whether to use a sliding window for counting transitions or to
         take every lag_time'th state.
@@ -50,41 +73,25 @@ def implied_timescales(
 
     Returns
     -------
-    all_imp_times :  array, shape=(n_states, n_states)
-        A transition count matrix.
+    implied_times_list :  array, shape=(len(lag_times), n_times)
+        A 2d array containing the eigenspectrum of each chosen lag time
+        as a row.
     """
 
     if n_procs is not None:
         logger.warning(
             "implied_timescales n_procs is currently unimplemented")
 
-    # n_imp_times=None -> 10% number of states
+    # n_times=None -> 10% number of states
     n_states = assigns.max() + 1
 
-    if n_imp_times is None:
-        n_imp_times = int(np.floor(n_states/10.0))+1
-    if n_imp_times > n_states-1:  # -1 accounts for eq pops
-        n_imp_times = n_states-1
+    if n_times is None:
+        n_times = int(np.floor(n_states/10.0))+1
+    if n_times > n_states-1:  # -1 accounts for eq pops
+        n_times = n_states-1
 
-    n_lag_times = len(lag_times)
-    all_imp_times = np.zeros((n_lag_times*n_imp_times, 2))
-    for i in range(n_lag_times):
-        lag_time = lag_times[i]
-        C = assigns_to_counts(
-            assigns,
-            n_states=n_states,
-            lag_time=lag_time,
-            sliding_window=sliding_window)
+    implied_times_list = Parallel(n_jobs=n_procs)(
+        delayed(calc_imp_times)(assigns, t, n_states, n_times, method,
+                                sliding_window, trim) for t in lag_times)
 
-        if trim:
-            mapping, C = trim_disconnected(C)
-
-        T = counts_to_probs(C, symmetrization=symmetrization)
-
-        e_vals, e_vecs = eigenspectra(
-            T, n_eigs=n_imp_times+1)  # +1 accounts for eq pops
-        imp_times = -lag_time / np.log(e_vals[1:])
-        all_imp_times[i*n_imp_times:(i+1)*n_imp_times, 0] = lag_time
-        all_imp_times[i*n_imp_times:(i+1)*n_imp_times, 1] = imp_times
-
-    return all_imp_times
+    return np.array(implied_times_list)
