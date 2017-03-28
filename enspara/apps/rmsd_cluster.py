@@ -51,15 +51,16 @@ def process_command_line(argv):
 
 
 def rmsd_hack(trj, ref, **kwargs):
-    pivot = int(len(trj)/2)
 
-    trj1 = trj[0:pivot]
-    trj2 = trj[pivot:]
+    n_pivots = 5
+    pivots = np.linspace(0, len(trj), num=n_pivots+1)[1:-1]
 
     rmsds = np.zeros(len(trj))
 
-    rmsds[0:pivot] = md.rmsd(trj1, ref, **kwargs)
-    rmsds[pivot:]  = md.rmsd(trj2, ref, **kwargs)
+    for i in range(len(pivots)-1):
+        s = slice(pivots[i], pivots[i+1])
+        rmsds[s] = md.rmsd(trj[s], ref, **kwargs)
+        trj = trj[s]
 
     return rmsds
 
