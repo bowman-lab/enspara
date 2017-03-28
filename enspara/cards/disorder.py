@@ -28,7 +28,7 @@ def transitions(assignments):
        n and n+1 differ in assignment, the transition is reported as n.
     """
 
-    if len(assignments.shape) == 1:
+    if hasattr(assignments, 'shape') and len(assignments.shape) == 1:
         d = assignments[1:] - assignments[:-1]
         tt = np.where(d != 0)[0]
     else:
