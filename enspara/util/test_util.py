@@ -27,6 +27,13 @@ class Test_RaggedArray(unittest.TestCase):
         assert_array_equal(a.starts, [0, 10])
         assert_array_equal(a._data, np.concatenate([range(10), range(20)]))
 
+    def test_RaggedArray_shape_size(self):
+
+        a = ra.RaggedArray(array=np.array(range(50)), lengths=[25, 20, 5])
+        assert_equals(a.shape, (3,))
+        assert_equals(a.size, 50)
+
+
     def test_RaggedArray_bad_size(self):
 
         with assert_raises(DataInvalid):
