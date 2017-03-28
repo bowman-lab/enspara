@@ -3,6 +3,7 @@ from numpy.testing import assert_array_equal
 
 import numpy as np
 
+from ..util import array as ra
 from . import disorder
 
 
@@ -22,6 +23,17 @@ def test_transition_times_multidim():
 
     assert_array_equal([1, 4, 5], transitions[0])
     assert_array_equal([1, 4], transitions[1])
+
+
+def test_transition_times_ragged():
+
+    states = ra.RaggedArray(
+        [[0, 0, 1, 1, 1, 2, 3, 3],
+         [0, 0, 1, 1, 1]])
+    transitions = disorder.transitions(states)
+
+    assert_array_equal([1, 4, 5], transitions[0])
+    assert_array_equal([1], transitions[1])
 
 
 def test_trj_ord_disord_times_one_transition():
