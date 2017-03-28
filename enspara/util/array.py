@@ -352,6 +352,14 @@ class RaggedArray(object):
             self.lengths = np.array(lengths)
 
     @property
+    def shape(self):
+        return (len(self.lengths),)
+
+    @property
+    def size(self):
+        return len(self._data)
+
+    @property
     def starts(self):
         return np.append([0], np.cumsum(self.lengths)[:-1])
 
