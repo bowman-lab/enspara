@@ -29,6 +29,53 @@ class TestTrajClustering(unittest.TestCase):
 
         self.trj = md.load(self.trj_fname, top=self.top_fname)
 
+    def test_centers_object(self):
+        # '''
+        # KHybrid() clusterer should produce correct output.
+        # '''
+        N_CLUSTERS = 5
+        CLUSTER_RADIUS = 0.1
+
+        with assert_raises(ImproperlyConfigured):
+            KCenters(metric=md.rmsd)
+
+        # Test n clusters
+        clustering = KCenters(
+            metric=md.rmsd,
+            n_clusters=N_CLUSTERS)
+
+        clustering.fit(self.trj)
+
+        assert hasattr(clustering, 'result_')
+        assert len(np.unique(clustering.labels_)) == N_CLUSTERS, \
+            clustering.labels_
+
+        # Test dist_cutoff
+        clustering = KCenters(
+            metric=md.rmsd,
+            cluster_radius=CLUSTER_RADIUS)
+
+        clustering.fit(self.trj)
+
+        assert hasattr(clustering, 'result_')
+        assert clustering.distances_.max() < CLUSTER_RADIUS, \
+            clustering.distances_
+
+        # Test n clusters and dist_cutoff
+        clustering = KCenters(
+            metric=md.rmsd,
+            n_clusters=N_CLUSTERS,
+            cluster_radius=CLUSTER_RADIUS)
+
+        clustering.fit(self.trj)
+
+        # In this particular case, the clustering should cut off at 5 clusters
+        # despite not reaching the distance cutoff
+        assert hasattr(clustering, 'result_')
+        assert len(np.unique(clustering.labels_)) == N_CLUSTERS, \
+            clustering.labels_
+
+
     def test_khybrid_object(self):
         # '''
         # KHybrid() clusterer should produce correct output.
