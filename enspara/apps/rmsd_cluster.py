@@ -37,6 +37,10 @@ def process_command_line(argv):
         '--processes', default=1, type=int,
         help="Number processes to use for loading and clustering.")
     parser.add_argument(
+        '--subsample', default=10, type=int,
+        help="Subsample the input trajectories by the given factor. "
+             "1 implies no subsampling.")
+    parser.add_argument(
         '--output', default='',
         help="The output path forresults (distances, assignments, centers).")
     parser.add_argument(
@@ -53,14 +57,13 @@ def process_command_line(argv):
 def rmsd_hack(trj, ref, **kwargs):
 
     n_pivots = 5
-    pivots = np.linspace(0, len(trj), num=n_pivots+1)[1:-1]
+    pivots = np.linspace(0, len(trj), num=n_pivots+1, dtype='int')
 
     rmsds = np.zeros(len(trj))
 
     for i in range(len(pivots)-1):
         s = slice(pivots[i], pivots[i+1])
         rmsds[s] = md.rmsd(trj[s], ref, **kwargs)
-        trj = trj[s]
 
     return rmsds
 
@@ -77,7 +80,8 @@ def main(argv=None):
           args.processes, "processes")
 
     lengths, xyz = load_as_concatenated(
-        args.trajectories, top=top, processes=args.processes)
+        args.trajectories, top=top, processes=args.processes,
+        stride=args.subsample)
 
     print("Loading finished. Beginning clustering.")
 
