@@ -88,6 +88,26 @@ class Test_RaggedArray(unittest.TestCase):
         assert_array_equal(np.concatenate([i for i in a]),
                            np.concatenate([np.array(i) for i in src]))
 
+    def test_RaggedArray_negative_slicing(self):
+        src = np.array(range(20))
+        a = ra.RaggedArray(array=src, lengths=[10, 5, 5])
+
+        assert_array_equal(a[:,:-1].lengths, np.array([9, 4, 4]))
+        assert_array_equal(a[:,:-2][0], np.arange(8))
+        assert_array_equal(a[:,:-2][1], np.array([10,11,12]))
+
+        assert_array_equal(
+            (a[:,:-2]+2)._data,
+            np.array([2, 3, 4, 5, 6, 7, 8, 9, 12, 13, 14, 17, 18, 19]))
+        a[:,:-2] += 2
+        assert_array_equal(
+            a._data,
+            np.array(
+                [
+                    2, 3, 4, 5, 6, 7, 8, 9, 8, 9, 12, 13, 14, 13, 14, 17,
+                    18, 19, 18, 19]))
+        
+
     def test_RaggedArray_slicing(self):
         src = np.array(range(60))
         a = ra.RaggedArray(array=src, lengths=[10, 20, 30])
