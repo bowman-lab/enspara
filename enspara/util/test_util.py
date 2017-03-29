@@ -30,8 +30,16 @@ class Test_RaggedArray(unittest.TestCase):
     def test_RaggedArray_shape_size(self):
 
         a = ra.RaggedArray(array=np.array(range(50)), lengths=[25, 20, 5])
-        assert_equals(a.shape, (3,))
+        assert_equals(a.shape, (3, None))
         assert_equals(a.size, 50)
+
+        src_reg = [[[0,0,0],[1,1,1],[2,2,2]],[[4,4,4],[5,5,5]]]
+        a_reg = ra.RaggedArray(src_reg)
+        assert_equals(a_reg.shape, (2, None, 3))
+
+        src_irreg = [[[0,0,0,0],[1,1],[2,2,2]],[[4,4],[5,5,5,5,5]]]
+        a_irreg = ra.RaggedArray(src_irreg)
+        assert_equals(a_irreg.shape, (2, None, None))
 
 
     def test_RaggedArray_bad_size(self):

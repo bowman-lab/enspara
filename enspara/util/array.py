@@ -370,7 +370,17 @@ class RaggedArray(object):
 
     @property
     def shape(self):
-        return (len(self.lengths),)
+        if np.any(self.lengths-self.lengths[0]):
+            rag_second_dim = None
+        else:
+            rag_second_dim = self.lengths[0]
+        if _is_iterable(self._data[0]):
+            data_dim = self._data.shape
+            if len(data_dim) == 1:
+                return (len(self.lengths), rag_second_dim, None)
+            else:
+                return (len(self.lengths), rag_second_dim, self._data.shape[1])
+        return (len(self.lengths), rag_second_dim)
 
     @property
     def size(self):
