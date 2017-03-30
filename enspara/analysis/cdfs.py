@@ -16,7 +16,7 @@ def average_chunks(data, avg_num=1, axis=0):
     [1, 1, 1, 2, 2, 2, 3, 3, 3] -> [1_avg, 2_avg, 3_avg]"""
     avg_chunks = np.sum(
         np.array(
-            [datas[num::avg_num] for num in range(avg_num)]), axis=0)/avg_num
+            [data[num::avg_num] for num in range(avg_num)]), axis=0)/avg_num
     return avg_chunks
 
 def return_state_iis(states, states_subset):
