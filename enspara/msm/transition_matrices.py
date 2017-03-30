@@ -149,8 +149,8 @@ def assigns_to_counts(
     # generate sparse matrix
     mat_coords = np.hstack(transitions)
     mat_data = np.ones(mat_coords.shape[1], dtype=int)
-    C = scipy.sparse.coo_matrix((mat_data, mat_coords),
-        shape=(n_states,n_states))
+    C = scipy.sparse.coo_matrix(
+        (mat_data, mat_coords), shape=(n_states,n_states))
     return C
 
 
