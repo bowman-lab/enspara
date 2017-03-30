@@ -103,8 +103,8 @@ def main(argv=None):
 
     # loads a giant trajectory in parallel into a single numpy array.
     logger.info(
-        "Loading %s trajectories using %s processes",
-        len(args.trajectories), args.processes)
+        "Loading %s trajectories using %s processes (subsampling %s)",
+        len(args.trajectories), args.processes, args.subsampling)
 
     lengths, xyz = load_as_concatenated(
         args.trajectories, top=top, processes=args.processes,
@@ -128,6 +128,8 @@ def main(argv=None):
     result = clustering.result_.partition(lengths)
 
     logger.info("Saving results")
+    os.makedirs(os.path.dirname(filenames()['centers']))
+
     md.join(load_frames(
         args.trajectories, result.center_indices,
         top=top, stride=args.subsample)).save_hdf5(filenames(args)['centers'])
