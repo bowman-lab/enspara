@@ -46,6 +46,8 @@ def sound_trajectory(trj, **kwargs):
 
     search_space = [0, sys.maxsize]
     base = 2
+    stride = kwargs.pop('stride', None)
+    stride = 1 if stride is None else stride
 
     logger.debug("Sounding '%s' with args: %s", trj, kwargs)
 
@@ -64,7 +66,7 @@ def sound_trajectory(trj, **kwargs):
 
     # if stride is passed to md.load, it is ignored, because apparently
     # when you give it a frame dumps the stride argument.
-    length = math.ceil(search_space[1] / kwargs.pop('stride', 1))
+    length = math.ceil(search_space[1] / stride)
 
     return length
 

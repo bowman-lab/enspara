@@ -1,6 +1,7 @@
 import sys
 import argparse
 import os
+import logging
 
 from functools import partial
 from multiprocessing import cpu_count
@@ -10,7 +11,11 @@ import mdtraj as md
 from mdtraj import io
 
 from enspara.cluster import KHybrid
+from enspara.cluster.util import load_frames
 from enspara.util import load_as_concatenated
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 
 def process_command_line(argv):
@@ -44,7 +49,7 @@ def process_command_line(argv):
         help="Use this number of pivots when delegating to md.rmsd. "
              "This can avoid md.rmsd's large-dataset segfault.")
     parser.add_argument(
-        '--subsample', default=10, type=int,
+        '--subsample', default=None, type=int,
         help="Subsample the input trajectories by the given factor. "
              "1 implies no subsampling.")
     parser.add_argument(
@@ -77,6 +82,18 @@ def rmsd_hack(trj, ref, partitions=None, **kwargs):
     return rmsds
 
 
+def filenames(args):
+    path_stub = os.path.join(
+        args.output, '-'.join([args.output_tag, args.algorithm,
+                               str(args.rmsd_cutoff)]))
+
+    return {
+        'distances': path_stub+'-distances.h5',
+        'centers': path_stub+'-centers.h5',
+        'assignments': path_stub+'-assignments.h5',
+    }
+
+
 def main(argv=None):
     '''Run the driver script for this module. This code only runs if we're
     being run as a script. Otherwise, it's silent and just exposes methods.'''
@@ -85,14 +102,15 @@ def main(argv=None):
     top = md.load(args.topology).top
 
     # loads a giant trajectory in parallel into a single numpy array.
-    print("Loading", len(args.trajectories), "trajectories using",
-          args.processes, "processes")
+    logger.info(
+        "Loading %s trajectories using %s processes",
+        len(args.trajectories), args.processes)
 
     lengths, xyz = load_as_concatenated(
         args.trajectories, top=top, processes=args.processes,
-        stride=args.subsample)
+        stride=args.subsample, atom_indices=top.select(args.atoms))
 
-    print("Loading finished. Beginning clustering.")
+    logger.info("Loading finished. Beginning clustering.")
 
     clustering = KHybrid(
         metric=partial(rmsd_hack, partitions=args.partitions),
@@ -100,25 +118,36 @@ def main(argv=None):
 
     # md.rmsd requires an md.Trajectory object, so wrap `xyz` in
     # the topology.
-    clustering.fit(md.Trajectory(xyz=xyz, topology=top))
+    clustering.fit(md.Trajectory(
+        xyz=xyz, topology=top.subset(top.select(args.atoms))))
 
-    # partition the concatenated arrays in result_ into trj-length arrays
+    logger.info(
+        "Clustered %s frames into %s clusters in %s seconds.",
+        sum(lengths), len(clustering.centers_), clustering.runtime_)
+
     result = clustering.result_.partition(lengths)
 
-    path_stub = os.path.join(
-        args.output, '-'.join([args.output_tag, args.algorithm,
-                               str(args.rmsd_cutoff)]))
+    logger.info("Saving results")
+    md.join(load_frames(
+        args.trajectories, result.center_indices,
+        top=top, stride=args.subsample)).save_hdf5(filenames(args)['centers'])
 
-    io.saveh(path_stub+'-distances.h5', result.distances)
-    io.saveh(path_stub+'-assignments.h5', result.assignments)
-    # io.saveh(path_stub+'-center-indices.h5', result.center_indices)
+    if args.subsample:
+        logger.info("Reloading entire dataset for reassignment")
+        lengths, xyz = load_as_concatenated(
+            args.trajectories, top=top, processes=args.processes,
+            atom_indices=top.select(args.atoms))
 
-    centers = md.join([md.load_frame(args.trajectories[t], index=i, top=top)
-                       for t, i in result.center_indices])
-    centers.save_hdf5(path_stub+'-centers.h5')
+        logger.info("Reassigning dataset.")
+        result = clustering.predict(md.Trajectory(
+            xyz, top.subset(top.select(args.atoms)))).partition(lengths)
 
-    print("Clustered", sum(lengths), "frames into", len(centers),
-          "clusters in", clustering.runtime_, "seconds.")
+        # overwrite temporary output with actual results
+        io.saveh(filenames(args)['distances'], result.distances)
+        io.saveh(filenames(args)['assignments'], result.assignments)
+    else:
+        io.saveh(filenames(args)['distances'], result.distances)
+        io.saveh(filenames(args)['assignments'], result.assignments)
 
     return 0
 

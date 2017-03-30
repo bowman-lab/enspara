@@ -174,12 +174,22 @@ def load_frames(filenames, indices, **kwargs):
         Treat the indices as having been computed using a stride, so
         mulitply the second index (frame number) by this number (e.g.
         for stride 10, [2, 3] becomes [2, 30]).
+
+    Returns
+    ----------
+    centers: list
+        List of loaded trajectories.
     """
 
     stride = kwargs.pop('stride', 1)
+    if stride is None:
+        stride = 1
 
-    centers = [md.load_frame(filenames[i], index=j*stride, **kwargs)
-               for i, j in indices]
+    centers = []
+    for i, j in indices:
+        c = md.load_frame(filenames[i], index=j*stride, **kwargs)
+        centers.append(c)
+
     return centers
 
 
