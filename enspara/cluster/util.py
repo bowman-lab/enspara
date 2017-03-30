@@ -19,16 +19,51 @@ from ..util import partition_list, partition_indices
 
 
 class Clusterer(object):
-    '''
-    Clusterer class defines the base API for a clustering object in the
-    sklearn style.
-    '''
+    """Clusterer class defines the base API for a clustering object in
+    the sklearn style.
+    """
 
     def __init__(self, metric):
-        self.metric = metric
+        self.metric = _get_distance_method(metric)
 
     def fit(self, X):
         raise NotImplementedError("All Clusterers should implement fit().")
+
+    def predict(self, X):
+        """Use an existing clustring fit to predict the assignments,
+        distances, and center indices of on new data.new
+
+        See also: assign_to_nearest_center()
+
+        Parameters
+        ----------
+        X : array-like, shape=(n_states, n_features)
+            New data to predict.
+
+        Returns
+        -------
+        result : ClusterResult
+            The result of assigning the given data to the pretrained
+            centers.
+        """
+
+        if not hasattr(self, 'result_'):
+            raise ImproperlyConfigured(
+                "To predict the clustering result for new data, the "
+                "clusterer first must have fit some data.")
+
+        pred_centers, pred_assigs, pred_dists = assign_to_nearest_center(
+            traj=X,
+            cluster_centers=self.centers_,
+            distance_method=self.metric)
+
+        result = ClusterResult(
+            assignments=pred_assigs,
+            distances=pred_dists,
+            center_indices=pred_centers,
+            centers=self.centers_)
+
+        return result
 
     @property
     def labels_(self):
@@ -42,6 +77,10 @@ class Clusterer(object):
     def center_indices_(self):
         return self.result_.center_indices
 
+    @property
+    def centers_(self):
+        return self.result_.centers
+
 
 class ClusterResult(namedtuple('ClusterResult',
                                ['center_indices',
@@ -51,6 +90,22 @@ class ClusterResult(namedtuple('ClusterResult',
     __slots__ = ()
 
     def partition(self, lengths):
+        """Split each array in this ClusterResult into multiple
+        subarrays of variable length.
+
+        See also: partition_indices(), partition_list().
+
+        Parameters
+        ----------
+        lengths : array, shape=(n_subarrays)
+            Length of each individual subarray.
+
+        Returns
+        ----------
+        result : ClusterResult
+            A ClusterResult object containing partitioned arrays.
+        """
+
         return ClusterResult(
             assignments=partition_list(self.assignments, lengths),
             distances=partition_list(self.distances, lengths),
@@ -59,32 +114,67 @@ class ClusterResult(namedtuple('ClusterResult',
 
 
 def assign_to_nearest_center(traj, cluster_centers, distance_method):
-    n_frames = len(traj)
-    assignments = np.zeros(n_frames, dtype=int)
-    distances = np.empty(n_frames, dtype=float)
+    """Assign each frame from traj to one of the given cluster centers
+    using the given distance metric.
+
+    Parameters
+    ----------
+    traj: {array-like, trajectory}, shape=(n_frames, n_features, ...)
+        The frames to assign to a cluster_center. This parameter need
+        only implement `__len__` and  be accepted by `distance_method`.
+    cluster_centers : iterable
+        Iterable containing some number of exemplar data that each datum
+        in `traj` can be compared to using distance_method.
+    distance_method: function, params=(traj, cluster_centers[i])
+        The distance method to use for assigning each observation in
+        trajs to one of the cluster_centers. Must take the entire traj
+        and one item from cluster_centers as parameters.
+
+    Returns
+    ----------
+    tuple : (cluster_center_indices, assignments, distances)
+        A tuple containing the assignment of each observation to a
+        center (assignments), the distance to that center (distances),
+        and a list of observations that are closest to a given center
+        (cluster_center_indices.)
+    """
+
+    assignments = np.zeros(len(traj), dtype=int)
+    distances = np.empty(len(traj), dtype=float)
     distances.fill(np.inf)
     cluster_center_inds = []
 
-    cluster_num = 0
-    for center in cluster_centers:
+    for i, center in enumerate(cluster_centers):
         dist = distance_method(traj, center)
         inds = (dist < distances)
         distances[inds] = dist[inds]
-        assignments[inds] = cluster_num
-        new_center_index = np.argmin(dist)
-        cluster_center_inds.append(new_center_index)
-        cluster_num += 1
+        assignments[inds] = i
+        cluster_center_inds.append(np.argmin(dist))
 
     return cluster_center_inds, assignments, distances
 
 
-def load_frames(indices, filenames, **kwargs):
-    '''
+def load_frames(filenames, indices, **kwargs):
+    """Load specific frame indices from a list of trajectory files.
+
     Given a list of trajectory file names (`filenames`) and tuples
-    indicating trajectory number and frame number (`center indices`),
-    load the given frames into a list of md.Trajectory objects. All
-    additional kwargs are passed on to md.load_frame.
-    '''
+    indicating trajectory number and frame number (`indices`), load the
+    given frames into a list of md.Trajectory objects. All additional
+    kwargs are passed on to md.load_frame.
+
+    Parameters
+    ----------
+    indices: list, shape=(n_frames, 2)
+        List of 2d coordinates, indicating filename to load from and
+        which frame to load.
+    filenames: list, shape=(n_files)
+        List of files to load frames from. The first position in indices
+        is taken to refer to a position in this list.
+    stride: int
+        Treat the indices as having been computed using a stride, so
+        mulitply the second index (frame number) by this number (e.g.
+        for stride 10, [2, 3] becomes [2, 30]).
+    """
 
     stride = kwargs.pop('stride', 1)
 

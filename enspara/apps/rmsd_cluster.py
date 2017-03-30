@@ -2,6 +2,9 @@ import sys
 import argparse
 import os
 
+from functools import partial
+from multiprocessing import cpu_count
+
 import numpy as np
 import mdtraj as md
 from mdtraj import io
@@ -34,8 +37,12 @@ def process_command_line(argv):
         '--rmsd-cutoff', required=True, type=float,
         help="The RMSD cutoff (in nm) to determine cluster size.")
     parser.add_argument(
-        '--processes', default=1, type=int,
+        '--processes', default=cpu_count(), type=int,
         help="Number processes to use for loading and clustering.")
+    parser.add_argument(
+        '--partitions', default=None, type=int,
+        help="Use this number of pivots when delegating to md.rmsd. "
+             "This can avoid md.rmsd's large-dataset segfault.")
     parser.add_argument(
         '--subsample', default=10, type=int,
         help="Subsample the input trajectories by the given factor. "
@@ -54,10 +61,12 @@ def process_command_line(argv):
     return args
 
 
-def rmsd_hack(trj, ref, **kwargs):
+def rmsd_hack(trj, ref, partitions=None, **kwargs):
 
-    n_pivots = 5
-    pivots = np.linspace(0, len(trj), num=n_pivots+1, dtype='int')
+    if partitions is None:
+        return md.rmsd(trj, ref)
+
+    pivots = np.linspace(0, len(trj), num=partitions+1, dtype='int')
 
     rmsds = np.zeros(len(trj))
 
@@ -86,7 +95,7 @@ def main(argv=None):
     print("Loading finished. Beginning clustering.")
 
     clustering = KHybrid(
-        metric=rmsd_hack,
+        metric=partial(rmsd_hack, partitions=args.partitions),
         cluster_radius=args.rmsd_cutoff)
 
     # md.rmsd requires an md.Trajectory object, so wrap `xyz` in

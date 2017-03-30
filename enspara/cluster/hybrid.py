@@ -14,7 +14,8 @@ import numpy as np
 
 from .kcenters import kcenters
 from .kmedoids import _kmedoids_update
-from .util import _get_distance_method, ClusterResult, Clusterer
+from .util import _get_distance_method, ClusterResult, Clusterer, \
+    assign_to_nearest_center
 
 from ..exception import ImproperlyConfigured
 
