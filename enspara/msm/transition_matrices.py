@@ -139,19 +139,18 @@ def assigns_to_counts(
     assigns = np.array([a[np.where(a != -1)] for a in assigns])
 
     if n_states is None:
-        n_states = 0
-        for i in range(n_traj):
-            traj_n_states = assigns[i].max() + 1
-            if traj_n_states > n_states:
-                n_states = traj_n_states
+        n_states = np.concatenate(assigns).max() + 1
 
-    C = scipy.sparse.lil_matrix((n_states, n_states), dtype=int)
+    transitions = []
     for i in range(n_traj):
-        traj_C = _assigns_to_counts_helper(
-            assigns[i], n_states=n_states, lag_time=lag_time,
-            sliding_window=sliding_window)
-        C += traj_C
-
+        transitions.append(_transitions_helper(
+            assigns[i], lag_time=lag_time,
+            sliding_window=sliding_window))
+    # generate sparse matrix
+    mat_coords = np.hstack(transitions)
+    mat_data = np.ones(mat_coords.shape[1], dtype=int)
+    C = scipy.sparse.coo_matrix((mat_data, mat_coords),
+        shape=(n_states,n_states))
     return C
 
 
@@ -292,12 +291,9 @@ def eq_probs(T, maxiter=100000, tol=1E-30):
     return vec[:, 0]
 
 
-def _assigns_to_counts_helper(
-        assigns_1d, n_states=None, lag_time=1, sliding_window=True):
+def _transitions_helper(
+        assigns_1d, lag_time=1, sliding_window=True):
     # TODO: check trajectory is 1d array
-
-    if n_states is None:
-        n_states = assigns_1d.max() + 1
 
     if sliding_window:
         start_states = assigns_1d[:-lag_time:1]
@@ -306,8 +302,4 @@ def _assigns_to_counts_helper(
         start_states = assigns_1d[:-lag_time:lag_time]
         end_states = assigns_1d[lag_time::lag_time]
     transitions = np.row_stack((start_states, end_states))
-    counts = np.ones(transitions.shape[1], dtype=int)
-    C = scipy.sparse.coo_matrix((counts, transitions),
-                                shape=(n_states, n_states), dtype=int)
-
-    return C.tolil()
+    return transitions
