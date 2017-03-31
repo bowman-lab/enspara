@@ -22,6 +22,43 @@ logger.setLevel(logging.INFO)
 
 
 def cards(trajectories, buffer_width=15, n_procs=1):
+    """Compute ordered, disordered and ordered-disordered mutual
+    infrmation matrices for a set of trajectories.
+
+    Parameters
+    ----------
+    trajectories: list
+        List of trajectories to consider for the calculation
+    buffer_width: int (default=15)
+        The width of the no-man's land between rotameric bins. Angles
+        in this range are not used in the calculation.
+    n_procs: int (default=1)
+        Number of cores to use for the parallel parts of the algorithm.
+
+    Returns
+    -------
+    structural_mi: ndarrray, shape=(n_dihedrals, n_dihedrals)
+        Matrix of MIs where (i,j) is the structural to structural
+        communication between dihedrals i and j.
+    disorder_mi: ndarray, shape=(n_dihedrals, n_dihedrals)
+        Matrix of MIs where (i,j) is the disordered to disordered
+        communication between dihedrals i and j.
+    struct_to_disorder_mi: ndarray, shape=(n_dihedrals, n_dihedrals)
+        Matrix of MIs where (i,j) is the structured to disordered
+        communication between dihedrals i and j.
+    disorder_to_struct_mi: ndarray, shape=(n_dihedrals, n_dihedrals)
+        Matrix of MIs where (i,j) is the structured to disordered
+        communication between dihedrals i and j.
+    atom_inds: ndarray, shape=(n_dihedrals, 4)
+        The atom indicies defining each dihedral
+
+    References
+    ----------
+    [1] Singh, S., & Bowman, G. R. (2017). Quantifying Allosteric
+        Communication via Correlations in Structure and Disorder.
+        Biophysical Journal, 112(3), 498a.
+    """
+
     n_traj = len(trajectories)
 
     logger.debug("Assigning to rotameric states")
