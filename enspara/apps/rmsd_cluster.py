@@ -53,8 +53,8 @@ def process_command_line(argv):
         help="Subsample the input trajectories by the given factor. "
              "1 implies no subsampling.")
     parser.add_argument(
-        '--output', default='',
-        help="The output path forresults (distances, assignments, centers).")
+        '--output-path', default='',
+        help="The output path for results (distances, assignments, centers).")
     parser.add_argument(
         '--output-tag', default='',
         help="An optional extra string prepended to output filenames (useful"
@@ -84,8 +84,8 @@ def rmsd_hack(trj, ref, partitions=None, **kwargs):
 
 def filenames(args):
     path_stub = os.path.join(
-        args.output, '-'.join([args.output_tag, args.algorithm,
-                               str(args.rmsd_cutoff)]))
+        args.output_path, '-'.join([args.output_tag, args.algorithm,
+                                    str(args.rmsd_cutoff)]))
 
     return {
         'distances': path_stub+'-distances.h5',
@@ -104,7 +104,7 @@ def main(argv=None):
     # loads a giant trajectory in parallel into a single numpy array.
     logger.info(
         "Loading %s trajectories using %s processes (subsampling %s)",
-        len(args.trajectories), args.processes, args.subsampling)
+        len(args.trajectories), args.processes, args.subsample)
 
     lengths, xyz = load_as_concatenated(
         args.trajectories, top=top, processes=args.processes,
@@ -127,8 +127,13 @@ def main(argv=None):
 
     result = clustering.result_.partition(lengths)
 
-    logger.info("Saving results")
-    os.makedirs(os.path.dirname(filenames()['centers']))
+    outdir = os.path.dirname(filenames(args)['centers'])
+    logger.info(
+        "Saving results at %s", outdir)
+    try:
+        os.makedirs(outdir)
+    except FileExistsError:
+        pass
 
     md.join(load_frames(
         args.trajectories, result.center_indices,
