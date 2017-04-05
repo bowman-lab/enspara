@@ -6,6 +6,9 @@ from pylab import *
 
 def get_cdf(data, pops):
     """Returns a CDF based on data and populations"""
+    # check dimension
+    if len(data) != len(pops):
+        raise
     pops = pops/pops.sum()
     iis = np.argsort(data)
     ys = np.cumsum(pops[iis])
@@ -16,7 +19,7 @@ def average_chunks(data, avg_num=1, axis=0):
     [1, 1, 1, 2, 2, 2, 3, 3, 3] -> [1_avg, 2_avg, 3_avg]"""
     avg_chunks = np.sum(
         np.array(
-            [data[num::avg_num] for num in range(avg_num)]), axis=0)/avg_num
+            [data[num::avg_num] for num in range(avg_num)]), axis=axis)/avg_num
     return avg_chunks
 
 def return_state_iis(states, states_subset):
@@ -71,7 +74,7 @@ def compute_conditional_cdfs(
             cdf = get_cdf(conditional_values[:, num], conditional_pops)
             cdfs.append(cdf)
     else:
-        conditional_pops = popuations[conditional_state_iis]
+        conditional_pops = populations[conditional_state_iis]
         conditional_values = values[conditional_state_iis]
         cdfs = [get_cdf(conditional_values, conditional_pops)]
     return cdfs
