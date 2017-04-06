@@ -83,9 +83,16 @@ def rmsd_hack(trj, ref, partitions=None, **kwargs):
 
 
 def filenames(args):
-    path_stub = os.path.join(
-        args.output_path, '-'.join([args.output_tag, args.algorithm,
-                                    str(args.rmsd_cutoff)]))
+
+    tag_params = [
+        args.output_tag,
+        args.algorithm,
+        str(args.rmsd_cutoff)]
+
+    if args.subsample:
+        tag_params += str(args.subsample)+'subsample'
+
+    path_stub = os.path.join(args.output_path, '-'.join(tag_params))
 
     return {
         'distances': path_stub+'-distances.h5',
@@ -100,6 +107,7 @@ def main(argv=None):
     args = process_command_line(argv)
 
     top = md.load(args.topology).top
+    top.select(args.atoms) # noop, but causes fast-fail w/bad args.atoms
 
     # loads a giant trajectory in parallel into a single numpy array.
     logger.info(
@@ -110,7 +118,8 @@ def main(argv=None):
         args.trajectories, top=top, processes=args.processes,
         stride=args.subsample, atom_indices=top.select(args.atoms))
 
-    logger.info("Loading finished. Beginning clustering.")
+    logger.info(
+        "Loading finished. Clustering using atoms matching '%s'.", args.atoms)
 
     clustering = KHybrid(
         metric=partial(rmsd_hack, partitions=args.partitions),
