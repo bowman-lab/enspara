@@ -28,7 +28,7 @@ ROTAMER_TRJS = [geometry.all_rotamers(t, buffer_width=BUFFER_WIDTH)[0]
 N_DIHEDRALS = ROTAMER_TRJS[0].shape[1]
 
 
-# This is really an integration test, for the entire cards package.
+# This is really an integration test for the entire cards package.
 def test_cards():
 
     ss_mi, dis_mi, s_d_mi, d_s_mi, inds = cards.cards(
@@ -44,6 +44,39 @@ def test_cards():
         assert_array_equal(d_s_mi, np.loadtxt(f))
     with open(os.path.join(TEST_DATA_DIR, 'cards_inds.dat'), 'r') as f:
         assert_array_equal(inds, np.loadtxt(f))
+
+
+def test_cards_split():
+
+    pivot = len(TRJ)//2
+
+    r1 = cards.cards([TRJ[0:pivot], TRJ[pivot:]])
+    r2 = cards.cards([TRJ])
+
+    import matplotlib.pyplot as plt
+    plt.scatter(r1[0].flatten(), r2[0].flatten())
+    plt.show()
+
+    assert_allclose(r1[0], r2[0])
+    assert_allclose(r1[1], r2[1])
+    assert_allclose(r1[2], r2[2])
+    assert_allclose(r1[3], r2[3])
+    assert_array_equal(r1[4], r2[4])
+
+
+def test_cards_commutative():
+
+    pivot = len(TRJ)//2
+    split_trjs = [TRJ[0:pivot], TRJ[pivot:]]
+
+    r1 = cards.cards(split_trjs)
+    r2 = cards.cards(split_trjs[::-1])
+
+    assert_allclose(r1[0], r2[0])
+    assert_allclose(r1[1], r2[1])
+    assert_allclose(r1[2], r2[2])
+    assert_allclose(r1[3], r2[3])
+    assert_array_equal(r1[4], r2[4])
 
 
 # This test is really much more complicated than it should be for a unit test.
