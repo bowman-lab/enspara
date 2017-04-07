@@ -107,25 +107,25 @@ def cards(trajectories, buffer_width=15, n_procs=1):
                 mean_disordered_times[j])
 
         disordered_trajs.append(dis_traj)
-    disorder_n_states = 2*np.ones(n_dihedrals)
+    disorder_n_states = 2*np.ones(n_dihedrals, dtype='int')
 
     logger.debug("Calculating structural mutual information")
-    structural_mi = _mi_wrapper(
+    structural_mi = mi_wrapper(
         rotamer_trajs, rotamer_trajs, rotamer_n_states, rotamer_n_states,
         n_procs=n_procs)
 
     logger.debug("Calculating disorder mutual information")
-    disorder_mi = _mi_wrapper(
+    disorder_mi = mi_wrapper(
         disordered_trajs, disordered_trajs, disorder_n_states,
         disorder_n_states, n_procs=n_procs)
 
     logger.debug("Calculating structure-disorder mutual information")
-    struct_to_disorder_mi = _mi_wrapper(
+    struct_to_disorder_mi = mi_wrapper(
         rotamer_trajs, disordered_trajs, rotamer_n_states, disorder_n_states,
         n_procs=n_procs)
 
     logger.debug("Calculating disorder-structure mutual information")
-    disorder_to_struct_mi = _mi_wrapper(
+    disorder_to_struct_mi = mi_wrapper(
         disordered_trajs, rotamer_trajs, disorder_n_states, rotamer_n_states,
         n_procs=n_procs)
 
@@ -154,7 +154,7 @@ def _mi_helper(i, states_a, states_b, n_a_states, n_b_states):
     return mi
 
 
-def _mi_wrapper(states_a, states_b, n_a_states, n_b_states, n_procs=1):
+def mi_wrapper(states_a, states_b, n_a_states, n_b_states, n_procs=1):
     n_dihedrals = states_a[0].shape[1]
     mi = np.zeros((n_dihedrals, n_dihedrals))
 
@@ -168,7 +168,7 @@ def _mi_wrapper(states_a, states_b, n_a_states, n_b_states, n_procs=1):
     return mi
 
 
-def _mi_wrapper_serial(states_a, states_b, n_a_states, n_b_states):
+def mi_wrapper_serial(states_a, states_b, n_a_states, n_b_states):
     n_traj = len(states_a)
     n_dihedrals = states_a[0].shape[1]
     mi = np.zeros((n_dihedrals, n_dihedrals))

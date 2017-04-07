@@ -3,13 +3,12 @@ large blocks of expected data in the `test_data` subdirectory.
 '''
 
 import os
+import pickle
 
-from nose.tools import assert_equal
 from numpy.testing import assert_array_equal, assert_allclose
 
 import numpy as np
 import mdtraj as md
-import pickle
 
 from .. import cards
 from .. import geometry
@@ -46,21 +45,18 @@ def test_cards():
         assert_array_equal(inds, np.loadtxt(f))
 
 
-def test_cards_split():
+def cards_split():
 
     pivot = len(TRJ)//2
 
+    # cards output should be the same if we split it in two
     r1 = cards.cards([TRJ[0:pivot], TRJ[pivot:]])
     r2 = cards.cards([TRJ])
 
-    import matplotlib.pyplot as plt
-    plt.scatter(r1[0].flatten(), r2[0].flatten())
-    plt.show()
-
-    assert_allclose(r1[0], r2[0])
-    assert_allclose(r1[1], r2[1])
-    assert_allclose(r1[2], r2[2])
-    assert_allclose(r1[3], r2[3])
+    assert_array_equal(r1[0], r2[0])
+    assert_array_equal(r1[1], r2[1])
+    assert_array_equal(r1[2], r2[2])
+    assert_array_equal(r1[3], r2[3])
     assert_array_equal(r1[4], r2[4])
 
 
