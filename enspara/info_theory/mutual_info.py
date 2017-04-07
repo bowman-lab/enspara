@@ -18,9 +18,12 @@ def joint_counts(state_traj_1, state_traj_2, n_states_1=None, n_states_2=None):
     if n_states_2 is None:
         n_states_2 = state_traj_2.max()+1
 
-    joint_counts, x_edges, y_edges = np.histogram2d(state_traj_1, state_traj_2, bins=(n_states_1, n_states_2))
+    joint_counts, _, _ = np.histogram2d(
+        state_traj_1, state_traj_2,
+        bins=(np.array(range(n_states_1+1)),
+              np.array(range(n_states_2+1))))
 
-    return joint_counts
+    return joint_counts.astype('int')
 
 
 def mutual_information(joint_counts):
