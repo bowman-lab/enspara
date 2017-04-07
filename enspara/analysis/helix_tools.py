@@ -172,6 +172,19 @@ def helix_orientation_vectors(
     cross_vectors = np.cross(ref_vectors, helix_vectors)
     return helix_vectors, ref_vectors, cross_vectors, helix_centers
 
+def angles_from_plane_projection(vectors, v1, v2, degree=True):
+    projection1 = np.einsum('ij,ij->i', vectors, [v1])
+    projection2 = np.einsum('ij,ij->i', vectors, [v2])
+    projection_vector = np.array(list(zip(projection1, projection2)))
+    mags = np.sqrt(np.einsum('ij,ij->i', projection_vector, projection_vector))
+    dot_prods = np.einsum('ij,ij->i', projection_vector, [[1,0]])
+    inner_prod = dot_prods/mags
+    angles = np.arccos(np.around(inner_prod, 5))
+    iis_neg = np.where(projection2 < 0)
+    angles[iis_neg] = -angles[iis_neg]
+    if degree:
+        angles *= 360./(2*np.pi)
+    return angles, mags
 
 def angles_from_vecs(vecs):
     mags = np.sqrt(np.einsum('ij,ij->i', vecs, vecs))

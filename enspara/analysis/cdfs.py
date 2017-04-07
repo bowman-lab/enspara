@@ -56,7 +56,7 @@ def compute_conditional_cdfs(
     """
     # get proper state numberings
     if orig_states is None:
-        states = np.where(populations>0)[0]
+        states = np.arange(len(populations))
     else:
         states = orig_states
     # index numbers of conditional states
