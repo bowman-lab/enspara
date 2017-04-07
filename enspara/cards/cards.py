@@ -85,16 +85,11 @@ def cards(trajectories, buffer_width=15, n_procs=1):
             (ordered_times[i, j], n_ordered_times[i, j],
              disordered_times[i, j], n_disordered_times[i, j]) = disorder.traj_ord_disord_times(tt)
 
-    # get average ordered and idsordered times
     logger.debug("Calculating ordered/disordered times")
-    mean_ordered_times = np.zeros(n_dihedrals)
-    mean_disordered_times = np.zeros(n_dihedrals)
-    for j in range(n_dihedrals):
-        mean_ordered_times[j] = (
-            ordered_times[:, j].dot(n_ordered_times[:, j]) /
-            n_ordered_times[:, j].sum())
-        mean_disordered_times[j] = disordered_times[:, j].dot(
-            n_disordered_times[:, j])/n_disordered_times[:, j].sum()
+    mean_ordered_times = aggregate_mean_times(
+        ordered_times, n_ordered_times)
+    mean_disordered_times = aggregate_mean_times(
+        disordered_times, n_disordered_times)
 
     logger.debug("Assigning to disordered states")
     disordered_trajs = []
@@ -131,6 +126,35 @@ def cards(trajectories, buffer_width=15, n_procs=1):
 
     return structural_mi, disorder_mi, struct_to_disorder_mi, \
         disorder_to_struct_mi, atom_inds
+
+
+def aggregate_mean_times(times, n_times):
+    """Compute the mean transition time between a set of trajectories'
+    mean transition times.
+
+    Parameters
+    ----------
+    times : array, shape=(n_trajectories, n_dihedrals)
+        Array of mean transition times for each trajectory and dihedral.
+    n_times : array, shape=(n_trajectories, n_dihedrals)
+        Array of numbers of transitions observed for each trajectory and
+        dihedral.
+
+    Returns
+    -------
+    mean_times : np.ndarray, shape=(n_dihedrals,)
+        Mean transition time across trajectories for each dihedral.
+    """
+
+    n_dihedrals = times.shape[1]
+    mean_times = np.zeros(n_dihedrals)
+
+    with np.errstate(all='ignore'):
+        for i in range(n_dihedrals):
+            mean_times[i] = (times[:, i].dot(n_times[:, i]) /
+                             n_times[:, i].sum())
+
+    return mean_times
 
 
 def _mi_helper(i, states_a, states_b, n_a_states, n_b_states):

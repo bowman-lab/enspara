@@ -128,14 +128,10 @@ def test_disorder_trajectories():
             (ordered_times[i, j], n_ordered_times[i, j],
              disordered_times[i, j], n_disordered_times[i, j]) = disorder.traj_ord_disord_times(tt)
 
-    mean_ordered_times = np.zeros(N_DIHEDRALS)
-    mean_disordered_times = np.zeros(N_DIHEDRALS)
-    for j in range(N_DIHEDRALS):
-        mean_ordered_times[j] = (
-            ordered_times[:, j].dot(n_ordered_times[:, j]) /
-            n_ordered_times[:, j].sum())
-        mean_disordered_times[j] = disordered_times[:, j].dot(
-            n_disordered_times[:, j])/n_disordered_times[:, j].sum()
+    mean_ordered_times = cards.aggregate_mean_times(
+        ordered_times, n_ordered_times)
+    mean_disordered_times = cards.aggregate_mean_times(
+        disordered_times, n_disordered_times)
 
     disordered_trajs = []
     for i in range(len(TRJS)):
