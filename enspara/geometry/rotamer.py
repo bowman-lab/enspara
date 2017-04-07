@@ -48,7 +48,7 @@ def _rotamers(angles, hard_boundaries, buffer_width):
     bins = np.digitize(angles, core_edges)
 
     n_frames = len(angles)
-    rotamers = -1*np.ones(n_frames)
+    rotamers = -1*np.ones(n_frames, dtype='int')
 
     # assign things to cores
     for i in range(n_basins):
@@ -74,18 +74,16 @@ def phi_rotamers(traj, buffer_width=15):
     angles, atom_inds = dihedral_angles(traj, 'phi')
 
     n_frames, n_angles = angles.shape
-    rotamers = np.zeros((n_frames, n_angles))
+    rotamers = np.zeros((n_frames, n_angles), dtype='int')
     for i in range(n_angles):
         rotamers[:, i] = _rotamers(angles[:, i], hard_boundaries, buffer_width)
 
-    n_states = 2*np.ones(n_angles)
+    n_states = 2*np.ones(n_angles, dtype='int')
 
     return rotamers, atom_inds, n_states
 
 
 def psi_rotamers(traj, buffer_width=15):
-    # unshifted boundaries = [0, 100, 260, 360]
-
     angles, atom_inds = dihedral_angles(traj, 'psi')
 
     # shift by 100 so boundaries at 0 and 360
@@ -94,19 +92,12 @@ def psi_rotamers(traj, buffer_width=15):
     hard_boundaries = [0, 160, 360]
 
     n_frames, n_angles = angles.shape
-    rotamers = np.zeros((n_frames, n_angles))
+    rotamers = np.zeros((n_frames, n_angles), dtype='int')
     for i in range(n_angles):
         rotamers[:, i] = _rotamers(shifted_angles[:, i], hard_boundaries,
                                    buffer_width)
 
-    # need fix to account for 0-100 and 260-360 are same state
-    # state 0 = 101 - 260
-    # state 1 = 0 - 100 AND 261 to 360 (there's wrap around here)
-    # state_0_inds = np.where(rotamers==1)
-    # rotamers[:] = 1
-    # rotamers[state_0_inds] = 0
-
-    n_states = 2*np.ones(n_angles)
+    n_states = 2*np.ones(n_angles, dtype='int')
 
     return rotamers, atom_inds, n_states
 
@@ -123,11 +114,11 @@ def chi_rotamers(traj, buffer_width=15):
         atom_inds = np.append(atom_inds, more_atom_inds, axis=0)
 
     n_frames, n_angles = angles.shape
-    rotamers = np.zeros((n_frames, n_angles))
+    rotamers = np.zeros((n_frames, n_angles), dtype='int')
     for i in range(n_angles):
         rotamers[:, i] = _rotamers(angles[:, i], hard_boundaries, buffer_width)
 
-    n_states = 3*np.ones(n_angles)
+    n_states = 3*np.ones(n_angles, dtype='int')
 
     return rotamers, atom_inds, n_states
 
@@ -149,5 +140,8 @@ def all_rotamers(traj, buffer_width=15):
     all_rotamers = np.append(all_rotamers, chi_rotameric_states, axis=1)
     all_atom_inds = np.append(all_atom_inds, chi_atom_inds, axis=0)
     all_n_states = np.append(all_n_states, n_chi_states, axis=0)
+
+    assert all_rotamers.dtype == 'int'
+    assert all_n_states.dtype == 'int'
 
     return all_rotamers, all_atom_inds, all_n_states
