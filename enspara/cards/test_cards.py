@@ -5,10 +5,13 @@ large blocks of expected data in the `test_data` subdirectory.
 import os
 import pickle
 
+from nose.tools import assert_equal
 from numpy.testing import assert_array_equal, assert_allclose
 
 import numpy as np
 import mdtraj as md
+
+from scipy.stats import pearsonr
 
 from .. import cards
 from .. import geometry
@@ -27,6 +30,10 @@ ROTAMER_TRJS = [geometry.all_rotamers(t, buffer_width=BUFFER_WIDTH)[0]
 N_DIHEDRALS = ROTAMER_TRJS[0].shape[1]
 
 
+def assert_correlates(m1, m2):
+    assert_equal(pearsonr(m1.flatten(), m2.flatten())[0], 1)
+
+
 # This is really an integration test for the entire cards package.
 def test_cards():
 
@@ -34,7 +41,9 @@ def test_cards():
         [TRJ, TRJ], buffer_width=15., n_procs=1)
 
     with open(os.path.join(TEST_DATA_DIR, 'cards_ss_mi.dat'), 'r') as f:
-        assert_allclose(ss_mi, np.loadtxt(f))
+        m = np.loadtxt(f)
+        assert_allclose(ss_mi, m)
+        assert_correlates(ss_mi, m)
     with open(os.path.join(TEST_DATA_DIR, 'cards_dis_mi.dat'), 'r') as f:
         assert_array_equal(dis_mi, np.loadtxt(f))
     with open(os.path.join(TEST_DATA_DIR, 'cards_s_d_mi.dat'), 'r') as f:
@@ -60,18 +69,37 @@ def cards_split():
     assert_array_equal(r1[4], r2[4])
 
 
+def test_cards_length_difference():
+
+    pivot = len(TRJ) // 4
+
+    r1 = cards.cards([TRJ])
+    r2 = cards.cards([TRJ[pivot:], TRJ[0:pivot]])
+
+    assert_allclose(r1[0], r2[0], rtol=1e-12)
+    assert_correlates(r1[0], r2[0])
+
+    assert_correlates(r1[1], r2[1])
+    assert_array_equal(r1[1], r2[1])
+
+    assert_array_equal(r1[2], r2[2])
+    assert_array_equal(r1[3], r2[3])
+    assert_array_equal(r1[4], r2[4])
+
+
 def test_cards_commutative():
 
     pivot = len(TRJ)//2
-    split_trjs = [TRJ[0:pivot], TRJ[pivot:]]
 
-    r1 = cards.cards(split_trjs)
-    r2 = cards.cards(split_trjs[::-1])
+    r1 = cards.cards([TRJ[0:pivot], TRJ[pivot:]])
+    r2 = cards.cards([TRJ[pivot:], TRJ[0:pivot]])
 
-    assert_allclose(r1[0], r2[0])
-    assert_allclose(r1[1], r2[1])
-    assert_allclose(r1[2], r2[2])
-    assert_allclose(r1[3], r2[3])
+    assert_correlates(r1[0], r1[0])
+    assert_allclose(r1[0], r2[0], rtol=1e-12)
+
+    assert_array_equal(r1[1], r2[1])
+    assert_array_equal(r1[2], r2[2])
+    assert_array_equal(r1[3], r2[3])
     assert_array_equal(r1[4], r2[4])
 
 
