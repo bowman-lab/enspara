@@ -8,6 +8,7 @@ from datetime import datetime
 from mdtraj.testing import get_fn
 
 from .rmsd_cluster import main as rmsd_cluster
+from .. import cards
 
 
 def runhelper(args):
@@ -61,6 +62,16 @@ def test_rmsd_cluster_basic():
         '--algorithm', 'khybrid'])
 
 
+def test_rmsd_cluster_selection():
+
+    runhelper([
+        '--trajectories', get_fn('frame0.xtc'), get_fn('frame0.xtc'),
+        '--topology', get_fn('native.pdb'),
+        '--rmsd-cutoff', '0.1',
+        '--atoms', '(name N or name C or name CA)',
+        '--algorithm', 'khybrid'])
+
+
 def test_rmsd_cluster_subsample():
 
     runhelper([
@@ -103,25 +114,36 @@ def test_rmsd_cluster_partition_and_subsample():
         '--partition', '4'])
 
 
-
 def test_rmsd_cluster_multitop():
+
+    xtc2 = os.path.join(cards.__path__[0], 'test_data', 'trj0.xtc')
+    top2 = os.path.join(cards.__path__[0], 'test_data', 'PROT_only.pdb')
 
     runhelper([
         '--trajectories', get_fn('frame0.xtc'), get_fn('frame0.xtc'),
-        '--trajectories', get_fn('frame0.xtc'), get_fn('frame0.xtc'),
+        '--trajectories', xtc2,
         '--topology', get_fn('native.pdb'),
-        '--topology', get_fn('native.pdb'),
+        '--topology', top2,
+        '--atoms', '(name N or name C or name CA or name H or name O)'
+                   'and (residue 2)',
         '--rmsd-cutoff', '0.1',
         '--algorithm', 'khybrid'])
 
 
 def test_rmsd_cluster_multitop_partition():
 
+    xtc2 = os.path.join(cards.__path__[0], 'test_data', 'trj0.xtc')
+    top2 = os.path.join(cards.__path__[0], 'test_data', 'PROT_only.pdb')
+
+    print(get_fn('native.pdb'))
+
     runhelper([
         '--trajectories', get_fn('frame0.xtc'), get_fn('frame0.xtc'),
+        '--trajectories', xtc2,
         '--topology', get_fn('native.pdb'),
-        '--trajectories', get_fn('frame0.xtc'), get_fn('frame0.xtc'),
-        '--topology', get_fn('native.pdb'),
+        '--topology', top2,
+        '--atoms', '(name N or name C or name CA or name H or name O)'
+                   'and (residue 2)',
         '--rmsd-cutoff', '0.1',
         '--algorithm', 'khybrid',
         '--partition', '4',

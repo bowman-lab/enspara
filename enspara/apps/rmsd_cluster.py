@@ -130,6 +130,11 @@ def load(args, selection, stride):
                 'atom_indices': top.select(selection)
                 })
 
+    assert all([len(c['atom_indices']) == len(configs[0]['atom_indices'])
+                for c in configs]), \
+        "Number of atoms across different input topologies differed: %s" % \
+        [(t, (c['atom_indices'])) for t, c in zip(args.topology, configs)]
+
     logger.info(
         "Loading %s trajectories with %s atoms using %s processes"
         "(subsampling %s)",
@@ -140,6 +145,25 @@ def load(args, selection, stride):
         flat_trjs, args=configs, processes=args.processes)
 
     return lengths, xyz, top.subset(top.select(args.atoms))
+
+
+def load_asymm_frames(result, trajectories, topology, subsample):
+
+    frames = []
+    begin_index = 0
+    for topfile, trjset in zip(topology, trajectories):
+        end_index = begin_index + len(trjset)
+        subframes = load_frames(
+            list(itertools.chain(*trajectories)),
+            [c for c in result.center_indices
+             if begin_index <= c[0] < end_index],
+            top=md.load(topfile).top,
+            stride=subsample)
+
+        frames.extend(subframes)
+        begin_index += len(trjset)
+
+    return md.join(frames)
 
 
 def main(argv=None):
@@ -175,11 +199,8 @@ def main(argv=None):
     except FileExistsError:
         pass
 
-    md.join(load_frames(
-        list(itertools.chain(*args.trajectories)),
-        result.center_indices,
-        top=md.load(args.topology[0]).top,
-        stride=args.subsample)).save_hdf5(filenames(args)['centers'])
+    load_asymm_frames(result, args.trajectories, args.topology,
+                      args.subsample).save_hdf5(filenames(args)['centers'])
 
     if args.subsample:
         logger.info("Reloading entire dataset for reassignment")
