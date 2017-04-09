@@ -5,35 +5,47 @@ import shutil
 
 from datetime import datetime
 
-from nose.tools import assert_equal, assert_is
 from mdtraj.testing import get_fn
 
-from rmsd_cluster import main as rmsd_cluster
+from .rmsd_cluster import main as rmsd_cluster
 
 
 def runhelper(args):
 
     td = tempfile.mkdtemp(dir=os.getcwd())
-    tf = hashlib.md5(str(datetime.now().timestamp()) \
-            .encode('utf-8')).hexdigest()[0:8]
+    tf = hashlib.md5(str(datetime.now().timestamp())
+                     .encode('utf-8')).hexdigest()[0:8]
 
     try:
         rmsd_cluster([
-            '',
+            '',  # req'd because arg[0] is expected to be program name
             '--output-path', td,
             '--output-tag', tf] + args)
 
+        file_tag = [tf, 'khybrid', '0.1']
+
+        # append the subsample to the expected output tags when relevant
+        if '--subsample' in args:
+            file_tag.append(
+                args[args.index('--subsample')+1]+'subsample')
+
         assignfile = os.path.join(
-            td, '-'.join([tf, 'khybrid', '0.1', 'assignments.h5']))
-        assert os.path.isfile(assignfile), "Couldn't find %s" % assignfile
+            td, '-'.join(file_tag + ['assignments.h5']))
+        assert os.path.isfile(assignfile), \
+            "Couldn't find %s. Dir contained: %s" % (
+            assignfile, os.listdir(os.path.dirname(assignfile)))
 
         distfile = os.path.join(
-            td, '-'.join([tf, 'khybrid', '0.1', 'distances.h5']))
-        assert os.path.isfile(distfile), "Couldn't find %s" % distfile
+            td, '-'.join(file_tag + ['distances.h5']))
+        assert os.path.isfile(distfile), \
+            "Couldn't find %s. Dir contained: %s" % (
+            distfile, os.listdir(os.path.dirname(distfile)))
 
         ctrsfile = os.path.join(
-            td, '-'.join([tf, 'khybrid', '0.1', 'centers.h5']))
-        assert os.path.isfile(ctrsfile), "Couldn't find %s" % ctrsfile
+            td, '-'.join(file_tag + ['centers.h5']))
+        assert os.path.isfile(ctrsfile), \
+            "Couldn't find %s. Dir contained: %s" % (
+            ctrsfile, os.listdir(os.path.dirname(ctrsfile)))
 
     finally:
         shutil.rmtree(td)
@@ -90,3 +102,27 @@ def test_rmsd_cluster_partition_and_subsample():
         '--subsample', '4',
         '--partition', '4'])
 
+
+
+def test_rmsd_cluster_multitop():
+
+    runhelper([
+        '--trajectories', get_fn('frame0.xtc'), get_fn('frame0.xtc'),
+        '--trajectories', get_fn('frame0.xtc'), get_fn('frame0.xtc'),
+        '--topology', get_fn('native.pdb'),
+        '--topology', get_fn('native.pdb'),
+        '--rmsd-cutoff', '0.1',
+        '--algorithm', 'khybrid'])
+
+
+def test_rmsd_cluster_multitop_partition():
+
+    runhelper([
+        '--trajectories', get_fn('frame0.xtc'), get_fn('frame0.xtc'),
+        '--topology', get_fn('native.pdb'),
+        '--trajectories', get_fn('frame0.xtc'), get_fn('frame0.xtc'),
+        '--topology', get_fn('native.pdb'),
+        '--rmsd-cutoff', '0.1',
+        '--algorithm', 'khybrid',
+        '--partition', '4',
+        '--subsample', '4'])
