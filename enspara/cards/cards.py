@@ -62,34 +62,15 @@ def cards(trajectories, buffer_width=15, n_procs=1):
     n_traj = len(trajectories)
 
     logger.debug("Assigning to rotameric states")
-    rotamer_trajs = []
-    for i in range(n_traj):
-        rots, inds, n_states = geometry.all_rotamers(trajectories[i],
-                                                     buffer_width=buffer_width)
-        rotamer_trajs.append(rots)
-    atom_inds = inds
-    rotamer_n_states = n_states
-
-    logger.debug("identifying transition times")
-    transition_times = []
-    n_dihedrals = rotamer_trajs[0].shape[1]
-    ordered_times = np.zeros((n_traj, n_dihedrals))
-    n_ordered_times = np.zeros((n_traj, n_dihedrals))
-    disordered_times = np.zeros((n_traj, n_dihedrals))
-    n_disordered_times = np.zeros((n_traj, n_dihedrals))
-    for i in range(n_traj):
-        transition_times.append([])
-        for j in range(n_dihedrals):
-            tt = disorder.transitions(rotamer_trajs[i][:, j])
-            transition_times[i].append(tt)
-            (ordered_times[i, j], n_ordered_times[i, j],
-             disordered_times[i, j], n_disordered_times[i, j]) = disorder.traj_ord_disord_times(tt)
+    rotamer_trajs = [geometry.all_rotamers(t, buffer_width=buffer_width)[0]
+                     for t in trajectories]
+    _, atom_inds, rotamer_n_states = geometry.all_rotamers(
+        trajectories[0], buffer_width=buffer_width)
 
     logger.debug("Calculating ordered/disordered times")
-    mean_ordered_times = aggregate_mean_times(
-        ordered_times, n_ordered_times)
-    mean_disordered_times = aggregate_mean_times(
-        disordered_times, n_disordered_times)
+    n_dihedrals = rotamer_trajs[0].shape[1]
+    transition_times, mean_ordered_times, mean_disordered_times = \
+        compute_transition_statistics(rotamer_trajs, n_traj)
 
     logger.debug("Assigning to disordered states")
     disordered_trajs = []
@@ -126,6 +107,30 @@ def cards(trajectories, buffer_width=15, n_procs=1):
 
     return structural_mi, disorder_mi, struct_to_disorder_mi, \
         disorder_to_struct_mi, atom_inds
+
+
+def compute_transition_statistics(rotamer_trajs, n_traj):
+
+    transition_times = []
+    n_dihedrals = rotamer_trajs[0].shape[1]
+    ordered_times = np.zeros((n_traj, n_dihedrals))
+    n_ordered_times = np.zeros((n_traj, n_dihedrals))
+    disordered_times = np.zeros((n_traj, n_dihedrals))
+    n_disordered_times = np.zeros((n_traj, n_dihedrals))
+    for i in range(n_traj):
+        transition_times.append([])
+        for j in range(n_dihedrals):
+            tt = disorder.transitions(rotamer_trajs[i][:, j])
+            transition_times[i].append(tt)
+            (ordered_times[i, j], n_ordered_times[i, j],
+             disordered_times[i, j], n_disordered_times[i, j]) = disorder.traj_ord_disord_times(tt)
+
+    mean_ordered_times = aggregate_mean_times(
+        ordered_times, n_ordered_times)
+    mean_disordered_times = aggregate_mean_times(
+        disordered_times, n_disordered_times)
+
+    return transition_times, mean_ordered_times, mean_disordered_times
 
 
 def aggregate_mean_times(times, n_times):

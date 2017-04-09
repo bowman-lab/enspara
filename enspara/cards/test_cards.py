@@ -5,7 +5,7 @@ large blocks of expected data in the `test_data` subdirectory.
 import os
 import pickle
 
-from nose.tools import assert_equal
+from nose.tools import assert_equal, assert_almost_equal
 from numpy.testing import assert_array_equal, assert_allclose
 
 import numpy as np
@@ -31,7 +31,8 @@ N_DIHEDRALS = ROTAMER_TRJS[0].shape[1]
 
 
 def assert_correlates(m1, m2):
-    assert_equal(pearsonr(m1.flatten(), m2.flatten())[0], 1)
+    assert_almost_equal(pearsonr(m1.flatten(), m2.flatten())[0], 1,
+                        places=14)
 
 
 # This is really an integration test for the entire cards package.
