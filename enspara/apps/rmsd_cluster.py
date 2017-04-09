@@ -3,6 +3,7 @@ import argparse
 import os
 import logging
 import itertools
+import pickle
 
 from functools import partial
 from multiprocessing import cpu_count
@@ -102,7 +103,7 @@ def filenames(args):
 
     return {
         'distances': path_stub+'-distances.h5',
-        'centers': path_stub+'-centers.h5',
+        'centers': path_stub+'-centers.pkl',
         'assignments': path_stub+'-assignments.h5',
     }
 
@@ -140,6 +141,7 @@ def load(args, selection, stride):
         "(subsampling %s)",
         len(flat_trjs), len(top.select(selection)),
         args.processes, args.subsample)
+    assert len(top.select(selection)) > 0, "No atoms selected for clustering"
 
     lengths, xyz = load_as_concatenated(
         flat_trjs, args=configs, processes=args.processes)
@@ -163,7 +165,7 @@ def load_asymm_frames(result, trajectories, topology, subsample):
         frames.extend(subframes)
         begin_index += len(trjset)
 
-    return md.join(frames)
+    return frames
 
 
 def main(argv=None):
@@ -199,8 +201,11 @@ def main(argv=None):
     except FileExistsError:
         pass
 
-    load_asymm_frames(result, args.trajectories, args.topology,
-                      args.subsample).save_hdf5(filenames(args)['centers'])
+    with open(filenames(args)['centers'], 'wb') as f:
+        pickle.dump(
+            load_asymm_frames(result, args.trajectories, args.topology,
+                              args.subsample),
+            f)
 
     if args.subsample:
         logger.info("Reloading entire dataset for reassignment")
@@ -216,6 +221,9 @@ def main(argv=None):
     else:
         io.saveh(filenames(args)['distances'], result.distances)
         io.saveh(filenames(args)['assignments'], result.assignments)
+
+    logger.info("Success! Data can be found in %s.",
+                os.path.basename(filenames(args)['distances']))
 
     return 0
 

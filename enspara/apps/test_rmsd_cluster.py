@@ -43,7 +43,7 @@ def runhelper(args):
             distfile, os.listdir(os.path.dirname(distfile)))
 
         ctrsfile = os.path.join(
-            td, '-'.join(file_tag + ['centers.h5']))
+            td, '-'.join(file_tag + ['centers.pkl']))
         assert os.path.isfile(ctrsfile), \
             "Couldn't find %s. Dir contained: %s" % (
             ctrsfile, os.listdir(os.path.dirname(ctrsfile)))
