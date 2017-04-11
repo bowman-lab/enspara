@@ -5,7 +5,7 @@ large blocks of expected data in the `test_data` subdirectory.
 import os
 import pickle
 
-from nose.tools import assert_equal, assert_almost_equal
+from nose.tools import assert_equal, assert_almost_equal, assert_greater
 from numpy.testing import assert_array_equal, assert_allclose
 
 import numpy as np
@@ -142,25 +142,50 @@ def test_transitions():
             assert_array_equal(x, y)
 
 
+def test_split_transition_times():
+
+    pivot = len(TRJ) // 4
+
+    trj_unsplit = [TRJ]
+    trj_split = [TRJ[pivot:], TRJ[0:pivot]]
+
+    rotamer_trjs_unsp = [geometry.all_rotamers(t, buffer_width=BUFFER_WIDTH)[0]
+                         for t in trj_unsplit]
+    rotamer_trjs_spl = [geometry.all_rotamers(t, buffer_width=BUFFER_WIDTH)[0]
+                        for t in trj_split]
+
+    tt1, avg_ord_unsp, avg_dis_unsp = cards.transition_stats(rotamer_trjs_unsp)
+    tt2, avg_ord_spl, avg_dis_spl = cards.transition_stats(rotamer_trjs_spl)
+
+    with np.errstate(invalid='ignore'):
+        ratio_diff = ((avg_ord_unsp / avg_ord_spl) /
+                      (avg_dis_unsp / avg_dis_spl))
+    ratio_diff = ratio_diff[~np.isnan(ratio_diff)]
+
+    n_samples = np.array([len(t) for t in tt1[0]])
+
+    assert_allclose(
+        ratio_diff, np.ones(ratio_diff.shape[0]),
+        rtol=1.1)
+
+    assert_greater(
+        pearsonr(avg_ord_unsp.flatten(), avg_ord_spl.flatten())[0],
+        0.9)
+    assert_greater(
+        pearsonr(avg_dis_unsp.flatten(), avg_dis_spl.flatten())[0],
+        0.9)
+
+    assert_allclose(avg_dis_spl[n_samples > 35], avg_dis_unsp[n_samples > 35],
+                    rtol=0.2)
+
+    assert_allclose(avg_ord_spl[n_samples > 35], avg_ord_unsp[n_samples > 35],
+                    rtol=0.2)
+
+
 def test_disorder_trajectories():
 
-    transition_times = []
-    ordered_times = np.zeros((len(TRJS), N_DIHEDRALS))
-    n_ordered_times = np.zeros((len(TRJS), N_DIHEDRALS))
-    disordered_times = np.zeros((len(TRJS), N_DIHEDRALS))
-    n_disordered_times = np.zeros((len(TRJS), N_DIHEDRALS))
-    for i in range(len(TRJS)):
-        transition_times.append([])
-        for j in range(N_DIHEDRALS):
-            tt = disorder.transitions(ROTAMER_TRJS[i][:, j])
-            transition_times[i].append(tt)
-            (ordered_times[i, j], n_ordered_times[i, j],
-             disordered_times[i, j], n_disordered_times[i, j]) = disorder.traj_ord_disord_times(tt)
-
-    mean_ordered_times = cards.aggregate_mean_times(
-        ordered_times, n_ordered_times)
-    mean_disordered_times = cards.aggregate_mean_times(
-        disordered_times, n_disordered_times)
+    transition_times, mean_ordered_times, mean_disordered_times = \
+        cards.transition_stats(ROTAMER_TRJS)
 
     disordered_trajs = []
     for i in range(len(TRJS)):

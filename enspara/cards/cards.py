@@ -70,7 +70,7 @@ def cards(trajectories, buffer_width=15, n_procs=1):
     logger.debug("Calculating ordered/disordered times")
     n_dihedrals = rotamer_trajs[0].shape[1]
     transition_times, mean_ordered_times, mean_disordered_times = \
-        compute_transition_statistics(rotamer_trajs, n_traj)
+        transition_stats(rotamer_trajs)
 
     logger.debug("Assigning to disordered states")
     disordered_trajs = []
@@ -109,7 +109,9 @@ def cards(trajectories, buffer_width=15, n_procs=1):
         disorder_to_struct_mi, atom_inds
 
 
-def compute_transition_statistics(rotamer_trajs, n_traj):
+def transition_stats(rotamer_trajs):
+
+    n_traj = len(rotamer_trajs)
 
     transition_times = []
     n_dihedrals = rotamer_trajs[0].shape[1]
@@ -125,15 +127,16 @@ def compute_transition_statistics(rotamer_trajs, n_traj):
             (ordered_times[i, j], n_ordered_times[i, j],
              disordered_times[i, j], n_disordered_times[i, j]) = disorder.traj_ord_disord_times(tt)
 
+    trj_lengths = np.array([len(a) for a in rotamer_trajs])
     mean_ordered_times = aggregate_mean_times(
-        ordered_times, n_ordered_times)
+        ordered_times, n_ordered_times, trj_lengths)
     mean_disordered_times = aggregate_mean_times(
-        disordered_times, n_disordered_times)
+        disordered_times, n_disordered_times, trj_lengths)
 
     return transition_times, mean_ordered_times, mean_disordered_times
 
 
-def aggregate_mean_times(times, n_times):
+def aggregate_mean_times(times, n_times, weight):
     """Compute the mean transition time between a set of trajectories'
     mean transition times.
 
@@ -144,6 +147,9 @@ def aggregate_mean_times(times, n_times):
     n_times : array, shape=(n_trajectories, n_dihedrals)
         Array of numbers of transitions observed for each trajectory and
         dihedral.
+    weight : array, shape=(n_trajectories,)
+        Array of weights for each trajectory. Usually used to weight
+        trajectories by their length. Any nonnegative weights can be used.
 
     Returns
     -------
@@ -154,10 +160,16 @@ def aggregate_mean_times(times, n_times):
     n_dihedrals = times.shape[1]
     mean_times = np.zeros(n_dihedrals)
 
+    # we normalize by the maximum weight, such that the longest trajectory's
+    # mean time is unchanged by the calculation.
+    nl_weight = weight / np.sum(weight)
+
+    # we suppress divide by zero errors here, since if we never see a
+    # transition, the result of the divide by zero (a NaN) is an
+    # acceptable representation of that time.
     with np.errstate(all='ignore'):
         for i in range(n_dihedrals):
-            mean_times[i] = (times[:, i].dot(n_times[:, i]) /
-                             n_times[:, i].sum())
+            mean_times[i] = ((times[:, i] * nl_weight).sum())
 
     return mean_times
 
