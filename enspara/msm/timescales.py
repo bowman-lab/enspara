@@ -78,10 +78,6 @@ def implied_timescales(
         as a row.
     """
 
-    if n_procs is not None:
-        logger.warning(
-            "implied_timescales n_procs is currently unimplemented")
-
     # n_times=None -> 10% number of states
     n_states = assigns.max() + 1
 
