@@ -13,6 +13,7 @@ import numpy as np
 
 from sklearn.externals.joblib import Parallel, delayed
 
+from .. import exception
 from .. import geometry
 from .. import info_theory
 from . import disorder
@@ -59,13 +60,39 @@ def cards(trajectories, buffer_width=15, n_procs=1):
         Biophysical Journal, 112(3), 498a.
     """
 
-    n_traj = len(trajectories)
-
     logger.debug("Assigning to rotameric states")
     rotamer_trajs = [geometry.all_rotamers(t, buffer_width=buffer_width)[0]
                      for t in trajectories]
     _, atom_inds, rotamer_n_states = geometry.all_rotamers(
         trajectories[0], buffer_width=buffer_width)
+
+    disordered_trajs, disorder_n_states = assign_order_disorder(rotamer_trajs)
+
+    logger.debug("Calculating structural mutual information")
+    structural_mi = mi_matrix(
+        rotamer_trajs, rotamer_trajs,
+        rotamer_n_states, rotamer_n_states, n_procs=n_procs)
+
+    logger.debug("Calculating disorder mutual information")
+    disorder_mi = mi_matrix(
+        disordered_trajs, disordered_trajs,
+        disorder_n_states, disorder_n_states, n_procs=n_procs)
+
+    logger.debug("Calculating structure-disorder mutual information")
+    struct_to_disorder_mi = mi_matrix(
+        rotamer_trajs, disordered_trajs,
+        rotamer_n_states, disorder_n_states, n_procs=n_procs)
+
+    logger.debug("Calculating disorder-structure mutual information")
+    disorder_to_struct_mi = mi_matrix(
+        disordered_trajs, rotamer_trajs,
+        disorder_n_states, rotamer_n_states, n_procs=n_procs)
+
+    return structural_mi, disorder_mi, struct_to_disorder_mi, \
+        disorder_to_struct_mi, atom_inds
+
+
+def assign_order_disorder(rotamer_trajs):
 
     logger.debug("Calculating ordered/disordered times")
     n_dihedrals = rotamer_trajs[0].shape[1]
@@ -74,7 +101,7 @@ def cards(trajectories, buffer_width=15, n_procs=1):
 
     logger.debug("Assigning to disordered states")
     disordered_trajs = []
-    for i in range(n_traj):
+    for i in range(len(rotamer_trajs)):
         traj_len = rotamer_trajs[i].shape[0]
         dis_traj = np.zeros((traj_len, n_dihedrals))
         for j in range(n_dihedrals):
@@ -85,28 +112,7 @@ def cards(trajectories, buffer_width=15, n_procs=1):
         disordered_trajs.append(dis_traj)
     disorder_n_states = 2*np.ones(n_dihedrals, dtype='int')
 
-    logger.debug("Calculating structural mutual information")
-    structural_mi = mi_wrapper(
-        rotamer_trajs, rotamer_trajs, rotamer_n_states, rotamer_n_states,
-        n_procs=n_procs)
-
-    logger.debug("Calculating disorder mutual information")
-    disorder_mi = mi_wrapper(
-        disordered_trajs, disordered_trajs, disorder_n_states,
-        disorder_n_states, n_procs=n_procs)
-
-    logger.debug("Calculating structure-disorder mutual information")
-    struct_to_disorder_mi = mi_wrapper(
-        rotamer_trajs, disordered_trajs, rotamer_n_states, disorder_n_states,
-        n_procs=n_procs)
-
-    logger.debug("Calculating disorder-structure mutual information")
-    disorder_to_struct_mi = mi_wrapper(
-        disordered_trajs, rotamer_trajs, disorder_n_states, rotamer_n_states,
-        n_procs=n_procs)
-
-    return structural_mi, disorder_mi, struct_to_disorder_mi, \
-        disorder_to_struct_mi, atom_inds
+    return disordered_trajs, disorder_n_states
 
 
 def transition_stats(rotamer_trajs):
@@ -174,7 +180,36 @@ def aggregate_mean_times(times, n_times, weight):
     return mean_times
 
 
-def _mi_helper(i, states_a, states_b, n_a_states, n_b_states):
+def mi_row(i, states_a, states_b, n_a_states, n_b_states):
+    """Compute the one-feature-to-all-features matrix of mutual
+    information between two trajectories of assigned states.
+
+    Parameters
+    ----------
+    i : int
+        Feature of `states_a` to use as a target. MI will be computed to
+        each feature in `states_b`.
+    states_a : array, shape=(n_trajectories, n_features)
+        Array of assigned/binned features
+    states_b : array, shape=(n_trajectories, n_features)
+        Array of assigned/binned features
+    n_a_states : array, shape(n_features_a,)
+        The number of possible states for each feature in `states_a`
+    n_b_states : array, shape=(n_features_b,)
+        The number of possible states for each feature in `states_b`
+    n_procs : int, default=1
+        The number of cores to parallelize this computation across
+
+    Returns
+    -------
+    mi : np.ndarray, shape=(n_features,)
+        An array of the mutual information between trajectories a and b
+        for each feature.
+    """
+
+    check_features_states(states_a, n_a_states)
+    check_features_states(states_b, n_b_states)
+
     n_traj = len(states_a)
     n_dihedrals = states_a[0].shape[1]
     mi = np.zeros(n_dihedrals)
@@ -195,12 +230,38 @@ def _mi_helper(i, states_a, states_b, n_a_states, n_b_states):
     return mi
 
 
-def mi_wrapper(states_a, states_b, n_a_states, n_b_states, n_procs=1):
+def mi_matrix(states_a, states_b, n_a_states, n_b_states, n_procs=1):
+    """Compute the all-to-all matrix of mutual information across
+    trajectories of assigned states.
+
+    Parameters
+    ----------
+    states_a : array, shape=(n_trajectories, n_features)
+        Array of assigned/binned features
+    states_b : array, shape=(n_trajectories, n_features)
+        Array of assigned/binned features
+    n_a_states : array, shape(n_features_a,)
+        Number of possible states for each feature in `states_a`
+    n_b_states : array, shape=(n_features_b,)
+        Number of possible states for each feature in `states_b`
+    n_procs : int, default=1
+        Number of cores to parallelize this computation across
+
+    Returns
+    -------
+    mi : np.ndarray, shape=(n_features, n_features)
+        Array of the mutual information between trajectories a and b
+        for each feature.
+    """
+
     n_dihedrals = states_a[0].shape[1]
     mi = np.zeros((n_dihedrals, n_dihedrals))
 
+    check_features_states(states_a, n_a_states)
+    check_features_states(states_b, n_b_states)
+
     mi = Parallel(n_jobs=n_procs, max_nbytes='1M')(
-        delayed(_mi_helper)(i, states_a, states_b, n_a_states, n_b_states)
+        delayed(mi_row)(i, states_a, states_b, n_a_states, n_b_states)
         for i in range(n_dihedrals))
 
     mi = np.array(mi)
@@ -209,7 +270,7 @@ def mi_wrapper(states_a, states_b, n_a_states, n_b_states, n_procs=1):
     return mi
 
 
-def mi_wrapper_serial(states_a, states_b, n_a_states, n_b_states):
+def mi_matrix_serial(states_a, states_b, n_a_states, n_b_states):
     n_traj = len(states_a)
     n_dihedrals = states_a[0].shape[1]
     mi = np.zeros((n_dihedrals, n_dihedrals))
@@ -230,3 +291,19 @@ def mi_wrapper_serial(states_a, states_b, n_a_states, n_b_states):
             mi[j, i] = mi[i, j]
 
     return mi
+
+
+def check_features_states(states, n_states):
+    n_features = len(n_states)
+
+    if len(states[0][0]) != n_features:
+        raise exception.DataInvalid(
+            ("The number-of-states vector's length ({s}) didn't match the "
+             "width of state assignments array with shape {a}.")
+            .format(s=len(n_states), a=len(states[0][0])))
+
+    if not all(len(t[0]) == len(states[0][0]) for t in states):
+        raise exception.DataInvalid(
+            ("The number of features differs between trajectories. "
+             "Numbers of features were: {l}.").
+            format(l=[len(t[0]) for t in states]))
