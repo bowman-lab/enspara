@@ -180,23 +180,23 @@ def aggregate_mean_times(times, n_times, weight):
     return mean_times
 
 
-def mi_row(i, states_a, states_b, n_a_states, n_b_states):
-    """Compute the one-feature-to-all-features matrix of mutual
-    information between two trajectories of assigned states.
+def mi_row(row, states_a_list, states_b_list, n_a_states, n_b_states):
+    """Compute the a single row of the mutual information matrix between
+    two state trajectories.
 
     Parameters
     ----------
     i : int
-        Feature of `states_a` to use as a target. MI will be computed to
-        each feature in `states_b`.
-    states_a : array, shape=(n_trajectories, n_features)
+        Feature of `states_a_list` to use as a target. MI will be computed to
+        each feature in `states_b_list`.
+    states_a_list : array, shape=(n_trajectories, n_features)
         Array of assigned/binned features
-    states_b : array, shape=(n_trajectories, n_features)
+    states_b_list : array, shape=(n_trajectories, n_features)
         Array of assigned/binned features
     n_a_states : array, shape(n_features_a,)
-        The number of possible states for each feature in `states_a`
+        The number of possible states for each feature in `states_a_list`
     n_b_states : array, shape=(n_features_b,)
-        The number of possible states for each feature in `states_b`
+        The number of possible states for each feature in `states_b_list`
     n_procs : int, default=1
         The number of cores to parallelize this computation across
 
@@ -207,24 +207,25 @@ def mi_row(i, states_a, states_b, n_a_states, n_b_states):
         for each feature.
     """
 
-    check_features_states(states_a, n_a_states)
-    check_features_states(states_b, n_b_states)
+    n_traj = len(states_b_list)
 
-    n_traj = len(states_a)
-    n_features = states_a[0].shape[1]
+    check_features_states(states_a_list, n_a_states)
+    check_features_states(states_b_list, n_b_states)
+
+    n_features = states_a_list[0].shape[1]
     mi = np.zeros(n_features)
-    if i == n_features:
+    if row == n_features:
         return mi
-    for j in range(i+1, n_features):
+    for j in range(row+1, n_features):
         jc = info_theory.joint_counts(
-            states_a[0][:, i], states_b[0][:, j],
-            n_a_states[i], n_b_states[j])
+            states_a_list[0][:, row], states_b_list[0][:, j],
+            n_a_states[row], n_b_states[j])
         for k in range(1, n_traj):
             jc += info_theory.joint_counts(
-                states_a[k][:, i], states_b[k][:, j],
-                n_a_states[i], n_b_states[j])
+                states_a_list[k][:, row], states_b_list[k][:, j],
+                n_a_states[row], n_b_states[j])
         mi[j] = info_theory.mutual_information(jc)
-        min_num_states = np.min([n_a_states[i], n_b_states[j]])
+        min_num_states = np.min([n_a_states[row], n_b_states[j]])
         mi[j] /= np.log(min_num_states)
 
     return mi
@@ -272,20 +273,20 @@ def mi_matrix(states_a_list, states_b_list,
     return mi
 
 
-def mi_matrix_serial(states_a, states_b, n_a_states, n_b_states):
-    n_traj = len(states_a)
-    n_features = states_a[0].shape[1]
+def mi_matrix_serial(states_a_list, states_b_list, n_a_states, n_b_states):
+    n_traj = len(states_a_list)
+    n_features = states_a_list[0].shape[1]
     mi = np.zeros((n_features, n_features))
 
     for i in range(n_features):
         logger.debug(i, "/", n_features)
         for j in range(i+1, n_features):
             jc = info_theory.joint_counts(
-                states_a[0][:, i], states_b[0][:, j],
+                states_a_list[0][:, i], states_b_list[0][:, j],
                 n_a_states[i], n_b_states[j])
             for k in range(1, n_traj):
                 jc += info_theory.joint_counts(
-                    states_a[k][:, i], states_b[k][:, j],
+                    states_a_list[k][:, i], states_b_list[k][:, j],
                     n_a_states[i], n_b_states[j])
             mi[i, j] = info_theory.mutual_information(jc)
             min_num_states = np.min([n_a_states[i], n_b_states[j]])
