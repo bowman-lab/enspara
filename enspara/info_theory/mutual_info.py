@@ -12,7 +12,8 @@ import numpy as np
 from . import entropy
 
 
-def joint_counts(state_traj_1, state_traj_2, n_states_1=None, n_states_2=None):
+def joint_counts(state_traj_1, state_traj_2,
+                 n_states_1=None, n_states_2=None):
     if n_states_1 is None:
         n_states_1 = state_traj_1.max()+1
     if n_states_2 is None:

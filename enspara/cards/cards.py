@@ -95,7 +95,7 @@ def cards(trajectories, buffer_width=15, n_procs=1):
 def assign_order_disorder(rotamer_trajs):
 
     logger.debug("Calculating ordered/disordered times")
-    n_dihedrals = rotamer_trajs[0].shape[1]
+    n_features = rotamer_trajs[0].shape[1]
     transition_times, mean_ordered_times, mean_disordered_times = \
         transition_stats(rotamer_trajs)
 
@@ -103,14 +103,14 @@ def assign_order_disorder(rotamer_trajs):
     disordered_trajs = []
     for i in range(len(rotamer_trajs)):
         traj_len = rotamer_trajs[i].shape[0]
-        dis_traj = np.zeros((traj_len, n_dihedrals))
-        for j in range(n_dihedrals):
+        dis_traj = np.zeros((traj_len, n_features))
+        for j in range(n_features):
             dis_traj[:, j] = disorder.create_disorder_traj(
                 transition_times[i][j], traj_len, mean_ordered_times[j],
                 mean_disordered_times[j])
 
         disordered_trajs.append(dis_traj)
-    disorder_n_states = 2*np.ones(n_dihedrals, dtype='int')
+    disorder_n_states = 2*np.ones(n_features, dtype='int')
 
     return disordered_trajs, disorder_n_states
 
@@ -120,14 +120,14 @@ def transition_stats(rotamer_trajs):
     n_traj = len(rotamer_trajs)
 
     transition_times = []
-    n_dihedrals = rotamer_trajs[0].shape[1]
-    ordered_times = np.zeros((n_traj, n_dihedrals))
-    n_ordered_times = np.zeros((n_traj, n_dihedrals))
-    disordered_times = np.zeros((n_traj, n_dihedrals))
-    n_disordered_times = np.zeros((n_traj, n_dihedrals))
+    n_features = rotamer_trajs[0].shape[1]
+    ordered_times = np.zeros((n_traj, n_features))
+    n_ordered_times = np.zeros((n_traj, n_features))
+    disordered_times = np.zeros((n_traj, n_features))
+    n_disordered_times = np.zeros((n_traj, n_features))
     for i in range(n_traj):
         transition_times.append([])
-        for j in range(n_dihedrals):
+        for j in range(n_features):
             tt = disorder.transitions(rotamer_trajs[i][:, j])
             transition_times[i].append(tt)
             (ordered_times[i, j], n_ordered_times[i, j],
@@ -148,9 +148,9 @@ def aggregate_mean_times(times, n_times, weight):
 
     Parameters
     ----------
-    times : array, shape=(n_trajectories, n_dihedrals)
+    times : array, shape=(n_trajectories, n_features)
         Array of mean transition times for each trajectory and dihedral.
-    n_times : array, shape=(n_trajectories, n_dihedrals)
+    n_times : array, shape=(n_trajectories, n_features)
         Array of numbers of transitions observed for each trajectory and
         dihedral.
     weight : array, shape=(n_trajectories,)
@@ -159,12 +159,12 @@ def aggregate_mean_times(times, n_times, weight):
 
     Returns
     -------
-    mean_times : np.ndarray, shape=(n_dihedrals,)
+    mean_times : np.ndarray, shape=(n_features,)
         Mean transition time across trajectories for each dihedral.
     """
 
-    n_dihedrals = times.shape[1]
-    mean_times = np.zeros(n_dihedrals)
+    n_features = times.shape[1]
+    mean_times = np.zeros(n_features)
 
     # we normalize by the maximum weight, such that the longest trajectory's
     # mean time is unchanged by the calculation.
@@ -174,7 +174,7 @@ def aggregate_mean_times(times, n_times, weight):
     # transition, the result of the divide by zero (a NaN) is an
     # acceptable representation of that time.
     with np.errstate(all='ignore'):
-        for i in range(n_dihedrals):
+        for i in range(n_features):
             mean_times[i] = ((times[:, i] * nl_weight).sum())
 
     return mean_times
@@ -211,11 +211,11 @@ def mi_row(i, states_a, states_b, n_a_states, n_b_states):
     check_features_states(states_b, n_b_states)
 
     n_traj = len(states_a)
-    n_dihedrals = states_a[0].shape[1]
-    mi = np.zeros(n_dihedrals)
-    if i == n_dihedrals:
+    n_features = states_a[0].shape[1]
+    mi = np.zeros(n_features)
+    if i == n_features:
         return mi
-    for j in range(i+1, n_dihedrals):
+    for j in range(i+1, n_features):
         jc = info_theory.joint_counts(
             states_a[0][:, i], states_b[0][:, j],
             n_a_states[i], n_b_states[j])
@@ -230,19 +230,20 @@ def mi_row(i, states_a, states_b, n_a_states, n_b_states):
     return mi
 
 
-def mi_matrix(states_a, states_b, n_a_states, n_b_states, n_procs=1):
+def mi_matrix(states_a_list, states_b_list,
+              n_a_states_list, n_b_states_list, n_procs=1):
     """Compute the all-to-all matrix of mutual information across
     trajectories of assigned states.
 
     Parameters
     ----------
-    states_a : array, shape=(n_trajectories, n_features)
+    states_a_list : array, shape=(n_trajectories, n_features)
         Array of assigned/binned features
-    states_b : array, shape=(n_trajectories, n_features)
+    states_b_list : array, shape=(n_trajectories, n_features)
         Array of assigned/binned features
-    n_a_states : array, shape(n_features_a,)
+    n_a_states_list : array, shape(n_features_a,)
         Number of possible states for each feature in `states_a`
-    n_b_states : array, shape=(n_features_b,)
+    n_b_states_list : array, shape=(n_features_b,)
         Number of possible states for each feature in `states_b`
     n_procs : int, default=1
         Number of cores to parallelize this computation across
@@ -254,15 +255,16 @@ def mi_matrix(states_a, states_b, n_a_states, n_b_states, n_procs=1):
         for each feature.
     """
 
-    n_dihedrals = states_a[0].shape[1]
-    mi = np.zeros((n_dihedrals, n_dihedrals))
+    n_features = states_a_list[0].shape[1]
+    mi = np.zeros((n_features, n_features))
 
-    check_features_states(states_a, n_a_states)
-    check_features_states(states_b, n_b_states)
+    check_features_states(states_a_list, n_a_states_list)
+    check_features_states(states_b_list, n_b_states_list)
 
     mi = Parallel(n_jobs=n_procs, max_nbytes='1M')(
-        delayed(mi_row)(i, states_a, states_b, n_a_states, n_b_states)
-        for i in range(n_dihedrals))
+        delayed(mi_row)(i, states_a_list, states_b_list,
+                           n_a_states_list, n_b_states_list)
+        for i in range(n_features))
 
     mi = np.array(mi)
     mi += mi.T
@@ -272,12 +274,12 @@ def mi_matrix(states_a, states_b, n_a_states, n_b_states, n_procs=1):
 
 def mi_matrix_serial(states_a, states_b, n_a_states, n_b_states):
     n_traj = len(states_a)
-    n_dihedrals = states_a[0].shape[1]
-    mi = np.zeros((n_dihedrals, n_dihedrals))
+    n_features = states_a[0].shape[1]
+    mi = np.zeros((n_features, n_features))
 
-    for i in range(n_dihedrals):
-        logger.debug(i, "/", n_dihedrals)
-        for j in range(i+1, n_dihedrals):
+    for i in range(n_features):
+        logger.debug(i, "/", n_features)
+        for j in range(i+1, n_features):
             jc = info_theory.joint_counts(
                 states_a[0][:, i], states_b[0][:, j],
                 n_a_states[i], n_b_states[j])
