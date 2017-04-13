@@ -35,7 +35,8 @@ def process_command_line(argv):
         help="The method to use to enforce detailed balance in the"
              "counts matrix.")
     parser.add_argument(
-        "--processes", default=cpu_count(), help="Number of cores to use.")
+        "--processes", default=cpu_count(), type=int,
+        help="Number of cores to use.")
     parser.add_argument(
         "--trim", default=False, action="store_true")
     parser.add_argument(
