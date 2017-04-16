@@ -108,20 +108,20 @@ def filenames(args):
     }
 
 
-def load(args, selection, stride):
+def load(topologies, trajectories, selection, stride, processes):
 
-    sentinel_trj = md.load(args.topology[0])
+    sentinel_trj = md.load(topologies[0])
     try:
         # noop, but causes fast-fail w/bad args.atoms
         sentinel_trj.top.select(selection)
     except:
         raise exception.DataInvalid((
             "The provided selection '{s}' didn't match the topology"
-            "file, {t}").format(s=selection, t=args.topology))
+            "file, {t}").format(s=selection, t=topologies))
 
     flat_trjs = []
     configs = []
-    for topfile, trjset in zip(args.topology, args.trajectories):
+    for topfile, trjset in zip(topologies, trajectories):
         top = md.load(topfile).top
         for trj in trjset:
             flat_trjs.append(trj)
@@ -134,19 +134,21 @@ def load(args, selection, stride):
     assert all([len(c['atom_indices']) == len(configs[0]['atom_indices'])
                 for c in configs]), \
         "Number of atoms across different input topologies differed: %s" % \
-        [(t, (c['atom_indices'])) for t, c in zip(args.topology, configs)]
+        [(t, (c['atom_indices'])) for t, c in zip(topologies, configs)]
 
     logger.info(
         "Loading %s trajectories with %s atoms using %s processes"
         "(subsampling %s)",
-        len(flat_trjs), len(top.select(selection)),
-        args.processes, args.subsample)
+        len(flat_trjs), len(top.select(selection)), processes, stride)
     assert len(top.select(selection)) > 0, "No atoms selected for clustering"
 
     lengths, xyz = load_as_concatenated(
-        flat_trjs, args=configs, processes=args.processes)
+        flat_trjs, args=configs, processes=processes)
 
-    return lengths, xyz, top.subset(top.select(args.atoms))
+    logger.info(
+        "Loaded %s frames.", len(xyz))
+
+    return lengths, xyz, top.subset(top.select(selection))
 
 
 def load_asymm_frames(result, trajectories, topology, subsample):
@@ -176,8 +178,9 @@ def main(argv=None):
     logger.info(
         "Loading finished. Clustering using atoms matching '%s'.", args.atoms)
 
-    lengths, xyz, select_top = load(args, selection=args.atoms,
-                                    stride=args.subsample)
+    lengths, xyz, select_top = load(
+        args.topology, args.trajectories, selection=args.atoms,
+        stride=args.subsample, processes=args.processes)
 
     clustering = KHybrid(
         metric=partial(rmsd_hack, partitions=args.partitions),
@@ -209,7 +212,9 @@ def main(argv=None):
 
     if args.subsample:
         logger.info("Reloading entire dataset for reassignment")
-        lengths, xyz, _ = load(args, selection=args.atoms, stride=1)
+        lengths, xyz, _ = load(
+            args.topology, args.trajectories, selection=args.atoms, stride=1,
+            processes=args.processes)
 
         logger.info("Reassigning dataset.")
         result = clustering.predict(md.Trajectory(
