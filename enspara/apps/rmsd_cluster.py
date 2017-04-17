@@ -13,7 +13,7 @@ import mdtraj as md
 from mdtraj import io
 
 from enspara.cluster import KHybrid
-from enspara.cluster.util import load_frames
+from enspara.cluster.util import load_frames, assign_to_nearest_center
 from enspara.util import load_as_concatenated
 from enspara import exception
 
@@ -170,6 +170,32 @@ def load_asymm_frames(result, trajectories, topology, subsample):
     return frames
 
 
+def reassign(topologies, trajectories, atoms, centers, processes):
+
+    logger.info("Reassigning dataset.")
+    assignments = []
+    distances = []
+
+    try:
+        for topfile, trjfiles in zip(topologies, trajectories):
+            top = md.load(topfile).top
+
+            for trjfile in trjfiles:
+                trj = md.load(trjfile, top=top, atom_indices=top.select(atoms))
+
+                _, single_assignments, single_distances = \
+                    assign_to_nearest_center(trj, centers, md.rmsd)
+
+                assignments.append(single_assignments)
+                distances.append(single_distances)
+    except:
+        print("topfile was", topfile)
+        print("trjfile was", trjfile)
+        raise
+
+    return assignments, distances
+
+
 def main(argv=None):
     '''Run the driver script for this module. This code only runs if we're
     being run as a script. Otherwise, it's silent and just exposes methods.'''
@@ -205,27 +231,19 @@ def main(argv=None):
         pass
 
     with open(filenames(args)['centers'], 'wb') as f:
-        pickle.dump(
-            load_asymm_frames(result, args.trajectories, args.topology,
-                              args.subsample),
-            f)
+        centers = load_asymm_frames(result, args.trajectories, args.topology,
+                                    args.subsample)
+        pickle.dump(centers, f)
 
     if args.subsample:
-        logger.info("Reloading entire dataset for reassignment")
-        lengths, xyz, _ = load(
-            args.topology, args.trajectories, selection=args.atoms, stride=1,
-            processes=args.processes)
-
-        logger.info("Reassigning dataset.")
-        result = clustering.predict(md.Trajectory(
-            xyz, topology=select_top)).partition(lengths)
-
         # overwrite temporary output with actual results
-        io.saveh(filenames(args)['distances'], result.distances)
-        io.saveh(filenames(args)['assignments'], result.assignments)
-    else:
-        io.saveh(filenames(args)['distances'], result.distances)
-        io.saveh(filenames(args)['assignments'], result.assignments)
+        dist, assig = reassign(
+            args.topology, args.trajectories, args.atoms,
+            processes=args.processes,
+            centers=result.centers)
+
+    io.saveh(filenames(args)['distances'], result.distances)
+    io.saveh(filenames(args)['assignments'], result.assignments)
 
     logger.info("Success! Data can be found in %s.",
                 os.path.basename(filenames(args)['distances']))

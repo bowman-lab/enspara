@@ -2,12 +2,17 @@ import os
 import tempfile
 import hashlib
 import shutil
+import resource
 
 from datetime import datetime
 
+import mdtraj as md
 from mdtraj.testing import get_fn
 
-from .rmsd_cluster import main as rmsd_cluster
+from nose.tools import assert_less
+from numpy.testing import assert_array_equal, assert_allclose
+
+from . import rmsd_cluster
 from .. import cards
 
 
@@ -18,7 +23,7 @@ def runhelper(args):
                      .encode('utf-8')).hexdigest()[0:8]
 
     try:
-        rmsd_cluster([
+        rmsd_cluster.main([
             '',  # req'd because arg[0] is expected to be program name
             '--output-path', td,
             '--output-tag', tf] + args)
@@ -51,6 +56,57 @@ def runhelper(args):
     finally:
         shutil.rmtree(td)
         pass
+
+
+def test_rmsd_cluster_reassignment_memory():
+
+    # def reassign(topologies, trajectories, atoms, clustering, processes):
+
+    topologies = [get_fn('native.pdb'), get_fn('native.pdb')]
+    top = md.load(topologies[0]).top
+
+    trajectories = [[get_fn('frame0.xtc')]*10, [get_fn('frame0.xtc')]*10]
+    atoms = '(name N or name C or name CA or name H or name O)'
+    centers = [c.atom_slice(top.select(atoms)) for c
+               in md.load(trajectories[0][0], top=topologies[0])[::50]]
+
+    mem_highwater = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+
+    assigns, dists = rmsd_cluster.reassign(
+        topologies, trajectories, atoms, centers, processes=1)
+
+    new_highwater = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+    highwater_diff = (new_highwater - mem_highwater)
+
+    print(new_highwater)
+    assert_less(highwater_diff, 2000000)
+
+    assert_array_equal(assigns[0], assigns[1])
+    assert_array_equal(assigns[0][::50], range(len(centers)))
+    assert_allclose(dists[0], dists[1], atol=1e-3)
+
+
+def test_rmsd_cluster_reassignment_heterogenous():
+
+    xtc2 = os.path.join(cards.__path__[0], 'test_data', 'trj0.xtc')
+    top2 = os.path.join(cards.__path__[0], 'test_data', 'PROT_only.pdb')
+
+    topologies = [get_fn('native.pdb'), top2]
+    trajectories = [
+        [get_fn('frame0.xtc'), get_fn('frame0.xtc')],
+        [xtc2, xtc2]]
+
+    atoms = '(name N or name C or name CA or name H or name O) and (residue 2)'
+    top = md.load(topologies[0]).top
+    centers = [c.atom_slice(top.select(atoms)) for c
+               in md.load(trajectories[0][0], top=topologies[0])[::50]]
+
+    assigns, dists = rmsd_cluster.reassign(
+        topologies, trajectories, atoms, centers, processes=1)
+
+    assert_array_equal(assigns[0], assigns[1])
+    assert_array_equal(assigns[0][::50], range(len(centers)))
+    assert_allclose(dists[0], dists[1], atol=1e-3)
 
 
 def test_rmsd_cluster_basic():
@@ -124,7 +180,7 @@ def test_rmsd_cluster_multitop():
         '--trajectories', xtc2,
         '--topology', get_fn('native.pdb'),
         '--topology', top2,
-        '--atoms', '(name N or name C or name CA or name H or name O)'
+        '--atoms', '(name N or name C or name CA or name H or name O) '
                    'and (residue 2)',
         '--rmsd-cutoff', '0.1',
         '--algorithm', 'khybrid'])
@@ -142,7 +198,7 @@ def test_rmsd_cluster_multitop_partition():
         '--trajectories', xtc2,
         '--topology', get_fn('native.pdb'),
         '--topology', top2,
-        '--atoms', '(name N or name C or name CA or name H or name O)'
+        '--atoms', '(name N or name C or name CA or name H or name O) '
                    'and (residue 2)',
         '--rmsd-cutoff', '0.1',
         '--algorithm', 'khybrid',
