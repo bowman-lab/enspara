@@ -201,12 +201,12 @@ def main(argv=None):
     being run as a script. Otherwise, it's silent and just exposes methods.'''
     args = process_command_line(argv)
 
-    logger.info(
-        "Loading finished. Clustering using atoms matching '%s'.", args.atoms)
-
     lengths, xyz, select_top = load(
         args.topology, args.trajectories, selection=args.atoms,
         stride=args.subsample, processes=args.processes)
+
+    logger.info(
+        "Loading finished. Clustering using atoms matching '%s'.", args.atoms)
 
     clustering = KHybrid(
         metric=partial(rmsd_hack, partitions=args.partitions),
