@@ -52,21 +52,18 @@ def _kmedoids_update(
 
     assert assignments.dtype == np.int
 
-    n_clusters = len(cluster_center_inds)
-    n_frames = len(traj)
-
-    proposed_center_inds = np.zeros(n_clusters, dtype=int)
-    for i in range(n_clusters):
+    proposed_center_inds = np.zeros(len(cluster_center_inds), dtype=int)
+    for i in range(len(cluster_center_inds)):
         state_inds = np.where(assignments == i)[0]
         proposed_center_inds[i] = np.random.choice(state_inds)
     proposed_cluster_centers = traj[proposed_center_inds]
-    proposed_center_inds, proposed_assignments, proposed_distances =\
+    proposed_center_inds, proposed_assignments, proposed_distances = \
         assign_to_nearest_center(traj, proposed_cluster_centers,
                                  distance_method)
 
-    mean_orig_dist_to_center = distances.dot(distances)/n_frames
+    mean_orig_dist_to_center = distances.dot(distances)/len(traj)
     mean_proposed_dist_to_center = proposed_distances.dot(
-        proposed_distances)/n_frames
+        proposed_distances)/len(traj)
     if mean_proposed_dist_to_center <= mean_orig_dist_to_center:
         return proposed_center_inds, proposed_assignments, proposed_distances
     else:

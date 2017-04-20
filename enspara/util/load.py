@@ -2,14 +2,17 @@ import logging
 import sys
 
 import multiprocessing as mp
-from itertools import count, repeat
+from itertools import count
 from contextlib import closing
 from functools import partial, reduce
 import ctypes
 from operator import mul
+import math
 
 import numpy as np
 import mdtraj as md
+
+from sklearn.externals.joblib import Parallel, delayed
 
 from ..exception import ImproperlyConfigured
 
@@ -18,14 +21,33 @@ logger.setLevel(logging.INFO)
 
 
 def sound_trajectory(trj, **kwargs):
-    '''
-    Determine the length of a trajectory on disk in log(n) (?) time and
-    constant space by loading individual frames from disk at
-    exponentially increasing indices. Additional keyword args are
-    passed on to md.load.
-    '''
+    """Determine the length of a trajectory on disk.
+
+    Uses a binary search-like system to figure out how long a trajectory
+    on disk is in (maybe) log(n) time and constant space by loading
+    individual frames from disk at exponentially increasing indices.
+    Additional keyword args are passed on to md.load.
+
+    Parameters
+    ----------
+    trj: file path
+        Path to the trajectory to sound.
+
+    Returns
+    ----------
+    length: int
+        The length (in frames) of a trajectory on disk, loaded with
+        kwargs
+
+    See Also
+    ----------
+    md.load
+    """
+
     search_space = [0, sys.maxsize]
     base = 2
+    stride = kwargs.pop('stride', None)
+    stride = 1 if stride is None else stride
 
     logger.debug("Sounding '%s' with args: %s", trj, kwargs)
 
@@ -42,7 +64,11 @@ def sound_trajectory(trj, **kwargs):
                 search_space[1] = frame
                 break
 
-    return search_space[1]
+    # if stride is passed to md.load, it is ignored, because apparently
+    # when you give it a frame dumps the stride argument.
+    length = math.ceil(search_space[1] / stride)
+
+    return length
 
 
 def load_as_concatenated(filenames, processes=None, args=None, **kwargs):
@@ -77,35 +103,44 @@ def load_as_concatenated(filenames, processes=None, args=None, **kwargs):
     md.load
     '''
 
+    # we need access to this as a list, so if we get some kind of
+    # wierd iterator we need to build a list out of it
+    filenames = list(filenames)
+
     # configure arguments to md.load
     if kwargs and args:
         raise ImproperlyConfigured(
             "Additional unnamed args can only be supplied iff no "
             "additonal keyword args are supplied")
     elif kwargs:
-        args = repeat(kwargs)
+        args = [kwargs]*len(filenames)
     elif args:
-        kwargs = args[0]
         if len(args) != len(filenames):
             raise ImproperlyConfigured(
                 "When add'l unnamed args are provided, len(args) == "
                 "len(filenames).")
     else:  # not args and not kwargs
-        args = repeat({})
-        kwargs = {}
+        args = [{}]*len(filenames)
+
+    logger.debug(
+        "Configuring load calls with args[0] == [%s ... %s]",
+        args[0], args[-1])
 
     # cast to list to handle generators
     filenames = list(filenames)
 
-    logger.debug("Sounding %s trajectories.", len(filenames))
-    lengths = [sound_trajectory(f, **kw) for f, kw in zip(filenames, args)]
+    logger.debug("Sounding %s trajectories with %s processes.", len(filenames),
+                 processes)
+    lengths = Parallel(n_jobs=processes)(
+        delayed(sound_trajectory)(f, **kw)for f, kw in zip(filenames, args))
 
-    root_trj = md.load(filenames[0], frame=0, **kwargs)
+    root_trj = md.load(filenames[0], frame=0, **args[0])
     shape = root_trj.xyz.shape
 
     # TODO: check all inputs against root
 
     full_shape = (sum(lengths), shape[1], shape[2])
+
     # mp.Arrays are one-dimensional, so multiply the shape together for size
     shared_array = mp.Array(ctypes.c_double, reduce(mul, full_shape, 1),
                             lock=False)
