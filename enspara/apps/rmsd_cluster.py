@@ -13,6 +13,7 @@ import mdtraj as md
 from mdtraj import io
 
 from enspara.cluster import KHybrid
+from enspara.util import array as ra
 from enspara.cluster.util import load_frames, assign_to_nearest_center
 from enspara.util import load_as_concatenated
 from enspara import exception
@@ -193,7 +194,15 @@ def reassign(topologies, trajectories, atoms, centers, processes):
         print("trjfile was", trjfile)
         raise
 
-    return assignments, distances
+    if all([len(assignments[0]) == len(a) for a in assignments]):
+        logger.info("Trajectory lengths are homogenous. Output will "
+                    "be np.ndarrays.")
+        assert all([len(distances[0]) == len(d) for d in distances])
+        return np.array(assignments), np.array(distances)
+    else:
+        logger.info("Trajectory lengths are heterogenous. Output will "
+                    "be ra.RaggedArrays.")
+        return ra.RaggedArray(assignments), ra.RaggedArray(distances)
 
 
 def main(argv=None):
@@ -223,7 +232,7 @@ def main(argv=None):
     result = clustering.result_.partition(lengths)
 
     outdir = os.path.dirname(filenames(args)['centers'])
-    logger.info("Saving results at %s", outdir)
+    logger.info("Saving cluster centers at %s", outdir)
 
     try:
         os.makedirs(outdir)
@@ -242,11 +251,14 @@ def main(argv=None):
             processes=args.processes,
             centers=result.centers)
 
-    io.saveh(filenames(args)['distances'], result.distances)
-    io.saveh(filenames(args)['assignments'], result.assignments)
+        ra.save(filenames(args)['distances'], dist)
+        ra.save(filenames(args)['assignments'], assig)
+    else:
+        ra.save(filenames(args)['distances'], result.distances)
+        ra.save(filenames(args)['assignments'], result.assignments)
 
     logger.info("Success! Data can be found in %s.",
-                os.path.basename(filenames(args)['distances']))
+                os.path.dirname(filenames(args)['distances']))
 
     return 0
 
