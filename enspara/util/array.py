@@ -28,6 +28,8 @@ def load(input_name):
 
 
 def partition_list(list_to_partition, partition_lengths):
+    list_to_partition = np.array(list_to_partition)
+
     if np.sum(partition_lengths) != len(list_to_partition):
         raise DataInvalid(
             "List of length {} does not equal lengths to partition {}.".format(
@@ -274,7 +276,7 @@ def _get_iis_from_slices(first_dimension_iis, second_dimension, lengths):
         step = 1
     # handle negative slicing
     if stop is None:
-        stops = lengths 
+        stops = lengths
     elif stop < 0:
         stops = lengths + stop
     else:
