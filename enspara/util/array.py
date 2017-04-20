@@ -48,6 +48,8 @@ def load(input_name):
 
 
 def partition_list(list_to_partition, partition_lengths):
+    list_to_partition = np.array(list_to_partition)
+
     if np.sum(partition_lengths) != len(list_to_partition):
         raise DataInvalid(
             "List of length {} does not equal lengths to partition {}.".format(

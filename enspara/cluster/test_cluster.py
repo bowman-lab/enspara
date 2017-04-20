@@ -6,11 +6,8 @@ import numpy as np
 import mdtraj as md
 from mdtraj.testing import get_fn
 
-from nose.tools import assert_raises, assert_less, assert_true, assert_equal, \
-    assert_is
+from nose.tools import assert_raises, assert_less, assert_true, assert_is
 from numpy.testing import assert_array_equal
-
-from . import save_states
 
 from .hybrid import KHybrid, hybrid
 from .kcenters import KCenters, kcenters
@@ -351,58 +348,6 @@ class TestNumpyClustering(unittest.TestCase):
             scatter(x_centers, y_centers, s=40, c='y')
             show()
             raise
-
-
-class TestSaveStates(unittest.TestCase):
-
-    def setUp(self):
-        self.trj_fname = get_fn('frame0.xtc')
-        self.top_fname = get_fn('native.pdb')
-
-    def test_unique_state_extraction(self):
-        '''
-        Check to makes sure we get the unique states from the trajectory
-        correctly
-        '''
-
-        states = [0, 1, 2, 3, 4]
-        assignments = np.random.choice(states, (100000))
-
-        self.assertTrue(
-            all(save_states.unique_states(assignments) == states))
-
-        states = [-1, 0, 1, 2, 3, 4]
-        assignments = np.random.choice(states, (100000))
-
-        self.assertTrue(
-            all(save_states.unique_states(assignments) == states[1:]))
-
-
-class TestUtils(unittest.TestCase):
-
-    def test_find_cluster_centers(self):
-
-        N_TRJS = 20
-        many_trjs = [md.load(get_fn('frame0.xtc'), top=get_fn('native.pdb'))
-                     for i in range(N_TRJS)]
-
-        distances = np.ones((N_TRJS, len(many_trjs[0])))
-
-        center_inds = [(0, 0), (5, 2), (15, 300)]
-
-        for ind in center_inds:
-            distances[center_inds[0], center_inds[1]] = 0
-
-        centers = find_cluster_centers(many_trjs, distances)
-
-        # we should get back the same number of centers as there are zeroes
-        # in the distances matrix
-        self.assertEqual(len(centers), np.count_nonzero(distances == 0))
-
-        for indx in center_inds:
-            expected_xyz = many_trjs[indx[0]][indx[1]].xyz
-            self.assertTrue(np.any(
-                expected_xyz == np.array([c.xyz for c in centers])))
 
 
 if __name__ == '__main__':
