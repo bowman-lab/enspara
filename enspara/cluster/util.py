@@ -16,6 +16,7 @@ import numpy as np
 
 from ..exception import ImproperlyConfigured, DataInvalid
 from ..util import partition_list, partition_indices
+from ..util import array as ra
 
 
 class Clusterer(object):
@@ -89,28 +90,49 @@ class ClusterResult(namedtuple('ClusterResult',
                                 'centers'])):
     __slots__ = ()
 
-    def partition(self, lengths):
+    def partition(self, lengths, square=None):
         """Split each array in this ClusterResult into multiple
         subarrays of variable length.
-
-        See also: partition_indices(), partition_list().
 
         Parameters
         ----------
         lengths : array, shape=(n_subarrays)
             Length of each individual subarray.
+        square : True, False, or None (default=None)
+            Should the return be a square `np.ndarray` or a RaggedArray.
+            When None, the decision is made dynamically based on
+            whether or not `lengths` are all the same.
 
         Returns
-        ----------
+        -------
         result : ClusterResult
-            A ClusterResult object containing partitioned arrays.
+            ClusterResult object containing partitioned arrays.
+            Assignments and distances are np.ndarrays if each row is the
+            same length, and ra.RaggedArrays if trajectories differ.
+
+        See Also
+        --------
+        partition_indices : for converting lists of concatenated-array
+            indices into lists of partitioned-array indices.
+        partition_list : for converting concatenated arrays into
+            partitioned arrays
         """
 
-        return ClusterResult(
-            assignments=partition_list(self.assignments, lengths),
-            distances=partition_list(self.distances, lengths),
-            center_indices=partition_indices(self.center_indices, lengths),
-            centers=self.centers)
+        if square is None:
+            square = all(lengths[0] == l for l in lengths)
+
+        if square:
+            return ClusterResult(
+                assignments=partition_list(self.assignments, lengths),
+                distances=partition_list(self.distances, lengths),
+                center_indices=partition_indices(self.center_indices, lengths),
+                centers=self.centers)
+        else:
+            return ClusterResult(
+                assignments=ra.RaggedArray(self.assignments, lengths=lengths),
+                distances=ra.RaggedArray(self.distances, lengths=lengths),
+                center_indices=partition_indices(self.center_indices, lengths),
+                centers=self.centers)
 
 
 def assign_to_nearest_center(traj, cluster_centers, distance_method):
