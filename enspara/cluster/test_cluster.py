@@ -6,7 +6,9 @@ import numpy as np
 import mdtraj as md
 from mdtraj.testing import get_fn
 
-from nose.tools import assert_raises, assert_less
+from nose.tools import assert_raises, assert_less, assert_true, assert_equal, \
+    assert_is
+from numpy.testing import assert_array_equal
 
 from . import save_states
 
@@ -74,7 +76,6 @@ class TestTrajClustering(unittest.TestCase):
         assert hasattr(clustering, 'result_')
         assert len(np.unique(clustering.labels_)) == N_CLUSTERS, \
             clustering.labels_
-
 
     def test_khybrid_object(self):
         # '''
@@ -242,6 +243,36 @@ class TestNumpyClustering(unittest.TestCase):
             (s1_y_coords, s2_y_coords, s3_y_coords))
 
         self.traj_lst = [s1_xy_coords, s2_xy_coords, s3_xy_coords]
+
+    def test_predict(self):
+
+        from .util import ClusterResult
+
+        centers = np.array(self.generators, dtype='float64')
+
+        result = ClusterResult(
+            centers=centers,
+            assignments=None,
+            distances=None,
+            center_indices=None)
+
+        clust = KCenters('euclidean', cluster_radius=2)
+
+        clust.result_ = result
+
+        predict_result = clust.predict(np.concatenate(self.traj_lst))
+
+        assert_array_equal(
+            predict_result.assignments,
+            [0]*20 + [1]*20 + [2]*20)
+
+        assert_true(np.all(predict_result.distances < 4))
+
+        assert_array_equal(
+            np.argmin(predict_result.distances[0:20]),
+            predict_result.center_indices[0])
+
+        assert_is(predict_result.centers, centers)
 
     def test_hybrid(self):
         N_CLUSTERS = 3

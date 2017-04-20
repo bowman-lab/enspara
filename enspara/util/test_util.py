@@ -114,7 +114,7 @@ class Test_RaggedArray(unittest.TestCase):
                 [
                     2, 3, 4, 5, 6, 7, 8, 9, 8, 9, 12, 13, 14, 13, 14, 17,
                     18, 19, 18, 19]))
-        
+
 
     def test_RaggedArray_slicing(self):
         src = np.array(range(60))
@@ -264,6 +264,28 @@ class TestParallelLoad(unittest.TestCase):
         self.top = md.load(self.top_fname).top
 
         logging.getLogger('enspara.util.load').setLevel(logging.DEBUG)
+
+    def test_load_as_concatenated_stride(self):
+
+        t1 = md.load(self.trj_fname, top=self.top)
+        t2 = md.load(self.trj_fname, top=self.top)
+        t3 = md.load(self.trj_fname, top=self.top)
+
+        print(len(t1))
+        print(len(md.load(self.trj_fname, top=self.top, stride=10)))
+
+        lengths, xyz = load_as_concatenated(
+            [self.trj_fname]*3,
+            top=self.top,
+            stride=10,
+            processes=2)
+
+        expected = np.concatenate([t1.xyz[::10],
+                                   t2.xyz[::10],
+                                   t3.xyz[::10]])
+
+        self.assertTrue(np.all(expected == xyz))
+        self.assertEqual(expected.shape, xyz.shape)
 
     def test_load_as_concatenated(self):
 
