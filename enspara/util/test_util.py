@@ -1,5 +1,6 @@
 import unittest
 import logging
+import tempfile
 
 import numpy as np
 import mdtraj as md
@@ -12,6 +13,11 @@ from . import array as ra
 from .load import load_as_concatenated
 
 from ..exception import DataInvalid
+
+
+def assert_ra_equal(a, b, **kwargs):
+        assert_array_equal(a._data, b._data, **kwargs)
+        assert_array_equal(a.lengths, b.lengths)
 
 
 class Test_RaggedArray(unittest.TestCase):
@@ -41,6 +47,22 @@ class Test_RaggedArray(unittest.TestCase):
         a_irreg = ra.RaggedArray(src_irreg)
         assert_equals(a_irreg.shape, (2, None, None))
 
+    def test_RaggedArray_disk_roundtrip(self):
+        src = np.array(range(55))
+        a = ra.RaggedArray(array=src, lengths=[25, 30])
+
+        with tempfile.NamedTemporaryFile(suffix='.h5') as f:
+            ra.save(f.name, a)
+            b = ra.load(f.name)
+            assert_ra_equal(a, b)
+
+    def test_RaggedArray_disk_roundtrip_numpy(self):
+        a = np.ones(shape=(5, 5))
+
+        with tempfile.NamedTemporaryFile(suffix='.h5') as f:
+            ra.save(f.name, a)
+            b = ra.load(f.name)
+            assert_array_equal(a, b)
 
     def test_RaggedArray_bad_size(self):
 
@@ -315,7 +337,6 @@ class TestParallelLoad(unittest.TestCase):
 
         self.assertTrue(np.all(expected == xyz))
         self.assertEqual(expected.shape, xyz.shape)
-
 
     def test_load_as_concatenated_noargs(self):
         '''It's ok if no args are passed.'''

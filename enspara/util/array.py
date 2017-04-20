@@ -17,14 +17,24 @@ def where(mask):
 
 
 def save(output_name, ragged_array):
-    to_save = {'array': ragged_array._data, 'lengths': ragged_array.lengths}
-    io.saveh(output_name, **to_save)
+
+    try:
+        io.saveh(
+            output_name,
+            array=ragged_array._data,
+            lengths=ragged_array.lengths)
+    except AttributeError:
+        # A TypeError results when the input is actually an ndarray
+        io.saveh(output_name, ragged_array)
 
 
 def load(input_name):
     ragged_load = io.loadh(input_name)
-    return RaggedArray(
-        ragged_load['array'], lengths=ragged_load['lengths'])
+    try:
+        return RaggedArray(
+            ragged_load['array'], lengths=ragged_load['lengths'])
+    except KeyError:
+        return ragged_load['arr_0']
 
 
 def partition_list(list_to_partition, partition_lengths):
@@ -274,7 +284,7 @@ def _get_iis_from_slices(first_dimension_iis, second_dimension, lengths):
         step = 1
     # handle negative slicing
     if stop is None:
-        stops = lengths 
+        stops = lengths
     elif stop < 0:
         stops = lengths + stop
     else:
