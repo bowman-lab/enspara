@@ -98,6 +98,10 @@ class ClusterResult(namedtuple('ClusterResult',
         ----------
         lengths : array, shape=(n_subarrays)
             Length of each individual subarray.
+        square : True, False, or None (default=None)
+            Should the return be a square `np.ndarray` or a RaggedArray.
+            When None, the decision is made dynamically based on
+            whether or not `lengths` are all the same.
 
         Returns
         -------
