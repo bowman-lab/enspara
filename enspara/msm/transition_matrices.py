@@ -141,11 +141,10 @@ def assigns_to_counts(
     if n_states is None:
         n_states = np.concatenate(assigns).max() + 1
 
-    transitions = []
-    for i in range(n_traj):
-        transitions.append(_transitions_helper(
-            assigns[i], lag_time=lag_time,
-            sliding_window=sliding_window))
+    transitions = [
+        _transitions_helper(
+            assign, lag_time=lag_time, sliding_window=sliding_window)
+        for assign in assigns]
     # generate sparse matrix
     mat_coords = np.hstack(transitions)
     mat_data = np.ones(mat_coords.shape[1], dtype=int)
