@@ -48,9 +48,11 @@ def runhelper(args, expected_size):
         assigns = ra.load(assignfile)
         if type(assigns) is ra.RaggedArray:
             assert_equal(len(assigns), expected_size[0])
+            assert_equal(assigns._data.dtype, np.int)
             assert_array_equal(assigns.lengths, expected_size[1])
         else:
             assert_equal(assigns.shape, expected_size)
+            assert_equal(assigns.dtype, np.int)
 
         distfile = os.path.join(
             td, '-'.join(file_tag + ['distances.h5']))

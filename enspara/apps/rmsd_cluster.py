@@ -246,7 +246,7 @@ def main(argv=None):
 
     if args.subsample:
         # overwrite temporary output with actual results
-        dist, assig = reassign(
+        assig, dist = reassign(
             args.topology, args.trajectories, args.atoms,
             processes=args.processes,
             centers=result.centers)
