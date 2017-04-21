@@ -29,15 +29,28 @@ class Test_RaggedArray(unittest.TestCase):
         a = ra.RaggedArray(array=[np.array(range(10)),
                                   np.array(range(20))])
         assert_equals(len(a), 2)
+        assert_equals(a.dtype, np.int)
         assert_array_equal(a.lengths, [10, 20])
         assert_array_equal(a.starts, [0, 10])
         assert_array_equal(a._data, np.concatenate([range(10), range(20)]))
+
+    def test_RaggedArray_floats(self):
+        a = ra.RaggedArray([[0.8, 1.0, 1.2],
+                            [1.1, 1.0, 0.9, 0.8]])
+
+        assert_equals(len(a), 2)
+        assert_equals(a.dtype, np.float)
+        assert_array_equal(a.lengths, [3, 4])
+        assert_array_equal(a.starts, [0, 3])
+        assert_array_equal(
+            a._data, [0.8, 1.0, 1.2] + [1.1, 1.0, 0.9, 0.8])
 
     def test_RaggedArray_shape_size(self):
 
         a = ra.RaggedArray(array=np.array(range(50)), lengths=[25, 20, 5])
         assert_equals(a.shape, (3, None))
         assert_equals(a.size, 50)
+        assert_equals(a.dtype, np.int)
 
         src_reg = [[[0,0,0],[1,1,1],[2,2,2]],[[4,4,4],[5,5,5]]]
         a_reg = ra.RaggedArray(src_reg)

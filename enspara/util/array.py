@@ -381,6 +381,10 @@ class RaggedArray(object):
             self.lengths = np.array(lengths)
 
     @property
+    def dtype(self):
+        return self._data.dtype
+
+    @property
     def shape(self):
         if np.any(self.lengths-self.lengths[0]):
             rag_second_dim = None
