@@ -36,8 +36,9 @@ def process_command_line(argv):
         help="The atoms from the trajectories (using MDTraj atom-selection"
              "syntax) to cluster based upon.")
     parser.add_argument(
-        '--output-path', default=os.getcwd(),
-        help="The output path for results (distances, assignments, centers).")
+        '--output-path', default=None,
+        help="Output path for results (distances, assignments). "
+             "Default is in the same directory as the input centers.")
     parser.add_argument(
         '--output-tag', default='',
         help="An optional extra string prepended to output filenames (useful"
@@ -45,6 +46,9 @@ def process_command_line(argv):
              "other clusterings or proteins.")
 
     args = parser.parse_args(argv[1:])
+
+    if args.output_path is None:
+        args.output_path = os.path.dirname(args.centers)
 
     return args
 
