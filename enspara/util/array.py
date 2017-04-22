@@ -9,6 +9,16 @@ from ..exception import DataInvalid, ImproperlyConfigured
 
 
 def where(mask):
+    """As np.where, but on _either_ RaggedArrays or a numpy array.
+
+    Parameters
+    ----------
+    mask : array or RaggedArray
+
+    Returns
+    -------
+    (rows, columns) : (array, array))
+    """
     try:
         iis_flat = np.where(mask._data)
         return _convert_from_1d(iis_flat, starts=mask.starts)
