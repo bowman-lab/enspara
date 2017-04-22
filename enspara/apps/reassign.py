@@ -55,12 +55,13 @@ def process_command_line(argv):
 
 def reassign(topologies, trajectories, atoms, centers):
 
-    logger.info("Reassigning dataset.")
+    logger.info("Reassigning dataset of %s trajectories and %s topologies.",
+                len(trajectories), len(topologies))
     assignments = []
     distances = []
 
     try:
-        for topfile, trjfiles in zip(topologies, trajectories):
+        for i, (topfile, trjfiles) in enumerate(zip(topologies, trajectories)):
             top = md.load(topfile).top
 
             for trjfile in trjfiles:
@@ -100,16 +101,22 @@ def main(argv=None):
     with open(args.centers, 'rb') as f:
         centers = pickle.load(f)
 
+    assert(all(centers[0].n_atoms == c.n_atoms for c in centers))
+    logger.info("Loaded %s centers with %s atoms each.",
+                len(centers), centers[0].n_atoms)
+
     centers = [c.atom_slice(c.top.select(args.atoms)) for c in centers]
 
     assig, dist = reassign(
         args.topology, args.trajectories, args.atoms,
         centers=centers)
 
-    ra.save(os.path.join(args.output_path, args.output_tag)+'-distances.h5',
-            dist)
-    ra.save(os.path.join(args.output_path, args.output_tag)+'-assignments.h5',
-            assig)
+    fstem = os.path.join(args.output_path, args.output_tag)
+    ra.save(fstem+'-distances.h5', dist)
+    ra.save(fstem+'-assignments.h5', assig)
+
+    logger.info("Finished reassignments. Data deposited in " +
+                "%s-{distances,assignments}.h5", fstem)
 
     return 0
 

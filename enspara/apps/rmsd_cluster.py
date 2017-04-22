@@ -17,7 +17,7 @@ from enspara.cluster.util import load_frames
 from enspara.util import load_as_concatenated
 from enspara import exception
 
-from .reassign import reassign
+from enspara.apps.reassign import reassign
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
