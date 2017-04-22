@@ -215,7 +215,6 @@ def main(argv=None):
         # overwrite temporary output with actual results
         assig, dist = reassign(
             args.topology, args.trajectories, args.atoms,
-            processes=args.processes,
             centers=result.centers)
 
         ra.save(filenames(args)['distances'], dist)

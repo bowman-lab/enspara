@@ -1,6 +1,8 @@
+import os
 import sys
 import argparse
 import logging
+import pickle
 
 import numpy as np
 import mdtraj as md
@@ -21,7 +23,7 @@ def process_command_line(argv):
                                      ArgumentDefaultsHelpFormatter)
 
     parser.add_argument(
-        "--centers", required=True,
+        '--centers', required=True,
         help="The centers to use for reassignment.")
     parser.add_argument(
         '--trajectories', required=True, nargs="+", action='append',
@@ -33,13 +35,21 @@ def process_command_line(argv):
         '--atoms', default='name C or name O or name CA or name N or name CB',
         help="The atoms from the trajectories (using MDTraj atom-selection"
              "syntax) to cluster based upon.")
+    parser.add_argument(
+        '--output-path', default=os.getcwd(),
+        help="The output path for results (distances, assignments, centers).")
+    parser.add_argument(
+        '--output-tag', default='',
+        help="An optional extra string prepended to output filenames (useful"
+             "for giving this choice of parameters a name to separate it from"
+             "other clusterings or proteins.")
 
     args = parser.parse_args(argv[1:])
 
     return args
 
 
-def reassign(topologies, trajectories, atoms, centers, processes):
+def reassign(topologies, trajectories, atoms, centers):
 
     logger.info("Reassigning dataset.")
     assignments = []
@@ -52,8 +62,13 @@ def reassign(topologies, trajectories, atoms, centers, processes):
             for trjfile in trjfiles:
                 trj = md.load(trjfile, top=top, atom_indices=top.select(atoms))
 
-                _, single_assignments, single_distances = \
-                    assign_to_nearest_center(trj, centers, md.rmsd)
+                try:
+                    _, single_assignments, single_distances = \
+                        assign_to_nearest_center(trj, centers, md.rmsd)
+                except ValueError:
+                    print(trj)
+                    print(centers)
+                    raise
 
                 assignments.append(single_assignments)
                 distances.append(single_distances)
@@ -77,6 +92,20 @@ def main(argv=None):
     '''Run the driver script for this module. This code only runs if we're
     being run as a script. Otherwise, it's silent and just exposes methods.'''
     args = process_command_line(argv)
+
+    with open(args.centers, 'rb') as f:
+        centers = pickle.load(f)
+
+    centers = [c.atom_slice(c.top.select(args.atoms)) for c in centers]
+
+    assig, dist = reassign(
+        args.topology, args.trajectories, args.atoms,
+        centers=centers)
+
+    ra.save(os.path.join(args.output_path, args.output_tag)+'-distances.h5',
+            dist)
+    ra.save(os.path.join(args.output_path, args.output_tag)+'-assignments.h5',
+            assig)
 
     return 0
 
