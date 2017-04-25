@@ -47,7 +47,7 @@ EXP_MAPS = np.array(
 def test_bace_integration_dense():
 
     with tempfile.TemporaryDirectory(dir=os.getcwd()) as d:
-        bace.run(TCOUNTS, nMacro=2, nProc=4, multiDist=bace.multiDistDense,
+        bace.run(TCOUNTS, nMacro=2, nProc=4, multiDist=bace.multiDist,
                  outDir=d, filterFunc=bace.filterFunc)
 
         bayes_factors = np.loadtxt(os.path.join(d, 'bayesFactors.dat'))
@@ -65,7 +65,7 @@ def test_bace_integration_sparse():
 
     with tempfile.TemporaryDirectory(dir=os.getcwd()) as d:
         bace.run(scipy.sparse.lil_matrix(TCOUNTS), nMacro=2, nProc=4,
-                 multiDist=bace.multiDistSparse, outDir=d,
+                 multiDist=bace.multiDist, outDir=d,
                  filterFunc=bace.filterFunc)
 
         bayes_factors = np.loadtxt(os.path.join(d, 'bayesFactors.dat'))

@@ -183,16 +183,24 @@ def calcDMat(c, w, fBayesFact, indRecalc, dMat, nProc, statesKeep, multiDist,
     return dMat, minX, minY
 
 
-def multiDistDense(indicesList, c, w, statesKeep, unmerged, chunkSize):
-    d = np.zeros((len(indicesList),chunkSize), dtype=np.float32)
+def multiDist(indicesList, c, w, statesKeep, unmerged, chunkSize):
+    d = np.zeros((len(indicesList), chunkSize), dtype=np.float32)
     for j in range(len(indicesList)):
         indices = indicesList[j]
         ind1 = indices[0]
-        c1 = (c[ind1, statesKeep] + unmerged[ind1]*unmerged[statesKeep]
-              / c.shape[0])
+
+        if scipy.sparse.issparse(c):
+            c1 = (c[ind1, statesKeep].toarray()[0] + unmerged[ind1] *
+                  unmerged[statesKeep] / c.shape[0])
+            helper = multiDistSparseHelper
+        else:
+            c1 = (c[ind1, statesKeep] + unmerged[ind1] * unmerged[statesKeep] /
+                  c.shape[0])
+            helper = multiDistDenseHelper
+
         # BACE BF inverted so can use sparse matrices
-        d[j, :indices[1].shape[0]] = 1 / multiDistDenseHelper(
-            indices[1], c1, w[ind1], c, w, statesKeep, unmerged)
+        d[j, :indices[1].shape[0]] = 1 / helper(indices[1], c1, w[ind1], c, w,
+                                                statesKeep, unmerged)
     return d
 
 
@@ -207,19 +215,6 @@ def multiDistDenseHelper(indices, c1, w1, c, w, statesKeep, unmerged):
         cp = c1 + c2
         cp /= (w1 + w[ind2])
         d[i] = c1.dot(np.log(p1/cp)) + c2.dot(np.log(p2/cp))
-    return d
-
-
-def multiDistSparse(indicesList, c, w, statesKeep, unmerged, chunkSize):
-    d = np.zeros((len(indicesList), chunkSize), dtype=np.float32)
-    for j in range(len(indicesList)):
-        indices = indicesList[j]
-        ind1 = indices[0]
-        c1 = (c[ind1, statesKeep].toarray()[0] + unmerged[ind1] *
-              unmerged[statesKeep] / c.shape[0])
-        # BACE BF inverted so can use sparse matrices
-        d[j, :indices[1].shape[0]] = 1 / multiDistSparseHelper(
-            indices[1], c1, w[ind1], c, w, statesKeep, unmerged)
     return d
 
 
