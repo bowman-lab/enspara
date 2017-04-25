@@ -42,6 +42,7 @@ def run(c, nMacro, nProc, multiDist, outDir, filterFunc, chunkSize=100):
     # perform filter
     logger.info("Checking for states with insufficient statistics")
     c, map, statesKeep = filterFunc(c, nProc)
+    c = c.astype('float')
 
     # get num counts in each state (or weight)
     w = np.array(c.sum(axis=1)).flatten()
@@ -81,9 +82,7 @@ def mergeTwoClosestStates(c, w, fBayesFact, indRecalc, dMat, nProc, map, statesK
     if cIsSparse:
         c = c.tolil()
     if unmerged[minX]:
-        print(c.shape, unmerged.shape, statesKeep.shape)
-        print(c.dtype, unmerged.dtype, statesKeep.dtype)
-        c[minX, statesKeep] += unmerged[statesKeep]*1.0/c.shape[0]
+        c[minX, statesKeep] += unmerged[statesKeep] / c.shape[0]
         unmerged[minX] = 0
         if cIsSparse:
             c[statesKeep,minX] += np.matrix(unmerged[statesKeep]).transpose()*1.0/c.shape[0]
@@ -248,7 +247,6 @@ def filterFuncDense(c, nProc):
                 range(0, nInd, stepSize),
                 list(range(stepSize, nInd, stepSize)) + [nInd])
         else:
-            print(nInd, stepSize)
             dlims = zip(
                 range(0, nInd-stepSize, stepSize),
                 list(range(stepSize, nInd-stepSize, stepSize)) + [nInd])
