@@ -65,21 +65,22 @@ def run(c, nMacro, nProc, multiDist, outDir, filterFunc, chunkSize=100):
     nCurrentStates = statesKeep.shape[0]
     if not os.path.exists(outDir):
         os.mkdir(outDir)
-    fBayesFact = open("%s/bayesFactors.dat" % outDir, 'w')
-    dMat, minX, minY = calcDMat(c, w, fBayesFact, indRecalc, dMat, nProc,
-                                statesKeep, multiDist, unmerged, chunkSize)
-    logger.info("Coarse-graining...")
-    while nCurrentStates > nMacro:
-        logger.info("Iteration %d, merging %d states", i, nCurrentStates)
-        c, w, indRecalc, dMat, state_map, statesKeep, unmerged, minX, minY = \
-            mergeTwoClosestStates(c, w, fBayesFact, indRecalc, dMat, nProc,
-                                  state_map, statesKeep, minX, minY, multiDist,
-                                  unmerged, chunkSize)
-        nCurrentStates -= 1
-        np.savetxt("%s/map%d.dat" % (outDir, nCurrentStates), state_map,
-                   fmt="%d")
-        i += 1
-    fBayesFact.close()
+    with open("%s/bayesFactors.dat" % outDir, 'w') as fBayesFact:
+        dMat, minX, minY = calcDMat(c, w, fBayesFact, indRecalc, dMat, nProc,
+                                    statesKeep, multiDist, unmerged, chunkSize)
+        logger.info("Coarse-graining...")
+        while nCurrentStates > nMacro:
+            logger.info("Iteration %d, merging %d states", i, nCurrentStates)
+            rslt = mergeTwoClosestStates(
+                c, w, fBayesFact, indRecalc, dMat, nProc, state_map,
+                statesKeep, minX, minY, multiDist, unmerged, chunkSize)
+            c, w, indRecalc, dMat, state_map, statesKeep, unmerged, minX, \
+                minY = rslt
+
+            nCurrentStates -= 1
+            np.savetxt("%s/map%d.dat" % (outDir, nCurrentStates), state_map,
+                       fmt="%d")
+            i += 1
 
 
 def mergeTwoClosestStates(c, w, fBayesFact, indRecalc, dMat, nProc, state_map,
