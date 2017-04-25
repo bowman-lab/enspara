@@ -177,17 +177,12 @@ def calcDMat(c, w, fBayesFact, indRecalc, dMat, nProc, statesKeep, multiDist,
                 minY = dMat.rows[x][pos]
     else:
         indMin = dMat.argmax()
-        minX = np.floor(indMin / dMat.shape[1])
+        minX = int(np.floor(indMin / dMat.shape[1]))
         minY = indMin % dMat.shape[1]
 
-    print(statesKeep.shape[0]-1)
-    print(type(minX), type(minY), dMat.dtype)
-    print(dMat[:, minY])
-    print(dMat[minX])
-    print(dMat[minX, minY])
+    fBayesFact.write("%d %f\n" % (statesKeep.shape[0]-1,
+                                  1./dMat[minX, minY]))
 
-    fBayesFact.write("%d %f\n" % (statesKeep.shape[0]-1, 1./dMat[minX, minY]))
-    # assert False
     return dMat, minX, minY
 
 
