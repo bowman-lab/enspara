@@ -192,39 +192,29 @@ def multiDist(indicesList, c, w, statesKeep, unmerged, chunkSize):
         if scipy.sparse.issparse(c):
             c1 = (c[ind1, statesKeep].toarray()[0] + unmerged[ind1] *
                   unmerged[statesKeep] / c.shape[0])
-            helper = multiDistSparseHelper
         else:
             c1 = (c[ind1, statesKeep] + unmerged[ind1] * unmerged[statesKeep] /
                   c.shape[0])
-            helper = multiDistDenseHelper
 
         # BACE BF inverted so can use sparse matrices
-        d[j, :indices[1].shape[0]] = 1 / helper(indices[1], c1, w[ind1], c, w,
-                                                statesKeep, unmerged)
+        d[j, :indices[1].shape[0]] = 1 / multiDistHelper(
+            indices[1], c1, w[ind1], c, w, statesKeep, unmerged)
     return d
 
 
-def multiDistDenseHelper(indices, c1, w1, c, w, statesKeep, unmerged):
+def multiDistHelper(indices, c1, w1, c, w, statesKeep, unmerged):
     d = np.zeros(indices.shape[0], dtype=np.float32)
     p1 = c1 / w1
     for i in range(indices.shape[0]):
         ind2 = indices[i]
-        c2 = (c[ind2, statesKeep] + unmerged[ind2]*unmerged[statesKeep] /
-              c.shape[0])
-        p2 = c2 / w[ind2]
-        cp = c1 + c2
-        cp /= (w1 + w[ind2])
-        d[i] = c1.dot(np.log(p1/cp)) + c2.dot(np.log(p2/cp))
-    return d
 
+        if scipy.sparse.issparse(c):
+            c2 = (c[ind2, statesKeep].toarray()[0] + unmerged[ind2] *
+                  unmerged[statesKeep] / c.shape[0])
+        else:
+            c2 = (c[ind2, statesKeep] + unmerged[ind2]*unmerged[statesKeep] /
+                  c.shape[0])
 
-def multiDistSparseHelper(indices, c1, w1, c, w, statesKeep, unmerged):
-    d = np.zeros(indices.shape[0], dtype=np.float32)
-    p1 = c1 / w1
-    for i in range(indices.shape[0]):
-        ind2 = indices[i]
-        c2 = (c[ind2, statesKeep].toarray()[0] + unmerged[ind2] *
-              unmerged[statesKeep] / c.shape[0])
         p2 = c2 / w[ind2]
         cp = c1 + c2
         cp /= (w1 + w[ind2])
@@ -265,18 +255,15 @@ def filterFunc(c, nProc):
         for start, stop in dlims:
             args.append(indices[start:stop])
 
-        helper = multiDistSparseHelper if scipy.sparse.issparse(c) else \
-            multiDistDenseHelper
-
         with multiprocessing.Pool(processes=nProc) as pool:
             result = pool.map_async(
-                functools.partial(helper, c1=pseud, w1=1, c=c, w=w,
+                functools.partial(multiDistHelper, c1=pseud, w1=1, c=c, w=w,
                                   statesKeep=statesKeep, unmerged=unmerged),
                 args)
             result.wait()
             d = np.concatenate(result.get())
     else:
-        d = multiDistDenseHelper(indices, pseud, 1, c, w, statesKeep, unmerged)
+        d = multiDistHelper(indices, pseud, 1, c, w, statesKeep, unmerged)
 
     # prune states with Bayes factors less than 3:1 ratio (log(3) = 1.1)
     statesPrune = np.where(d < 1.1)[0]
