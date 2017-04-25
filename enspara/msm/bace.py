@@ -41,7 +41,7 @@ def getInds(c, stateInds, chunkSize, isSparse, updateSingleState=None):
 def run(c, nMacro, nProc, multiDist, outDir, filterFunc, chunkSize=100):
     # perform filter
     logger.info("Checking for states with insufficient statistics")
-    c, map, statesKeep = filterFunc(c, nProc)
+    c, state_map, statesKeep = filterFunc(c, nProc)
     c = c.astype('float')
 
     # get num counts in each state (or weight)
@@ -71,17 +71,18 @@ def run(c, nMacro, nProc, multiDist, outDir, filterFunc, chunkSize=100):
     logger.info("Coarse-graining...")
     while nCurrentStates > nMacro:
         logger.info("Iteration %d, merging %d states", i, nCurrentStates)
-        c, w, indRecalc, dMat, map, statesKeep, unmerged, minX, minY = \
+        c, w, indRecalc, dMat, state_map, statesKeep, unmerged, minX, minY = \
             mergeTwoClosestStates(c, w, fBayesFact, indRecalc, dMat, nProc,
-                                  map, statesKeep, minX, minY, multiDist,
+                                  state_map, statesKeep, minX, minY, multiDist,
                                   unmerged, chunkSize)
         nCurrentStates -= 1
-        np.savetxt("%s/map%d.dat" % (outDir, nCurrentStates), map, fmt="%d")
+        np.savetxt("%s/map%d.dat" % (outDir, nCurrentStates), state_map,
+                   fmt="%d")
         i += 1
     fBayesFact.close()
 
 
-def mergeTwoClosestStates(c, w, fBayesFact, indRecalc, dMat, nProc, map,
+def mergeTwoClosestStates(c, w, fBayesFact, indRecalc, dMat, nProc, state_map,
                           statesKeep, minX, minY, multiDist, unmerged,
                           chunkSize):
     cIsSparse = scipy.sparse.issparse(c)
@@ -114,21 +115,21 @@ def mergeTwoClosestStates(c, w, fBayesFact, indRecalc, dMat, nProc, map,
     w[minX] += w[minY]
     w[minY] = 0
     statesKeep = statesKeep[np.where(statesKeep != minY)[0]]
-    indChange = np.where(map == map[minY])[0]
-    map = renumberMap(map, map[minY])
-    map[indChange] = map[minX]
+    indChange = np.where(state_map == state_map[minY])[0]
+    state_map = renumberMap(state_map, state_map[minY])
+    state_map[indChange] = state_map[minX]
     indRecalc = getInds(c, [minX], chunkSize, cIsSparse,
                         updateSingleState=minX)
     dMat, minX, minY = calcDMat(c, w, fBayesFact, indRecalc, dMat, nProc,
                                 statesKeep, multiDist, unmerged, chunkSize)
-    return c, w, indRecalc, dMat, map, statesKeep, unmerged, minX, minY
+    return c, w, indRecalc, dMat, state_map, statesKeep, unmerged, minX, minY
 
 
-def renumberMap(map, stateDrop):
-    for i in range(map.shape[0]):
-        if map[i] >= stateDrop:
-            map[i] -= 1
-    return map
+def renumberMap(state_map, stateDrop):
+    for i in range(state_map.shape[0]):
+        if state_map[i] >= stateDrop:
+            state_map[i] -= 1
+    return state_map
 
 
 def calcDMat(c, w, fBayesFact, indRecalc, dMat, nProc, statesKeep, multiDist,
@@ -227,9 +228,6 @@ def filterFunc(c, nProc):
     w = np.array(c.sum(axis=1)).flatten()
     w += 1
 
-    # init map from micro to macro states
-    map = np.arange(c.shape[0], dtype=np.int32)
-
     # pseudo-state (just pseudo counts)
     pseud = np.ones(c.shape[0], dtype=np.float32)
     pseud /= c.shape[0]
@@ -271,12 +269,15 @@ def filterFunc(c, nProc):
     logger.info("Merging %d states with insufficient statistics into their"
                 "kinetically-nearest neighbor", statesPrune.shape[0])
 
+    # init map from micro to macro states
+    state_map = np.arange(c.shape[0], dtype=np.int32)
+
     for s in statesPrune:
         dest = c[s, :].argmax()
         c[dest, :] += c[s, :]
         c[s, :] = 0
         c[:, s] = 0
-        map = renumberMap(map, map[s])
-        map[s] = map[dest]
+        state_map = renumberMap(state_map, state_map[s])
+        state_map[s] = state_map[dest]
 
-    return c, map, statesKeep
+    return c, state_map, statesKeep
