@@ -2,6 +2,7 @@ import tempfile
 import os
 
 import numpy as np
+import scipy.sparse
 
 from nose.tools import assert_equal, assert_is
 from numpy.testing import assert_array_equal, assert_allclose
@@ -43,11 +44,31 @@ EXP_MAPS = np.array(
      [0, 1, 1, 2, 3, 4, 5, 6, 7]])
 
 
-def test_bace_integration():
+def test_bace_integration_dense():
 
     with tempfile.TemporaryDirectory(dir=os.getcwd()) as d:
         bace.run(TCOUNTS, nMacro=2, nProc=4, multiDist=bace.multiDistDense,
                  outDir=d, filterFunc=bace.filterFuncDense)
+
+        print(os.listdir(d))
+
+        bayes_factors = np.loadtxt(os.path.join(d, 'bayesFactors.dat'))
+        assert_allclose(
+            bayes_factors[:, 1], EXP_BAYES_FACTORS[:, 1],
+            rtol=1e-6)
+
+        maps = []
+        for i in range(2, TCOUNTS.shape[0]):
+            maps.append(np.loadtxt(os.path.join(d, 'map%s.dat' % i),
+                                   dtype='int'))
+
+
+def test_bace_integration_sparse():
+
+    with tempfile.TemporaryDirectory(dir=os.getcwd()) as d:
+        bace.run(scipy.sparse.lil_matrix(TCOUNTS), nMacro=2, nProc=4,
+                 multiDist=bace.multiDistSparse, outDir=d,
+                 filterFunc=bace.filterFuncSparse)
 
         print(os.listdir(d))
 

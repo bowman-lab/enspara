@@ -280,12 +280,15 @@ def filterFuncDense(c, nProc):
         args = []
         for start, stop in dlims:
             args.append(indices[start:stop])
-        result = pool.map_async(
-            functools.partial(multiDistDenseHelper, c1=pseud, w1=1, c=c, w=w,
-                              statesKeep=statesKeep, unmerged=unmerged), args)
-        result.wait()
-        d = np.concatenate(result.get())
-        pool.close()
+
+        with multiprocessing.Pool(processes=nProc) as pool:
+            result = pool.map_async(
+                functools.partial(multiDistDenseHelper, c1=pseud, w1=1, c=c,
+                                  w=w, statesKeep=statesKeep,
+                                  unmerged=unmerged),
+                args)
+            result.wait()
+            d = np.concatenate(result.get())
     else:
         d = multiDistDenseHelper(indices, pseud, 1, c, w, statesKeep, unmerged)
 
@@ -335,7 +338,7 @@ def filterFuncSparse(c, nProc):
         else:
             dlims = zip(
                 range(0, nInd-stepSize, stepSize),
-                range(stepSize, nInd-stepSize, stepSize)+[nInd])
+                list(range(stepSize, nInd-stepSize, stepSize))+[nInd])
         args = []
         for start, stop in dlims:
             args.append(indices[start:stop])
