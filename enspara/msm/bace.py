@@ -223,10 +223,20 @@ def multiDistHelper(indices, c1, w1, c, w, statesKeep, unmerged):
     return d
 
 
-def filterFunc(c, nProc):
+def baysean_prune(c, n_procs=1):
+    '''Prune states less than a particular bayes' factor, lumping them
+    in with their kinetically most-similar neighbor.
+
+    Parameters
+    ----------
+    c : array, shape=(n_state, n_states)
+        Transition counts matrix
+    n_procs: int
+        Width of parallelization for this operation.
+    '''
+
     # get num counts in each state (or weight)
-    w = np.array(c.sum(axis=1)).flatten()
-    w += 1
+    w = np.array(c.sum(axis=1)).flatten() + 1
 
     # pseudo-state (just pseudo counts)
     pseud = np.ones(c.shape[0], dtype=np.float32)
@@ -236,28 +246,26 @@ def filterFunc(c, nProc):
     statesKeep = np.arange(c.shape[0], dtype=np.int32)
     unmerged = np.ones(c.shape[0], dtype=np.int8)
 
-    nInd = len(indices)
-    if nInd > 1 and nProc > 1:
-        if nInd < nProc:
-            nProc = nInd
-        stepSize = int(nInd/nProc)
-        if nInd % stepSize > 3:
+    n_ind = len(indices)
+    if n_ind > 1 and n_procs > 1:
+        n_procs = min(n_ind, n_procs)
+        step = n_ind // n_procs
+
+        if n_ind % step > 3:
             dlims = zip(
-                range(0, nInd, stepSize),
-                list(range(stepSize, nInd, stepSize)) + [nInd])
+                range(0, n_ind, step),
+                list(range(step, n_ind, step)) + [n_ind])
         else:
             dlims = zip(
-                range(0, nInd-stepSize, stepSize),
-                list(range(stepSize, nInd-stepSize, stepSize)) + [nInd])
-        args = []
-        for start, stop in dlims:
-            args.append(indices[start:stop])
+                range(0, n_ind-step, step),
+                list(range(step, n_ind-step, step)) + [n_ind])
 
-        with multiprocessing.Pool(processes=nProc) as pool:
+        with multiprocessing.Pool(processes=n_procs) as pool:
             result = pool.map_async(
                 functools.partial(multiDistHelper, c1=pseud, w1=1, c=c, w=w,
                                   statesKeep=statesKeep, unmerged=unmerged),
-                args)
+                [indices[start:stop] for start, stop in dlims])
+
             result.wait()
             d = np.concatenate(result.get())
     else:
@@ -266,7 +274,7 @@ def filterFunc(c, nProc):
     # prune states with Bayes factors less than 3:1 ratio (log(3) = 1.1)
     statesPrune = np.where(d < 1.1)[0]
     statesKeep = np.where(d >= 1.1)[0]
-    logger.info("Merging %d states with insufficient statistics into their"
+    logger.info("Merging %d states with insufficient statistics into their "
                 "kinetically-nearest neighbor", statesPrune.shape[0])
 
     # init map from micro to macro states
