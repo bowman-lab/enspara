@@ -12,10 +12,10 @@ import scipy.sparse
 logger = logging.getLogger(__name__)
 
 
-def getInds(c, stateInds, chunkSize, isSparse, updateSingleState=None):
+def getInds(c, stateInds, chunkSize, updateSingleState=None):
     indices = []
     for s in stateInds:
-        if isSparse:
+        if scipy.sparse.issparse(c):
             dest = np.where(c[s, :].toarray()[0] > 1)[0]
         else:
             dest = np.where(c[s, :] > 1)[0]
@@ -38,10 +38,10 @@ def getInds(c, stateInds, chunkSize, isSparse, updateSingleState=None):
     return indices
 
 
-def run(c, nMacro, nProc, multiDist, outDir, filterFunc, chunkSize=100):
+def run(c, nMacro, nProc, multiDist, outDir, prune_fn, chunkSize=100):
     # perform filter
     logger.info("Checking for states with insufficient statistics")
-    c, state_map, statesKeep = filterFunc(c, nProc)
+    c, state_map, statesKeep = prune_fn(c, nProc)
     c = c.astype('float')
 
     # get num counts in each state (or weight)
@@ -52,7 +52,7 @@ def run(c, nMacro, nProc, multiDist, outDir, filterFunc, chunkSize=100):
     unmerged[statesKeep] = 1
 
     # get nonzero indices in upper triangle
-    indRecalc = getInds(c, statesKeep, chunkSize, scipy.sparse.issparse(c))
+    indRecalc = getInds(c, statesKeep, chunkSize)
     if scipy.sparse.issparse(c):
         dMat = scipy.sparse.lil_matrix(c.shape)
     else:
@@ -86,13 +86,13 @@ def run(c, nMacro, nProc, multiDist, outDir, filterFunc, chunkSize=100):
 def mergeTwoClosestStates(c, w, fBayesFact, indRecalc, dMat, nProc, state_map,
                           statesKeep, minX, minY, multiDist, unmerged,
                           chunkSize):
-    cIsSparse = scipy.sparse.issparse(c)
-    if cIsSparse:
+    sparse = scipy.sparse.issparse(c)
+    if sparse:
         c = c.tolil()
     if unmerged[minX]:
         c[minX, statesKeep] += unmerged[statesKeep] / c.shape[0]
         unmerged[minX] = 0
-        if cIsSparse:
+        if sparse:
             c[statesKeep, minX] += (
                 np.matrix(unmerged[statesKeep]).transpose() / c.shape[0])
         else:
@@ -100,7 +100,7 @@ def mergeTwoClosestStates(c, w, fBayesFact, indRecalc, dMat, nProc, state_map,
     if unmerged[minY]:
         c[minY, statesKeep] += unmerged[statesKeep] / c.shape[0]
         unmerged[minY] = 0
-        if cIsSparse:
+        if sparse:
             c[statesKeep, minY] += (
                 np.matrix(unmerged[statesKeep]).transpose() / c.shape[0])
         else:
@@ -111,7 +111,7 @@ def mergeTwoClosestStates(c, w, fBayesFact, indRecalc, dMat, nProc, state_map,
     dMat[minX, :] = dMat[:, minX] = 0
     dMat[minY, :] = dMat[:, minY] = 0
 
-    if cIsSparse:
+    if sparse:
         c = c.tocsr()
     w[minX] += w[minY]
     w[minY] = 0
@@ -119,8 +119,7 @@ def mergeTwoClosestStates(c, w, fBayesFact, indRecalc, dMat, nProc, state_map,
     indChange = np.where(state_map == state_map[minY])[0]
     state_map = renumberMap(state_map, state_map[minY])
     state_map[indChange] = state_map[minX]
-    indRecalc = getInds(c, [minX], chunkSize, cIsSparse,
-                        updateSingleState=minX)
+    indRecalc = getInds(c, [minX], chunkSize, updateSingleState=minX)
     dMat, minX, minY = calcDMat(c, w, fBayesFact, indRecalc, dMat, nProc,
                                 statesKeep, multiDist, unmerged, chunkSize)
     return c, w, indRecalc, dMat, state_map, statesKeep, unmerged, minX, minY
@@ -181,7 +180,14 @@ def calcDMat(c, w, fBayesFact, indRecalc, dMat, nProc, statesKeep, multiDist,
         minX = np.floor(indMin / dMat.shape[1])
         minY = indMin % dMat.shape[1]
 
+    print(statesKeep.shape[0]-1)
+    print(type(minX), type(minY), dMat.dtype)
+    print(dMat[:, minY])
+    print(dMat[minX])
+    print(dMat[minX, minY])
+
     fBayesFact.write("%d %f\n" % (statesKeep.shape[0]-1, 1./dMat[minX, minY]))
+    # assert False
     return dMat, minX, minY
 
 
