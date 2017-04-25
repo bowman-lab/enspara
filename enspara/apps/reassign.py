@@ -56,7 +56,7 @@ def process_command_line(argv):
 def reassign(topologies, trajectories, atoms, centers):
 
     logger.info("Reassigning dataset of %s trajectories and %s topologies.",
-                len(trajectories), len(topologies))
+                sum(len(t) for t in trajectories), len(topologies))
     assignments = []
     distances = []
 
