@@ -47,33 +47,31 @@ EXP_MAPS = np.array(
 def test_bace_integration_dense():
 
     with tempfile.TemporaryDirectory(dir=os.getcwd()) as d:
-        bace.run(TCOUNTS, nMacro=2, nProc=4, multiDist=bace.multiDist,
-                 outDir=d, prune_fn=bace.baysean_prune)
+        bayes_factors, state_maps = bace.run(
+            TCOUNTS, nMacro=2, nProc=4, multiDist=bace.multiDist,
+            outDir=d, prune_fn=bace.baysean_prune)
 
-        bayes_factors = np.loadtxt(os.path.join(d, 'bayesFactors.dat'))
+        # bayes_factors = np.loadtxt(os.path.join(d, 'bayesFactors.dat'))
         assert_allclose(
-            bayes_factors[:, 1], EXP_BAYES_FACTORS[:, 1],
+            [bayes_factors[i] for i in sorted(bayes_factors.keys())],
+            EXP_BAYES_FACTORS[::-1, 1],
             rtol=1e-6)
 
-        maps = []
-        for i in range(2, TCOUNTS.shape[0]):
-            maps.append(np.loadtxt(os.path.join(d, 'map%s.dat' % i),
-                                   dtype='int'))
+        assert_array_equal(state_maps, EXP_MAPS)
 
 
 def test_bace_integration_sparse():
 
     with tempfile.TemporaryDirectory(dir=os.getcwd()) as d:
-        bace.run(scipy.sparse.lil_matrix(TCOUNTS), nMacro=2, nProc=4,
-                 multiDist=bace.multiDist, outDir=d,
-                 prune_fn=bace.baysean_prune)
+        bayes_factors, state_maps = bace.run(
+            scipy.sparse.lil_matrix(TCOUNTS), nMacro=2, nProc=4,
+            multiDist=bace.multiDist, outDir=d,
+            prune_fn=bace.baysean_prune)
 
-        bayes_factors = np.loadtxt(os.path.join(d, 'bayesFactors.dat'))
+        # bayes_factors = np.loadtxt(os.path.join(d, 'bayesFactors.dat'))
         assert_allclose(
-            bayes_factors[:, 1], EXP_BAYES_FACTORS[:, 1],
+            [bayes_factors[i] for i in sorted(bayes_factors.keys())],
+            EXP_BAYES_FACTORS[::-1, 1],
             rtol=1e-6)
 
-        maps = []
-        for i in range(2, TCOUNTS.shape[0]):
-            maps.append(np.loadtxt(os.path.join(d, 'map%s.dat' % i),
-                                   dtype='int'))
+        assert_array_equal(state_maps, EXP_MAPS)

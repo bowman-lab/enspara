@@ -1,4 +1,5 @@
 import os
+import io
 import logging
 import functools
 import multiprocessing
@@ -63,29 +64,33 @@ def run(c, nMacro, nProc, multiDist, outDir, prune_fn, chunkSize=100):
 
     i = 0
     nCurrentStates = statesKeep.shape[0]
-    if not os.path.exists(outDir):
-        os.mkdir(outDir)
-    with open("%s/bayesFactors.dat" % outDir, 'w') as fBayesFact:
-        dMat, minX, minY = calcDMat(c, w, fBayesFact, indRecalc, dMat, nProc,
-                                    statesKeep, multiDist, unmerged, chunkSize)
-        logger.info("Coarse-graining...")
-        while nCurrentStates > nMacro:
-            logger.info("Iteration %d, merging %d states", i, nCurrentStates)
-            rslt = mergeTwoClosestStates(
-                c, w, fBayesFact, indRecalc, dMat, nProc, state_map,
-                statesKeep, minX, minY, multiDist, unmerged, chunkSize)
-            c, w, indRecalc, dMat, state_map, statesKeep, unmerged, minX, \
-                minY = rslt
 
-            nCurrentStates -= 1
-            np.savetxt("%s/map%d.dat" % (outDir, nCurrentStates), state_map,
-                       fmt="%d")
-            i += 1
+    bayes_factors = {}
+    state_maps = []
+
+    dMat, minX, minY = calcDMat(c, w, bayes_factors, indRecalc, dMat, nProc,
+                                statesKeep, multiDist, unmerged, chunkSize)
+    logger.info("Coarse-graining...")
+    while nCurrentStates > nMacro:
+        logger.info("Iteration %d, merging %d states", i, nCurrentStates)
+        rslt = mergeTwoClosestStates(
+            c, w, bayes_factors, indRecalc, dMat, nProc, state_map,
+            statesKeep, minX, minY, multiDist, unmerged, chunkSize)
+        c, w, indRecalc, dMat, state_map, statesKeep, unmerged, minX, \
+            minY = rslt
+
+        nCurrentStates -= 1
+        state_maps.append(state_map.astype(int))
+        i += 1
+
+    state_maps.append(np.zeros((c.shape[0])))
+
+    return bayes_factors, np.vstack(state_maps[::-1])
 
 
-def mergeTwoClosestStates(c, w, fBayesFact, indRecalc, dMat, nProc, state_map,
-                          statesKeep, minX, minY, multiDist, unmerged,
-                          chunkSize):
+def mergeTwoClosestStates(
+        c, w, bayes_factors, indRecalc, dMat, nProc, state_map, statesKeep,
+        minX, minY, multiDist, unmerged, chunkSize):
     sparse = scipy.sparse.issparse(c)
     if sparse:
         c = c.tolil()
@@ -120,7 +125,7 @@ def mergeTwoClosestStates(c, w, fBayesFact, indRecalc, dMat, nProc, state_map,
     state_map = renumberMap(state_map, state_map[minY])
     state_map[indChange] = state_map[minX]
     indRecalc = getInds(c, [minX], chunkSize, updateSingleState=minX)
-    dMat, minX, minY = calcDMat(c, w, fBayesFact, indRecalc, dMat, nProc,
+    dMat, minX, minY = calcDMat(c, w, bayes_factors, indRecalc, dMat, nProc,
                                 statesKeep, multiDist, unmerged, chunkSize)
     return c, w, indRecalc, dMat, state_map, statesKeep, unmerged, minX, minY
 
@@ -132,8 +137,8 @@ def renumberMap(state_map, stateDrop):
     return state_map
 
 
-def calcDMat(c, w, fBayesFact, indRecalc, dMat, nProc, statesKeep, multiDist,
-             unmerged, chunkSize):
+def calcDMat(c, w, bayes_factors, indRecalc, dMat, nProc, statesKeep,
+             multiDist, unmerged, chunkSize):
     nRecalc = len(indRecalc)
     if nRecalc > 1 and nProc > 1:
         if nRecalc < nProc:
@@ -180,8 +185,7 @@ def calcDMat(c, w, fBayesFact, indRecalc, dMat, nProc, statesKeep, multiDist,
         minX = int(np.floor(indMin / dMat.shape[1]))
         minY = indMin % dMat.shape[1]
 
-    fBayesFact.write("%d %f\n" % (statesKeep.shape[0]-1,
-                                  1./dMat[minX, minY]))
+    bayes_factors[statesKeep.shape[0]-1] = 1./dMat[minX, minY]
 
     return dMat, minX, minY
 
