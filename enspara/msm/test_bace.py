@@ -48,9 +48,7 @@ def test_bace_integration_dense():
 
     with tempfile.TemporaryDirectory(dir=os.getcwd()) as d:
         bace.run(TCOUNTS, nMacro=2, nProc=4, multiDist=bace.multiDistDense,
-                 outDir=d, filterFunc=bace.filterFuncDense)
-
-        print(os.listdir(d))
+                 outDir=d, filterFunc=bace.filterFunc)
 
         bayes_factors = np.loadtxt(os.path.join(d, 'bayesFactors.dat'))
         assert_allclose(
@@ -68,9 +66,7 @@ def test_bace_integration_sparse():
     with tempfile.TemporaryDirectory(dir=os.getcwd()) as d:
         bace.run(scipy.sparse.lil_matrix(TCOUNTS), nMacro=2, nProc=4,
                  multiDist=bace.multiDistSparse, outDir=d,
-                 filterFunc=bace.filterFuncSparse)
-
-        print(os.listdir(d))
+                 filterFunc=bace.filterFunc)
 
         bayes_factors = np.loadtxt(os.path.join(d, 'bayesFactors.dat'))
         assert_allclose(

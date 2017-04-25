@@ -237,79 +237,7 @@ def multiDistSparseHelper(indices, c1, w1, c, w, statesKeep, unmerged):
     return d
 
 
-def add_argument(group, *args, **kwargs):
-    if 'default' in kwargs:
-        d = 'Default: {d}'.format(d=kwargs['default'])
-        if 'help' in kwargs:
-            kwargs['help'] += ' {d}'.format(d=d)
-        else:
-            kwargs['help'] = d
-    group.add_argument(*args, **kwargs)
-
-
-def filterFuncDense(c, nProc):
-    # get num counts in each state (or weight)
-    w = np.array(c.sum(axis=1)).flatten()
-    w += 1
-
-    # init map from micro to macro states
-    map = np.arange(c.shape[0], dtype=np.int32)
-
-    # pseudo-state (just pseudo counts)
-    pseud = np.ones(c.shape[0], dtype=np.float32)
-    pseud /= c.shape[0]
-
-    indices = np.arange(c.shape[0], dtype=np.int32)
-    statesKeep = np.arange(c.shape[0], dtype=np.int32)
-    unmerged = np.ones(c.shape[0], dtype=np.float32)
-
-    nInd = len(indices)
-    if nInd > 1 and nProc > 1:
-        if nInd < nProc:
-            nProc = nInd
-        pool = multiprocessing.Pool(processes=nProc)
-        stepSize = int(nInd/nProc)
-        if nInd % stepSize > 3:
-            dlims = zip(
-                range(0, nInd, stepSize),
-                list(range(stepSize, nInd, stepSize)) + [nInd])
-        else:
-            dlims = zip(
-                range(0, nInd-stepSize, stepSize),
-                list(range(stepSize, nInd-stepSize, stepSize)) + [nInd])
-        args = []
-        for start, stop in dlims:
-            args.append(indices[start:stop])
-
-        with multiprocessing.Pool(processes=nProc) as pool:
-            result = pool.map_async(
-                functools.partial(multiDistDenseHelper, c1=pseud, w1=1, c=c,
-                                  w=w, statesKeep=statesKeep,
-                                  unmerged=unmerged),
-                args)
-            result.wait()
-            d = np.concatenate(result.get())
-    else:
-        d = multiDistDenseHelper(indices, pseud, 1, c, w, statesKeep, unmerged)
-
-    # prune states with Bayes factors less than 3:1 ratio (log(3) = 1.1)
-    statesPrune = np.where(d < 1.1)[0]
-    statesKeep = np.where(d >= 1.1)[0]
-    logger.info("Merging %d states with insufficient statistics into their"
-                "kinetically-nearest neighbor", statesPrune.shape[0])
-
-    for s in statesPrune:
-        dest = c[s, :].argmax()
-        c[dest, :] += c[s, :]
-        c[s, :] = 0
-        c[:, s] = 0
-        map = renumberMap(map, map[s])
-        map[s] = map[dest]
-
-    return c, map, statesKeep
-
-
-def filterFuncSparse(c, nProc):
+def filterFunc(c, nProc):
     # get num counts in each state (or weight)
     w = np.array(c.sum(axis=1)).flatten()
     w += 1
@@ -329,28 +257,31 @@ def filterFuncSparse(c, nProc):
     if nInd > 1 and nProc > 1:
         if nInd < nProc:
             nProc = nInd
-        pool = multiprocessing.Pool(processes=nProc)
         stepSize = int(nInd/nProc)
         if nInd % stepSize > 3:
             dlims = zip(
                 range(0, nInd, stepSize),
-                range(stepSize, nInd, stepSize)+[nInd])
+                list(range(stepSize, nInd, stepSize)) + [nInd])
         else:
             dlims = zip(
                 range(0, nInd-stepSize, stepSize),
-                list(range(stepSize, nInd-stepSize, stepSize))+[nInd])
+                list(range(stepSize, nInd-stepSize, stepSize)) + [nInd])
         args = []
         for start, stop in dlims:
             args.append(indices[start:stop])
-        result = pool.map_async(
-            functools.partial(multiDistSparseHelper, c1=pseud, w1=1, c=c, w=w,
-                              statesKeep=statesKeep, unmerged=unmerged), args)
-        result.wait()
-        d = np.concatenate(result.get())
-        pool.close()
+
+        helper = multiDistSparseHelper if scipy.sparse.issparse(c) else \
+            multiDistDenseHelper
+
+        with multiprocessing.Pool(processes=nProc) as pool:
+            result = pool.map_async(
+                functools.partial(helper, c1=pseud, w1=1, c=c, w=w,
+                                  statesKeep=statesKeep, unmerged=unmerged),
+                args)
+            result.wait()
+            d = np.concatenate(result.get())
     else:
-        d = multiDistSparseHelper(
-            indices, pseud, 1, c, w, statesKeep, unmerged)
+        d = multiDistDenseHelper(indices, pseud, 1, c, w, statesKeep, unmerged)
 
     # prune states with Bayes factors less than 3:1 ratio (log(3) = 1.1)
     statesPrune = np.where(d < 1.1)[0]
@@ -359,7 +290,7 @@ def filterFuncSparse(c, nProc):
                 "kinetically-nearest neighbor", statesPrune.shape[0])
 
     for s in statesPrune:
-        dest = c.rows[s][np.argmax(c.data[s])]
+        dest = c[s, :].argmax()
         c[dest, :] += c[s, :]
         c[s, :] = 0
         c[:, s] = 0
