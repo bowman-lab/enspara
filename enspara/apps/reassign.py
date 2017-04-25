@@ -3,6 +3,7 @@ import sys
 import argparse
 import logging
 import pickle
+import time
 
 import numpy as np
 import mdtraj as md
@@ -60,6 +61,8 @@ def reassign(topologies, trajectories, atoms, centers):
     assignments = []
     distances = []
 
+    tick = time.clock()
+
     try:
         for i, (topfile, trjfiles) in enumerate(zip(topologies, trajectories)):
             top = md.load(topfile).top
@@ -81,6 +84,9 @@ def reassign(topologies, trajectories, atoms, centers):
         print("topfile was", topfile)
         print("trjfile was", trjfile)
         raise
+
+    tock = time.clock()
+    logger.info("Reassignment took %s seconds.", tock - tick)
 
     if all([len(assignments[0]) == len(a) for a in assignments]):
         logger.info("Trajectory lengths are homogenous. Output will "
