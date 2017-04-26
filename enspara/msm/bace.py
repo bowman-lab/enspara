@@ -224,7 +224,7 @@ def multiDistHelper(indices, c1, w1, c, w, statesKeep, unmerged):
     return d
 
 
-def baysean_prune(c, n_procs=1):
+def baysean_prune(c, n_procs=1, factor=np.log(3), in_place=False):
     '''Prune states less than a particular bayes' factor, lumping them
     in with their kinetically most-similar neighbor.
 
@@ -234,6 +234,10 @@ def baysean_prune(c, n_procs=1):
         Transition counts matrix
     n_procs: int
         Width of parallelization for this operation.
+    factor: float, default=ln(3)
+        Bayes' factor at which to prune states.
+    in_place : bool, default=False
+        Compute the pruning of counts matrix C in place.
     '''
 
     # get num counts in each state (or weight)
@@ -273,13 +277,16 @@ def baysean_prune(c, n_procs=1):
         d = multiDistHelper(indices, pseud, 1, c, w, statesKeep, unmerged)
 
     # prune states with Bayes factors less than 3:1 ratio (log(3) = 1.1)
-    statesPrune = np.where(d < 1.1)[0]
-    statesKeep = np.where(d >= 1.1)[0]
+    statesPrune = np.where(d < factor)[0]
+    statesKeep = np.where(d >= factor)[0]
     logger.info("Merging %d states with insufficient statistics into their "
                 "kinetically-nearest neighbor", statesPrune.shape[0])
 
     # init map from micro to macro states
     state_map = np.arange(c.shape[0], dtype=np.int32)
+
+    if not in_place:
+        c = c.copy()
 
     for s in statesPrune:
         dest = c[s, :].argmax()
