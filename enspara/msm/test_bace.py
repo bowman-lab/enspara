@@ -1,10 +1,7 @@
-import tempfile
-import os
-
 import numpy as np
 import scipy.sparse
 
-from nose.tools import assert_equal, assert_is
+from nose.tools import assert_equal
 from numpy.testing import assert_array_equal, assert_allclose
 
 from enspara.msm import bace
@@ -71,3 +68,12 @@ def test_bace_integration_sparse():
         rtol=1e-6)
 
     assert_array_equal(state_maps, EXP_MAPS)
+
+
+def test_baysean_prune():
+
+    pruned_counts, state_map, kept_states = bace.baysean_prune(TCOUNTS)
+
+    assert_array_equal(pruned_counts, TCOUNTS)
+    assert_array_equal(state_map, np.arange(len(state_map)))
+    assert_array_equal(kept_states, np.arange(len(kept_states)))
