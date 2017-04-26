@@ -230,14 +230,24 @@ def baysean_prune(c, n_procs=1, factor=np.log(3), in_place=False):
 
     Parameters
     ----------
-    c : array, shape=(n_state, n_states)
+    c : array, shape=(n_states, n_states)
         Transition counts matrix
-    n_procs: int
+    n_procs : int
         Width of parallelization for this operation.
-    factor: float, default=ln(3)
+    factor : float, default=ln(3)
         Bayes' factor at which to prune states.
     in_place : bool, default=False
         Compute the pruning of counts matrix C in place.
+
+    Returns
+    -------
+    c : array, shape=(n_states_pruned, n_states_pruned)
+        Transition counts matrix after pruning
+    labels : array, shape=(n_states)
+        Labels of old states in new states. The value j at position i
+        indicates that state i was merged into state j.
+    kept_states : array, shape=(n_states)
+        Array of state indices that were retained during pruning.
     '''
 
     # get num counts in each state (or weight)
@@ -283,7 +293,7 @@ def baysean_prune(c, n_procs=1, factor=np.log(3), in_place=False):
                 "kinetically-nearest neighbor", statesPrune.shape[0])
 
     # init map from micro to macro states
-    state_map = np.arange(c.shape[0], dtype=np.int32)
+    labels = np.arange(c.shape[0], dtype=np.int32)
 
     if not in_place:
         c = c.copy()
@@ -293,7 +303,7 @@ def baysean_prune(c, n_procs=1, factor=np.log(3), in_place=False):
         c[dest, :] += c[s, :]
         c[s, :] = 0
         c[:, s] = 0
-        state_map = renumberMap(state_map, state_map[s])
-        state_map[s] = state_map[dest]
+        labels = renumberMap(labels, labels[s])
+        labels[s] = labels[dest]
 
-    return c, state_map, statesKeep
+    return c, labels, statesKeep
