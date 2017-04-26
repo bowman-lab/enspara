@@ -30,21 +30,20 @@ EXP_BAYES_FACTORS = np.array(
      [2.0, 4.85322085e+03],
      [1.0, 6.72422979e+03]])
 
-EXP_MAPS = np.array(
-    [[0, 0, 0, 0, 0, 0, 0, 0, 0],
-     [0, 0, 0, 0, 0, 0, 1, 1, 1],
-     [0, 0, 0, 1, 1, 1, 2, 2, 2],
-     [0, 0, 0, 1, 2, 2, 3, 3, 3],
-     [0, 0, 0, 1, 2, 2, 3, 4, 4],
-     [0, 1, 1, 2, 3, 3, 4, 5, 5],
-     [0, 1, 1, 2, 3, 4, 5, 6, 6],
-     [0, 1, 1, 2, 3, 4, 5, 6, 7]])
+EXP_LABELS = {
+     2: [0, 0, 0, 0, 0, 0, 1, 1, 1],
+     3: [0, 0, 0, 1, 1, 1, 2, 2, 2],
+     4: [0, 0, 0, 1, 2, 2, 3, 3, 3],
+     5: [0, 0, 0, 1, 2, 2, 3, 4, 4],
+     6: [0, 1, 1, 2, 3, 3, 4, 5, 5],
+     7: [0, 1, 1, 2, 3, 4, 5, 6, 6],
+     8: [0, 1, 1, 2, 3, 4, 5, 6, 7]}
 
 
 def test_bace_integration_dense():
 
-    bayes_factors, state_maps = bace.bace(
-        TCOUNTS, nMacro=2, nProc=4, prune_fn=bace.baysean_prune)
+    bayes_factors, labels = bace.bace(
+        TCOUNTS, n_macrostates=2, n_procs=4)
 
     # bayes_factors = np.loadtxt(os.path.join(d, 'bayesFactors.dat'))
     assert_allclose(
@@ -52,14 +51,16 @@ def test_bace_integration_dense():
         EXP_BAYES_FACTORS[::-1, 1],
         rtol=1e-6)
 
-    assert_array_equal(state_maps, EXP_MAPS)
+    assert_array_equal(
+        np.vstack(labels.values()),
+        np.vstack(EXP_LABELS.values()))
+    assert_equal(labels.keys(), EXP_LABELS.keys())
 
 
 def test_bace_integration_sparse():
 
-    bayes_factors, state_maps = bace.bace(
-        scipy.sparse.lil_matrix(TCOUNTS), nMacro=2, nProc=4,
-        prune_fn=bace.baysean_prune)
+    bayes_factors, labels = bace.bace(
+        scipy.sparse.lil_matrix(TCOUNTS), n_macrostates=2, n_procs=4)
 
     # bayes_factors = np.loadtxt(os.path.join(d, 'bayesFactors.dat'))
     assert_allclose(
@@ -67,7 +68,10 @@ def test_bace_integration_sparse():
         EXP_BAYES_FACTORS[::-1, 1],
         rtol=1e-6)
 
-    assert_array_equal(state_maps, EXP_MAPS)
+    assert_array_equal(
+        np.vstack(labels.values()),
+        np.vstack(EXP_LABELS.values()))
+    assert_equal(labels.keys(), EXP_LABELS.keys())
 
 
 def test_baysean_prune():

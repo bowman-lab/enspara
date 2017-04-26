@@ -37,10 +37,32 @@ def getInds(c, stateInds, chunkSize, updateSingleState=None):
     return indices
 
 
-def bace(c, nMacro, nProc, prune_fn, chunkSize=100):
+def bace(c, n_macrostates, chunk_size=100, n_procs=1):
+    '''Perform baysean agglomerative coarse-graining procedure ('BACE')
+
+    Parameters
+    ----------
+    c : array-like, shape=(n_states, n_states)
+        Transition counts matrix to perform agglomeration on
+    n_macrostates : int
+        Number of macrostates to coarse-grain into.
+    n_procs : int, default=1
+        Number of parallel processes to use.
+    chunk_size : int, default=100
+
+    Returns
+    -------
+    bayes_factors : dict, (n_macrostates -> bayes' factor)
+        Mapping from number of macrostates to the bayes' factor of that
+        lumping.
+    labels : dict, (n_macrostates -> label array)
+        Mapping from number of macrostates to the labelling of
+        microstates into that number of macrostates.
+    '''
+
     # perform filter
     logger.info("Checking for states with insufficient statistics")
-    c, state_map, statesKeep = prune_fn(c, nProc)
+    c, state_map, statesKeep = baysean_prune(c, n_procs)
     c = c.astype('float')
 
     # get num counts in each state (or weight)
@@ -51,7 +73,7 @@ def bace(c, nMacro, nProc, prune_fn, chunkSize=100):
     unmerged[statesKeep] = 1
 
     # get nonzero indices in upper triangle
-    indRecalc = getInds(c, statesKeep, chunkSize)
+    indRecalc = getInds(c, statesKeep, chunk_size)
     if scipy.sparse.issparse(c):
         dMat = scipy.sparse.lil_matrix(c.shape)
     else:
@@ -61,26 +83,24 @@ def bace(c, nMacro, nProc, prune_fn, chunkSize=100):
         c = c.tocsr()
 
     bayes_factors = {}
-    state_maps = []
+    labels = {}
 
-    dMat, minX, minY = calcDMat(c, w, bayes_factors, indRecalc, dMat, nProc,
-                                statesKeep, unmerged, chunkSize)
+    dMat, minX, minY = calcDMat(c, w, bayes_factors, indRecalc, dMat, n_procs,
+                                statesKeep, unmerged, chunk_size)
     logger.info("Coarse-graining...")
 
-    for cycle in range(c.shape[0] - nMacro):
+    for cycle in range(c.shape[0] - n_macrostates):
         logger.info("Iteration %d, merging %d states",
                     cycle, c.shape[0] - cycle)
         rslt = mergeTwoClosestStates(
-            c, w, bayes_factors, indRecalc, dMat, nProc, state_map,
-            statesKeep, minX, minY, unmerged, chunkSize)
+            c, w, bayes_factors, indRecalc, dMat, n_procs, state_map,
+            statesKeep, minX, minY, unmerged, chunk_size)
         c, w, indRecalc, dMat, state_map, statesKeep, unmerged, minX, \
             minY = rslt
 
-        state_maps.append(state_map.astype(int))
+        labels[c.shape[0] - cycle - 1] = state_map.astype(int)
 
-    state_maps.append(np.zeros((c.shape[0])))
-
-    return bayes_factors, np.vstack(state_maps[::-1])
+    return bayes_factors, labels
 
 
 def mergeTwoClosestStates(
