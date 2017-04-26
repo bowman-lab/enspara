@@ -37,7 +37,7 @@ def getInds(c, stateInds, chunkSize, updateSingleState=None):
     return indices
 
 
-def bace(c, nMacro, nProc, multiDist, prune_fn, chunkSize=100):
+def bace(c, nMacro, nProc, prune_fn, chunkSize=100):
     # perform filter
     logger.info("Checking for states with insufficient statistics")
     c, state_map, statesKeep = prune_fn(c, nProc)
@@ -67,13 +67,13 @@ def bace(c, nMacro, nProc, multiDist, prune_fn, chunkSize=100):
     state_maps = []
 
     dMat, minX, minY = calcDMat(c, w, bayes_factors, indRecalc, dMat, nProc,
-                                statesKeep, multiDist, unmerged, chunkSize)
+                                statesKeep, unmerged, chunkSize)
     logger.info("Coarse-graining...")
     while nCurrentStates > nMacro:
         logger.info("Iteration %d, merging %d states", i, nCurrentStates)
         rslt = mergeTwoClosestStates(
             c, w, bayes_factors, indRecalc, dMat, nProc, state_map,
-            statesKeep, minX, minY, multiDist, unmerged, chunkSize)
+            statesKeep, minX, minY, unmerged, chunkSize)
         c, w, indRecalc, dMat, state_map, statesKeep, unmerged, minX, \
             minY = rslt
 
@@ -88,7 +88,7 @@ def bace(c, nMacro, nProc, multiDist, prune_fn, chunkSize=100):
 
 def mergeTwoClosestStates(
         c, w, bayes_factors, indRecalc, dMat, nProc, state_map, statesKeep,
-        minX, minY, multiDist, unmerged, chunkSize):
+        minX, minY, unmerged, chunkSize):
     sparse = scipy.sparse.issparse(c)
     if sparse:
         c = c.tolil()
@@ -124,7 +124,7 @@ def mergeTwoClosestStates(
     state_map[indChange] = state_map[minX]
     indRecalc = getInds(c, [minX], chunkSize, updateSingleState=minX)
     dMat, minX, minY = calcDMat(c, w, bayes_factors, indRecalc, dMat, nProc,
-                                statesKeep, multiDist, unmerged, chunkSize)
+                                statesKeep, unmerged, chunkSize)
     return c, w, indRecalc, dMat, state_map, statesKeep, unmerged, minX, minY
 
 
@@ -136,7 +136,7 @@ def renumberMap(state_map, stateDrop):
 
 
 def calcDMat(c, w, bayes_factors, indRecalc, dMat, nProc, statesKeep,
-             multiDist, unmerged, chunkSize):
+             unmerged, chunkSize):
     nRecalc = len(indRecalc)
     if nRecalc > 1 and nProc > 1:
         if nRecalc < nProc:

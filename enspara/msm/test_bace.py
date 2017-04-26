@@ -47,8 +47,7 @@ EXP_MAPS = np.array(
 def test_bace_integration_dense():
 
     bayes_factors, state_maps = bace.bace(
-        TCOUNTS, nMacro=2, nProc=4, multiDist=bace.multiDist,
-        prune_fn=bace.baysean_prune)
+        TCOUNTS, nMacro=2, nProc=4, prune_fn=bace.baysean_prune)
 
     # bayes_factors = np.loadtxt(os.path.join(d, 'bayesFactors.dat'))
     assert_allclose(
@@ -63,7 +62,7 @@ def test_bace_integration_sparse():
 
     bayes_factors, state_maps = bace.bace(
         scipy.sparse.lil_matrix(TCOUNTS), nMacro=2, nProc=4,
-        multiDist=bace.multiDist, prune_fn=bace.baysean_prune)
+        prune_fn=bace.baysean_prune)
 
     # bayes_factors = np.loadtxt(os.path.join(d, 'bayesFactors.dat'))
     assert_allclose(
