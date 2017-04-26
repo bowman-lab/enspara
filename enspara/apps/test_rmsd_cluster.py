@@ -246,3 +246,5 @@ def test_rmsd_cluster_multitop_partition():
         '--partition', '4',
         '--subsample', '4'],
         expected_size=expected_size)
+
+    assert False
