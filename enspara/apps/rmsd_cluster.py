@@ -175,7 +175,6 @@ def load_asymm_frames(result, trajectories, topology, subsample):
 
 def position_of_first_difference(paths):
     for i, chars in enumerate(zip(*paths)):
-        print(chars)
         if not all(chars[0] == char_i for char_i in chars):
             break
 
