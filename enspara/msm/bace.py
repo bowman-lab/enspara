@@ -38,7 +38,7 @@ def getInds(c, stateInds, chunkSize, updateSingleState=None):
 
 
 def bace(c, n_macrostates, chunk_size=100, n_procs=1):
-    '''Perform baysean agglomerative coarse-graining procedure ('BACE')
+    """Perform baysean agglomerative coarse-graining procedure ('BACE')
 
     Parameters
     ----------
@@ -58,7 +58,7 @@ def bace(c, n_macrostates, chunk_size=100, n_procs=1):
     labels : dict, (n_macrostates -> label array)
         Mapping from number of macrostates to the labelling of
         microstates into that number of macrostates.
-    '''
+    """
 
     # perform filter
     logger.info("Checking for states with insufficient statistics")
@@ -237,7 +237,7 @@ def multiDistHelper(indices, c1, w1, c, w, statesKeep, unmerged):
 
 
 def baysean_prune(c, n_procs=1, factor=np.log(3), in_place=False):
-    '''Prune states less than a particular bayes' factor, lumping them
+    """Prune states less than a particular bayes' factor, lumping them
     in with their kinetically most-similar neighbor.
 
     Parameters
@@ -260,7 +260,7 @@ def baysean_prune(c, n_procs=1, factor=np.log(3), in_place=False):
         indicates that state i was merged into state j.
     kept_states : array, shape=(n_states)
         Array of state indices that were retained during pruning.
-    '''
+    """
 
     # get num counts in each state (or weight)
     w = np.array(c.sum(axis=1)).flatten() + 1
