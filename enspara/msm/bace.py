@@ -152,34 +152,33 @@ def renumberMap(state_map, stateDrop):
     return state_map
 
 
-def calcDMat(c, w, bayes_factors, indRecalc, dMat, nProc, statesKeep,
+def calcDMat(c, w, bayes_factors, indices, dMat, n_procs, statesKeep,
              unmerged, chunkSize):
-    nRecalc = len(indRecalc)
-    if nRecalc > 1 and nProc > 1:
-        if nRecalc < nProc:
-            nProc = nRecalc
-        n = len(indRecalc)
-        stepSize = int(n/nProc)
-        if n % stepSize > 3:
+    n = len(indices)
+    if n > 1 and n_procs > 1:
+        n_procs = min(n, n_procs)
+        step = n // n_procs
+
+        if n % step > 3:
             dlims = zip(
-                range(0, n, stepSize),
-                list(range(stepSize, n, stepSize)) + [n])
+                range(0, n, step),
+                list(range(step, n, step)) + [n])
         else:
             dlims = zip(
-                range(0, n-stepSize, stepSize),
-                list(range(stepSize, n-stepSize, stepSize)) + [n])
+                range(0, n-step, step),
+                list(range(step, n-step, step)) + [n])
 
-        with multiprocessing.Pool(processes=nProc) as pool:
+        with multiprocessing.Pool(processes=n_procs) as pool:
             result = pool.map(
                 functools.partial(multiDist, c=c, w=w, statesKeep=statesKeep,
                                   unmerged=unmerged, chunkSize=chunkSize),
-                [indRecalc[start:stop] for start, stop in dlims])
+                [indices[start:stop] for start, stop in dlims])
 
             d = np.vstack(result)
     else:
-        d = multiDist(indRecalc, c, w, statesKeep, unmerged, chunkSize)
-    for i in range(len(indRecalc)):
-        dMat[indRecalc[i][0], indRecalc[i][1]] = d[i][:len(indRecalc[i][1])]
+        d = multiDist(indices, c, w, statesKeep, unmerged, chunkSize)
+    for i in range(len(indices)):
+        dMat[indices[i][0], indices[i][1]] = d[i][:len(indices[i][1])]
 
     # BACE BF inverted so can use sparse matrices
     if scipy.sparse.issparse(dMat):
