@@ -158,7 +158,6 @@ def calcDMat(c, w, bayes_factors, indRecalc, dMat, nProc, statesKeep,
     if nRecalc > 1 and nProc > 1:
         if nRecalc < nProc:
             nProc = nRecalc
-        pool = multiprocessing.Pool(processes=nProc)
         n = len(indRecalc)
         stepSize = int(n/nProc)
         if n % stepSize > 3:
@@ -169,15 +168,14 @@ def calcDMat(c, w, bayes_factors, indRecalc, dMat, nProc, statesKeep,
             dlims = zip(
                 range(0, n-stepSize, stepSize),
                 list(range(stepSize, n-stepSize, stepSize)) + [n])
-        args = []
-        for start, stop in dlims:
-            args.append(indRecalc[start:stop])
-        result = pool.map_async(
-            functools.partial(multiDist, c=c, w=w, statesKeep=statesKeep,
-                              unmerged=unmerged, chunkSize=chunkSize), args)
-        result.wait()
-        d = np.vstack(result.get())
-        pool.close()
+
+        with multiprocessing.Pool(processes=nProc) as pool:
+            result = pool.map(
+                functools.partial(multiDist, c=c, w=w, statesKeep=statesKeep,
+                                  unmerged=unmerged, chunkSize=chunkSize),
+                [indRecalc[start:stop] for start, stop in dlims])
+
+            d = np.vstack(result)
     else:
         d = multiDist(indRecalc, c, w, statesKeep, unmerged, chunkSize)
     for i in range(len(indRecalc)):
@@ -296,13 +294,12 @@ def baysean_prune(c, n_procs=1, factor=np.log(3), in_place=False):
                 list(range(step, n_ind-step, step)) + [n_ind])
 
         with multiprocessing.Pool(processes=n_procs) as pool:
-            result = pool.map_async(
+            result = pool.map(
                 functools.partial(multiDistHelper, c1=pseud, w1=1, c=c, w=w,
                                   statesKeep=statesKeep, unmerged=unmerged),
                 [indices[start:stop] for start, stop in dlims])
 
-            result.wait()
-            d = np.concatenate(result.get())
+            d = np.concatenate(result)
     else:
         d = multiDistHelper(indices, pseud, 1, c, w, statesKeep, unmerged)
 
