@@ -4,6 +4,7 @@ import os
 import logging
 import itertools
 import pickle
+import json
 
 from functools import partial
 from multiprocessing import cpu_count
@@ -172,10 +173,26 @@ def load_asymm_frames(result, trajectories, topology, subsample):
     return frames
 
 
+def position_of_first_difference(paths):
+    for i, chars in enumerate(zip(*paths)):
+        print(chars)
+        if not all(chars[0] == char_i for char_i in chars):
+            break
+
+    return i
+
+
 def main(argv=None):
     '''Run the driver script for this module. This code only runs if we're
     being run as a script. Otherwise, it's silent and just exposes methods.'''
     args = process_command_line(argv)
+
+    i = position_of_first_difference(args.topology)
+
+    targets = {topf[i:]: "%s xtcs" % len(trjfs) for topf, trjfs
+               in zip(args.topology, args.trajectories)}
+    logger.info("Beginning RMSD Clusutering app. Operating on targets:\n%s",
+                json.dumps(targets, indent=4))
 
     lengths, xyz, select_top = load(
         args.topology, args.trajectories, selection=args.atoms,
