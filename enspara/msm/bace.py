@@ -60,26 +60,23 @@ def bace(c, nMacro, nProc, prune_fn, chunkSize=100):
     if scipy.sparse.issparse(c):
         c = c.tocsr()
 
-    i = 0
-    nCurrentStates = statesKeep.shape[0]
-
     bayes_factors = {}
     state_maps = []
 
     dMat, minX, minY = calcDMat(c, w, bayes_factors, indRecalc, dMat, nProc,
                                 statesKeep, unmerged, chunkSize)
     logger.info("Coarse-graining...")
-    while nCurrentStates > nMacro:
-        logger.info("Iteration %d, merging %d states", i, nCurrentStates)
+
+    for cycle in range(c.shape[0] - nMacro):
+        logger.info("Iteration %d, merging %d states",
+                    cycle, c.shape[0] - cycle)
         rslt = mergeTwoClosestStates(
             c, w, bayes_factors, indRecalc, dMat, nProc, state_map,
             statesKeep, minX, minY, unmerged, chunkSize)
         c, w, indRecalc, dMat, state_map, statesKeep, unmerged, minX, \
             minY = rslt
 
-        nCurrentStates -= 1
         state_maps.append(state_map.astype(int))
-        i += 1
 
     state_maps.append(np.zeros((c.shape[0])))
 
