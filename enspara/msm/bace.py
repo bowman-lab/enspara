@@ -1,5 +1,3 @@
-import os
-import io
 import logging
 import functools
 import multiprocessing
@@ -39,7 +37,7 @@ def getInds(c, stateInds, chunkSize, updateSingleState=None):
     return indices
 
 
-def run(c, nMacro, nProc, multiDist, outDir, prune_fn, chunkSize=100):
+def bace(c, nMacro, nProc, multiDist, prune_fn, chunkSize=100):
     # perform filter
     logger.info("Checking for states with insufficient statistics")
     c, state_map, statesKeep = prune_fn(c, nProc)
