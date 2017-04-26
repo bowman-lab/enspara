@@ -159,14 +159,9 @@ def calcDMat(c, w, bayes_factors, indices, dMat, n_procs, statesKeep,
         n_procs = min(n, n_procs)
         step = n // n_procs
 
-        if n % step > 3:
-            dlims = zip(
-                range(0, n, step),
-                list(range(step, n, step)) + [n])
-        else:
-            dlims = zip(
-                range(0, n-step, step),
-                list(range(step, n-step, step)) + [n])
+        end_index = n if n % step > 3 else n-step
+        dlims = zip(range(0, end_index, step),
+                    list(range(step, end_index, step)) + [n])
 
         with multiprocessing.Pool(processes=n_procs) as pool:
             result = pool.map(
@@ -282,15 +277,10 @@ def baysean_prune(c, n_procs=1, factor=np.log(3), in_place=False):
     if n_ind > 1 and n_procs > 1:
         n_procs = min(n_ind, n_procs)
         step = n_ind // n_procs
+        end_index = n_ind if n_ind % step > 3 else n_ind-step
 
-        if n_ind % step > 3:
-            dlims = zip(
-                range(0, n_ind, step),
-                list(range(step, n_ind, step)) + [n_ind])
-        else:
-            dlims = zip(
-                range(0, n_ind-step, step),
-                list(range(step, n_ind-step, step)) + [n_ind])
+        dlims = zip(range(0, end_index, step),
+                    list(range(step, end_index, step)) + [n_ind])
 
         with multiprocessing.Pool(processes=n_procs) as pool:
             result = pool.map(
