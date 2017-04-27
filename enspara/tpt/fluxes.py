@@ -32,11 +32,12 @@ References
 from __future__ import print_function, division, absolute_import
 import numpy as np
 
-from msmbuilder.tpt import committors
+from . import committors
+from ..msm.transition_matrices import eq_probs
 
 __all__ = ['fluxes', 'net_fluxes']
 
-def fluxes(tprob, populations, sources, sinks, for_committors=None):
+def fluxes(tprob, sources, sinks, populations=None, for_committors=None):
     """
     Compute the transition path theory flux matrix.
 
@@ -44,16 +45,17 @@ def fluxes(tprob, populations, sources, sinks, for_committors=None):
     ----------
     tprob : array, shape [n_states, n_states]
         Transition probability matrix.
-    populations : array, shape [n_states, ]
-        Equilibrium populations of each state.
     sources : array_like, int
         The set of unfolded/reactant states.
     sinks : array_like, int
         The set of folded/product states.
+    populations : array, shape [n_states, ], optional, default: None
+        Equilibrium populations of each state. If not provided, will
+        recalculate from tprob.
     for_committors : np.ndarray, optional
-        The forward committors associated with `sources`, `sinks`, and `tprob`.
-        If not provided, is calculated from scratch. If provided, `sources`
-        and `sinks` are ignored.
+        The forward committors associated with `sources`, `sinks`, and
+        `tprob`. If not provided, is calculated from scratch. If
+        provided, `sources` and `sinks` are ignored.
 
     Returns
     -------
@@ -75,18 +77,22 @@ def fluxes(tprob, populations, sources, sinks, for_committors=None):
            flux and folding pathways in network models of
            coarse-grained protein dynamics. J. Chem. Phys.
            130, 205102 (2009).
-    .. [4] Noe, Frank, et al. "Constructing the equilibrium ensemble of folding
-           pathways from short off-equilibrium simulations." PNAS 106.45 (2009):
-           19011-19016.
+    .. [4] Noe, Frank, et al. "Constructing the equilibrium ensemble
+           of folding pathways from short off-equilibrium simulations."
+           PNAS 106.45 (2009): 19011-19016.
     """
     sources = np.array(sources).reshape((-1,))
     sinks = np.array(sinks).reshape((-1,))
+
+    # check to see if populations exist
+    if populations is None:
+        populations = eq_probs(tprob)
 
     n_states = len(populations)
 
     # check if we got the committors
     if for_committors is None:
-        for_committors = committors(sources, sinks, msm)
+        for_committors = committors(tprob, sources, sinks)
     else:
         for_committors = np.array(for_committors)
         if for_committors.shape != (n_states,):
@@ -99,7 +105,6 @@ def fluxes(tprob, populations, sources, sinks, for_committors=None):
     # fij = pi_i * q-_i * Tij * q+_j
     fluxes = tprob*((populations*rev_committors)[:,None])*for_committors
 
-    fluxes = np.dot(np.dot(X, tprob), Y)
     fluxes[(np.arange(n_states), np.arange(n_states))] = np.zeros(n_states)
 
     return fluxes
