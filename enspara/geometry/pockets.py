@@ -11,18 +11,16 @@ import scipy.cluster.hierarchy
 
 from sklearn.externals.joblib import Parallel, delayed
 
-
 def _grid_to_xyz(grid):
     """Convert a grid object (grid[x_ind,y_ind,z_ind]=[x,y,z])
     to an array of x,y,z coordinates
     """
-
+    
     n_cells = grid.shape[0] * grid.shape[1] * grid.shape[2]
     xyz = grid.reshape((n_cells,3))
-
+    
     return xyz
-
-
+    
 def xyz_to_mdtraj(xyz, cluster_ids=None):
     """Convert a set of x,y,z coordinates to and mdtraj.Trajectory with a carbon 
     atom centered at each of the specified coordinates.
@@ -36,18 +34,18 @@ def xyz_to_mdtraj(xyz, cluster_ids=None):
     xyz : np.ndarray, shape=(n_atoms, 3)
         Cartesian coordinates to center carbons at.
     cluster_ids : np.ndarray, shape=(n_atoms)
-        If specified, the numbers in this array (one corresponding to each
-        carbon atom to be created) will become the residue numbers for each
+        If specified, the numbers in this array (one corresponding to each 
+        carbon atom to be created) will become the residue numbers for each 
         carbon.
 
     Returns
     -------
-    struct : mdtraj.Trajectory
-        A Trajectory with a single frame containing a carbon at each of the
-        specified x,y,z coordinates with residue numbers determined bye the
+    struct : mdtraj.Trajectory 
+        A Trajectory with a single frame containing a carbon at each of the 
+        specified x,y,z coordinates with residue numbers determined bye the 
         cluster_ids, if specified.
     """
-
+    
     n_xyz = xyz.shape[0]
     element = md.element.carbon
     top = md.Topology()
@@ -72,8 +70,7 @@ def xyz_to_mdtraj(xyz, cluster_ids=None):
     struct = md.Trajectory(sorted_xyz, top)
     
     return struct
-
-
+    
 def create_grid(struct, grid_spacing):
     """Create a grid spanning a structure with cubic cells, where each edge is
     grid_spacing long.
@@ -115,7 +112,6 @@ def create_grid(struct, grid_spacing):
     
     return grid
 
-
 def _get_cell_inds_within_cutoff(grid, point, distance_cutoff):
     """Find the indices of all the cells of a grid that are within 
     distance_cutoff of the specified point.
@@ -143,7 +139,6 @@ def _get_cell_inds_within_cutoff(grid, point, distance_cutoff):
     
     return min_x_cell_ind, max_x_cell_ind, min_y_cell_ind, max_y_cell_ind, min_z_cell_ind, max_z_cell_ind
 
-
 def _check_cartesian_axis(touches_protein, rank):
     """Finds cells along the x-axis of a grid that are not filled by protein
     atoms (touches_protein[x_ind,y_ind,z_ind]=0) but are surrounded by protein 
@@ -162,7 +157,6 @@ def _check_cartesian_axis(touches_protein, rank):
                 inds_surrounded_by_protein = inds_consider[np.where(x[inds_consider]==0)[0]]
                 if inds_surrounded_by_protein.shape[0] > 0:
                     rank[inds_surrounded_by_protein,j,k] += 1
-
 
 def _check_diagonal_axis_helper(touches_protein, rank):
     """Finds cells along a diagonal of a grid that are not filled by protein
@@ -186,8 +180,7 @@ def _check_diagonal_axis_helper(touches_protein, rank):
                 inds_surrounded_by_protein = inds_consider[np.where(diag[inds_consider]==0)[0]]
                 if inds_surrounded_by_protein.shape[0] > 0:
                     rank[x_inds[inds_surrounded_by_protein],y_inds[inds_surrounded_by_protein],z_inds[inds_surrounded_by_protein]] += 1
-
-
+                    
 def _check_diagonal_axis(touches_protein, rank):
     """Finds cells along a diagonal of a grid that are not filled by protein
     atoms (touches_protein[x_ind,y_ind,z_ind]=0) but are surrounded by protein 
@@ -200,8 +193,7 @@ def _check_diagonal_axis(touches_protein, rank):
     # use sub-indices to avoid double/triple counting diagonals
     _check_diagonal_axis_helper(touches_protein.swapaxes(1,2)[1:,1:,:], rank.swapaxes(1,2)[1:,1:,:])
     _check_diagonal_axis_helper(touches_protein.swapaxes(0,2)[1:,1:,:], rank.swapaxes(0,2)[1:,1:,:])
-
-
+    
 def get_pocket_cells(struct, grid_spacing=0.1, distance_cutoff=0.24, min_rank=3):
     """Places on a grid on a single structure and identifies all the cells that 
     are part of a pocket.
@@ -285,8 +277,7 @@ def get_pocket_cells(struct, grid_spacing=0.1, distance_cutoff=0.24, min_rank=3)
     pocket_cells = grid[pocket_inds]
     
     return pocket_cells
-
-
+    
 def cluster_pocket_cells(pocket_cells, grid_spacing=0.1, min_cluster_size=0):
     """Identify sets of pocket cells that, together, comprise a single 
     contiguous pocket.
@@ -348,14 +339,12 @@ def cluster_pocket_cells(pocket_cells, grid_spacing=0.1, min_cluster_size=0):
     
     return sorted_pockets, sorted_cluster_mapping
 
-
 def _get_pockets_helper(struct, grid_spacing, distance_cutoff, min_rank, min_cluster_size):
     pocket_cells = get_pocket_cells(struct, grid_spacing=grid_spacing, distance_cutoff=distance_cutoff, min_rank=min_rank)
     sorted_pockets, sorted_cluster_mapping = cluster_pocket_cells(pocket_cells, grid_spacing=grid_spacing, min_cluster_size=min_cluster_size)
     pockets_as_mdtraj = xyz_to_mdtraj(sorted_pockets, cluster_ids=sorted_cluster_mapping)
     return pockets_as_mdtraj
-
-
+    
 def get_pockets(traj, grid_spacing=0.1, distance_cutoff=0.24, min_rank=3, min_cluster_size=0, n_procs=1):
     """Finds the pockets in each frame of a trajectory.
 
@@ -396,5 +385,6 @@ def get_pockets(traj, grid_spacing=0.1, distance_cutoff=0.24, min_rank=3, min_cl
     """
     
     traj_pockets = Parallel(n_jobs=n_procs)(delayed(_get_pockets_helper)(struct, grid_spacing, distance_cutoff, min_rank, min_cluster_size) for struct in traj)
-
+        
     return traj_pockets
+    
