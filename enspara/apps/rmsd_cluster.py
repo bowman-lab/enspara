@@ -11,13 +11,14 @@ from multiprocessing import cpu_count
 
 import numpy as np
 import mdtraj as md
-from mdtraj import io
 
 from enspara.cluster import KHybrid
 from enspara.util import array as ra
-from enspara.cluster.util import load_frames, assign_to_nearest_center
+from enspara.cluster.util import load_frames
 from enspara.util import load_as_concatenated
 from enspara import exception
+
+from enspara.apps.reassign import reassign
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -172,43 +173,8 @@ def load_asymm_frames(result, trajectories, topology, subsample):
     return frames
 
 
-def reassign(topologies, trajectories, atoms, centers, processes):
-
-    logger.info("Reassigning dataset.")
-    assignments = []
-    distances = []
-
-    try:
-        for topfile, trjfiles in zip(topologies, trajectories):
-            top = md.load(topfile).top
-
-            for trjfile in trjfiles:
-                trj = md.load(trjfile, top=top, atom_indices=top.select(atoms))
-
-                _, single_assignments, single_distances = \
-                    assign_to_nearest_center(trj, centers, md.rmsd)
-
-                assignments.append(single_assignments)
-                distances.append(single_distances)
-    except:
-        print("topfile was", topfile)
-        print("trjfile was", trjfile)
-        raise
-
-    if all([len(assignments[0]) == len(a) for a in assignments]):
-        logger.info("Trajectory lengths are homogenous. Output will "
-                    "be np.ndarrays.")
-        assert all([len(distances[0]) == len(d) for d in distances])
-        return np.array(assignments), np.array(distances)
-    else:
-        logger.info("Trajectory lengths are heterogenous. Output will "
-                    "be ra.RaggedArrays.")
-        return ra.RaggedArray(assignments), ra.RaggedArray(distances)
-
-
 def position_of_first_difference(paths):
     for i, chars in enumerate(zip(*paths)):
-        print(chars)
         if not all(chars[0] == char_i for char_i in chars):
             break
 
@@ -265,7 +231,6 @@ def main(argv=None):
         # overwrite temporary output with actual results
         assig, dist = reassign(
             args.topology, args.trajectories, args.atoms,
-            processes=args.processes,
             centers=result.centers)
 
         ra.save(filenames(args)['distances'], dist)
