@@ -28,8 +28,9 @@ def cards(trajectories, buffer_width=15, n_procs=1):
 
     Parameters
     ----------
-    trajectories: list
-        List of trajectories to consider for the calculation
+    trajectories: iterable
+        Trajectories to consider for the calculation. Generators are
+        accepted and can be used to mitigate memory usage.
     buffer_width: int (default=15)
         The width of the no-man's land between rotameric bins. Angles
         in this range are not used in the calculation.
