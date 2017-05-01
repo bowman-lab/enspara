@@ -6,6 +6,11 @@ from numpy.testing import assert_array_equal, assert_allclose
 
 from enspara.msm import bace
 
+
+SUPPORTED_SPARSE_TYPES = [np.array, sparse.csr_matrix, sparse.coo_matrix,
+                          sparse.lil_matrix, sparse.csc_matrix,
+                          sparse.dia_matrix]
+
 # transitions counts matrix and expected results for the "simple" model in
 # Bowman 2012 JCP paper describing BACE.
 
@@ -86,12 +91,10 @@ def test_baysean_prune():
          [ 10, 100,  0],
          [  0,   0,  0]])
 
-    for array_type in [np.array, sparse.csr_matrix, sparse.coo_matrix,
-                       sparse.lil_matrix, sparse.csc_matrix,
-                       sparse.dia_matrix]:
+    for array_type in SUPPORTED_SPARSE_TYPES:
 
         pruned_counts, labels, kept_states = bace.baysean_prune(
-            array_type(tcounts))
+            array_type(tcounts), n_procs=4)
 
         pruned_counts = pruned_counts.todense() if \
             sparse.issparse(pruned_counts) else pruned_counts
