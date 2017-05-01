@@ -73,31 +73,24 @@ def committors(tprob, sources, sinks):
            19011-19016.
     """
 
-    sources = np.array(sources, dtype=int).reshape((-1, 1))
-    sinks = np.array(sinks, dtype=int).reshape((-1, 1))
+    sources = np.array(sources, dtype=int).reshape((-1, 1)).flatten()
+    sinks = np.array(sinks, dtype=int).reshape((-1, 1)).flatten()
+    all_absorbing = np.append(sources, sinks)
 
     n_states = tprob.shape[0]
 
-    # construct the committor problem
-    lhs = np.eye(n_states) - tprob
+    # R is the list of probabilities of going from a state to an absorbing one
+    R = tprob[:, sinks]
+    R[sinks] = 1.0
+    R[sources] = 0.0
 
-    for a in sources:
-        lhs[a, :] = 0.0  # np.zeros(n)
-        lhs[:, a] = 0.0
-        lhs[a, a] = 1.0
-
-    for b in sinks:
-        lhs[b, :] = 0.0  # np.zeros(n)
-        lhs[:, b] = 0.0
-        lhs[b, b] = 1.0
-
-    ident_sinks = np.zeros(n_states)
-    ident_sinks[sinks] = 1.0
-
-    rhs = np.dot(tprob, ident_sinks)
-    rhs[sources] = 0.0
-    rhs[sinks] = 1.0
-
-    forward_committors = np.linalg.solve(lhs, rhs)
+    # (I-Q)
+    I_m_Q = np.eye(n_states) - tprob
+    I_m_Q[:, all_absorbing] = 0
+    I_m_Q[all_absorbing, :] = 0
+    I_m_Q[all_absorbing, all_absorbing] = 1.0
+    
+    # solves for committors: committors = N*R, where N = (I-Q)^-1
+    forward_committors = np.linalg.solve(I_m_Q, R).flatten()
 
     return forward_committors
