@@ -61,10 +61,19 @@ def cards(trajectories, buffer_width=15, n_procs=1):
     """
 
     logger.debug("Assigning to rotameric states")
-    rotamer_trajs = [geometry.all_rotamers(t, buffer_width=buffer_width)[0]
-                     for t in trajectories]
-    _, atom_inds, rotamer_n_states = geometry.all_rotamers(
-        trajectories[0], buffer_width=buffer_width)
+
+    # pull off the first trajectory so we can call all_rotamers to get
+    # atom_inds and rotamer_n_states
+    first_trj = next(trajectories)
+    rotamer_trj, atom_inds, rotamer_n_states = geometry.all_rotamers(
+        first_trj[0], buffer_width=buffer_width)
+
+    # build the list of all of the rotamerized trajectories, starting
+    # with the one we just calculated above.
+    rotamer_trajs = [rotamer_trj]
+    rotamer_trajs.extend(
+        [geometry.all_rotamers(t, buffer_width=buffer_width)[0]
+         for t in trajectories])
 
     disordered_trajs, disorder_n_states = assign_order_disorder(rotamer_trajs)
 
