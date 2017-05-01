@@ -262,6 +262,17 @@ def baysean_prune(c, n_procs=1, factor=np.log(3), in_place=False):
         Array of state indices that were retained during pruning.
     """
 
+    if not in_place:
+        c = c.copy()
+
+    if scipy.sparse.issparse(c) and (not hasattr(c, 'argmax') or
+                                     not hasattr(c, '__getitem__')):
+        c = c.tocsr()
+        if in_place:
+            raise NotImplementedError(
+                "Cannot do in place baysean prune on sparse matrices "
+                "without an argmax function.")
+
     # get num counts in each state (or weight)
     w = np.array(c.sum(axis=1)).flatten() + 1
 
@@ -300,9 +311,6 @@ def baysean_prune(c, n_procs=1, factor=np.log(3), in_place=False):
 
     # init map from micro to macro states
     labels = np.arange(c.shape[0], dtype=np.int32)
-
-    if not in_place:
-        c = c.copy()
 
     for s in statesPrune:
         dest = c[s, :].argmax()

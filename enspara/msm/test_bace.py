@@ -1,7 +1,7 @@
 import numpy as np
-import scipy.sparse
+from scipy import sparse
 
-from nose.tools import assert_equal
+from nose.tools import assert_equal, assert_raises
 from numpy.testing import assert_array_equal, assert_allclose
 
 from enspara.msm import bace
@@ -60,7 +60,7 @@ def test_bace_integration_dense():
 def test_bace_integration_sparse():
 
     bayes_factors, labels = bace.bace(
-        scipy.sparse.lil_matrix(TCOUNTS), n_macrostates=2, n_procs=4)
+        sparse.lil_matrix(TCOUNTS), n_macrostates=2, n_procs=4)
 
     # bayes_factors = np.loadtxt(os.path.join(d, 'bayesFactors.dat'))
     assert_allclose(
@@ -76,18 +76,34 @@ def test_bace_integration_sparse():
 
 def test_baysean_prune():
 
-    pruned_counts, labels, kept_states = bace.baysean_prune(TCOUNTS)
+    tcounts = np.array(
+        [[100,  10,  1],
+         [ 10, 100,  0],
+         [  1,   0,  5]])
 
-    assert_array_equal(pruned_counts, TCOUNTS)
-    assert_array_equal(labels, np.arange(len(labels)))
-    assert_array_equal(kept_states, np.arange(len(kept_states)))
+    exp_pruned = np.array(
+        [[100,  10,  0],
+         [ 10, 100,  0],
+         [  0,   0,  0]])
 
-    pruned_counts, labels, kept_states = bace.baysean_prune(
-        scipy.sparse.lil_matrix(TCOUNTS))
+    for array_type in [np.array, sparse.csr_matrix, sparse.coo_matrix,
+                       sparse.lil_matrix, sparse.csc_matrix,
+                       sparse.dia_matrix]:
 
-    assert_array_equal(pruned_counts.todense(), TCOUNTS)
-    assert_array_equal(labels, np.arange(len(labels)))
-    assert_array_equal(kept_states, np.arange(len(kept_states)))
+        pruned_counts, labels, kept_states = bace.baysean_prune(
+            array_type(tcounts))
+
+        pruned_counts = pruned_counts.todense() if \
+            sparse.issparse(pruned_counts) else pruned_counts
+
+        assert_array_equal(pruned_counts, exp_pruned)
+        assert_array_equal(labels, [0, 1, 1])
+        assert_array_equal(kept_states, [0, 1])
+
+    for array_type in [sparse.lil_matrix, sparse.dia_matrix]:
+
+        with assert_raises(NotImplementedError):
+            bace.baysean_prune(array_type(tcounts), in_place=True)
 
 
 def test_baysean_prune_inplace():
