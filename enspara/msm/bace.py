@@ -8,6 +8,8 @@ import scipy
 import scipy.io
 import scipy.sparse
 
+from enspara import exception
+
 logger = logging.getLogger(__name__)
 
 
@@ -264,6 +266,11 @@ def absorb(c, absorb_states):
         # trim so it isn't considered in argmax calculations
         self_cts = c[s, s]
         c[s, s] = 0
+
+        if np.sum(c[s, :]) == 0:
+            raise exception.DataInvalid(
+                "State %s can't be absorbed into a neighbor because"
+                "it is disconnected." % s)
 
         if scipy.sparse.issparse(c):
             dest = c.rows[s][np.argmax(c.data[s])]
