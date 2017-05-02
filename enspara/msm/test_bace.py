@@ -87,7 +87,7 @@ def test_baysean_prune_types():
          [  1,   0,  5]])
 
     exp_pruned = np.array(
-        [[100,  10,  0],
+        [[107,  10,  0],
          [ 10, 100,  0],
          [  0,   0,  0]])
 
@@ -100,7 +100,7 @@ def test_baysean_prune_types():
             sparse.issparse(pruned_counts) else pruned_counts
 
         assert_array_equal(pruned_counts, exp_pruned)
-        assert_array_equal(labels, [0, 1, 1])
+        assert_array_equal(labels, [0, 1, 0])
         assert_array_equal(kept_states, [0, 1])
 
 
@@ -112,7 +112,7 @@ def test_absorb():
          [  1,   0,  5]])
 
     exp_absorbed = np.array(
-        [[100,  10,  0],
+        [[107,  10,  0],
          [ 10, 100,  0],
          [  0,   0,  0]])
 
@@ -124,7 +124,7 @@ def test_absorb():
             sparse.issparse(absorbed_counts) else absorbed_counts
 
         assert_array_equal(absorbed_counts, exp_absorbed)
-        assert_array_equal(labels, [0, 1, 1])
+        assert_array_equal(labels, [0, 1, 0])
 
 
 def test_baysean_prune_undersampled():
@@ -136,20 +136,20 @@ def test_baysean_prune_undersampled():
     pruned_counts, labels, kept_states = bace.baysean_prune(tcounts)
 
     exp_pruned_counts = np.array(
-        [[100,  10,  0],
+        [[107,  10,  0],
          [ 10, 100,  0],
          [  0,   0,  0]])
 
     assert_array_equal(pruned_counts, exp_pruned_counts)
-    assert_array_equal(labels, [0, 1, 1])
+    assert_array_equal(labels, [0, 1, 0])
     assert_array_equal(kept_states, [0, 1])
 
     pruned_counts, labels, kept_states = bace.baysean_prune(
         tcounts, factor=1.3)
 
     exp_pruned_counts = np.zeros((3, 3))
-    exp_pruned_counts[1, 1] = 100
+    exp_pruned_counts[1, 1] = 227
 
     assert_array_equal(pruned_counts, exp_pruned_counts)
-    assert_array_equal(labels, [-1, 0, 0])
+    assert_array_equal(labels, [0, 0, 0])
     assert_array_equal(kept_states, [1])

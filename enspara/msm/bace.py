@@ -254,12 +254,27 @@ def absorb(c, absorb_states):
         Array of labels showing how states were absorbed.
     """
 
+    c = c.tolil() if scipy.sparse.issparse(c) else c.copy()
+
     # each state starts off labeled as itself
     labels = np.arange(c.shape[0], dtype=np.int32)
 
     for s in absorb_states:
-        dest = c[s, :].argmax()
+        # first, store then zero out the self counts of the state to
+        # trim so it isn't considered in argmax calculations
+        self_cts = c[s, s]
+        c[s, s] = 0
+
+        if scipy.sparse.issparse(c):
+            dest = c.rows[s][np.argmax(c.data[s])]
+        else:
+            dest = c[s, :].argmax()
+
+        # add old transitions into the destination state
         c[dest, :] += c[s, :]
+        c[:, dest] += c[:, s]
+        c[dest, dest] += self_cts
+
         c[s, :] = c[:, s] = 0
         labels = renumberMap(labels, labels[s])
         labels[s] = labels[dest]
@@ -293,11 +308,10 @@ def baysean_prune(c, n_procs=1, factor=np.log(3)):
         Array of state indices that were retained during pruning.
     """
 
-    c = c.copy()
-
-    if scipy.sparse.issparse(c) and (not hasattr(c, 'argmax') or
-                                     not hasattr(c, '__getitem__')):
+    if scipy.sparse.issparse(c) and not hasattr(c, '__getitem__'):
         c = c.tocsr()
+    else:
+        c.copy()
 
     # get num counts in each state (or weight)
     w = np.array(c.sum(axis=1)).flatten() + 1
