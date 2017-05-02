@@ -236,7 +236,38 @@ def multiDistHelper(indices, c1, w1, c, w, statesKeep, unmerged):
     return d
 
 
-def baysean_prune(c, n_procs=1, factor=np.log(3), in_place=False):
+def absorb(c, absorb_states):
+    """Absorb states into their kinetically nearest neighbors.
+
+    Parameters
+    ----------
+    c : array, shape=(n_states, n_states)
+        Transition counts matrix
+    absorb_states : iterable
+        List of states to absorb to their kinetically nearest neighbor.
+
+    Returns
+    -------
+    c : array, shape=(n_states - n_absorbed, n_states - n_absorbed)
+        Transition counts matrix with states absorbed
+    labels : array, shape=(n_states,)
+        Array of labels showing how states were absorbed.
+    """
+
+    # each state starts off labeled as itself
+    labels = np.arange(c.shape[0], dtype=np.int32)
+
+    for s in absorb_states:
+        dest = c[s, :].argmax()
+        c[dest, :] += c[s, :]
+        c[s, :] = c[:, s] = 0
+        labels = renumberMap(labels, labels[s])
+        labels[s] = labels[dest]
+
+    return c, labels
+
+
+def baysean_prune(c, n_procs=1, factor=np.log(3)):
     """Prune states less than a particular bayes' factor, lumping them
     in with their kinetically most-similar neighbor.
 
@@ -262,16 +293,11 @@ def baysean_prune(c, n_procs=1, factor=np.log(3), in_place=False):
         Array of state indices that were retained during pruning.
     """
 
-    if not in_place:
-        c = c.copy()
+    c = c.copy()
 
     if scipy.sparse.issparse(c) and (not hasattr(c, 'argmax') or
                                      not hasattr(c, '__getitem__')):
         c = c.tocsr()
-        if in_place:
-            raise NotImplementedError(
-                "Cannot do in place baysean prune on sparse matrices "
-                "without an argmax function.")
 
     # get num counts in each state (or weight)
     w = np.array(c.sum(axis=1)).flatten() + 1
@@ -309,15 +335,6 @@ def baysean_prune(c, n_procs=1, factor=np.log(3), in_place=False):
     logger.info("Merging %d states with insufficient statistics into their "
                 "kinetically-nearest neighbor", statesPrune.shape[0])
 
-    # init map from micro to macro states
-    labels = np.arange(c.shape[0], dtype=np.int32)
-
-    for s in statesPrune:
-        dest = c[s, :].argmax()
-        c[dest, :] += c[s, :]
-        c[s, :] = 0
-        c[:, s] = 0
-        labels = renumberMap(labels, labels[s])
-        labels[s] = labels[dest]
+    c, labels = absorb(c, statesPrune)
 
     return c, labels, statesKeep
