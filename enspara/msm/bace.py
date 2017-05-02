@@ -236,7 +236,7 @@ def multiDistHelper(indices, c1, w1, c, w, statesKeep, unmerged):
     return d
 
 
-def baysean_prune(c, n_procs=1, factor=np.log(3)):
+def baysean_prune(c, n_procs=1, factor=np.log(3), in_place=False):
     """Prune states less than a particular bayes' factor, lumping them
     in with their kinetically most-similar neighbor.
 
@@ -262,10 +262,16 @@ def baysean_prune(c, n_procs=1, factor=np.log(3)):
         Array of state indices that were retained during pruning.
     """
 
-    if scipy.sparse.issparse(c):
-        c = c.tolil()
-    else:
+    if not in_place:
         c = c.copy()
+
+    if scipy.sparse.issparse(c) and (not hasattr(c, 'argmax') or
+                                     not hasattr(c, '__getitem__')):
+        c = c.tocsr()
+        if in_place:
+            raise NotImplementedError(
+                "Cannot do in place baysean prune on sparse matrices "
+                "without an argmax function.")
 
     # get num counts in each state (or weight)
     w = np.array(c.sum(axis=1)).flatten() + 1
@@ -307,12 +313,7 @@ def baysean_prune(c, n_procs=1, factor=np.log(3)):
     labels = np.arange(c.shape[0], dtype=np.int32)
 
     for s in statesPrune:
-        if scipy.sparse.issparse(c):
-            # performs the argmax over the row
-            dest = c.rows[s][np.argmax(c.data[s])]
-        else:
-            dest = c[s, :].argmax()
-
+        dest = c[s, :].argmax()
         c[dest, :] += c[s, :]
         c[s, :] = 0
         c[:, s] = 0
