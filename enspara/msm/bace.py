@@ -66,6 +66,8 @@ def bace(c, n_macrostates, chunk_size=100, n_procs=1):
     logger.info("Checking for states with insufficient statistics")
     c, state_map, statesKeep = baysean_prune(c, n_procs)
     c = c.astype('float')
+    logger.info("Merged %d states with insufficient statistics into their "
+                "kinetically-nearest neighbor", c.shape[0] - len(statesKeep))
 
     # get num counts in each state (or weight)
     w = np.array(c.sum(axis=1)).flatten()
@@ -259,7 +261,7 @@ def absorb(c, absorb_states):
     c = c.tolil() if scipy.sparse.issparse(c) else c.copy()
 
     # each state starts off labeled as itself
-    labels = np.arange(c.shape[0], dtype=np.int32)
+    labels = np.arange(c.shape[0])
 
     for s in absorb_states:
         # first, store then zero out the self counts of the state to
@@ -269,7 +271,7 @@ def absorb(c, absorb_states):
 
         if np.sum(c[s, :]) == 0:
             raise exception.DataInvalid(
-                "State %s can't be absorbed into a neighbor because"
+                "State %s can't be absorbed into a neighbor because "
                 "it is disconnected." % s)
 
         if scipy.sparse.issparse(c):
@@ -353,8 +355,6 @@ def baysean_prune(c, n_procs=1, factor=np.log(3)):
     # prune states with Bayes factors less than 3:1 ratio (log(3) = 1.1)
     statesPrune = np.where(d < factor)[0]
     statesKeep = np.where(d >= factor)[0]
-    logger.info("Merging %d states with insufficient statistics into their "
-                "kinetically-nearest neighbor", statesPrune.shape[0])
 
     c, labels = absorb(c, statesPrune)
 
