@@ -167,3 +167,30 @@ def test_absorb_island():
         print(array_type)
         with assert_raises(exception.DataInvalid):
             absorbed_counts, labels = bace.absorb(array_type(tcounts), [2])
+
+
+def test_absorb_empty_row():
+
+    tcounts = np.array(
+        [[100,  10,  1,  0],
+         [ 10, 100,  0,  0],
+         [  1,   0,  5,  0],
+         [  0,   0,  0,  0]])
+
+    exp_pruned = np.array(
+        [[107,  10,  0,  0],
+         [ 10, 100,  0,  0],
+         [  0,   0,  0,  0],
+         [  0,   0,  0,  0]])
+
+    for array_type in SUPPORTED_SPARSE_TYPES:
+
+        pruned_counts, labels, kept_states = bace.baysean_prune(
+            array_type(tcounts), n_procs=4)
+
+        pruned_counts = pruned_counts.todense() if \
+            sparse.issparse(pruned_counts) else pruned_counts
+
+        assert_array_equal(pruned_counts, exp_pruned)
+        assert_array_equal(labels, [0, 1, 0, -1])
+        assert_array_equal(kept_states, [0, 1])

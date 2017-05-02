@@ -270,9 +270,13 @@ def absorb(c, absorb_states):
         c[s, s] = 0
 
         if np.sum(c[s, :]) == 0:
-            raise exception.DataInvalid(
-                "State %s can't be absorbed into a neighbor because "
-                "it is disconnected." % s)
+            if self_cts:  # only self counts => disconnected
+                raise exception.DataInvalid(
+                    "State %s can't be absorbed into a neighbor because "
+                    "it is disconnected." % s)
+            else:  # the entire row is zeros => ignore
+                labels[s] = -1
+                continue
 
         if scipy.sparse.issparse(c):
             dest = c.rows[s][np.argmax(c.data[s])]
