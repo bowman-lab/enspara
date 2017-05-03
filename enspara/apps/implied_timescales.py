@@ -3,9 +3,8 @@ import argparse
 
 from multiprocessing import cpu_count
 
-from mdtraj import io
-
 from enspara.msm import implied_timescales, builders
+from enspara.util import array as ra
 
 import matplotlib as mpl
 mpl.use('Agg')
@@ -65,7 +64,7 @@ def main(argv=None):
     being run as a script. Otherwise, it's silent and just exposes methods.'''
     args = process_command_line(argv)
 
-    assignments = io.loadh(args.assignments)['arr_0']
+    assignments = ra.load(args.assignments)
     if args.trj_ids is not None:
         assignments = assignments[args.trj_ids]
 
