@@ -4,6 +4,7 @@ import tempfile
 
 import numpy as np
 import mdtraj as md
+from mdtraj import io
 
 from mdtraj.testing import get_fn
 from nose.tools import assert_raises, assert_equals, assert_is
@@ -76,6 +77,28 @@ class Test_RaggedArray(unittest.TestCase):
             ra.save(f.name, a)
             b = ra.load(f.name)
             assert_array_equal(a, b)
+
+    def test_RaggedArray_load_h5_arrays(self):
+        src = np.array(range(55))
+        a = ra.RaggedArray(array=src, lengths=[25, 30])
+
+        with tempfile.NamedTemporaryFile(suffix='.h5') as f:
+            io.saveh(f.name, key0=a[0], key1=a[1])
+
+            b = ra.load(f.name, keys=['key0', 'key1'])
+
+        assert_ra_equal(a, b)
+
+        src = np.array([[0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
+                        [9, 8, 7, 6, 5, 4, 3, 2, 1, 0]]).T
+
+        a = ra.RaggedArray(array=src, lengths=[4, 6])
+
+        with tempfile.NamedTemporaryFile(suffix='.h5') as f:
+            io.saveh(f.name, key0=a[0], key1=a[1])
+            b = ra.load(f.name, keys=['key0', 'key1'])
+
+        assert_ra_equal(a, b)
 
     def test_RaggedArray_bad_size(self):
 
