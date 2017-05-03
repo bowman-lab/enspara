@@ -616,6 +616,9 @@ class RaggedArray(object):
     def any(self):
         return np.any(self._data)
 
+    def max(self):
+        return self._data.max()
+
     def append(self, values):
         # if the incoming values is a RaggedArray, pull just the array
         if type(values) is type(self):
