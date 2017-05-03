@@ -68,8 +68,6 @@ def main(argv=None):
     if args.trj_ids is not None:
         assignments = assignments[args.trj_ids]
 
-    print(args.trj_ids)
-
     tscales = implied_timescales(
         assignments, args.lag_times, n_times=args.n_eigenvalues,
         sliding_window=True, trim=args.trim,
