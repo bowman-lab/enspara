@@ -46,13 +46,13 @@ def test_cards():
         assert_allclose(ss_mi, m)
         assert_correlates(ss_mi, m)
     with open(os.path.join(TEST_DATA_DIR, 'cards_dis_mi.dat'), 'r') as f:
-        assert_array_equal(dis_mi, np.loadtxt(f))
+        assert_allclose(dis_mi, np.loadtxt(f))
     with open(os.path.join(TEST_DATA_DIR, 'cards_s_d_mi.dat'), 'r') as f:
-        assert_array_equal(s_d_mi, np.loadtxt(f))
+        assert_allclose(s_d_mi, np.loadtxt(f))
     with open(os.path.join(TEST_DATA_DIR, 'cards_d_s_mi.dat'), 'r') as f:
-        assert_array_equal(d_s_mi, np.loadtxt(f))
+        assert_allclose(d_s_mi, np.loadtxt(f))
     with open(os.path.join(TEST_DATA_DIR, 'cards_inds.dat'), 'r') as f:
-        assert_array_equal(inds, np.loadtxt(f))
+        assert_allclose(inds, np.loadtxt(f))
 
 
 def cards_split():
