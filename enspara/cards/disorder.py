@@ -5,10 +5,12 @@
 # Unauthorized copying of this file, via any medium is strictly prohibited
 # Proprietary and confidential
 
+import logging
 import numpy as np
-
 from ..util import array as ra
 
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 def transitions(assignments):
     """Computes the frames at which a state transition occurs for a list
@@ -111,3 +113,133 @@ def create_disorder_traj(transition_times, traj_len, ord_time, disord_time):
                 traj[seg_start:seg_end] = 0.
 
         return traj  # , first_time, last_time
+
+
+def assign_order_disorder(rotamer_trajs):
+    """Assigns each frame a disordered or ordered state (ordered=1; disorder=0).
+    
+    Parameters
+    ----------
+    rotamer_trajs: array, shape=(n_features, n_frames)
+        Array of rotameric state assignments
+
+    Returns
+    -------
+    disordered_trajs: list
+        List of n.arrays with disorder/order assignments for each trajectory
+
+    disorder_n_states: array, shape=(n_features,)
+        The number of possible states for each feature in disordered_trajs (2)
+   
+    References
+    ----------
+    [1] Singh, S., & Bowman, G. R. (2017). Quantifying Allosteric
+        Communication via Correlations in Structure and Disorder.
+        Biophysical Journal, 112(3), 498a.
+    """
+    logger.debug("Calculating ordered/disordered times")
+    n_features = rotamer_trajs[0].shape[1]
+    transition_times, mean_ordered_times, mean_disordered_times = \
+        transition_stats(rotamer_trajs)
+
+    logger.debug("Assigning to disordered states")
+    disordered_trajs = []
+    for i in range(len(rotamer_trajs)):
+        traj_len = rotamer_trajs[i].shape[0]
+        dis_traj = np.zeros((traj_len, n_features))
+        for j in range(n_features):
+            dis_traj[:, j] = create_disorder_traj(
+                transition_times[i][j], traj_len, mean_ordered_times[j],
+                mean_disordered_times[j])
+
+        disordered_trajs.append(dis_traj)
+    disorder_n_states = 2*np.ones(n_features, dtype='int')
+
+    return disordered_trajs, disorder_n_states
+
+
+def transition_stats(rotamer_trajs):
+    """Compute the transition time between disordered/ordered states and
+    the mean transition time between a set of trajectories' mean tranisiton times
+    
+    Parameters
+    ----------
+    rotamer_trajs: array, shape=(n_features, n_frames)
+        Array of rotameric state assignments
+
+    Returns
+    -------
+    disordered_trajs: list, shape=(n_traj, n_frames, n_features)
+        List of n.arrays with disorder/order assignments for each trajectory
+
+    disorder_n_states: array, shape=(n_features,)
+        The number of possible states for each feature in disordered_trajs (2)
+   
+    References
+    ----------
+    [1] Singh, S., & Bowman, G. R. (2017). Quantifying Allosteric
+        Communication via Correlations in Structure and Disorder.
+        Biophysical Journal, 112(3), 498a.
+    """
+
+    n_traj = len(rotamer_trajs)
+
+    transition_times = []
+    n_features = rotamer_trajs[0].shape[1]
+    ordered_times = np.zeros((n_traj, n_features))
+    n_ordered_times = np.zeros((n_traj, n_features))
+    disordered_times = np.zeros((n_traj, n_features))
+    n_disordered_times = np.zeros((n_traj, n_features))
+    for i in range(n_traj):
+        transition_times.append([])
+        for j in range(n_features):
+            tt = transitions(rotamer_trajs[i][:, j])
+            transition_times[i].append(tt)
+            (ordered_times[i, j], n_ordered_times[i, j],
+             disordered_times[i, j], n_disordered_times[i, j]) = traj_ord_disord_times(tt)
+
+    trj_lengths = np.array([len(a) for a in rotamer_trajs])
+    mean_ordered_times = aggregate_mean_times(
+        ordered_times, n_ordered_times, trj_lengths)
+    mean_disordered_times = aggregate_mean_times(
+        disordered_times, n_disordered_times, trj_lengths)
+
+    return transition_times, mean_ordered_times, mean_disordered_times
+
+
+def aggregate_mean_times(times, n_times, weight):
+    """Compute the mean transition time between a set of trajectories'
+    mean transition times.
+
+    Parameters
+    ----------
+    times : array, shape=(n_trajectories, n_features)
+        Array of mean transition times for each trajectory and dihedral.
+    n_times : array, shape=(n_trajectories, n_features)
+        Array of numbers of transitions observed for each trajectory and
+        dihedral.
+    weight : array, shape=(n_trajectories,)
+        Array of weights for each trajectory. Usually used to weight
+        trajectories by their length. Any nonnegative weights can be used.
+
+    Returns
+    -------
+    mean_times : np.ndarray, shape=(n_features,)
+        Mean transition time across trajectories for each dihedral.
+    """
+
+    n_features = times.shape[1]
+    mean_times = np.zeros(n_features)
+
+    # we normalize by the maximum weight, such that the longest trajectory's
+    # mean time is unchanged by the calculation.
+    nl_weight = weight / np.sum(weight)
+
+    # we suppress divide by zero errors here, since if we never see a
+    # transition, the result of the divide by zero (a NaN) is an
+    # acceptable representation of that time.
+    with np.errstate(all='ignore'):
+        for i in range(n_features):
+            mean_times[i] = ((times[:, i] * nl_weight).sum())
+
+    return mean_times

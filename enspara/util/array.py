@@ -94,34 +94,6 @@ def load(input_name, keys=None):
         return RaggedArray(array=concat, lengths=lengths)
 
 
-def partition_list(list_to_partition, partition_lengths):
-    list_to_partition = np.array(list_to_partition)
-
-    if np.sum(partition_lengths) != len(list_to_partition):
-        raise DataInvalid(
-            "List of length {} does not equal lengths to partition {}.".format(
-                list_to_partition, partition_lengths))
-
-    partitioned_list = np.full(
-        shape=(len(partition_lengths), max(partition_lengths)),
-        dtype=list_to_partition.dtype,
-        fill_value=-1)
-
-    start = 0
-    for num in range(len(partition_lengths)):
-        stop = start+partition_lengths[num]
-        np.copyto(partitioned_list[num][0:stop-start],
-                  list_to_partition[start:stop])
-        start = stop
-
-    # this call will mask out all 'invalid' values of partitioned list, in this
-    # case all the np.nan values that represent the padding used to make the
-    # array square.
-    partitioned_list = np.ma.masked_less(partitioned_list, 0, copy=False)
-
-    return partitioned_list
-
-
 def partition_indices(indices, traj_lengths):
     '''
     Similar to _partition_list in function, this function uses
@@ -252,7 +224,7 @@ def _slice_to_list(slice_func, length=None):
     return range(start, stop, step)
 
 
-def _partition_list(list_to_partition, partition_lengths):
+def partition_list(list_to_partition, partition_lengths):
     """Partitions list by partition lengths. Different from previous
        versions in that is does not return a masked array."""
     if np.sum(partition_lengths) != len(list_to_partition):
@@ -422,7 +394,7 @@ class RaggedArray(object):
             if _is_iterable(array[0]):
                 self.lengths = np.array([len(i) for i in array], dtype=int)
                 self._array = np.array(
-                    _partition_list(self._data, self.lengths), dtype='O')
+                    partition_list(self._data, self.lengths), dtype='O')
             # array of single values
             else:
                 self.lengths = np.array([len(array)], dtype=int)
@@ -434,7 +406,7 @@ class RaggedArray(object):
         # rebuild array from 1d and lengths
         else:
             self._array = np.array(
-                _partition_list(self._data, lengths), dtype='O')
+                partition_list(self._data, lengths), dtype='O')
             self.lengths = np.array(lengths)
 
     @property
@@ -587,7 +559,7 @@ class RaggedArray(object):
                     value_1d = value
                 self._data[iis_1d] = value_1d
                 self._array = np.array(
-                    _partition_list(self._data, self.lengths), dtype='O')
+                    partition_list(self._data, self.lengths), dtype='O')
                 return
             # Takes 2D indices generated from slicing in the first or second
             # dimension and sets data values to input values
@@ -602,7 +574,7 @@ class RaggedArray(object):
                 value_1d = value
             self._data[iis_1d] = value_1d
             self._array = np.array(
-                _partition_list(self._data, self.lengths), dtype='O')
+                partition_list(self._data, self.lengths), dtype='O')
         # if the indices are of self, assumes a boolean matrix. Converts
         # bool to indices and recalls __getitem__
         elif type(iis) is type(self):
@@ -689,7 +661,7 @@ class RaggedArray(object):
             # update variables
             self.lengths = np.append(self.lengths, new_lengths)
             self._array = np.array(
-                _partition_list(self._data, self.lengths), dtype='O')
+                partition_list(self._data, self.lengths), dtype='O')
 
     def flatten(self):
         return self._data.flatten()
