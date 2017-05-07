@@ -621,6 +621,12 @@ class RaggedArray(object):
         return self.map_operator('__mod__', other)
     def __rmod__(self, other):
         return self.map_operator('__rmod__', other)
+    def __or__(self, other):
+        return self.map_operator('__or__', other)
+    def __xor__(self, other):
+        return self.map_operator('__xor__', other)
+    def __and__(self, other):
+        return self.map_operator('__and__', other)
     def map_operator(self, operator, other):
         if type(other) is type(self):
             other = other._data
