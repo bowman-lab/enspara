@@ -290,6 +290,18 @@ class Test_RaggedArray(unittest.TestCase):
             ra.where(a == 4),
             [[0, 1], [4, 0]])
 
+    def test_ra_or(self):
+        a = ra.RaggedArray([[True, False, True, False],
+                            [False, True, False]])
+        b = ra.RaggedArray([[False, False, True, True],
+                            [True, False, True]])
+
+        c = a | b
+        assert_ra_equal(
+            c,
+            ra.RaggedArray([[True, False, True, True],
+                            [True, True, True]]))
+
 
 class TestParallelLoad(unittest.TestCase):
 
