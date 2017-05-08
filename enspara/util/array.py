@@ -534,6 +534,10 @@ class RaggedArray(object):
             iis = where(iis)
             self.__setitem__(iis, value)
 
+    def __invert__(self):
+        new_data = self._data.__invert__()
+        return RaggedArray(new_data, lengths=self.lengths)
+
     def __eq__(self, other):
         return self.map_operator('__eq__', other)
     def __lt__(self, other):

@@ -290,6 +290,14 @@ class Test_RaggedArray(unittest.TestCase):
             ra.where(a == 4),
             [[0, 1], [4, 0]])
 
+    def test_ra_invert(self):
+        a = ra.RaggedArray([[True, False, True, False],
+                            [False, True, False]])
+        b = ~a
+
+        assert_ra_equal(b, ra.RaggedArray([[False, True, False, True],
+                                           [True, False, True]]))
+
     def test_ra_or(self):
         a = ra.RaggedArray([[True, False, True, False],
                             [False, True, False]])
