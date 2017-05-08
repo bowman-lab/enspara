@@ -252,6 +252,16 @@ class Test_RaggedArray(unittest.TestCase):
         assert_equals(a[0, 2], -2)
         assert_equals(a[0, -1], -1)
 
+    def test_RaggedArray_allfalse_setitem(self):
+        src = np.array(range(15))
+        a = ra.RaggedArray(array=src, lengths=[10, 5])
+
+        # here, we choose an index that will be all False, and attempt
+        # to use it in __setitem__
+        a[a < 0] = -1
+
+        assert_ra_equal(a, ra.RaggedArray(src, lengths=a.lengths))
+
     def test_ra_eq(self):
         src = [range(10), range(20), range(30)]
         a = ra.RaggedArray(array=src)
