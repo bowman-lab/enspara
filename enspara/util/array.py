@@ -38,13 +38,60 @@ def save(output_name, ragged_array):
         io.saveh(output_name, ragged_array)
 
 
-def load(input_name):
+def load(input_name, keys=None):
+    """Load a RaggedArray from the disk. If only 'arr_0' is present in
+    the target file, a numpy array is loaded instead.
+
+    Parameters
+    ----------
+    input_name: filename or file handle
+        File from which data will be loaded.
+    keys : list, default=None
+        If this option is specified, the ragged array is built from this
+        list of keys, each of which are assumed to be a row of the final
+        ragged array.
+    """
+
     ragged_load = io.loadh(input_name)
-    try:
-        return RaggedArray(
-            ragged_load['array'], lengths=ragged_load['lengths'])
-    except KeyError:
-        return ragged_load['arr_0']
+
+    if keys is None:
+        try:
+            return RaggedArray(
+                ragged_load['array'], lengths=ragged_load['lengths'])
+        except KeyError:
+            return ragged_load['arr_0']
+    else:
+        shapes = [ragged_load[key].shape for key in ragged_load.keys()
+                  if key in keys]
+
+        if not all(len(shapes[0]) == len(shape) for shape in shapes):
+            raise DataInvalid(
+                "Loading a RaggedArray using HDF5 file keys requires that all "
+                "input arrays have the same dimension. Got shapes: %s"
+                % shapes)
+        for dim in range(1, len(shapes[0])):
+            if not all(shapes[0][dim] == shape[dim] for shape in shapes):
+                raise DataInvalid(
+                    "Loading a RaggedArray using HDF5 file keys requires that "
+                    "all input arrays share nonragged dimensions. Dimension "
+                    "%s didnt' match. Got shapes: %s" % (dim, shapes))
+
+        lengths = [shape[0] for shape in shapes]
+        first_shape = ragged_load[ragged_load.keys()[0]].shape
+
+        concat_shape = list(first_shape)
+        concat_shape[0] = sum(lengths)
+
+        concat = np.zeros(concat_shape)
+
+        start = 0
+        for key in ragged_load.keys():
+            arr = ragged_load[key]
+            end = start + len(arr)
+            concat[start:end] = arr
+            start = end
+
+        return RaggedArray(array=concat, lengths=lengths)
 
 
 def partition_indices(indices, traj_lengths):
