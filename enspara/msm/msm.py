@@ -12,7 +12,7 @@ from scipy.io import mmwrite, mmread
 from ..exception import ImproperlyConfigured
 from . import builders
 from .transition_matrices import assigns_to_counts, TrimMapping, \
-    eq_probs, trim_disconnected
+    trim_disconnected
 
 
 logger = logging.getLogger(__name__)
@@ -51,30 +51,33 @@ class MSM:
         states (if applicable) and computes a mapping from new to old
         state numbering, and then fits the transition probability matrix
         with the given `method`.
+
+        Parameters
+        ----------
+        assigns : array-like, shape=(n_trajectories, Any)
+            Assignments of trajectory frames to microstates
         '''
 
         tcounts = assigns_to_counts(
             assigns,
             lag_time=self.lag_time,
             sliding_window=self.sliding_window)
-        self.tcounts_ = tcounts
 
         if self.trim:
             self.mapping_, tcounts = trim_disconnected(tcounts)
-            logger.info(
-                "MSM trimmed %s of %s states" %
-                (self.tcounts_.shape[0] - tcounts.shape[0],
-                 self.tcounts_.shape[0]))
+            logger.info("After ergodic trimming, %s of %s states remain",
+                        len(self.mapping_.to_original),
+                        len(self.mapping_.to_mapped))
         else:
             self.mapping_ = TrimMapping(zip(range(tcounts.shape[0]),
                                             range(tcounts.shape[0])))
 
-        self.tprobs_ = self.method(tcounts)
-        self.eq_probs_ = eq_probs(self.tprobs_)
+        self.tcounts_, self.tprobs_, self.eq_probs_ = self.method(tcounts)
 
     @property
     def n_states_(self):
         if hasattr(self, 'tprobs_'):
+            assert self.tprobs_.shape[0] == self.tcounts_.shape[0]
             return self.tprobs_.shape[0]
         else:
             raise ImproperlyConfigured(

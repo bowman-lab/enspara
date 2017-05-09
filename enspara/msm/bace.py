@@ -8,6 +8,8 @@ import scipy
 import scipy.io
 import scipy.sparse
 
+from enspara import exception
+
 logger = logging.getLogger(__name__)
 
 
@@ -64,6 +66,8 @@ def bace(c, n_macrostates, chunk_size=100, n_procs=1):
     logger.info("Checking for states with insufficient statistics")
     c, state_map, statesKeep = baysean_prune(c, n_procs)
     c = c.astype('float')
+    logger.info("Merged %d states with insufficient statistics into their "
+                "kinetically-nearest neighbor", c.shape[0] - len(statesKeep))
 
     # get num counts in each state (or weight)
     w = np.array(c.sum(axis=1)).flatten()
@@ -236,7 +240,62 @@ def multiDistHelper(indices, c1, w1, c, w, statesKeep, unmerged):
     return d
 
 
-def baysean_prune(c, n_procs=1, factor=np.log(3), in_place=False):
+def absorb(c, absorb_states):
+    """Absorb states into their kinetically nearest neighbors.
+
+    Parameters
+    ----------
+    c : array, shape=(n_states, n_states)
+        Transition counts matrix
+    absorb_states : iterable
+        List of states to absorb to their kinetically nearest neighbor.
+
+    Returns
+    -------
+    c : array, shape=(n_states - n_absorbed, n_states - n_absorbed)
+        Transition counts matrix with states absorbed
+    labels : array, shape=(n_states,)
+        Array of labels showing how states were absorbed.
+    """
+
+    c = c.tolil() if scipy.sparse.issparse(c) else c.copy()
+
+    # each state starts off labeled as itself
+    labels = np.arange(c.shape[0])
+
+    for s in absorb_states:
+        # first, store then zero out the self counts of the state to
+        # trim so it isn't considered in argmax calculations
+        self_cts = c[s, s]
+        c[s, s] = 0
+
+        if np.sum(c[s, :]) == 0:
+            if self_cts:  # only self counts => disconnected
+                raise exception.DataInvalid(
+                    "State %s can't be absorbed into a neighbor because "
+                    "it is disconnected." % s)
+            else:  # the entire row is zeros => ignore
+                labels[s] = -1
+                continue
+
+        if scipy.sparse.issparse(c):
+            dest = c.rows[s][np.argmax(c.data[s])]
+        else:
+            dest = c[s, :].argmax()
+
+        # add old transitions into the destination state
+        c[dest, :] += c[s, :]
+        c[:, dest] += c[:, s]
+        c[dest, dest] += self_cts
+
+        c[s, :] = c[:, s] = 0
+        labels = renumberMap(labels, labels[s])
+        labels[s] = labels[dest]
+
+    return c, labels
+
+
+def baysean_prune(c, n_procs=1, factor=np.log(3)):
     """Prune states less than a particular bayes' factor, lumping them
     in with their kinetically most-similar neighbor.
 
@@ -261,6 +320,11 @@ def baysean_prune(c, n_procs=1, factor=np.log(3), in_place=False):
     kept_states : array, shape=(n_states)
         Array of state indices that were retained during pruning.
     """
+
+    if scipy.sparse.issparse(c) and not hasattr(c, '__getitem__'):
+        c = c.tocsr()
+    else:
+        c.copy()
 
     # get num counts in each state (or weight)
     w = np.array(c.sum(axis=1)).flatten() + 1
@@ -295,21 +359,7 @@ def baysean_prune(c, n_procs=1, factor=np.log(3), in_place=False):
     # prune states with Bayes factors less than 3:1 ratio (log(3) = 1.1)
     statesPrune = np.where(d < factor)[0]
     statesKeep = np.where(d >= factor)[0]
-    logger.info("Merging %d states with insufficient statistics into their "
-                "kinetically-nearest neighbor", statesPrune.shape[0])
 
-    # init map from micro to macro states
-    labels = np.arange(c.shape[0], dtype=np.int32)
-
-    if not in_place:
-        c = c.copy()
-
-    for s in statesPrune:
-        dest = c[s, :].argmax()
-        c[dest, :] += c[s, :]
-        c[s, :] = 0
-        c[:, s] = 0
-        labels = renumberMap(labels, labels[s])
-        labels[s] = labels[dest]
+    c, labels = absorb(c, statesPrune)
 
     return c, labels, statesKeep
