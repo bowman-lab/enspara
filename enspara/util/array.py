@@ -49,7 +49,7 @@ def load(input_name, keys=None):
     keys : list, default=None
         If this option is specified, the ragged array is built from this
         list of keys, each of which are assumed to be a row of the final
-        ragged array.
+        ragged array. An ellipsis can be provided to indicate all keys.
     """
 
     ragged_load = io.loadh(input_name)
@@ -61,8 +61,11 @@ def load(input_name, keys=None):
         except KeyError:
             return ragged_load['arr_0']
     else:
-        shapes = [ragged_load[key].shape for key in ragged_load.keys()
-                  if key in keys]
+        if keys is Ellipsis:
+            keys = ragged_load.keys()
+
+        shapes = [ragged_load._handle.get_node(where='/', name=k).shape
+                  for k in ragged_load.keys()]
 
         if not all(len(shapes[0]) == len(shape) for shape in shapes):
             raise DataInvalid(
