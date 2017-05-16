@@ -7,13 +7,13 @@ import mdtraj as md
 from mdtraj import io
 
 from mdtraj.testing import get_fn
-from nose.tools import assert_raises, assert_equals, assert_is
+from nose.tools import assert_raises, assert_equals, assert_is, assert_true
 from numpy.testing import assert_array_equal
 
 from . import array as ra
 from .load import load_as_concatenated
 
-from ..exception import DataInvalid
+from ..exception import DataInvalid, ImproperlyConfigured
 
 
 def assert_ra_equal(a, b, **kwargs):
@@ -459,6 +459,36 @@ class TestParallelLoad(unittest.TestCase):
 
         self.assertEqual(expected.shape, xyz.shape)
         self.assertTrue(np.all(expected == xyz))
+
+    def test_load_as_concatenated_lenghts_hint(self):
+
+        selection = np.array([1, 3, 6])
+
+        t1 = md.load(self.trj_fname, top=self.top)
+        t2 = md.load(self.trj_fname, top=self.top)
+        t3 = md.load(self.trj_fname, top=self.top)
+
+        lengths, xyz = load_as_concatenated(
+            [self.trj_fname]*3,
+            top=self.top,
+            lengths=[len(t) for t in [t1, t2, t3]])
+
+        expected = np.concatenate([t1.xyz, t2.xyz, t3.xyz])
+
+        assert_equals(expected.shape, xyz.shape)
+        assert_true(np.all(expected == xyz))
+
+        with assert_raises(ImproperlyConfigured):
+            lengths, xyz = load_as_concatenated(
+                [self.trj_fname]*3,
+                top=self.top,
+                lengths=[len(t) for t in [t1, t3]])
+
+        with assert_raises(DataInvalid):
+            lengths, xyz = load_as_concatenated(
+                [self.trj_fname]*3,
+                top=self.top,
+                lengths=[len(t) for t in [t1, t2[::2], t3]])
 
 
 class TestPartition(unittest.TestCase):
