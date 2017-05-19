@@ -140,7 +140,7 @@ def load(topologies, trajectories, selections, stride, processes):
         except:
             raise exception.DataInvalid((
                 "The provided selection '{s}' didn't match the topology"
-                "file, {t}").format(s=selections[0], t=topologies))
+                "file, {t}").format(s=selection, t=topologies))
 
     flat_trjs = []
     configs = []
