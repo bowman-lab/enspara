@@ -28,25 +28,36 @@ def process_command_line(argv):
     '''Parse the command line and do a first-pass on processing them into a
     format appropriate for the rest of the script.'''
 
-    parser = argparse.ArgumentParser(formatter_class=argparse.
-                                     ArgumentDefaultsHelpFormatter)
+    parser = argparse.ArgumentParser(
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        description="Cluster a set (or several sets) of trajectories "
+                    "into a single state space based upon RMSD.")
 
     parser.add_argument(
         '--trajectories', required=True, nargs="+", action='append',
-        help="The aligned xtc files to cluster.")
+        help="List of paths to aligned trajectory files to cluster. "
+             "All file types that MDTraj supports are supported here.")
     parser.add_argument(
         '--topology', required=True, action='append', dest='topologies',
-        help="The topology file for the trajectories.")
+        help="The topology file for the trajectories. This flag must be"
+             " specified once for each instance of the --trajectories "
+             "flag. The first --topology flag is taken to be the "
+             "topology to use for the first instance of the "
+             "--trajectories flag, and so forth.")
     parser.add_argument(
         '--algorithm', required=True, choices=["khybrid"],
         help="The clustering algorithm to use.")
     parser.add_argument(
         '--atoms', action="append", required=True,
-        help="The atoms from the trajectories (using MDTraj atom-selection"
-             "syntax) to cluster based upon.")
+        help="The atoms from the trajectories (using MDTraj "
+             "atom-selection syntax) to cluster based upon. Specify "
+             "once to apply this selection to every set of "
+             "trajectories specified by the --trajectories flag, or "
+             "once for each different topology (i.e. the number of "
+             "times --trajectories and --topology was specified.)")
     parser.add_argument(
         '--rmsd-cutoff', required=True, type=float,
-        help="The RMSD cutoff (in nm) to determine cluster size.")
+        help="The RMSD cutoff to determine cluster size. Units: nm.")
     parser.add_argument(
         '--processes', default=cpu_count(), type=int,
         help="Number processes to use for loading and clustering.")
@@ -56,7 +67,7 @@ def process_command_line(argv):
              "This can avoid md.rmsd's large-dataset segfault.")
     parser.add_argument(
         '--subsample', default=None, type=int,
-        help="Subsample the input trajectories by the given factor. "
+        help="Take only every nth frame when loading trajectories. "
              "1 implies no subsampling.")
     parser.add_argument(
         '--output-path', default='',
