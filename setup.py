@@ -4,7 +4,7 @@ from Cython.Build import cythonize
 import numpy as np
 
 
-__version__ = '0.0.0'
+__version__ = '0.0.0dev'
 
 CLASSIFIERS = """\
 Intended Audience :: Science/Research
@@ -28,8 +28,8 @@ cython_extensions = [
 setup(
     name='enspara',
     version=__version__,
-    include_dirs=[np.get_include()],
-    platforms=['Linux', 'Mac OS-X', 'Unix', 'Windows'],
+    platforms=['Linux', 'Mac OS-X', 'Unix'],
     classifiers=CLASSIFIERS.splitlines(),
+    include_dirs=[np.get_include()],
     ext_modules=cythonize(cython_extensions),
 )
