@@ -138,9 +138,9 @@ def load(topologies, trajectories, selections, stride, processes):
             # noop, but causes fast-fail w/bad args.atoms
             sentinel_trj.top.select(selection)
         except:
-            raise exception.DataInvalid((
-                "The provided selection '{s}' didn't match the topology"
-                "file, {t}").format(s=selection, t=topologies))
+            raise exception.ImproperlyConfigured((
+                "The provided selection '{s}' didn't match the topology "
+                "file, {t}").format(s=selection, t=top))
 
     flat_trjs = []
     configs = []

@@ -7,14 +7,16 @@ from datetime import datetime
 
 from mdtraj.testing import get_fn
 
-from nose.tools import assert_equal
+from nose.tools import assert_equal, assert_raises
 
 import numpy as np
 from numpy.testing import assert_array_equal
 
+from .. import exception
+from ..util import array as ra
+
 from . import rmsd_cluster
 from .. import cards
-from ..util import array as ra
 
 
 def runhelper(args, expected_size):
@@ -79,6 +81,20 @@ def test_rmsd_cluster_basic():
         '--atoms', '(name N or name C or name CA or name H or name O)',
         '--algorithm', 'khybrid'],
         expected_size=expected_size)
+
+
+def test_rmsd_cluster_broken_atoms():
+
+    expected_size = (2, 501)
+
+    with assert_raises(exception.ImproperlyConfigured):
+        runhelper([
+            '--trajectories', get_fn('frame0.xtc'), get_fn('frame0.xtc'),
+            '--topology', get_fn('native.pdb'),
+            '--rmsd-cutoff', '0.1',
+            '--atoms', 'residue -1',
+            '--algorithm', 'khybrid'],
+            expected_size=expected_size)
 
 
 def test_rmsd_cluster_selection():
