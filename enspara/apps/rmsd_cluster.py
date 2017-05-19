@@ -35,13 +35,13 @@ def process_command_line(argv):
         '--trajectories', required=True, nargs="+", action='append',
         help="The aligned xtc files to cluster.")
     parser.add_argument(
-        '--topology', required=True, action='append',
+        '--topology', required=True, action='append', dest='topologies',
         help="The topology file for the trajectories.")
     parser.add_argument(
         '--algorithm', required=True, choices=["khybrid"],
         help="The clustering algorithm to use.")
     parser.add_argument(
-        '--atoms', default='name C or name O or name CA or name N or name CB',
+        '--atoms', action="append", required=True,
         help="The atoms from the trajectories (using MDTraj atom-selection"
              "syntax) to cluster based upon.")
     parser.add_argument(
@@ -69,7 +69,15 @@ def process_command_line(argv):
 
     args = parser.parse_args(argv[1:])
 
-    if len(args.topology) != len(args.trajectories):
+    if len(args.atoms) == 1:
+        args.atoms = args.atoms * len(args.trajectories)
+    elif len(args.atoms) != len(args.trajectories):
+        raise exception.ImproperlyConfigured(
+            "Flag --atoms must be provided either once (selection is "
+            "applied to all trajectories) or the same number of times "
+            "--trajectories is supplied.")
+
+    if len(args.topologies) != len(args.trajectories):
         raise exception.ImproperlyConfigured(
             "The number of --topology and --trajectory flags must agree.")
 
@@ -111,20 +119,22 @@ def filenames(args):
     }
 
 
-def load(topologies, trajectories, selection, stride, processes):
+def load(topologies, trajectories, selections, stride, processes):
 
-    sentinel_trj = md.load(topologies[0])
-    try:
-        # noop, but causes fast-fail w/bad args.atoms
-        sentinel_trj.top.select(selection)
-    except:
-        raise exception.DataInvalid((
-            "The provided selection '{s}' didn't match the topology"
-            "file, {t}").format(s=selection, t=topologies))
+    for top, selection in zip(topologies, selections):
+        sentinel_trj = md.load(top)
+        try:
+            # noop, but causes fast-fail w/bad args.atoms
+            sentinel_trj.top.select(selection)
+        except:
+            raise exception.DataInvalid((
+                "The provided selection '{s}' didn't match the topology"
+                "file, {t}").format(s=selections[0], t=topologies))
 
     flat_trjs = []
     configs = []
-    for topfile, trjset in zip(topologies, trajectories):
+    for topfile, trjset, selection in zip(topologies, trajectories,
+                                          selections):
         top = md.load(topfile).top
         for trj in trjset:
             flat_trjs.append(trj)
@@ -186,19 +196,20 @@ def main(argv=None):
     being run as a script. Otherwise, it's silent and just exposes methods.'''
     args = process_command_line(argv)
 
-    i = position_of_first_difference(args.topology)
+    i = position_of_first_difference(args.topologies)
 
     targets = {topf[i:]: "%s xtcs" % len(trjfs) for topf, trjfs
-               in zip(args.topology, args.trajectories)}
+               in zip(args.topologies, args.trajectories)}
     logger.info("Beginning RMSD Clusutering app. Operating on targets:\n%s",
                 json.dumps(targets, indent=4))
 
     lengths, xyz, select_top = load(
-        args.topology, args.trajectories, selection=args.atoms,
+        args.topologies, args.trajectories, selections=args.atoms,
         stride=args.subsample, processes=args.processes)
 
     logger.info(
-        "Loading finished. Clustering using atoms matching '%s'.", args.atoms)
+        "Loading finished. Clustering using atoms %s matching '%s'.",
+        xyz.shape[1], args.atoms)
 
     clustering = KHybrid(
         metric=partial(rmsd_hack, partitions=args.partitions),
@@ -223,14 +234,14 @@ def main(argv=None):
         pass
 
     with open(filenames(args)['centers'], 'wb') as f:
-        centers = load_asymm_frames(result, args.trajectories, args.topology,
+        centers = load_asymm_frames(result, args.trajectories, args.topologies,
                                     args.subsample)
         pickle.dump(centers, f)
 
     if args.subsample:
         # overwrite temporary output with actual results
         assig, dist = reassign(
-            args.topology, args.trajectories, args.atoms,
+            args.topologies, args.trajectories, args.atoms,
             centers=result.centers)
 
         ra.save(filenames(args)['distances'], dist)
