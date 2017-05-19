@@ -3,7 +3,7 @@ import shutil
 import os
 
 from nose.tools import assert_equal, assert_false, assert_true
-from numpy.testing import assert_allclose
+from numpy.testing import assert_allclose, assert_array_equal
 
 import numpy as np
 
@@ -50,7 +50,7 @@ def test_create_msm():
             if type(calc_value) is np.ndarray:
                 assert_allclose(calc_value, expected_value, rtol=1e-03)
             else:
-                assert_equal(calc_value, expected_value)
+                assert_array_equal(calc_value, expected_value)
 
 
 def test_msm_roundtrip():

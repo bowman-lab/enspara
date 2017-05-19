@@ -76,6 +76,7 @@ def test_rmsd_cluster_basic():
         '--trajectories', get_fn('frame0.xtc'), get_fn('frame0.xtc'),
         '--topology', get_fn('native.pdb'),
         '--rmsd-cutoff', '0.1',
+        '--atoms', '(name N or name C or name CA or name H or name O)',
         '--algorithm', 'khybrid'],
         expected_size=expected_size)
 
@@ -102,6 +103,7 @@ def test_rmsd_cluster_subsample():
         '--topology', get_fn('native.pdb'),
         '--rmsd-cutoff', '0.1',
         '--subsample', '4',
+        '--atoms', '(name N or name C or name CA or name H or name O)',
         '--algorithm', 'khybrid'],
         expected_size=expected_size)
 
@@ -115,6 +117,7 @@ def test_rmsd_cluster_multiprocess():
         '--topology', get_fn('native.pdb'),
         '--rmsd-cutoff', '0.1',
         '--processes', '4',
+        '--atoms', '(name N or name C or name CA or name H or name O)',
         '--algorithm', 'khybrid'],
         expected_size=expected_size)
 
@@ -127,6 +130,7 @@ def test_rmsd_cluster_partition():
         '--trajectories', get_fn('frame0.xtc'), get_fn('frame0.xtc'),
         '--topology', get_fn('native.pdb'),
         '--rmsd-cutoff', '0.1',
+        '--atoms', '(name N or name C or name CA or name H or name O)',
         '--algorithm', 'khybrid',
         '--partition', '4'],
         expected_size=expected_size)
@@ -139,6 +143,7 @@ def test_rmsd_cluster_partition_and_subsample():
     runhelper([
         '--trajectories', get_fn('frame0.xtc'), get_fn('frame0.xtc'),
         '--topology', get_fn('native.pdb'),
+        '--atoms', '(name N or name C or name CA or name H or name O)',
         '--rmsd-cutoff', '0.1',
         '--algorithm', 'khybrid',
         '--processes', '4',
@@ -184,5 +189,25 @@ def test_rmsd_cluster_multitop_partition():
         '--rmsd-cutoff', '0.1',
         '--algorithm', 'khybrid',
         '--partition', '4',
+        '--subsample', '4'],
+        expected_size=expected_size)
+
+
+def test_rmsd_cluster_multitop_multiselection():
+
+    expected_size = (3, (501, 501, 5001))
+
+    xtc2 = os.path.join(cards.__path__[0], 'test_data', 'trj0.xtc')
+    top2 = os.path.join(cards.__path__[0], 'test_data', 'PROT_only.pdb')
+
+    runhelper([
+        '--trajectories', get_fn('frame0.xtc'), get_fn('frame0.xtc'),
+        '--topology', get_fn('native.pdb'),
+        '--atoms', '(name N or name O) and (residue 2)',
+        '--trajectories', xtc2,
+        '--topology', top2,
+        '--atoms', '(name CA) and (residue 3 or residue 4)',
+        '--rmsd-cutoff', '0.1',
+        '--algorithm', 'khybrid',
         '--subsample', '4'],
         expected_size=expected_size)

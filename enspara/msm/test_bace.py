@@ -1,10 +1,16 @@
 import numpy as np
-import scipy.sparse
+from scipy import sparse
 
-from nose.tools import assert_equal
+from nose.tools import assert_equal, assert_raises
 from numpy.testing import assert_array_equal, assert_allclose
 
 from enspara.msm import bace
+from enspara import exception
+
+
+SUPPORTED_SPARSE_TYPES = [np.array, sparse.csr_matrix, sparse.coo_matrix,
+                          sparse.lil_matrix, sparse.csc_matrix,
+                          sparse.dia_matrix]
 
 # transitions counts matrix and expected results for the "simple" model in
 # Bowman 2012 JCP paper describing BACE.
@@ -60,7 +66,7 @@ def test_bace_integration_dense():
 def test_bace_integration_sparse():
 
     bayes_factors, labels = bace.bace(
-        scipy.sparse.lil_matrix(TCOUNTS), n_macrostates=2, n_procs=4)
+        sparse.lil_matrix(TCOUNTS), n_macrostates=2, n_procs=4)
 
     # bayes_factors = np.loadtxt(os.path.join(d, 'bayesFactors.dat'))
     assert_allclose(
@@ -74,44 +80,29 @@ def test_bace_integration_sparse():
     assert_equal(labels.keys(), EXP_LABELS.keys())
 
 
-def test_baysean_prune():
-
-    pruned_counts, labels, kept_states = bace.baysean_prune(TCOUNTS)
-
-    assert_array_equal(pruned_counts, TCOUNTS)
-    assert_array_equal(labels, np.arange(len(labels)))
-    assert_array_equal(kept_states, np.arange(len(kept_states)))
-
-    pruned_counts, labels, kept_states = bace.baysean_prune(
-        scipy.sparse.lil_matrix(TCOUNTS))
-
-    assert_array_equal(pruned_counts.todense(), TCOUNTS)
-    assert_array_equal(labels, np.arange(len(labels)))
-    assert_array_equal(kept_states, np.arange(len(kept_states)))
-
-
-def test_baysean_prune_inplace():
+def test_baysean_prune_types():
 
     tcounts = np.array(
         [[100,  10,  1],
          [ 10, 100,  0],
          [  1,   0,  5]])
-    bace.baysean_prune(tcounts, in_place=True)
-    exp_pruned_counts = np.array(
-        [[100,  10,  0],
+
+    exp_pruned = np.array(
+        [[107,  10,  0],
          [ 10, 100,  0],
          [  0,   0,  0]])
-    assert_array_equal(tcounts, exp_pruned_counts)
 
-    tcounts = np.array(
-        [[100,  10,  1],
-         [ 10, 100,  0],
-         [  1,   0,  5]])
+    for array_type in SUPPORTED_SPARSE_TYPES:
 
-    bace.baysean_prune(tcounts, factor=1.3, in_place=True)
-    exp_pruned_counts = np.zeros((3, 3))
-    exp_pruned_counts[1, 1] = 100
-    assert_array_equal(tcounts, exp_pruned_counts)
+        pruned_counts, labels, kept_states = bace.baysean_prune(
+            array_type(tcounts), n_procs=4)
+
+        pruned_counts = pruned_counts.todense() if \
+            sparse.issparse(pruned_counts) else pruned_counts
+
+        assert_array_equal(pruned_counts, exp_pruned)
+        assert_array_equal(labels, [0, 1, 0])
+        assert_array_equal(kept_states, [0, 1])
 
 
 def test_baysean_prune_undersampled():
@@ -123,20 +114,83 @@ def test_baysean_prune_undersampled():
     pruned_counts, labels, kept_states = bace.baysean_prune(tcounts)
 
     exp_pruned_counts = np.array(
-        [[100,  10,  0],
+        [[107,  10,  0],
          [ 10, 100,  0],
          [  0,   0,  0]])
 
     assert_array_equal(pruned_counts, exp_pruned_counts)
-    assert_array_equal(labels, [0, 1, 1])
+    assert_array_equal(labels, [0, 1, 0])
     assert_array_equal(kept_states, [0, 1])
 
     pruned_counts, labels, kept_states = bace.baysean_prune(
         tcounts, factor=1.3)
 
     exp_pruned_counts = np.zeros((3, 3))
-    exp_pruned_counts[1, 1] = 100
+    exp_pruned_counts[1, 1] = 227
 
     assert_array_equal(pruned_counts, exp_pruned_counts)
-    assert_array_equal(labels, [-1, 0, 0])
+    assert_array_equal(labels, [0, 0, 0])
     assert_array_equal(kept_states, [1])
+
+
+def test_absorb():
+
+    tcounts = np.array(
+        [[100,  10,  1],
+         [ 10, 100,  0],
+         [  1,   0,  5]])
+
+    exp_absorbed = np.array(
+        [[107,  10,  0],
+         [ 10, 100,  0],
+         [  0,   0,  0]])
+
+    for array_type in [np.array, sparse.csr_matrix]:
+
+        absorbed_counts, labels = bace.absorb(array_type(tcounts), [2])
+
+        absorbed_counts = absorbed_counts.todense() if \
+            sparse.issparse(absorbed_counts) else absorbed_counts
+
+        assert_array_equal(absorbed_counts, exp_absorbed)
+        assert_array_equal(labels, [0, 1, 0])
+
+
+def test_absorb_island():
+
+    tcounts = np.array(
+        [[100,  10,  0],
+         [ 10, 100,  0],
+         [  0,   0,  5]])
+
+    for array_type in [np.array, sparse.csr_matrix]:
+        print(array_type)
+        with assert_raises(exception.DataInvalid):
+            absorbed_counts, labels = bace.absorb(array_type(tcounts), [2])
+
+
+def test_absorb_empty_row():
+
+    tcounts = np.array(
+        [[100,  10,  1,  0],
+         [ 10, 100,  0,  0],
+         [  1,   0,  5,  0],
+         [  0,   0,  0,  0]])
+
+    exp_pruned = np.array(
+        [[107,  10,  0,  0],
+         [ 10, 100,  0,  0],
+         [  0,   0,  0,  0],
+         [  0,   0,  0,  0]])
+
+    for array_type in SUPPORTED_SPARSE_TYPES:
+
+        pruned_counts, labels, kept_states = bace.baysean_prune(
+            array_type(tcounts), n_procs=4)
+
+        pruned_counts = pruned_counts.todense() if \
+            sparse.issparse(pruned_counts) else pruned_counts
+
+        assert_array_equal(pruned_counts, exp_pruned)
+        assert_array_equal(labels, [0, 1, 0, -1])
+        assert_array_equal(kept_states, [0, 1])
