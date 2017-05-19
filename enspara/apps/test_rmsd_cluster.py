@@ -211,3 +211,17 @@ def test_rmsd_cluster_multitop_multiselection():
         '--algorithm', 'khybrid',
         '--subsample', '4'],
         expected_size=expected_size)
+
+    # reverse the order. This will catch some cases where the first
+    # selection works on both.
+    runhelper([
+        '--trajectories', xtc2,
+        '--topology', top2,
+        '--atoms', '(name CA) and (residue 3 or residue 4)',
+        '--trajectories', get_fn('frame0.xtc'), get_fn('frame0.xtc'),
+        '--topology', get_fn('native.pdb'),
+        '--atoms', '(name N or name O) and (residue 2)',
+        '--rmsd-cutoff', '0.1',
+        '--algorithm', 'khybrid',
+        '--subsample', '4'],
+        expected_size=(expected_size[0], expected_size[1][::-1]))
