@@ -3,10 +3,33 @@ from Cython.Build import cythonize
 
 import numpy as np
 
+
+__version__ = '0.0.0'
+
+CLASSIFIERS = """\
+Intended Audience :: Science/Research
+Intended Audience :: Developers
+Programming Language :: C
+Programming Language :: Python
+Programming Language :: Python :: 3
+Topic :: Scientific/Engineering :: Bio-Informatics
+Topic :: Scientific/Engineering :: Chemistry
+Operating System :: POSIX
+Operating System :: Unix
+Operating System :: MacOS
+"""
+
 # build cython with `python setup.py build_ext --inplace`
 
+cython_extensions = [
+    "enspara/info_theory/libinfo.pyx"
+]
+
 setup(
-  name='Statistical Trajectory Analysis and Guidance',
-  ext_modules=cythonize("enspara/geometry/_euclidean_distance.pyx"),
-  include_dirs=[np.get_include()]
+    name='enspara',
+    version=__version__,
+    include_dirs=[np.get_include()],
+    platforms=['Linux', 'Mac OS-X', 'Unix', 'Windows'],
+    classifiers=CLASSIFIERS.splitlines(),
+    ext_modules=cythonize(cython_extensions),
 )

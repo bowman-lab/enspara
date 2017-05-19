@@ -7,24 +7,39 @@
 
 from __future__ import print_function, division, absolute_import
 
-import numpy as np
-
 from . import entropy
+from . import libinfo
 
 
 def joint_counts(state_traj_1, state_traj_2,
                  n_states_1=None, n_states_2=None):
+    """Compute the matrix H, where H[i, j] is the number of times t
+    where trajectory_1[t] == i and trajectory[t] == j.
+
+    Parameters
+    ----------
+    state_traj_1 : array-like, dtype=int
+        List of assignments to discrete states for trajectory 1.
+    state_traj_2 : array-like, dtype=int
+        List of assignments to discrete states for trajectory 2.
+    n_states_1 : int, optional
+        Number of total possible states in state_traj_1. If unspecified,
+        taken to be max(state_traj_1)+1.
+    n_states_2 : int, optional
+        Number of total possible states in state_traj_2 If unspecified,
+        taken to be max(state_traj_2)+1.
+    """
+
     if n_states_1 is None:
         n_states_1 = state_traj_1.max()+1
     if n_states_2 is None:
         n_states_2 = state_traj_2.max()+1
 
-    joint_counts, _, _ = np.histogram2d(
-        state_traj_1, state_traj_2,
-        bins=(np.array(range(n_states_1+1)),
-              np.array(range(n_states_2+1))))
+    H = libinfo.bincount2d(
+        state_traj_1.astype('int'), state_traj_2.astype('int'),
+        n_states_1, n_states_2)
 
-    return joint_counts.astype('int')
+    return H
 
 
 def mutual_information(joint_counts):
