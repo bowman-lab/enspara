@@ -152,13 +152,15 @@ def load(topologies, trajectories, selections, stride, processes):
             configs.append({
                 'top': top,
                 'stride': stride,
-                'atom_indices': top.select(selection)
+                'atom_indices': top.select(selection),
+                'selection': selection,
                 })
 
     assert all([len(c['atom_indices']) == len(configs[0]['atom_indices'])
                 for c in configs]), \
         "Number of atoms across different input topologies differed: %s" % \
-        [(t, (c['atom_indices'])) for t, c in zip(topologies, configs)]
+        [(t, c['atom_indices'], c['selection'])
+         for t, c in zip(topologies, configs)]
 
     logger.info(
         "Loading %s trajectories with %s atoms using %s processes"
