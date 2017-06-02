@@ -5,6 +5,7 @@ import pickle
 from mdtraj import io
 from msmbuilder.libdistance import cdist
 
+from enspara import exception
 from enspara.cluster import KHybrid
 from enspara.util import array as ra
 
@@ -60,8 +61,12 @@ def main(argv=None):
     args = process_command_line(argv)
 
     keys = io.loadh(args.features).keys()
-    features = ra.load(
-        args.features, keys=sorted(keys, key=lambda x: x.split('_')[-1]))
+
+    try:
+        features = ra.load(
+            args.features, keys=sorted(keys, key=lambda x: x.split('_')[-1]))
+    except exception.DataInvalid:
+        features = ra.load(args.features)
 
     clustering = KHybrid(
         metric=args.cluster_distance,
