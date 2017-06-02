@@ -164,9 +164,9 @@ def mi_matrix(states_a_list, states_b_list,
 
     Parameters
     ----------
-    states_a_list : array, shape=(n_trajectories, n_features)
+    states_a_list : array, shape=(n_trajectories, n_frames, n_features)
         Array of assigned/binned features
-    states_b_list : array, shape=(n_trajectories, n_features)
+    states_b_list : array, shape=(n_trajectories, n_frames, n_features)
         Array of assigned/binned features
     n_a_states_list : array, shape(n_features_a,)
         Number of possible states for each feature in `states_a`
