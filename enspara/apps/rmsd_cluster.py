@@ -78,7 +78,9 @@ def process_command_line(argv):
 
 def rmsd_hack(trj, ref, partitions=None, **kwargs):
 
-    if partitions is None:
+    if partitions is None or partitions == 1:
+        # this call is substantially faster because there is no serial
+        # memory shell game (as is present below).
         return md.rmsd(trj, ref)
 
     pivots = np.linspace(0, len(trj), num=partitions+1, dtype='int')
