@@ -77,6 +77,29 @@ def process_command_line(argv):
 
 
 def rmsd_hack(trj, ref, partitions=None, **kwargs):
+    '''Compute rmsd between trj and ref.
+
+    Accepts all parameters accepted by md.rmsd (not all present below),
+    but can batch the call into separate subcalls using `partitions`.
+    The primary purpose here is to avoid the segmentation fault that can
+    occur when computing rmsds over very large data sets.
+
+    Parameters
+    ----------
+    trj : md.Trajectory
+        For each conformation in this trajectory, compute the RMSD to
+        a particular 'reference' conformation in another trajectory
+        object.
+    ref : md.Trajectory
+        The object containing the reference conformation to measure distances
+        to.
+    partitions : int, default=None
+        The number of times to batch the call to `md.rmsd`.
+
+    See Also
+    --------
+    MDTraj's md.rmsd.
+    '''
 
     if partitions is None or partitions == 1:
         # this call is substantially faster because there is no serial
