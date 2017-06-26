@@ -79,7 +79,7 @@ def main(argv=None):
 
     ra.save(args.distances, result.distances)
     ra.save(args.assignments, result.assignments)
-    ra.save(args.cluster_centers, result.clusters)
+    ra.save(args.cluster_centers, result.centers)
     pickle.dump(result.center_indices, open(args.center_indices, 'wb'))
 
     return 0
