@@ -3,9 +3,8 @@ import argparse
 
 from multiprocessing import cpu_count
 
-from mdtraj import io
-
 from enspara.msm import implied_timescales, builders
+from enspara.util import array as ra
 
 import matplotlib as mpl
 mpl.use('Agg')
@@ -24,7 +23,7 @@ def process_command_line(argv):
         "--assignments", required=True,
         help="File containing assignments to states.")
     parser.add_argument(
-        "--n-eigenvalues", default=5,
+        "--n-eigenvalues", default=5, type=int,
         help="Number of eigenvalues to compute for each lag time.")
     parser.add_argument(
         "--lag-times",  default="5:100:2",
@@ -35,7 +34,13 @@ def process_command_line(argv):
         help="The method to use to enforce detailed balance in the"
              "counts matrix.")
     parser.add_argument(
-        "--processes", default=cpu_count(), help="Number of cores to use.")
+        "--trj-ids", default=None,
+        help="Computed the implied timescales for only the given "
+             "trajectory ids. This is useful for handling assignments "
+             "for shared state space clusterings.")
+    parser.add_argument(
+        "--processes", default=cpu_count(), type=int,
+        help="Number of cores to use.")
     parser.add_argument(
         "--trim", default=False, action="store_true")
     parser.add_argument(
@@ -45,6 +50,10 @@ def process_command_line(argv):
     args = parser.parse_args(argv[1:])
 
     args.lag_times = range(*map(int, args.lag_times.split(':')))
+
+    if args.trj_ids is not None:
+        args.trj_ids = slice(*map(int, args.trj_ids.split(':')))
+
     args.symmetrization = getattr(builders, args.symmetrization)
 
     return args
@@ -55,7 +64,9 @@ def main(argv=None):
     being run as a script. Otherwise, it's silent and just exposes methods.'''
     args = process_command_line(argv)
 
-    assignments = io.loadh(args.assignments)['arr_0']
+    assignments = ra.load(args.assignments)
+    if args.trj_ids is not None:
+        assignments = assignments[args.trj_ids]
 
     tscales = implied_timescales(
         assignments, args.lag_times, n_times=args.n_eigenvalues,

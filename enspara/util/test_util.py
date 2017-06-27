@@ -1,17 +1,24 @@
 import unittest
 import logging
+import tempfile
 
 import numpy as np
 import mdtraj as md
+from mdtraj import io
 
 from mdtraj.testing import get_fn
-from nose.tools import assert_raises, assert_equals, assert_is
+from nose.tools import assert_raises, assert_equals, assert_is, assert_true
 from numpy.testing import assert_array_equal
 
 from . import array as ra
 from .load import load_as_concatenated
 
-from ..exception import DataInvalid
+from ..exception import DataInvalid, ImproperlyConfigured
+
+
+def assert_ra_equal(a, b, **kwargs):
+        assert_array_equal(a._data, b._data, **kwargs)
+        assert_array_equal(a.lengths, b.lengths)
 
 
 class Test_RaggedArray(unittest.TestCase):
@@ -23,15 +30,28 @@ class Test_RaggedArray(unittest.TestCase):
         a = ra.RaggedArray(array=[np.array(range(10)),
                                   np.array(range(20))])
         assert_equals(len(a), 2)
+        assert_equals(a.dtype, np.int)
         assert_array_equal(a.lengths, [10, 20])
         assert_array_equal(a.starts, [0, 10])
         assert_array_equal(a._data, np.concatenate([range(10), range(20)]))
+
+    def test_RaggedArray_floats(self):
+        a = ra.RaggedArray([[0.8, 1.0, 1.2],
+                            [1.1, 1.0, 0.9, 0.8]])
+
+        assert_equals(len(a), 2)
+        assert_equals(a.dtype, np.float)
+        assert_array_equal(a.lengths, [3, 4])
+        assert_array_equal(a.starts, [0, 3])
+        assert_array_equal(
+            a._data, [0.8, 1.0, 1.2] + [1.1, 1.0, 0.9, 0.8])
 
     def test_RaggedArray_shape_size(self):
 
         a = ra.RaggedArray(array=np.array(range(50)), lengths=[25, 20, 5])
         assert_equals(a.shape, (3, None))
         assert_equals(a.size, 50)
+        assert_equals(a.dtype, np.int)
 
         src_reg = [[[0,0,0],[1,1,1],[2,2,2]],[[4,4,4],[5,5,5]]]
         a_reg = ra.RaggedArray(src_reg)
@@ -41,6 +61,44 @@ class Test_RaggedArray(unittest.TestCase):
         a_irreg = ra.RaggedArray(src_irreg)
         assert_equals(a_irreg.shape, (2, None, None))
 
+    def test_RaggedArray_disk_roundtrip(self):
+        src = np.array(range(55))
+        a = ra.RaggedArray(array=src, lengths=[25, 30])
+
+        with tempfile.NamedTemporaryFile(suffix='.h5') as f:
+            ra.save(f.name, a)
+            b = ra.load(f.name)
+            assert_ra_equal(a, b)
+
+    def test_RaggedArray_disk_roundtrip_numpy(self):
+        a = np.ones(shape=(5, 5))
+
+        with tempfile.NamedTemporaryFile(suffix='.h5') as f:
+            ra.save(f.name, a)
+            b = ra.load(f.name)
+            assert_array_equal(a, b)
+
+    def test_RaggedArray_load_h5_arrays(self):
+        src = np.array(range(55))
+        a = ra.RaggedArray(array=src, lengths=[25, 30])
+
+        with tempfile.NamedTemporaryFile(suffix='.h5') as f:
+            io.saveh(f.name, key0=a[0], key1=a[1])
+
+            b = ra.load(f.name, keys=['key0', 'key1'])
+
+        assert_ra_equal(a, b)
+
+        src = np.array([[0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
+                        [9, 8, 7, 6, 5, 4, 3, 2, 1, 0]]).T
+
+        a = ra.RaggedArray(array=src, lengths=[4, 6])
+
+        with tempfile.NamedTemporaryFile(suffix='.h5') as f:
+            io.saveh(f.name, key0=a[0], key1=a[1])
+            b = ra.load(f.name, keys=['key0', 'key1'])
+
+        assert_ra_equal(a, b)
 
     def test_RaggedArray_bad_size(self):
 
@@ -255,6 +313,26 @@ class Test_RaggedArray(unittest.TestCase):
             ra.where(a == 4),
             [[0, 1], [4, 0]])
 
+    def test_ra_invert(self):
+        a = ra.RaggedArray([[True, False, True, False],
+                            [False, True, False]])
+        b = ~a
+
+        assert_ra_equal(b, ra.RaggedArray([[False, True, False, True],
+                                           [True, False, True]]))
+
+    def test_ra_or(self):
+        a = ra.RaggedArray([[True, False, True, False],
+                            [False, True, False]])
+        b = ra.RaggedArray([[False, False, True, True],
+                            [True, False, True]])
+
+        c = a | b
+        assert_ra_equal(
+            c,
+            ra.RaggedArray([[True, False, True, True],
+                            [True, True, True]]))
+
 
 class TestParallelLoad(unittest.TestCase):
 
@@ -315,7 +393,6 @@ class TestParallelLoad(unittest.TestCase):
 
         self.assertTrue(np.all(expected == xyz))
         self.assertEqual(expected.shape, xyz.shape)
-
 
     def test_load_as_concatenated_noargs(self):
         '''It's ok if no args are passed.'''
@@ -382,6 +459,36 @@ class TestParallelLoad(unittest.TestCase):
 
         self.assertEqual(expected.shape, xyz.shape)
         self.assertTrue(np.all(expected == xyz))
+
+    def test_load_as_concatenated_lenghts_hint(self):
+
+        selection = np.array([1, 3, 6])
+
+        t1 = md.load(self.trj_fname, top=self.top)
+        t2 = md.load(self.trj_fname, top=self.top)
+        t3 = md.load(self.trj_fname, top=self.top)
+
+        lengths, xyz = load_as_concatenated(
+            [self.trj_fname]*3,
+            top=self.top,
+            lengths=[len(t) for t in [t1, t2, t3]])
+
+        expected = np.concatenate([t1.xyz, t2.xyz, t3.xyz])
+
+        assert_equals(expected.shape, xyz.shape)
+        assert_true(np.all(expected == xyz))
+
+        with assert_raises(ImproperlyConfigured):
+            lengths, xyz = load_as_concatenated(
+                [self.trj_fname]*3,
+                top=self.top,
+                lengths=[len(t) for t in [t1, t3]])
+
+        with assert_raises(DataInvalid):
+            lengths, xyz = load_as_concatenated(
+                [self.trj_fname]*3,
+                top=self.top,
+                lengths=[len(t) for t in [t1, t2[::2], t3]])
 
 
 class TestPartition(unittest.TestCase):

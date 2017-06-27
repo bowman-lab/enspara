@@ -9,6 +9,16 @@ from ..exception import DataInvalid, ImproperlyConfigured
 
 
 def where(mask):
+    """As np.where, but on _either_ RaggedArrays or a numpy array.
+
+    Parameters
+    ----------
+    mask : array or RaggedArray
+
+    Returns
+    -------
+    (rows, columns) : (array, array))
+    """
     try:
         iis_flat = np.where(mask._data)
         return _convert_from_1d(iis_flat, starts=mask.starts)
@@ -17,40 +27,74 @@ def where(mask):
 
 
 def save(output_name, ragged_array):
-    to_save = {'array': ragged_array._data, 'lengths': ragged_array.lengths}
-    io.saveh(output_name, **to_save)
+
+    try:
+        io.saveh(
+            output_name,
+            array=ragged_array._data,
+            lengths=ragged_array.lengths)
+    except AttributeError:
+        # A TypeError results when the input is actually an ndarray
+        io.saveh(output_name, ragged_array)
 
 
-def load(input_name):
+def load(input_name, keys=None):
+    """Load a RaggedArray from the disk. If only 'arr_0' is present in
+    the target file, a numpy array is loaded instead.
+
+    Parameters
+    ----------
+    input_name: filename or file handle
+        File from which data will be loaded.
+    keys : list, default=None
+        If this option is specified, the ragged array is built from this
+        list of keys, each of which are assumed to be a row of the final
+        ragged array. An ellipsis can be provided to indicate all keys.
+    """
+
     ragged_load = io.loadh(input_name)
-    return RaggedArray(
-        ragged_load['array'], lengths=ragged_load['lengths'])
 
+    if keys is None:
+        try:
+            return RaggedArray(
+                ragged_load['array'], lengths=ragged_load['lengths'])
+        except KeyError:
+            return ragged_load['arr_0']
+    else:
+        if keys is Ellipsis:
+            keys = ragged_load.keys()
 
-def partition_list(list_to_partition, partition_lengths):
-    if np.sum(partition_lengths) != len(list_to_partition):
-        raise DataInvalid(
-            "List of length {} does not equal lengths to partition {}.".format(
-                list_to_partition, partition_lengths))
+        shapes = [ragged_load._handle.get_node(where='/', name=k).shape
+                  for k in ragged_load.keys()]
 
-    partitioned_list = np.full(
-        shape=(len(partition_lengths), max(partition_lengths)),
-        dtype=list_to_partition.dtype,
-        fill_value=-1)
+        if not all(len(shapes[0]) == len(shape) for shape in shapes):
+            raise DataInvalid(
+                "Loading a RaggedArray using HDF5 file keys requires that all "
+                "input arrays have the same dimension. Got shapes: %s"
+                % shapes)
+        for dim in range(1, len(shapes[0])):
+            if not all(shapes[0][dim] == shape[dim] for shape in shapes):
+                raise DataInvalid(
+                    "Loading a RaggedArray using HDF5 file keys requires that "
+                    "all input arrays share nonragged dimensions. Dimension "
+                    "%s didnt' match. Got shapes: %s" % (dim, shapes))
 
-    start = 0
-    for num in range(len(partition_lengths)):
-        stop = start+partition_lengths[num]
-        np.copyto(partitioned_list[num][0:stop-start],
-                  list_to_partition[start:stop])
-        start = stop
+        lengths = [shape[0] for shape in shapes]
+        first_shape = ragged_load[ragged_load.keys()[0]].shape
 
-    # this call will mask out all 'invalid' values of partitioned list, in this
-    # case all the np.nan values that represent the padding used to make the
-    # array square.
-    partitioned_list = np.ma.masked_less(partitioned_list, 0, copy=False)
+        concat_shape = list(first_shape)
+        concat_shape[0] = sum(lengths)
 
-    return partitioned_list
+        concat = np.zeros(concat_shape)
+
+        start = 0
+        for key in ragged_load.keys():
+            arr = ragged_load[key]
+            end = start + len(arr)
+            concat[start:end] = arr
+            start = end
+
+        return RaggedArray(array=concat, lengths=lengths)
 
 
 def partition_indices(indices, traj_lengths):
@@ -183,7 +227,7 @@ def _slice_to_list(slice_func, length=None):
     return range(start, stop, step)
 
 
-def _partition_list(list_to_partition, partition_lengths):
+def partition_list(list_to_partition, partition_lengths):
     """Partitions list by partition lengths. Different from previous
        versions in that is does not return a masked array."""
     if np.sum(partition_lengths) != len(list_to_partition):
@@ -274,7 +318,7 @@ def _get_iis_from_slices(first_dimension_iis, second_dimension, lengths):
         step = 1
     # handle negative slicing
     if stop is None:
-        stops = lengths 
+        stops = lengths
     elif stop < 0:
         stops = lengths + stop
     else:
@@ -353,7 +397,7 @@ class RaggedArray(object):
             if _is_iterable(array[0]):
                 self.lengths = np.array([len(i) for i in array], dtype=int)
                 self._array = np.array(
-                    _partition_list(self._data, self.lengths), dtype='O')
+                    partition_list(self._data, self.lengths), dtype='O')
             # array of single values
             else:
                 self.lengths = np.array([len(array)], dtype=int)
@@ -365,8 +409,12 @@ class RaggedArray(object):
         # rebuild array from 1d and lengths
         else:
             self._array = np.array(
-                _partition_list(self._data, lengths), dtype='O')
+                partition_list(self._data, lengths), dtype='O')
             self.lengths = np.array(lengths)
+
+    @property
+    def dtype(self):
+        return self._data.dtype
 
     @property
     def shape(self):
@@ -514,7 +562,7 @@ class RaggedArray(object):
                     value_1d = value
                 self._data[iis_1d] = value_1d
                 self._array = np.array(
-                    _partition_list(self._data, self.lengths), dtype='O')
+                    partition_list(self._data, self.lengths), dtype='O')
                 return
             # Takes 2D indices generated from slicing in the first or second
             # dimension and sets data values to input values
@@ -529,12 +577,16 @@ class RaggedArray(object):
                 value_1d = value
             self._data[iis_1d] = value_1d
             self._array = np.array(
-                _partition_list(self._data, self.lengths), dtype='O')
+                partition_list(self._data, self.lengths), dtype='O')
         # if the indices are of self, assumes a boolean matrix. Converts
         # bool to indices and recalls __getitem__
         elif type(iis) is type(self):
             iis = where(iis)
             self.__setitem__(iis, value)
+
+    def __invert__(self):
+        new_data = self._data.__invert__()
+        return RaggedArray(new_data, lengths=self.lengths)
 
     def __eq__(self, other):
         return self.map_operator('__eq__', other)
@@ -576,6 +628,12 @@ class RaggedArray(object):
         return self.map_operator('__mod__', other)
     def __rmod__(self, other):
         return self.map_operator('__rmod__', other)
+    def __or__(self, other):
+        return self.map_operator('__or__', other)
+    def __xor__(self, other):
+        return self.map_operator('__xor__', other)
+    def __and__(self, other):
+        return self.map_operator('__and__', other)
     def map_operator(self, operator, other):
         if type(other) is type(self):
             other = other._data
@@ -589,6 +647,12 @@ class RaggedArray(object):
 
     def any(self):
         return np.any(self._data)
+
+    def max(self):
+        return self._data.max()
+
+    def min(self):
+        return self._data.min()
 
     def append(self, values):
         # if the incoming values is a RaggedArray, pull just the array
@@ -613,7 +677,7 @@ class RaggedArray(object):
             # update variables
             self.lengths = np.append(self.lengths, new_lengths)
             self._array = np.array(
-                _partition_list(self._data, self.lengths), dtype='O')
+                partition_list(self._data, self.lengths), dtype='O')
 
     def flatten(self):
         return self._data.flatten()

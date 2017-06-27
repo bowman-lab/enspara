@@ -133,24 +133,24 @@ def test_assigns_to_counts_negnums():
 def test_transpose_types():
     for arr_type in ARR_TYPES:
 
-        in_m = arr_type(
+        in_cts = arr_type(
             [[0, 2, 8],
              [4, 2, 4],
              [7, 3, 0]])
-        out_m = builders.transpose(in_m)
+        _, out_probs, _ = builders.transpose(in_cts)
 
         assert_equal(
-            type(in_m), type(out_m),
+            type(in_cts), type(out_probs),
             "builders.transpose was given %s but returned %s." %
-            (type(in_m), type(out_m)))
+            (type(in_cts), type(out_probs)))
 
         # cast to ndarray if necessary for comparison to correct result
         try:
-            out_m = out_m.toarray()
+            out_probs = out_probs.toarray()
         except AttributeError:
             pass
 
-        out_m = np.round(out_m, decimals=1)
+        out_probs = np.round(out_probs, decimals=1)
 
         expected = np.array(
             [[0.0, 0.3, 0.7],
@@ -158,7 +158,7 @@ def test_transpose_types():
              [0.7, 0.3, 0.0]])
 
         assert_array_equal(
-            out_m,
+            out_probs,
             expected)
 
 
