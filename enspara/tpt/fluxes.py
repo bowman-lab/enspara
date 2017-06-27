@@ -1,33 +1,15 @@
-#author(s): TJ Lane (tjlane@stanford.edu) and Christian Schwantes
-#            (schwancr@stanford.edu)
-# Contributors: Vince Voelz, Kyle Beauchamp, Robert McGibbon, Maxwell Zimmerman
-# Copyright (c) 2014, Stanford University
-# All rights reserved.
+#author(s): Maxwell Zimmerman 
 
 """
-Functions for calculating the fluxes through an MSM for a
-given set of source and sink states.
-
-These are the canonical references for TPT. Note that TPT
-is really a specialization of ideas very familiar to the
-mathematical study of Markov chains, and there are many
-books, manuscripts in the mathematical literature that
-cover the same concepts.
+Functions for calculating metrics from transition path theory (TPT).
+Included are, given a set of sources and sinks: 1) the flux through
+states and 2) the density of each state.
 
 References
 ----------
-.. [1] Weinan, E. and Vanden-Eijnden, E. Towards a theory of
-       transition paths. J. Stat. Phys. 123, 503-523 (2006).
-.. [2] Metzner, P., Schutte, C. & Vanden-Eijnden, E.
-       Transition path theory for Markov jump processes.
-       Multiscale Model. Simul. 7, 1192-1219 (2009).
-.. [3] Berezhkovskii, A., Hummer, G. & Szabo, A. Reactive
-       flux and folding pathways in network models of
-       coarse-grained protein dynamics. J. Chem. Phys.
-       130, 205102 (2009).
-.. [4] Noe, Frank, et al. "Constructing the equilibrium ensemble of folding
-       pathways from short off-equilibrium simulations." PNAS 106.45 (2009):
-       19011-19016.
+.. [1] Metzner, P., Schutte, C. & Vanden-Eijnden, E. Transition path
+       theory for Markov jump processes. Multiscale Model. Simul. 7,
+       1192-1219 (2009).
 """
 from __future__ import print_function, division, absolute_import
 import numpy as np
@@ -35,9 +17,41 @@ import numpy as np
 from . import committors
 from ..msm.transition_matrices import eq_probs
 
+
 __all__ = ['fluxes', 'net_fluxes']
 
-def fluxes(tprob, sources, sinks, populations=None, for_committors=None):
+
+def _get_data_from_tprob(tprob, sources, sinks, populations, forward_committors):
+    """A helper function for parsing data and returning relevant
+       parameters for TPT analysis
+    """
+    sources = np.array(sources).reshape((-1,))
+    sinks = np.array(sinks).reshape((-1,))
+    # check to see if populations exist
+    if populations is None:
+        populations = eq_probs(tprob)
+
+    n_states = len(populations)
+
+    # check if committors exist
+    if forward_committors is None:
+        forward_committors = committors(tprob, sources, sinks)
+    else:
+        forward_committors = np.array(for_committors)
+        if forward_committors.shape != (n_states,):
+            raise ValueError(
+                "Shape of committors %s should be %s" % \
+                (str(forward_committors.shape), str((n_states,))))
+
+    # reverse committors if process is at equilibrium
+    reverse_committors = 1 - forward_committors
+
+    return populations, n_states, forward_committors, reverse_committors
+
+
+def fluxes(
+        tprob, sources, sinks, populations=None,
+        forward_committors=None):
     """
     Compute the transition path theory flux matrix.
 
@@ -52,59 +66,71 @@ def fluxes(tprob, sources, sinks, populations=None, for_committors=None):
     populations : array, shape [n_states, ], optional, default: None
         Equilibrium populations of each state. If not provided, will
         recalculate from tprob.
-    for_committors : np.ndarray, optional
+    forward_committors : np.ndarray, optional
         The forward committors associated with `sources`, `sinks`, and
         `tprob`. If not provided, is calculated from scratch. If
         provided, `sources` and `sinks` are ignored.
 
     Returns
     -------
-    flux_matrix : np.ndarray
-        The flux matrix
+    state_fluxes : np.ndarray
+        The flux through each edge in a MSM from a set of sources
+        to sinks
 
     See Also
     --------
-    net_fluxes
-
-    References
-    ----------
-    .. [1] Weinan, E. and Vanden-Eijnden, E. Towards a theory of
-           transition paths. J. Stat. Phys. 123, 503-523 (2006).
-    .. [2] Metzner, P., Schutte, C. & Vanden-Eijnden, E.
-           Transition path theory for Markov jump processes.
-           Multiscale Model. Simul. 7, 1192-1219 (2009).
-    .. [3] Berezhkovskii, A., Hummer, G. & Szabo, A. Reactive
-           flux and folding pathways in network models of
-           coarse-grained protein dynamics. J. Chem. Phys.
-           130, 205102 (2009).
-    .. [4] Noe, Frank, et al. "Constructing the equilibrium ensemble
-           of folding pathways from short off-equilibrium simulations."
-           PNAS 106.45 (2009): 19011-19016.
     """
-    sources = np.array(sources).reshape((-1,))
-    sinks = np.array(sinks).reshape((-1,))
 
-    # check to see if populations exist
-    if populations is None:
-        populations = eq_probs(tprob)
-
-    n_states = len(populations)
-
-    # check if we got the committors
-    if for_committors is None:
-        for_committors = committors(tprob, sources, sinks)
-    else:
-        for_committors = np.array(for_committors)
-        if for_committors.shape != (n_states,):
-            raise ValueError(
-                "Shape of committors %s should be %s" % \
-                (str(for_committors.shape), str((n_states,))))
-
-    rev_committors = 1 - for_committors
+    # parse data and obtain relevant parameters
+    populations, n_states, forward_committors, reverse_committors = \
+        _get_data_from_tprob(
+            tprob, sources, sinks, populations, forward_committors)
 
     # fij = pi_i * q-_i * Tij * q+_j
-    fluxes = tprob*((populations*rev_committors)[:,None])*for_committors
+    state_fluxes = \
+        tprob * ((populations*reverse_committors)[:,None]) * forward_committors
 
-    fluxes[(np.arange(n_states), np.arange(n_states))] = np.zeros(n_states)
+    state_fluxes[(np.arange(n_states), np.arange(n_states))] = np.zeros(n_states)
 
-    return fluxes
+    return state_fluxes
+
+
+def densities(
+        tprob, sources, sinks, populations=None,
+        forward_committors=None):
+    """
+    Compute the transition path theory densities.
+
+    Parameters
+    ----------
+    sources : array_like, int
+        The set of unfolded/reactant states.
+    sinks : array_like, int
+        The set of folded/product states.
+    tprob : array, shape [n_states, n_states]
+        Transition probability matrix.
+    populations : array, shape [n_states, ], optional, default: None
+        Equilibrium populations of each state. If not provided, will
+        recalculate from tprob.
+    forward_committors : np.ndarray, optional
+        The forward committors associated with `sources`, `sinks`, and
+        `tprob`. If not provided, is calculated from scratch. If
+        provided, `sources` and `sinks` are ignored.
+
+    Returns
+    -------
+    state_densities : np.ndarray
+        The density of each node in an MSM from a set of sources to sinks.
+
+    See Also
+    --------
+    """
+    # parse data and obtain relevant parameters
+    populations, n_states, forward_committors, reverse_committors = \
+        _get_data_from_tprob(
+            tprob, sources, sinks, populations, forward_committors)
+
+    # mR_i = pi_i * q+_i * q-_i
+    state_densities = populations * forward_committors * reverse_committors
+
+    return state_densities
