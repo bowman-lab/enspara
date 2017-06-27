@@ -2,6 +2,8 @@ import numpy as np
 import scipy.sparse
 import scipy.sparse.linalg
 
+from .transition_matrices import eq_probs
+
 
 def transpose(C):
     '''Transform a counts matrix to a probability matrix using the
@@ -11,19 +13,57 @@ def transpose(C):
     ----------
     C : array, shape=(n_states, n_states)
         The matrix to symmetrize
+
+    Returns
+    -------
+    C : array, shape=(n_states, n_states)
+        Transition counts matrix after symmetrization.
+    T : array, shape=(n_states, n_states)
+        Transition probabilities matrix derived from `C`.
+    eq_probs : array, shape=(n_states)
+        Equilibrium probability distribution of `T`.
     '''
 
     C_sym = C + C.T
-    probs = normalize(C_sym)
+    probs = row_normalize(C_sym)
 
     # C + C.T changes the type of sparse matrices, so recast here.
     if type(C) is not type(probs):
         probs = type(C)(probs)
+        C_sym = type(C)(C_sym)
 
-    return probs
+    equilibrium = np.array(np.sum(C_sym, axis=1) / np.sum(C_sym)).flatten()
+
+    return C_sym/2, probs, equilibrium
 
 
 def normalize(C):
+    '''Transform a transition counts matrix to a transition probability
+    matrix by row-normalizing it. This does not guarantee ergodicity or
+    enforce equilibrium.
+
+    Parameters
+    ----------
+    C : array, shape=(n_states, n_states)
+        The matrix to normalize.
+
+    Returns
+    -------
+    C : array, shape=(n_states, n_states)
+        Transition counts matrix after symmetrization.
+    T : array, shape=(n_states, n_states)
+        Transition probabilities matrix derived from `C`.
+    eq_probs : array, shape=(n_states)
+        Equilibrium probability distribution of `T`.
+    '''
+
+    probs = row_normalize(C)
+    equilibrium = eq_probs(probs)
+
+    return C, probs, equilibrium
+
+
+def row_normalize(C):
     """Normalize every row of a transition count matrix to obtain a
     transition probability matrix.
 

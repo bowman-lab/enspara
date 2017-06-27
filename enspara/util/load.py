@@ -14,7 +14,7 @@ import mdtraj as md
 
 from sklearn.externals.joblib import Parallel, delayed
 
-from ..exception import ImproperlyConfigured
+from ..exception import ImproperlyConfigured, DataInvalid
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -71,7 +71,8 @@ def sound_trajectory(trj, **kwargs):
     return length
 
 
-def load_as_concatenated(filenames, processes=None, args=None, **kwargs):
+def load_as_concatenated(filenames, lengths=None, processes=None,
+                         args=None, **kwargs):
     '''Load many trajectories from disk into a single numpy array.
 
     Additional arguments to md.load are supplied as *args XOR **kwargs.
@@ -86,6 +87,11 @@ def load_as_concatenated(filenames, processes=None, args=None, **kwargs):
         A list of relative paths to the trajectory files to be loaded.
         The md.load function is used, and all file types md.load
         supports are supported by this function.
+    lengths : list, optional, default=None
+        List of lengths of the underlying trajectories. If None, the
+        lengths will be inferred. However, this can be slow, especially
+        as the number of trajectories grows large. This option provides
+        a speed benefit only.
     processes : int, optional
         The number of processes to spawn for loading in parallel.
     args : list, optional
@@ -129,10 +135,18 @@ def load_as_concatenated(filenames, processes=None, args=None, **kwargs):
     # cast to list to handle generators
     filenames = list(filenames)
 
-    logger.debug("Sounding %s trajectories with %s processes.", len(filenames),
-                 processes)
-    lengths = Parallel(n_jobs=processes)(
-        delayed(sound_trajectory)(f, **kw)for f, kw in zip(filenames, args))
+    if lengths is None:
+        logger.debug("Sounding %s trajectories with %s processes.",
+                     len(filenames), processes)
+        lengths = Parallel(n_jobs=processes)(
+            delayed(sound_trajectory)(f, **kw)
+            for f, kw in zip(filenames, args))
+    else:
+        logger.debug("Using given lengths")
+        if len(lengths) != len(filenames):
+            raise ImproperlyConfigured(
+                "Lengths list (len %s) didn't match length of filenames"
+                " list (len %s)", len(lengths), len(filenames))
 
     root_trj = md.load(filenames[0], frame=0, **args[0])
     shape = root_trj.xyz.shape
@@ -154,7 +168,12 @@ def load_as_concatenated(filenames, processes=None, args=None, **kwargs):
                 filenames, args))
 
     # gather exceptions.
-    proc.get()
+    shapes = proc.get()
+    if sum(s[0] for s in shapes) != full_shape[0]:
+        raise DataInvalid(
+            "The provided lengths (n=%s, total frames %s) weren't correct. "
+            "The correct total number of frames was %s.", len(lengths),
+            sum(s[0] for s in shapes), full_shape[0])
 
     # wait for termination
     p.join()
@@ -190,3 +209,5 @@ def _load_to_position(spec, arr_shape):
 
     # dump coordinates in.
     arr[position:position+len(xyz)] = xyz
+
+    return xyz.shape

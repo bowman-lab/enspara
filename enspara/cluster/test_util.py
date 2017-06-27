@@ -39,21 +39,6 @@ def test_ClusterResult_partition_np():
 
     assert_array_equal(rslt.center_indices, [(0, 3), (1, 3), (2, 3)])
 
-    # force raggedness
-    rslt = concat_rslt.partition(list_lens, square=False)
-
-    assert_is(type(rslt.assignments), ra.RaggedArray)
-    assert_array_equal(rslt.assignments[0], [0]*20)
-    assert_array_equal(rslt.assignments[1], [1]*20)
-    assert_array_equal(rslt.assignments[2], [2]*20)
-
-    assert_is(type(rslt.distances), ra.RaggedArray)
-    assert_array_equal(rslt.distances[0], [0.2]*20)
-    assert_array_equal(rslt.distances[1], [0.3]*20)
-    assert_array_equal(rslt.distances[2], [0.4]*20)
-
-    assert_array_equal(rslt.center_indices, [(0, 3), (1, 3), (2, 3)])
-
 
 def test_ClusterResult_partition_ra():
     list_lens = [10, 20, 100]
@@ -78,23 +63,6 @@ def test_ClusterResult_partition_ra():
     assert_is(type(rslt.distances), ra.RaggedArray)
     assert_array_equal(rslt.distances[0], [0.2]*10)
     assert_array_equal(rslt.distances[1], [0.3]*20)
-    assert_array_equal(rslt.distances[2], [0.4]*100)
-
-    assert_array_equal(rslt.center_indices, [(0, 3), (1, 13), (2, 73)])
-
-    # force squareness
-    rslt = concat_rslt.partition(list_lens, square=True)
-
-    assert_is_not(type(rslt.assignments), ra.RaggedArray)
-    assert_equal(rslt.assignments.shape, (3, 100))
-    assert_array_equal(rslt.assignments[0, 0:10], [0]*10)
-    assert_array_equal(rslt.assignments[1, 0:20], [1]*20)
-    assert_array_equal(rslt.assignments[2], [2]*100)
-
-    assert_is_not(type(rslt.distances), ra.RaggedArray)
-    assert_equal(rslt.distances.shape, (3, 100))
-    assert_array_equal(rslt.distances[0, 0:10], [0.2]*10)
-    assert_array_equal(rslt.distances[1, 0:20], [0.3]*20)
     assert_array_equal(rslt.distances[2], [0.4]*100)
 
     assert_array_equal(rslt.center_indices, [(0, 3), (1, 13), (2, 73)])

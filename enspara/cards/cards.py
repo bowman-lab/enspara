@@ -28,8 +28,9 @@ def cards(trajectories, buffer_width=15, n_procs=1):
 
     Parameters
     ----------
-    trajectories: list
-        List of trajectories to consider for the calculation
+    trajectories: iterable
+        Trajectories to consider for the calculation. Generators are
+        accepted and can be used to mitigate memory usage.
     buffer_width: int (default=15)
         The width of the no-man's land between rotameric bins. Angles
         in this range are not used in the calculation.
@@ -61,12 +62,25 @@ def cards(trajectories, buffer_width=15, n_procs=1):
     """
 
     logger.debug("Assigning to rotameric states")
-    rotamer_trajs = [geometry.all_rotamers(t, buffer_width=buffer_width)[0]
-                     for t in trajectories]
-    _, atom_inds, rotamer_n_states = geometry.all_rotamers(
-        trajectories[0], buffer_width=buffer_width)
 
-    disordered_trajs, disorder_n_states = assign_order_disorder(rotamer_trajs)
+    # to support both lists and generators, we use an iterator over
+    # trajectories, so we have a consistent API.
+    trj_iter = iter(trajectories)
+
+    # we need the first trajectory so we can call all_rotamers and get
+    # atom_inds and rotamer_n_states
+    first_trj = next(trj_iter)
+    rotamer_trj, atom_inds, rotamer_n_states = geometry.all_rotamers(
+        first_trj, buffer_width=buffer_width)
+
+    # build the list of all of the rotamerized trajectories, starting
+    # with the one we just calculated above.
+    rotamer_trajs = [rotamer_trj]
+    rotamer_trajs.extend(
+        [geometry.all_rotamers(t, buffer_width=buffer_width)[0]
+         for t in trj_iter])
+
+    disordered_trajs, disorder_n_states = disorder.assign_order_disorder(rotamer_trajs)
 
     logger.debug("Calculating structural mutual information")
     structural_mi = mi_matrix(
@@ -90,94 +104,6 @@ def cards(trajectories, buffer_width=15, n_procs=1):
 
     return structural_mi, disorder_mi, struct_to_disorder_mi, \
         disorder_to_struct_mi, atom_inds
-
-
-def assign_order_disorder(rotamer_trajs):
-
-    logger.debug("Calculating ordered/disordered times")
-    n_features = rotamer_trajs[0].shape[1]
-    transition_times, mean_ordered_times, mean_disordered_times = \
-        transition_stats(rotamer_trajs)
-
-    logger.debug("Assigning to disordered states")
-    disordered_trajs = []
-    for i in range(len(rotamer_trajs)):
-        traj_len = rotamer_trajs[i].shape[0]
-        dis_traj = np.zeros((traj_len, n_features))
-        for j in range(n_features):
-            dis_traj[:, j] = disorder.create_disorder_traj(
-                transition_times[i][j], traj_len, mean_ordered_times[j],
-                mean_disordered_times[j])
-
-        disordered_trajs.append(dis_traj)
-    disorder_n_states = 2*np.ones(n_features, dtype='int')
-
-    return disordered_trajs, disorder_n_states
-
-
-def transition_stats(rotamer_trajs):
-
-    n_traj = len(rotamer_trajs)
-
-    transition_times = []
-    n_features = rotamer_trajs[0].shape[1]
-    ordered_times = np.zeros((n_traj, n_features))
-    n_ordered_times = np.zeros((n_traj, n_features))
-    disordered_times = np.zeros((n_traj, n_features))
-    n_disordered_times = np.zeros((n_traj, n_features))
-    for i in range(n_traj):
-        transition_times.append([])
-        for j in range(n_features):
-            tt = disorder.transitions(rotamer_trajs[i][:, j])
-            transition_times[i].append(tt)
-            (ordered_times[i, j], n_ordered_times[i, j],
-             disordered_times[i, j], n_disordered_times[i, j]) = disorder.traj_ord_disord_times(tt)
-
-    trj_lengths = np.array([len(a) for a in rotamer_trajs])
-    mean_ordered_times = aggregate_mean_times(
-        ordered_times, n_ordered_times, trj_lengths)
-    mean_disordered_times = aggregate_mean_times(
-        disordered_times, n_disordered_times, trj_lengths)
-
-    return transition_times, mean_ordered_times, mean_disordered_times
-
-
-def aggregate_mean_times(times, n_times, weight):
-    """Compute the mean transition time between a set of trajectories'
-    mean transition times.
-
-    Parameters
-    ----------
-    times : array, shape=(n_trajectories, n_features)
-        Array of mean transition times for each trajectory and dihedral.
-    n_times : array, shape=(n_trajectories, n_features)
-        Array of numbers of transitions observed for each trajectory and
-        dihedral.
-    weight : array, shape=(n_trajectories,)
-        Array of weights for each trajectory. Usually used to weight
-        trajectories by their length. Any nonnegative weights can be used.
-
-    Returns
-    -------
-    mean_times : np.ndarray, shape=(n_features,)
-        Mean transition time across trajectories for each dihedral.
-    """
-
-    n_features = times.shape[1]
-    mean_times = np.zeros(n_features)
-
-    # we normalize by the maximum weight, such that the longest trajectory's
-    # mean time is unchanged by the calculation.
-    nl_weight = weight / np.sum(weight)
-
-    # we suppress divide by zero errors here, since if we never see a
-    # transition, the result of the divide by zero (a NaN) is an
-    # acceptable representation of that time.
-    with np.errstate(all='ignore'):
-        for i in range(n_features):
-            mean_times[i] = ((times[:, i] * nl_weight).sum())
-
-    return mean_times
 
 
 def mi_row(row, states_a_list, states_b_list, n_a_states, n_b_states):
@@ -238,9 +164,9 @@ def mi_matrix(states_a_list, states_b_list,
 
     Parameters
     ----------
-    states_a_list : array, shape=(n_trajectories, n_features)
+    states_a_list : array, shape=(n_trajectories, n_frames, n_features)
         Array of assigned/binned features
-    states_b_list : array, shape=(n_trajectories, n_features)
+    states_b_list : array, shape=(n_trajectories, n_frames, n_features)
         Array of assigned/binned features
     n_a_states_list : array, shape(n_features_a,)
         Number of possible states for each feature in `states_a`
