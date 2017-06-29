@@ -190,7 +190,7 @@ def main(argv=None):
 
     targets = {topf[i:]: "%s xtcs" % len(trjfs) for topf, trjfs
                in zip(args.topology, args.trajectories)}
-    logger.info("Beginning RMSD Clusutering app. Operating on targets:\n%s",
+    logger.info("Beginning RMSD Clustering app. Operating on targets:\n%s",
                 json.dumps(targets, indent=4))
 
     lengths, xyz, select_top = load(
