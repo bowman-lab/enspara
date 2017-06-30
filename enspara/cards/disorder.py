@@ -169,11 +169,15 @@ def transition_stats(rotamer_trajs):
 
     Returns
     -------
-    disordered_trajs: list, shape=(n_traj, n_frames, n_features)
-        List of n.arrays with disorder/order assignments for each trajectory
+    transition_times: list, shape=(n_traj, n_features, variable)
+        For each feature in each trajectory, computes the frames at which a state transition
+        occurs
 
-    disorder_n_states: array, shape=(n_features,)
-        The number of possible states for each feature in disordered_trajs (2)
+    mean_ordered_times: array, shape=(n_features,)
+        Mean ordered time for each feature
+
+    mean_disordered_times: array, shape=(n_features,)
+        Mean disordered time for each feature    
    
     References
     ----------
