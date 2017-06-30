@@ -71,12 +71,14 @@ def mle(C, prior_counts=None, calculate_eq_probs=True):
         sparsetype = type(C)
         C = C.todense()
 
+    equilibrium = None
     if not calculate_eq_probs:
         logger.warning('MLE method cannot suppress calculation of '
                        'equilibrium probabilities, since they are calculated '
                        'together.')
-
-    T, equilibrium = mle(C)
+        T, _ = mle(C)
+    else:
+        T, equilibrium = mle(C)
 
     C = sparsetype(C)
     T = sparsetype(T)
