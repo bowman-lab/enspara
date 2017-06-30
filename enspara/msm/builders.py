@@ -11,8 +11,8 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 
-def mle(C, prior_counts=None):
-    '''Transform a counts matrix to a probability matrix using
+def mle(C, prior_counts=None, calculate_eq_probs=True):
+    """Transform a counts matrix to a probability matrix using
     maximum-liklihood estimation (prinz) method.
 
     Parameters
@@ -22,6 +22,10 @@ def mle(C, prior_counts=None):
     prior_counts: int or array, shape=(n_states, n_states), default=None
         Number or matrix of pseudocounts to add to the transition counts
         matrix.
+    calculate_eq_probs: bool, default=True
+        Compute the equilibrium probability distribution of the output
+        matrix T. This is useful because calculating the eq probs is
+        expensive.
 
     Returns
     -------
@@ -41,7 +45,7 @@ def mle(C, prior_counts=None):
     ----------
     [1] Prinz, Jan-Hendrik, et al. "Markov models of molecular kinetics:
         Generation and validation." J Chem. Phys. 134.17 (2011): 174105.
-    '''
+    """
 
     try:
         with warnings.catch_warnings():
@@ -66,6 +70,11 @@ def mle(C, prior_counts=None):
         sparsetype = type(C)
         C = C.todense()
 
+    if not calculate_eq_probs:
+        logger.warning('MLE method cannot suppress calculation of '
+                       'equilibrium probabilities, since they are calculated '
+                       'together.')
+
     T, equilibrium = mle(C)
 
     C = sparsetype(C)
@@ -74,14 +83,18 @@ def mle(C, prior_counts=None):
     return C, T, equilibrium
 
 
-def transpose(C):
-    '''Transform a counts matrix to a probability matrix using the
+def transpose(C, calculate_eq_probs=True):
+    """Transform a counts matrix to a probability matrix using the
     transpose method.
 
     Parameters
     ----------
     C : array, shape=(n_states, n_states)
         The matrix to symmetrize
+    calculate_eq_probs: bool, default=True
+        Compute the equilibrium probability distribution of the output
+        matrix T. This is useful because calculating the eq probs is
+        expensive.
 
     Returns
     -------
@@ -91,7 +104,7 @@ def transpose(C):
         Transition probabilities matrix derived from `C`.
     eq_probs : array, shape=(n_states)
         Equilibrium probability distribution of `T`.
-    '''
+    """
 
     C_sym = C + C.T
     probs = row_normalize(C_sym)
@@ -101,13 +114,15 @@ def transpose(C):
         probs = type(C)(probs)
         C_sym = type(C)(C_sym)
 
-    equilibrium = np.array(np.sum(C_sym, axis=1) / np.sum(C_sym)).flatten()
+    equilibrium = None
+    if calculate_eq_probs:
+        equilibrium = np.array(np.sum(C_sym, axis=1) / np.sum(C_sym)).flatten()
 
     return C_sym/2, probs, equilibrium
 
 
-def normalize(C):
-    '''Transform a transition counts matrix to a transition probability
+def normalize(C, calculate_eq_probs=True):
+    """Transform a transition counts matrix to a transition probability
     matrix by row-normalizing it. This does not guarantee ergodicity or
     enforce equilibrium.
 
@@ -115,6 +130,10 @@ def normalize(C):
     ----------
     C : array, shape=(n_states, n_states)
         The matrix to normalize.
+    calculate_eq_probs: bool, default=True
+        Compute the equilibrium probability distribution of the output
+        matrix T. This is useful because calculating the eq probs is
+        expensive.
 
     Returns
     -------
@@ -124,10 +143,13 @@ def normalize(C):
         Transition probabilities matrix derived from `C`.
     eq_probs : array, shape=(n_states)
         Equilibrium probability distribution of `T`.
-    '''
+    """
 
     probs = row_normalize(C)
-    equilibrium = eq_probs(probs)
+
+    equilibrium = None
+    if calculate_eq_probs:
+        equilibrium = eq_probs(probs)
 
     return C, probs, equilibrium
 
