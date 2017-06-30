@@ -177,18 +177,25 @@ def load(topologies, trajectories, selections, stride, processes):
     return lengths, xyz, top.subset(top.select(selection))
 
 
-def load_asymm_frames(result, trajectories, topology, subsample):
+def load_asymm_frames(center_indices, trajectories, topology, subsample):
 
     frames = []
     begin_index = 0
     for topfile, trjset in zip(topology, trajectories):
         end_index = begin_index + len(trjset)
-        subframes = load_frames(
-            list(itertools.chain(*trajectories)),
-            [c for c in result.center_indices
-             if begin_index <= c[0] < end_index],
-            top=md.load(topfile).top,
-            stride=subsample)
+        target_centers = [c for c in center_indices
+                          if begin_index <= c[0] < end_index]
+
+        try:
+            subframes = load_frames(
+                list(itertools.chain(*trajectories)),
+                target_centers,
+                top=md.load(topfile).top,
+                stride=subsample)
+        except exception.ImproperlyConfigured:
+            logger.error('Failure to load cluster centers %s for topology %s',
+                         topfile, target_centers)
+            raise
 
         frames.extend(subframes)
         begin_index += len(trjset)
@@ -246,9 +253,9 @@ def main(argv=None):
     except FileExistsError:
         pass
 
+    centers = load_asymm_frames(result.center_indices, args.trajectories,
+                                args.topologies, args.subsample)
     with open(filenames(args)['centers'], 'wb') as f:
-        centers = load_asymm_frames(result, args.trajectories, args.topologies,
-                                    args.subsample)
         pickle.dump(centers, f)
 
     if args.subsample:
