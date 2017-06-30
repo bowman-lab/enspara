@@ -1,4 +1,5 @@
 import logging
+import warnings
 
 import numpy as np
 import scipy.sparse
@@ -43,7 +44,11 @@ def mle(C, prior_counts=None):
     '''
 
     try:
-        from msmbuilder.msm._markovstatemodel import _transmat_mle_prinz as mle
+        with warnings.catch_warnings():
+            # this is here to catch sklearn deprication warnings
+            warnings.simplefilter("ignore")
+            from msmbuilder.msm._markovstatemodel import \
+                _transmat_mle_prinz as mle
     except ImportError:
         logger.error("To use MLE MSM fitting, MSMBuilder is required. "
                      "See http://msmbuilder.org.")
