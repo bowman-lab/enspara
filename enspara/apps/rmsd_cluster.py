@@ -153,7 +153,6 @@ def load(topologies, trajectories, selections, stride, processes):
                 'top': top,
                 'stride': stride,
                 'atom_indices': top.select(selection),
-                'selection': selection,
                 })
 
     assert all([len(c['atom_indices']) == len(configs[0]['atom_indices'])
