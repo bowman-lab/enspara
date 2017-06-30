@@ -24,8 +24,9 @@ def mle(C, prior_counts=None, calculate_eq_probs=True):
         matrix.
     calculate_eq_probs: bool, default=True
         Compute the equilibrium probability distribution of the output
-        matrix T. This is useful because calculating the eq probs is
-        expensive.
+        matrix T. This flag is provided for compatibility with other
+        builders only, as it has no effect in MLE (and, in fact, emits a
+        warning).
 
     Returns
     -------
@@ -93,8 +94,8 @@ def transpose(C, calculate_eq_probs=True):
         The matrix to symmetrize
     calculate_eq_probs: bool, default=True
         Compute the equilibrium probability distribution of the output
-        matrix T. This is useful because calculating the eq probs is
-        expensive.
+        matrix T. For transpose, this computation is cheap, but the flag
+        is still supported for compatibility purposes.
 
     Returns
     -------
