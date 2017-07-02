@@ -64,6 +64,7 @@ def test_reassign_script():
         runhelper(
             ['--centers', ctrs_f.name,
              '--trajectories', trajectories,
+             '--atoms', '(name N or name C or name CA or name H or name O)',
              '--topology', topologies])
 
 
@@ -88,6 +89,7 @@ def test_reassign_script_multitop():
             ['--centers', ctrs_f.name,
              '--trajectories', trajectories[0],
              '--topology', topologies[0],
+             '--atoms', '(name N or name C or name CA or name H or name O)',
              '--trajectories', trajectories[1],
              '--topology', topologies[1],
              '--atoms', atoms])
@@ -106,13 +108,13 @@ def test_reassignment_function_memory():
     mem_highwater = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
 
     assigns, dists = reassign.reassign(
-        topologies, trajectories, atoms, centers)
+        topologies, trajectories, [atoms]*2, centers)
 
     new_highwater = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
     highwater_diff = (new_highwater - mem_highwater)
 
     print(new_highwater)
-    assert_less(highwater_diff, 2000000)
+    assert_less(highwater_diff, 4000000)
 
     assert_is(type(assigns), np.ndarray)
 
@@ -131,9 +133,11 @@ def test_reassignment_function_heterogenous():
         [get_fn('frame0.xtc'), get_fn('frame0.xtc')],
         [xtc2, xtc2]]
 
-    atoms = '(name N or name C or name CA or name H or name O) and (residue 2)'
+    atoms = [
+        '(name N or name O) and (residue 2 or residue 3)',
+        '(name CA) and (residue 3 to 5)']
     top = md.load(topologies[0]).top
-    centers = [c.atom_slice(top.select(atoms)) for c
+    centers = [c.atom_slice(top.select(atoms[0])) for c
                in md.load(trajectories[0][0], top=topologies[0])[::50]]
 
     assigns, dists = reassign.reassign(
