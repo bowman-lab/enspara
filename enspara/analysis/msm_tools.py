@@ -5,6 +5,7 @@
 
 import numpy as np
 import scipy.sparse
+import warnings
 from ..msm.transition_matrices import eq_probs, assigns_to_counts
 from ..msm import builders
 
@@ -27,12 +28,15 @@ def KL_divergence(P, Q, base=2):
 
     # calculate inners and set nans to zero (this is okay because
     # xlogx = 0 @ x=0)
-    log_likelihoods = P * np.log(P / Q)
+    # disable numpy's warning of log(0)
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", category=RuntimeWarning)
+        log_likelihoods = P * np.log(P / Q)
     log_likelihoods[np.where(np.isnan(log_likelihoods))] = 0
 
     # determine axis to sum over
     axis_sum = 0
-    if len(P.shape) > 0:
+    if len(P.shape) > 1:
         axis_sum = 1
 
     # return divergence for each distribution
@@ -58,7 +62,10 @@ def Q_from_assignments(
     # add prior counts
     Q_counts = np.array(Q_counts.todense()) + prior_counts
     # compute transition probability matrix
-    _, Q_prob, _ = builder(Q_counts, calculate_eq_probs=False)
+    # disable warning from mle's calculation of eq_probs
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        _, Q_prob, _ = builder(Q_counts, calculate_eq_probs=False)
     return Q_prob
 
  
