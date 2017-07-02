@@ -51,7 +51,7 @@ def Q_from_assignments(
     """
     # determine prior
     if prior_counts is None:
-        prior_counts = 0
+        prior_counts = 1 / assignments.size
     # get counts matrix
     Q_counts = assigns_to_counts(
         assignments, n_states=n_states, lag_time=lag_time)
@@ -65,11 +65,48 @@ def Q_from_assignments(
 def state_relative_entropy(
         P, Q=None, assignments=None, weights=1, state_subset=None,
         base=2.0, **kwargs):
-    """Returns the matrix of Dij defined in the relative_entropy function
-       If Q is not specified, it will be calculated from assignments.
+    """The relative entropy between each state in an MSM. For each
+    state, i, the relative entropy is calculated as the Kullbeck-Liebler
+    divergence between conditional transition probabilities:
+
+    D_KL(P(i)||Q(i)) =  SUM(P(i,j) * log(P(i,j) / Q(i,j)), j)
+
+    where P is the reference probability matrix and Q is the
+    probability matrix in question.
+
+    The relative entropy is calculated between P and Q. If Q is not
+    supplied, it is calculated from assignments for a particular lagtime
+    and symmetrization option. 
+
+    Parameters
+    ----------
+    P : array, shape=(n_states, n_states)
+        The reference transition probability matrix.
+    Q : array, shape=(n_states, n_states), default=None 
+        A transition probability matrix that diverges from P.
+    assignments : array, shape=(n_trajectories, n_frames), default=None
+        2D array of trajectories to compute Q from. Note: if assignments
+        are provided instead of a probability matrix, details for MSM
+        construction are suggested. i.e. lagtime (default of 1),
+        symmetrization option (default of none), and prior counts 
+        (default of 1/total_counts).
+    populations : array, shape=(n_states,), default=None
+        The equilibrium populations of the reference MSM. If not
+        supplied, this is calculated from the eigenspectrum of P.
+    state_subset : array, shape=(n_subset,), default=None
+        Optionally specify a subset of states to use for calculation of
+        relative entropy. These states will be the only ones that
+        contribute to the MSMs relative entropy value. If no subset is
+        specified, all states will be used.
+    base : float, default=2.0
+        The base used for calculation of Kullbeck-Liebler divergence.
+        This specified the units of the output, i.e. base 2 will be in
+        bits and base e will be in nats.
     """
     # number of state in MSM
     n_states = P.shape[0]
+    if state_subset is None:
+        state_subset = ...
     # check inputs
     if (Q is None) and (assignments is None):
         print('must specify Q or calculate Q from assignments')
@@ -105,16 +142,11 @@ def relative_entropy(
     Q : array, shape=(n_states, n_states), default=None 
         A transition probability matrix that diverges from P.
     assignments : array, shape=(n_trajectories, n_frames), default=None
-        2D array of trajectories to compute Q from.
-    lag_time : int, default=1
-        The lagtime to compute Q with from assignments.
-    builder : function, default=builder.normalize
-        The enspara builder function used for symmetrization of count
-        matricies.
-    prior_counts : float, default=None
-        The prior counts to add to the count matrix when computing Q
-        from assignments. This is essential if there are states that
-        have not been visited.
+        2D array of trajectories to compute Q from. Note: if assignments
+        are provided instead of a probability matrix, details for MSM
+        construction are suggested. i.e. lagtime (default of 1),
+        symmetrization option (default of none), and prior counts 
+        (default of 1/total_counts).
     populations : array, shape=(n_states,), default=None
         The equilibrium populations of the reference MSM. If not
         supplied, this is calculated from the eigenspectrum of P.
@@ -128,10 +160,11 @@ def relative_entropy(
         This specified the units of the output, i.e. base 2 will be in
         bits and base e will be in nats.
     """
+    # determine the number of states from the reference MSM
     n_states = P.shape[0]
     # calculate populations of reference matix if not provided
     if state_subset is None:
-        state_subset = np.arange(n_states)
+        state_subset = ...
     if populations is None:
         populations = eq_probs(P)[state_subset]
         populations /= populations.sum()
