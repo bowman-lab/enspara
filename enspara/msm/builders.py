@@ -73,9 +73,9 @@ def mle(C, prior_counts=None, calculate_eq_probs=True):
 
     equilibrium = None
     if not calculate_eq_probs:
-        logger.warning('MLE method cannot suppress calculation of '
-                       'equilibrium probabilities, since they are calculated '
-                       'together.')
+        warnings.warn('MLE method cannot suppress calculation of '
+                      'equilibrium probabilities, since they are calculated '
+                      'together.', category=RuntimeWarning)
         T, _ = mle(C)
     else:
         T, equilibrium = mle(C)

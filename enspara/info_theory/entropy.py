@@ -9,11 +9,7 @@ import warnings
 import numpy as np
 
 from .. import exception
-
-from ..msm.transition_matrices import eq_probs, assigns_to_counts
-from ..msm import builders
-
-from ..info_theory.entropy import kl_divergence
+from ..msm import eq_probs, assigns_to_counts, builders
 
 
 def Q_from_assignments(
@@ -212,10 +208,11 @@ def kl_divergence(P, Q, base=2):
         raise
 
     # Ensure non-negative probabilties
-    if len(np.where(P < 0)[0]) > 0:
-        raise exception.DataInvalid
-    if len(np.where(Q < 0)[0]) > 0:
-        raise exception.DataInvalid
+    for M in (P, Q):
+        if len(np.where(M < 0)[0]) > 0:
+            raise exception.DataInvalid(
+                'The supplied matrix contained a negative probability:\n%s' %
+                M)
 
     # calculate inners and set nans to zero (this is okay because
     # xlogx = 0 @ x=0)

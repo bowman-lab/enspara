@@ -1,15 +1,16 @@
 import numpy as np
-from numpy.testing import assert_array_equal, assert_array_almost_equal, \
-    assert_almost_equal
+from numpy.testing import assert_array_almost_equal, assert_almost_equal
 
-from nose.tools import assert_raises, assert_equals
+from nose.tools import assert_raises
 
-from .entropy import kl_divergence, Q_from_assignments, \
-    relative_entropy_per_state, relative_entropy_msm
 from ..msm import builders
+from ..exception import DataInvalid
+
+from .entropy import Q_from_assignments, relative_entropy_per_state, \
+    relative_entropy_msm, kl_divergence
 
 
-def test_Q_from_assignments(self):
+def test_Q_from_assignments():
     # test assignments
     assignments = np.array(
         [
@@ -47,7 +48,7 @@ def test_Q_from_assignments(self):
         Q_transpose_w_prior, 7)
 
 
-def test_relative_entropy_per_state(self):
+def test_relative_entropy_per_state():
     # reference distributions
     P_test = np.array(
         [
@@ -110,7 +111,7 @@ def test_relative_entropy_per_state(self):
         rel_ent_transpose_with_prior, 6)
 
 
-def test_relative_entropy_msm(self):
+def test_relative_entropy_msm():
     # reference distributions
     P_test = np.array(
         [
@@ -170,7 +171,7 @@ def test_relative_entropy_msm(self):
         rel_ent_transpose_with_prior, 7)
 
 
-def test_KL_divergence(self):
+def test_kl_divergence():
     # reference distributions
     P_test = np.array(
         [
@@ -235,3 +236,28 @@ def test_KL_divergence(self):
         true_divergences_base_10[1], test_divergences_base_10_r1, 7)
     assert_almost_equal(
         true_divergences_base_10[2], test_divergences_base_10_r2, 7)
+
+
+def test_kl_divergence_negative_probs():
+
+    # reference distributions
+    P_test = np.array([
+        [0.5, 0.5, 0],
+        [0.25, 0.25, 0.5],
+        [0, 0.25, 0.75]])
+
+    # divergent distributions
+    Q_test = np.array([
+        [0.25, 0.25, 0.5],
+        [0.25, 0.25, 0.5],
+        [0.1, 0.65, 0.25]])
+
+    with assert_raises(DataInvalid):
+        P_neg = np.copy(P_test)
+        P_neg[0, 1] *= -1
+        kl_divergence(P_neg, Q_test)
+
+    with assert_raises(DataInvalid):
+        Q_neg = np.copy(Q_test)
+        Q_neg[0, 1] *= -1
+        kl_divergence(P_test, Q_neg)
