@@ -48,14 +48,15 @@ def KL_divergence(P, Q, base=2):
 
     
 def Q_from_assignments(
-        assignments, n_states, lag_time=1, builder=builders.normalize,
+        assignments, n_states=None, lag_time=1, builder=builders.normalize,
         prior_counts=None):
     """Generates the reference matrix for relative entropy calculations
        from an assignments matrix.
     """
     # determine prior
     if prior_counts is None:
-        prior_counts = 1 / assignments.size
+        total_counts = np.sum([len(ass) - 1 for ass in assignments])
+        prior_counts = 1 / total_counts
     # get counts matrix
     Q_counts = assigns_to_counts(
         assignments, n_states=n_states, lag_time=lag_time)
