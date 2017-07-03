@@ -15,7 +15,30 @@ def KL_divergence(P, Q, base=2):
     probability distributions, P and Q. If P and Q are two dimensional,
     the divergence is calculated between rows. The output is bits by
     default.
+    
+    Parameters
+    ----------
+    P : array, shape=(n_distributions, n_values)
+        A list of reference probability distributions. i.e. each row
+        should sum to one.
+    Q : array, shape(n_distributions, n_values)
+        A list of query probability distributions. i.e. each row should
+        sum to one. Must be the same shape as P.
+    base : float, default=2
+        The base of the log differences between probability
+        distributions. This sets the units of the output. i.e. base=2
+        makes the units in bits and base=e makes the units in nats.
+
+    Returns
+    ----------
+    divergence : array, shape=(n_distributions,)
+        The diverences between distributions in P and Q.
     """
+
+    # numpyify distributions
+    P = np.array(P)
+    Q = np.array(Q)
+
     # Check shape of distributions
     if P.shape != Q.shape:
         raise
@@ -44,6 +67,7 @@ def KL_divergence(P, Q, base=2):
 
     # change units to base
     divergence /= np.log(base)
+
     return divergence
 
     
@@ -53,20 +77,25 @@ def Q_from_assignments(
     """Generates the reference matrix for relative entropy calculations
        from an assignments matrix.
     """
+
     # determine prior
     if prior_counts is None:
         total_counts = np.sum([len(ass) - 1 for ass in assignments])
         prior_counts = 1 / total_counts
+
     # get counts matrix
     Q_counts = assigns_to_counts(
         assignments, n_states=n_states, lag_time=lag_time)
+
     # add prior counts
     Q_counts = np.array(Q_counts.todense()) + prior_counts
+
     # compute transition probability matrix
     # disable warning from mle's calculation of eq_probs
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         _, Q_prob, _ = builder(Q_counts, calculate_eq_probs=False)
+
     return Q_prob
 
  
@@ -111,18 +140,22 @@ def state_relative_entropy(
         This specified the units of the output, i.e. base 2 will be in
         bits and base e will be in nats.
     """
+
     # number of state in MSM
     n_states = P.shape[0]
     if state_subset is None:
         state_subset = ...
+
     # check inputs
     if (Q is None) and (assignments is None):
         print('must specify Q or calculate Q from assignments')
     elif (Q is None):
         Q = Q_from_assignments(
             assignments, n_states=n_states, **kwargs)
+
     # obtain relative entropy matrix
     rel_entropy_mat = KL_divergence(P, Q, base=base)
+
     return rel_entropy_mat[state_subset]*weights
 
 
@@ -168,17 +201,24 @@ def relative_entropy(
         This specified the units of the output, i.e. base 2 will be in
         bits and base e will be in nats.
     """
+
     # determine the number of states from the reference MSM
     n_states = P.shape[0]
+
     # calculate populations of reference matix if not provided
     if state_subset is None:
         state_subset = ...
     if populations is None:
         populations = eq_probs(P)[state_subset]
         populations /= populations.sum()
-    # calculate the KL divergence for each state
+
+    # calculate the KL divergence for each state, weighted by the
+    # populations of P
     rel_entropy_mat = state_relative_entropy(
         P, Q=Q, assignments=assignments, weights=populations,
         state_subset=state_subset, base=base, **kwargs)
+
+    # sum over relative entropy mat
     rel_entropy = np.sum(rel_entropy_mat)
+
     return rel_entropy
