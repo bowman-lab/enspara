@@ -63,7 +63,7 @@ def mle(C, prior_counts=None, calculate_eq_probs=True):
     # a counts matrix to take integers?
     C = C.astype('double')
 
-    if prior_counts:
+    if prior_counts is not None:
         C += prior_counts
 
     sparsetype = np.array
