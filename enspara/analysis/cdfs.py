@@ -92,7 +92,11 @@ def _convert_atom_names(top, apairs):
         are converted into index numbers.
     """
     # Make a copy of apairs
-    new_apairs = np.array(apairs, copy=True)
+    new_apairs = np.array(
+        [
+            [
+                np.copy(eq_atoms) for eq_atoms in apair]
+            for apair in apairs])
     # Iterate over all elements and convert when necessary
     for dist_pair_ii in range(len(apairs)):
         dist_pair = apairs[dist_pair_ii]
@@ -153,10 +157,10 @@ def compute_trj_distances(trj, apairs, min_dist=True):
         Distances between specified pairs of atoms
     """
     top = trj.topology
-    apairs = _convert_atom_names(top, apairs)
+    new_apairs = _convert_atom_names(top, apairs)
     dists = []
-    for num in range(len(apairs)):
-        dpairs = itertools.product(apairs[num][0], apairs[num][1])
+    for num in range(len(new_apairs)):
+        dpairs = itertools.product(new_apairs[num][0], new_apairs[num][1])
         dists_tmp = md.compute_distances(trj, atom_pairs=dpairs)
         if min_dist:
             dists.append(dists_tmp.min(axis=1))
