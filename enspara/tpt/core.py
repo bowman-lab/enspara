@@ -74,10 +74,6 @@ def committors(tprob, sources, sinks):
 
     # (I-Q)
     I_m_Q = _I_m_Q(tprob, all_absorbing, n_states=n_states)
-#    I_m_Q = np.eye(n_states) - tprob
-#    I_m_Q[:, all_absorbing] = 0
-#    I_m_Q[all_absorbing, :] = 0
-#    I_m_Q[all_absorbing, all_absorbing] = 1.0
     
     # solves for committors: committors = N*R, where N = (I-Q)^-1
     committors = np.linalg.solve(I_m_Q, R).flatten()
@@ -130,10 +126,6 @@ def mfpts(tprob, sinks=None, populations=None, lagtime=1.):
 
         # calculates (I-Q) to solve t
         I_m_Q = _I_m_Q(tprob, sinks, n_states=n_states)
-#        I_m_Q = np.eye(n_states) - tprob
-#        I_m_Q[:, sinks] = 0
-#        I_m_Q[sinks, :] = 0
-#        I_m_Q[sinks, sinks] = 1.0
 
         # solve for t and multiply by lagtime
         c = np.ones(n_states)
