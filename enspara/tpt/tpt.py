@@ -18,7 +18,7 @@ from . import committors
 from ..msm.transition_matrices import eq_probs
 
 
-__all__ = ['fluxes', 'net_fluxes']
+__all__ = ['reactive_fluxes', 'net_fluxes', 'reactive_populations']
 
 
 def _get_data_from_tprob(
