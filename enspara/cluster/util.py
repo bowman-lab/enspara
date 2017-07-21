@@ -204,7 +204,12 @@ def load_frames(filenames, indices, **kwargs):
 
     centers = []
     for i, j in indices:
-        c = md.load_frame(filenames[i], index=j*stride, **kwargs)
+        try:
+            c = md.load_frame(filenames[i], index=j*stride, **kwargs)
+        except ValueError:
+            raise ImproperlyConfigured(
+                'Failed to load frame {fr} of {fn} using args {kw}.'.format(
+                    fn=filenames[i], fr=j*stride, kw=kwargs))
         centers.append(c)
 
     return centers

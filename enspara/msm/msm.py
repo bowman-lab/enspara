@@ -64,10 +64,11 @@ class MSM:
             sliding_window=self.sliding_window)
 
         if self.trim:
+            original_state_count = tcounts.shape[0]
             self.mapping_, tcounts = trim_disconnected(tcounts)
             logger.info("After ergodic trimming, %s of %s states remain",
                         len(self.mapping_.to_original),
-                        len(self.mapping_.to_mapped))
+                        original_state_count)
         else:
             self.mapping_ = TrimMapping(zip(range(tcounts.shape[0]),
                                             range(tcounts.shape[0])))

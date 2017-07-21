@@ -8,6 +8,8 @@ import time
 import numpy as np
 import mdtraj as md
 
+from enspara import exception
+
 from enspara.cluster.util import assign_to_nearest_center
 from enspara.util import array as ra
 
@@ -30,10 +32,10 @@ def process_command_line(argv):
         '--trajectories', required=True, nargs="+", action='append',
         help="The aligned xtc files to cluster.")
     parser.add_argument(
-        '--topology', required=True, action='append',
+        '--topology', required=True, action='append', dest='topologies',
         help="The topology file for the trajectories.")
     parser.add_argument(
-        '--atoms', default='name C or name O or name CA or name N or name CB',
+        '--atoms', default="(name CA or name C or name N or name CB)",
         help="The atoms from the trajectories (using MDTraj atom-selection"
              "syntax) to cluster based upon.")
     parser.add_argument(
@@ -48,6 +50,10 @@ def process_command_line(argv):
 
     args = parser.parse_args(argv[1:])
 
+    if len(args.topologies) != len(args.trajectories):
+        raise exception.ImproperlyConfigured(
+            "The number of --topology and --trajectory flags must agree.")
+
     if args.output_path is None:
         args.output_path = os.path.dirname(args.centers)
 
@@ -55,6 +61,15 @@ def process_command_line(argv):
 
 
 def reassign(topologies, trajectories, atoms, centers):
+
+    if len(topologies) != len(trajectories):
+        raise exception.ImproperlyConfigured(
+            "Number of topologies (%s) didn't match number of sets of "
+            "trajectories (%s)." % (len(topologies), len(trajectories)))
+    if len(topologies) != len(atoms):
+        raise exception.ImproperlyConfigured(
+            "Number of topologies (%s) didn't match number of atom selection "
+            "strings (%s)." % (len(topologies), len(atoms)))
 
     logger.info("Reassigning dataset of %s trajectories and %s topologies.",
                 sum(len(t) for t in trajectories), len(topologies))
@@ -64,7 +79,8 @@ def reassign(topologies, trajectories, atoms, centers):
     tick = time.clock()
 
     try:
-        for i, (topfile, trjfiles) in enumerate(zip(topologies, trajectories)):
+        for i, (topfile, trjfiles, atoms) in enumerate(
+                zip(topologies, trajectories, atoms)):
             top = md.load(topfile).top
 
             for trjfile in trjfiles:
@@ -114,7 +130,7 @@ def main(argv=None):
     centers = [c.atom_slice(c.top.select(args.atoms)) for c in centers]
 
     assig, dist = reassign(
-        args.topology, args.trajectories, args.atoms,
+        args.topologies, args.trajectories, [args.atoms]*len(args.topologies),
         centers=centers)
 
     fstem = os.path.join(args.output_path, args.output_tag)
