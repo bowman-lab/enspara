@@ -5,8 +5,11 @@ import logging
 import pickle
 import time
 
+from functools import partial
+
 import numpy as np
 import mdtraj as md
+from sklearn.externals.joblib import Parallel, delayed
 
 from enspara import exception
 
@@ -43,6 +46,9 @@ def process_command_line(argv):
         help="Output path for results (distances, assignments). "
              "Default is in the same directory as the input centers.")
     parser.add_argument(
+        '-j', '--n_procs', default=None, type=int,
+        help="The number of cores to use while reassigning.")
+    parser.add_argument(
         '--output-tag', default='',
         help="An optional extra string prepended to output filenames (useful"
              "for giving this choice of parameters a name to separate it from"
@@ -60,7 +66,27 @@ def process_command_line(argv):
     return args
 
 
-def reassign(topologies, trajectories, atoms, centers):
+def reassign_single(trjfile, topfile, centers, atoms):
+    """Reassign a single trjfile using centers and the selection atoms.
+    """
+
+    top = md.load(topfile).top
+    trj = md.load(trjfile, top=top, atom_indices=top.select(atoms))
+
+    try:
+        _, single_assignments, single_distances = \
+            assign_to_nearest_center(
+                trj, centers, partial(md.rmsd, parallel=False))
+
+    except ValueError:
+        raise DataInvalid(
+            "Failed to assign trajectory %s with topology %s" %
+            (trjfile, topfile))
+
+    return single_assignments, single_distances
+
+
+def reassign(topologies, trajectories, atoms, centers, n_procs=None):
 
     if len(topologies) != len(trajectories):
         raise exception.ImproperlyConfigured(
@@ -73,33 +99,19 @@ def reassign(topologies, trajectories, atoms, centers):
 
     logger.info("Reassigning dataset of %s trajectories and %s topologies.",
                 sum(len(t) for t in trajectories), len(topologies))
-    assignments = []
-    distances = []
 
     tick = time.clock()
 
-    try:
-        for i, (topfile, trjfiles, atoms) in enumerate(
-                zip(topologies, trajectories, atoms)):
-            top = md.load(topfile).top
+    targets = []
+    for topfile, trjfiles, atoms in zip(topologies, trajectories, atoms):
+        targets.extend([(trjfile, topfile, atoms) for trjfile in trjfiles])
 
-            for trjfile in trjfiles:
-                trj = md.load(trjfile, top=top, atom_indices=top.select(atoms))
+    reassignments = Parallel(n_jobs=n_procs)(
+        delayed(reassign_single)(trj, top, centers, atoms)
+        for trj, top, atoms in targets)
 
-                try:
-                    _, single_assignments, single_distances = \
-                        assign_to_nearest_center(trj, centers, md.rmsd)
-                except ValueError:
-                    print(trj)
-                    print(centers)
-                    raise
-
-                assignments.append(single_assignments)
-                distances.append(single_distances)
-    except:
-        print("topfile was", topfile)
-        print("trjfile was", trjfile)
-        raise
+    assignments = [r[0] for r in reassignments]
+    distances = [r[1] for r in reassignments]
 
     tock = time.clock()
     logger.info("Reassignment took %s seconds.", tock - tick)
@@ -131,7 +143,7 @@ def main(argv=None):
 
     assig, dist = reassign(
         args.topologies, args.trajectories, [args.atoms]*len(args.topologies),
-        centers=centers)
+        centers=centers, n_procs=args.n_procs)
 
     fstem = os.path.join(args.output_path, args.output_tag)
     ra.save(fstem+'-distances.h5', dist)
