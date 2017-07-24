@@ -1,5 +1,5 @@
 # Author: Gregory R. Bowman <gregoryrbowman@gmail.com>
-# Contributors:
+# Contributors: Justin R. Porter <justinrporter@gmail.com>
 # Copyright (c) 2016, Washington University in St. Louis
 # All rights reserved.
 # Unauthorized copying of this file, via any medium is strictly prohibited
@@ -14,9 +14,10 @@ import numpy as np
 from sklearn.externals.joblib import Parallel, delayed
 
 from .. import exception
-from .. import geometry
 from .. import info_theory
+
 from . import disorder
+from .featurizers import RotamerFeaturizer
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -64,24 +65,11 @@ def cards(trajectories, buffer_width=15, n_procs=1):
 
     logger.debug("Assigning to rotameric states")
 
-    # to support both lists and generators, we use an iterator over
-    # trajectories, so we have a consistent API.
-    trj_iter = iter(trajectories)
+    r = RotamerFeaturizer(buffer_width=buffer_width, n_procs=n_procs)
+    r.fit(trajectories)
 
-    # we need the first trajectory so we can call all_rotamers and get
-    # atom_inds and rotamer_n_states
-    first_trj = next(trj_iter)
-    rotamer_trj, atom_inds, rotamer_n_states = geometry.all_rotamers(
-        first_trj, buffer_width=buffer_width)
-
-    # build the list of all of the rotamerized trajectories, starting
-    # with the one we just calculated above.
-    rotamer_trajs = [rotamer_trj]
-    rotamer_trajs.extend(
-        [geometry.all_rotamers(t, buffer_width=buffer_width)[0]
-         for t in trj_iter])
-
-    return mi_matrices(rotamer_trajs, rotamer_n_states, n_procs) + (atom_inds,)
+    return mi_matrices(r.feature_trajectories_,
+                       r.n_feature_states_, n_procs) + (r.atom_indices_,)
 
 
 def mi_matrices(feature_trajs, n_feature_states, n_procs):
