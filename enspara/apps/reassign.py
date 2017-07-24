@@ -6,6 +6,7 @@ import pickle
 import time
 
 from functools import partial
+from multiprocessing import cpu_count
 
 import numpy as np
 import mdtraj as md
@@ -46,7 +47,7 @@ def process_command_line(argv):
         help="Output path for results (distances, assignments). "
              "Default is in the same directory as the input centers.")
     parser.add_argument(
-        '-j', '--n_procs', default=None, type=int,
+        '-j', '--n_procs', default=cpu_count(), type=int,
         help="The number of cores to use while reassigning.")
     parser.add_argument(
         '--output-tag', default='',
@@ -127,11 +128,10 @@ def reassign(topologies, trajectories, atoms, centers, n_procs=None):
         return ra.RaggedArray(assignments), ra.RaggedArray(distances)
 
 
-def extract_center_atoms(i, centers, atoms):
+def extract_center_atoms(c, atoms):
     """Slice down a single center (number i) from a centers list using
     atoms.
     """
-    c = centers[i]
     return c.atom_slice(c.top.select(atoms))
 
 
@@ -148,8 +148,7 @@ def main(argv=None):
                 len(centers), centers[0].n_atoms)
 
     centers = Parallel(n_jobs=args.n_procs)(
-        delayed(extract_center_atoms)(i, centers, args.atoms)
-        for i in range(len(centers)))
+        delayed(extract_center_atoms)(ctr, args.atoms) for ctr in centers)
     logger.info("Sliced %s centers down to %s atoms each.",
                 len(centers), centers[0].n_atoms)
 
