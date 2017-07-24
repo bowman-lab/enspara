@@ -183,6 +183,86 @@ def load_as_concatenated(filenames, lengths=None, processes=None,
     return lengths, xyz
 
 
+def concatenate_trjs(trj_list, atoms=None, n_procs=None):
+    """Convert a list of trajectories into a single trajectory building
+    a concatenated array in parallel.
+
+    Parameters
+    ----------
+    trj_list : array-like, shape=(n_trjs,)
+        The list of md.Trajectory objects
+    atoms : str, default=None
+        A selection in the MDTraj DSL for atoms to slice out from each
+        trajectory in `trj_list`. If none, no slice is performed.
+    n_procs : int, default=None
+        Number of parallel processes to use when performing this
+        operation.
+
+    Returns
+    -------
+    trj : md.Trajectory
+        A concatenated trajectory
+    """
+
+    example_center = trj_list[0]
+    if atoms is not None:
+        example_center = example_center.atom_slice(
+            example_center.top.select(atoms))
+
+    intervals = np.cumsum(np.array([0] + [len(t) for t in trj_list]))
+    full_shape = (sum(map(len, trj_list)), example_center.n_atoms, 3)
+
+    shared_xyz = mp.Array(ctypes.c_double,
+                          full_shape[0] * full_shape[1] * full_shape[2],
+                          lock=False)
+
+    with closing(mp.Pool(processes=n_procs, initializer=_init,
+                         initargs=(shared_xyz,))) as p:
+        func = partial(_slice_and_insert_xyz, atoms=atoms,
+                       arr_shape=full_shape)
+        p.map(func, [(intervals[i], intervals[i+1], t)
+                     for i, t in enumerate(trj_list)])
+    p.join()
+
+    xyz = _tonumpyarray(shared_xyz).reshape(full_shape)
+    return md.Trajectory(xyz, topology=example_center.top)
+
+
+def _slice_and_insert_xyz(spec, arr_shape, atoms):
+    """Slice out atoms and insert xyz of trajectory into larger array.
+
+    Parameters
+    ----------
+    spec : tuple, shape=(2,)
+        The index,
+    arr_shape : tuple, shape=(3,)
+        The shape of the master array.
+    atoms : int, default=None
+        Number of parallel processes to use when performing this
+        operation.
+
+    Returns
+    -------
+    shape : tuple, shape=(3,)
+        The sizes of the inserted array
+    """
+    start, end, c = spec
+
+    if atoms is not None:
+        c = c.atom_slice(c.top.select(atoms))
+
+    if c.xyz.shape[1:] != arr_shape[1:]:
+        raise DataInvalid(
+            'Trajectory at %s had improper shape %s, expected %s.' %
+            ((start, end), c.xyz.shape, arr_shape))
+
+    # reshape shared array and set it.
+    arr = _tonumpyarray(shared_array).reshape(arr_shape)
+    arr[start:end] = c.xyz
+
+    return c.xyz.shape
+
+
 def _init(shared_array_):
     # for some reason, the shared array must be inhereted, not passed
     # as an argument

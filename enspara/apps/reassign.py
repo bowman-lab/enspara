@@ -10,11 +10,13 @@ from multiprocessing import cpu_count
 
 import numpy as np
 import mdtraj as md
+
 from sklearn.externals.joblib import Parallel, delayed
 
 from enspara import exception
 
 from enspara.cluster.util import assign_to_nearest_center
+from enspara.util.load import concatenate_trjs
 from enspara.util import array as ra
 
 
@@ -107,6 +109,9 @@ def reassign(topologies, trajectories, atoms, centers, n_procs=None):
     for topfile, trjfiles, atoms in zip(topologies, trajectories, atoms):
         targets.extend([(trjfile, topfile, atoms) for trjfile in trjfiles])
 
+    logger.info("Dispatching %s reassignment jobs across %s cores",
+                len(targets), n_procs)
+
     reassignments = Parallel(n_jobs=n_procs)(
         delayed(reassign_single)(trj, top, centers, atoms)
         for trj, top, atoms in targets)
@@ -128,29 +133,13 @@ def reassign(topologies, trajectories, atoms, centers, n_procs=None):
         return ra.RaggedArray(assignments), ra.RaggedArray(distances)
 
 
-def extract_center_atoms(c, atoms):
-    """Slice down a single center (number i) from a centers list using
-    atoms.
-    """
-    return c.atom_slice(c.top.select(atoms))
-
-
 def main(argv=None):
     '''Run the driver script for this module. This code only runs if we're
     being run as a script. Otherwise, it's silent and just exposes methods.'''
     args = process_command_line(argv)
 
     with open(args.centers, 'rb') as f:
-        centers = pickle.load(f)
-
-    assert(all(centers[0].n_atoms == c.n_atoms for c in centers))
-    logger.info("Loaded %s centers with %s atoms each.",
-                len(centers), centers[0].n_atoms)
-
-    centers = Parallel(n_jobs=args.n_procs)(
-        delayed(extract_center_atoms)(ctr, args.atoms) for ctr in centers)
-    logger.info("Sliced %s centers down to %s atoms each.",
-                len(centers), centers[0].n_atoms)
+        centers = concatenate_trjs(pickle.load(f), args.atoms, args.n_procs)
 
     assig, dist = reassign(
         args.topologies, args.trajectories, [args.atoms]*len(args.topologies),

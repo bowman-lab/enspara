@@ -1,6 +1,7 @@
 import unittest
 import logging
 import tempfile
+import warnings
 
 import numpy as np
 import mdtraj as md
@@ -11,7 +12,7 @@ from nose.tools import assert_raises, assert_equals, assert_is, assert_true
 from numpy.testing import assert_array_equal
 
 from . import array as ra
-from .load import load_as_concatenated
+from .load import load_as_concatenated, concatenate_trjs
 
 from ..exception import DataInvalid, ImproperlyConfigured
 
@@ -397,9 +398,9 @@ class TestParallelLoad(unittest.TestCase):
     def test_load_as_concatenated_noargs(self):
         '''It's ok if no args are passed.'''
 
-        t1 = md.load(self.top_fname, top=self.top)
-        t2 = md.load(self.top_fname, top=self.top)
-        t3 = md.load(self.top_fname, top=self.top)
+        t1 = md.load(self.top_fname)
+        t2 = md.load(self.top_fname)
+        t3 = md.load(self.top_fname)
 
         lengths, xyz = load_as_concatenated([self.top_fname]*3)
 
@@ -489,6 +490,58 @@ class TestParallelLoad(unittest.TestCase):
                 [self.trj_fname]*3,
                 top=self.top,
                 lengths=[len(t) for t in [t1, t2[::2], t3]])
+
+
+class TestConcatenateTrajs(unittest.TestCase):
+
+    def setUp(self):
+        self.trj_fname = get_fn('frame0.xtc')
+        self.top_fname = get_fn('native.pdb')
+        self.top = md.load(self.top_fname).top
+
+        logging.getLogger('enspara.util.load').setLevel(logging.DEBUG)
+
+    def test_concat_simple(self):
+
+        trjlist = [md.load(self.top_fname)] * 10
+        trj = concatenate_trjs(trjlist)
+
+        assert_equals(len(trjlist), len(trj))
+
+        for trjframe, trjlist_item in zip(trj, trjlist):
+            assert_array_equal(trjframe.xyz, trjlist_item.xyz)
+
+
+    def test_concat_atoms(self):
+
+        ATOMS = 'name N or name C or name CA'
+        trjlist = [md.load(self.top_fname)] * 10
+        trj = concatenate_trjs(trjlist, atoms=ATOMS)
+
+        assert_equals(len(trjlist), len(trj))
+
+        for trjframe, trjlist_item in zip(trj, trjlist):
+            sliced_item = trjlist_item.atom_slice(
+                trjlist_item.top.select(ATOMS))
+            assert_array_equal(trjframe.xyz, sliced_item.xyz)
+
+
+    def test_different_lengths(self):
+
+        trjlist = [md.load(self.top_fname)] * 5
+        trjlist.append(md.load(self.trj_fname, top=self.top_fname))
+
+        trj = concatenate_trjs(trjlist, atoms='name CA or name N or name C')
+
+        assert_equals(trj.xyz.shape, (506, 6, 3))
+
+    def test_mismatched(self):
+
+        trjlist = [md.load(self.top_fname)] * 5
+        trjlist.append(trjlist[0].atom_slice(np.arange(10)))
+
+        with assert_raises(DataInvalid):
+            trj = concatenate_trjs(trjlist)
 
 
 class TestPartition(unittest.TestCase):
