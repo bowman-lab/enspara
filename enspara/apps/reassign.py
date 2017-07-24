@@ -127,6 +127,14 @@ def reassign(topologies, trajectories, atoms, centers, n_procs=None):
         return ra.RaggedArray(assignments), ra.RaggedArray(distances)
 
 
+def extract_center_atoms(i, centers, atoms):
+    """Slice down a single center (number i) from a centers list using
+    atoms.
+    """
+    c = centers[i]
+    return c.atom_slice(c.top.select(atoms))
+
+
 def main(argv=None):
     '''Run the driver script for this module. This code only runs if we're
     being run as a script. Otherwise, it's silent and just exposes methods.'''
@@ -139,7 +147,11 @@ def main(argv=None):
     logger.info("Loaded %s centers with %s atoms each.",
                 len(centers), centers[0].n_atoms)
 
-    centers = [c.atom_slice(c.top.select(args.atoms)) for c in centers]
+    centers = Parallel(n_jobs=args.n_procs)(
+        delayed(extract_center_atoms)(i, centers, args.atoms)
+        for i in range(len(centers)))
+    logger.info("Sliced %s centers down to %s atoms each.",
+                len(centers), centers[0].n_atoms)
 
     assig, dist = reassign(
         args.topologies, args.trajectories, [args.atoms]*len(args.topologies),
