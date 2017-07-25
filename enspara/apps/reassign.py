@@ -5,9 +5,6 @@ import logging
 import pickle
 import time
 
-from functools import partial
-from multiprocessing import cpu_count
-
 import psutil
 
 import numpy as np
@@ -52,7 +49,7 @@ def process_command_line(argv):
         help="Output path for results (distances, assignments). "
              "Default is in the same directory as the input centers.")
     parser.add_argument(
-        '-j', '--n_procs', default=cpu_count(), type=int,
+        '-j', '--n_procs', default=psutil.cpu_count(), type=int,
         help="The number of cores to use while reassigning.")
     parser.add_argument(
         '--output-tag', default='',
@@ -101,7 +98,7 @@ def determine_batch_size(n_atoms, dtype_bytes):
 
     mem = psutil.virtual_memory()
 
-    batch_size = int(mem.available * 0.9 / bytes_per_frame)
+    batch_size = int(mem.total * 0.9 / bytes_per_frame)
 
     logger.info('Batch size set to %s frames (~%.2f GB).', batch_size,
                 round(batch_size * bytes_per_frame / (1024**3), 1))
@@ -111,10 +108,12 @@ def determine_batch_size(n_atoms, dtype_bytes):
 
 def batch_reassign(targets, centers, lengths, batch_size=None, n_procs=None):
 
-    bytes_per_float = centers[0].xyz.dtype.itemsize
+    example_center = centers[0]
+
+    bytes_per_float = example_center.xyz.dtype.itemsize
     if batch_size is None:
         batch_size = determine_batch_size(
-            centers[0].n_atoms, bytes_per_float)
+            example_center.n_atoms, bytes_per_float)
 
     if batch_size < max(lengths):
         raise exception.ImproperlyConfigured(
@@ -142,7 +141,7 @@ def batch_reassign(targets, centers, lengths, batch_size=None, n_procs=None):
 
         _, batch_assignments, batch_distances = \
             assign_to_nearest_center(
-                md.Trajectory(xyz, topology=centers[0].top),
+                md.Trajectory(xyz, topology=example_center.top),
                 centers, md.rmsd)
 
         assignments.extend(partition_list(batch_assignments, batch_lengths))
