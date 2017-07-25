@@ -8,6 +8,8 @@ import time
 from functools import partial
 from multiprocessing import cpu_count
 
+import psutil
+
 import numpy as np
 import mdtraj as md
 
@@ -15,8 +17,9 @@ from sklearn.externals.joblib import Parallel, delayed
 
 from enspara import exception
 
-from enspara.cluster.util import assign_to_nearest_center
-from enspara.util.load import concatenate_trjs
+from enspara.cluster.util import assign_to_nearest_center, partition_list
+from enspara.util.load import (concatenate_trjs, sound_trajectory,
+                               load_as_concatenated)
 from enspara.util import array as ra
 
 
@@ -66,31 +69,90 @@ def process_command_line(argv):
     if args.output_path is None:
         args.output_path = os.path.dirname(args.centers)
 
+    for trjset in args.trajectories:
+        for trj in trjset:
+            f = open(trj, 'r')
+            f.close()
+
     return args
 
 
-def reassign_single(trjfile, topfile, centers, atoms):
-    """Reassign a single trjfile using centers and the selection atoms.
+def compute_batches(lengths, batch_size):
+    """Compute batches (slices into lengths) of combined length at most
+    size batch_size.
     """
 
-    top = md.load(topfile).top
-    trj = md.load(trjfile, top=top, atom_indices=top.select(atoms))
+    batch_sizes = [[]]
+    batch_indices = [[]]
+    for i, l in enumerate(lengths):
+        if sum(batch_sizes[-1]) + l < batch_size:
+            batch_sizes[-1].append(l)
+            batch_indices[-1].append(i)
+        else:
+            batch_sizes.append([l])
+            batch_indices.append([i])
 
-    # dirty dirty hack to get around mdtraj/mdtraj#1280 -- 07/2017
-    if centers.xyz.flags['WRITEABLE'] == False:
-        centers.xyz = np.array(centers.xyz, copy=True)
+    return batch_indices
 
-    try:
-        _, single_assignments, single_distances = \
+
+def determine_batch_size(n_atoms, dtype_bytes):
+    floats_per_frame = n_atoms * 3
+    bytes_per_frame = floats_per_frame * dtype_bytes
+
+    mem = psutil.virtual_memory()
+
+    batch_size = int(mem.available * 0.9 / bytes_per_frame)
+
+    logger.info('Batch size set to %s frames (~%.2f GB).', batch_size,
+                round(batch_size * bytes_per_frame / (1024**3), 1))
+
+    return batch_size
+
+
+def batch_reassign(targets, centers, lengths, batch_size=None, n_procs=None):
+
+    bytes_per_float = centers[0].xyz.dtype.itemsize
+    if batch_size is None:
+        batch_size = determine_batch_size(
+            centers[0].n_atoms, bytes_per_float)
+
+    if batch_size < max(lengths):
+        raise exception.ImproperlyConfigured(
+            'Batch size of %s was smaller than largest file (size %s).' %
+            (batch_size, max(lengths)))
+
+    batches = compute_batches(lengths, batch_size)
+
+    assignments = []
+    distances = []
+
+    for i, batch_indices in enumerate(batches):
+        tick = time.perf_counter()
+        logger.info("Starting batch %s of %s", i, len(batches))
+        batch_targets = [targets[i] for i in batch_indices]
+
+        trajectory_files = [tfile for tfile, top, aids in batch_targets]
+
+        batch_lengths, xyz = load_as_concatenated(
+            [tfile for tfile, top, aids in batch_targets],
+            lengths=[lengths[i] for i in batch_indices],
+            args=[{'top': top, 'atom_indices': aids}
+                  for t, top, aids in batch_targets],
+            processes=n_procs)
+
+        _, batch_assignments, batch_distances = \
             assign_to_nearest_center(
-                trj, centers, partial(md.rmsd, parallel=False))
+                md.Trajectory(xyz, topology=centers[0].top),
+                centers, md.rmsd)
 
-    except ValueError:
-        raise exception.DataInvalid(
-            "Failed to assign trajectory %s with topology %s" %
-            (trjfile, topfile))
+        assignments.extend(partition_list(batch_assignments, batch_lengths))
+        distances.extend(partition_list(batch_distances, batch_lengths))
 
-    return single_assignments, single_distances
+        logger.info("Finished batch %s of %s in %.1f seconds.",
+                    i, len(batches), time.perf_counter() - tick)
+
+
+    return assignments, distances
 
 
 def reassign(topologies, trajectories, atoms, centers, n_procs=None):
@@ -104,24 +166,31 @@ def reassign(topologies, trajectories, atoms, centers, n_procs=None):
             "Number of topologies (%s) didn't match number of atom selection "
             "strings (%s)." % (len(topologies), len(atoms)))
 
-    logger.info("Reassigning dataset of %s trajectories and %s topologies.",
-                sum(len(t) for t in trajectories), len(topologies))
-
     tick = time.perf_counter()
 
     targets = []
     for topfile, trjfiles, atoms in zip(topologies, trajectories, atoms):
-        targets.extend([(trjfile, topfile, atoms) for trjfile in trjfiles])
+        t = md.load(topfile).top
+        atom_ids = t.select(atoms)
+        for trjfile in trjfiles:
+            assert os.path.exists(trjfile)
+            targets.append((trjfile, t, atom_ids))
 
-    logger.info("Dispatching %s reassignment jobs across %s cores",
-                len(targets), n_procs)
+    tick_sounding = time.perf_counter()
+    logger.info("Sounding dataset of %s trajectories and %s topologies.",
+                sum(len(t) for t in trajectories), len(topologies))
 
-    reassignments = Parallel(n_jobs=n_procs, verbose=10)(
-        delayed(reassign_single)(trj, top, centers, atoms)
-        for trj, top, atoms in targets)
+    lengths = Parallel(n_jobs=n_procs)(
+        delayed(sound_trajectory)(f, top=top, atom_indices=aids)
+        for f, top, aids in targets)
 
-    assignments = [r[0] for r in reassignments]
-    distances = [r[1] for r in reassignments]
+    logger.info("Sounded %s trajectories with %s frames (median length "
+                "%s) in %.1f seconds.",
+                len(lengths), sum(lengths), np.median(lengths),
+                time.perf_counter() - tick_sounding)
+
+    assignments, distances = batch_reassign(
+        targets, centers, lengths, n_procs=n_procs)
 
     tock = time.perf_counter()
     logger.info("Reassignment took %.1f seconds.", tock - tick)

@@ -132,9 +132,6 @@ def load_as_concatenated(filenames, lengths=None, processes=None,
         "Configuring load calls with args[0] == [%s ... %s]",
         args[0], args[-1])
 
-    # cast to list to handle generators
-    filenames = list(filenames)
-
     if lengths is None:
         logger.debug("Sounding %s trajectories with %s processes.",
                      len(filenames), processes)
@@ -169,6 +166,7 @@ def load_as_concatenated(filenames, lengths=None, processes=None,
 
     # gather exceptions.
     shapes = proc.get()
+
     if sum(s[0] for s in shapes) != full_shape[0]:
         raise DataInvalid(
             "The provided lengths (n=%s, total frames %s) weren't correct. "
