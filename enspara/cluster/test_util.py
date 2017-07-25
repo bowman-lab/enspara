@@ -3,9 +3,10 @@ import mdtraj as md
 
 from nose.tools import assert_equal, assert_is, assert_is_not
 from mdtraj.testing import get_fn
-from numpy.testing import assert_array_equal
+from numpy.testing import assert_array_equal, assert_allclose
 
-from enspara.cluster.util import find_cluster_centers, ClusterResult
+from enspara.cluster.util import (find_cluster_centers, ClusterResult,
+                                  assign_to_nearest_center)
 from enspara.util import array as ra
 
 from . import save_states
@@ -107,3 +108,41 @@ def test_find_cluster_centers():
     for indx in center_inds:
         expected_xyz = many_trjs[indx[0]][indx[1]].xyz
         assert np.any(expected_xyz == np.array([c.xyz for c in centers]))
+
+
+def test_assign_to_nearest_center_few_centers():
+
+    # assign_to_nearest_center takes two code paths, one for
+    # n_centers > n_frames and one for n_frames > n_centers. This tests
+    # the latter.
+    trj = md.load(get_fn('frame0.xtc'), top=get_fn('native.pdb'))
+    center_frames = [0, int(len(trj)/3), int(len(trj)/2)]
+
+    ctr_inds, assigns, distances = assign_to_nearest_center(trj, trj[center_frames], md.rmsd)
+
+    alldists = np.zeros((len(center_frames), len(trj)))
+    for i, center_frame in enumerate(trj[center_frames]):
+        alldists[i] = md.rmsd(trj, center_frame)
+
+    assert_array_equal(ctr_inds, center_frames)
+    assert_allclose(np.min(alldists, axis=0), distances, atol=1e-3)
+    assert_array_equal(np.argmin(alldists, axis=0), assigns)
+
+
+def test_assign_to_nearest_center_many_centers():
+
+    # assign_to_nearest_center takes two code paths, one for
+    # n_centers > n_frames and one for n_frames > n_centers. This tests
+    # the former.
+    trj = md.load(get_fn('frame0.xtc'), top=get_fn('native.pdb'))
+    center_frames = list(range(len(trj)))*2
+
+    ctr_inds, assigns, distances = assign_to_nearest_center(trj, trj[center_frames], md.rmsd)
+
+    alldists = np.zeros((len(center_frames), len(trj)))
+    for i, center_frame in enumerate(trj[center_frames]):
+        alldists[i] = md.rmsd(trj, center_frame)
+
+    assert_array_equal(ctr_inds, np.unique(center_frames))
+    assert_allclose(np.min(alldists, axis=0), distances, atol=1e-3)
+    assert_array_equal(np.argmin(alldists, axis=0), assigns)

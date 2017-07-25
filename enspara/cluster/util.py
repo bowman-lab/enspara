@@ -161,12 +161,29 @@ def assign_to_nearest_center(traj, cluster_centers, distance_method):
     distances.fill(np.inf)
     cluster_center_inds = []
 
-    for i, center in enumerate(cluster_centers):
-        dist = distance_method(traj, center)
-        inds = (dist < distances)
-        distances[inds] = dist[inds]
-        assignments[inds] = i
-        cluster_center_inds.append(np.argmin(dist))
+    # if there are more cluster_centers than trajectories, significant
+    # performance benefit can be realized by computing each frame's
+    # distance to ALL cluster centers, rather than the reverse.
+    if len(cluster_centers) > len(traj) and hasattr(cluster_centers, 'xyz'):
+        for i, frame in enumerate(traj):
+            dist = distance_method(cluster_centers, frame)
+            assignments[i] = np.argmin(dist)
+            distances[i] = np.min(dist)
+
+        argsorted_dists = np.argsort(distances)
+        for i in np.unique(assignments):
+            assigned_frames = np.where(assignments == i)[0]
+            ind = assigned_frames[np.argmin(distances[assigned_frames])]
+            cluster_center_inds.append(ind)
+
+    else:
+
+        for i, center in enumerate(cluster_centers):
+            dist = distance_method(traj, center)
+            inds = (dist < distances)
+            distances[inds] = dist[inds]
+            assignments[inds] = i
+            cluster_center_inds.append(np.argmin(dist))
 
     return cluster_center_inds, assignments, distances
 
