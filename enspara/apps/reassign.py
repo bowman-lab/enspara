@@ -76,13 +76,17 @@ def reassign_single(trjfile, topfile, centers, atoms):
     top = md.load(topfile).top
     trj = md.load(trjfile, top=top, atom_indices=top.select(atoms))
 
+    # dirty dirty hack to get around mdtraj/mdtraj#1280 -- 07/2017
+    if centers.xyz.flags['WRITEABLE'] == False:
+        centers.xyz = np.array(centers.xyz, copy=True)
+
     try:
         _, single_assignments, single_distances = \
             assign_to_nearest_center(
                 trj, centers, partial(md.rmsd, parallel=False))
 
     except ValueError:
-        raise DataInvalid(
+        raise exception.DataInvalid(
             "Failed to assign trajectory %s with topology %s" %
             (trjfile, topfile))
 
@@ -103,7 +107,7 @@ def reassign(topologies, trajectories, atoms, centers, n_procs=None):
     logger.info("Reassigning dataset of %s trajectories and %s topologies.",
                 sum(len(t) for t in trajectories), len(topologies))
 
-    tick = time.clock()
+    tick = time.perf_counter()
 
     targets = []
     for topfile, trjfiles, atoms in zip(topologies, trajectories, atoms):
@@ -112,15 +116,15 @@ def reassign(topologies, trajectories, atoms, centers, n_procs=None):
     logger.info("Dispatching %s reassignment jobs across %s cores",
                 len(targets), n_procs)
 
-    reassignments = Parallel(n_jobs=n_procs)(
+    reassignments = Parallel(n_jobs=n_procs, verbose=10)(
         delayed(reassign_single)(trj, top, centers, atoms)
         for trj, top, atoms in targets)
 
     assignments = [r[0] for r in reassignments]
     distances = [r[1] for r in reassignments]
 
-    tock = time.clock()
-    logger.info("Reassignment took %s seconds.", tock - tick)
+    tock = time.perf_counter()
+    logger.info("Reassignment took %.1f seconds.", tock - tick)
 
     if all([len(assignments[0]) == len(a) for a in assignments]):
         logger.info("Trajectory lengths are homogenous. Output will "
@@ -138,8 +142,13 @@ def main(argv=None):
     being run as a script. Otherwise, it's silent and just exposes methods.'''
     args = process_command_line(argv)
 
+    tick = time.perf_counter()
     with open(args.centers, 'rb') as f:
         centers = concatenate_trjs(pickle.load(f), args.atoms, args.n_procs)
+    logger.info('Loaded %s centers with %s atoms using selection "%s" '
+                'in %.1f seconds.',
+                len(centers), centers.n_atoms, args.atoms,
+                time.perf_counter() - tick)
 
     assig, dist = reassign(
         args.topologies, args.trajectories, [args.atoms]*len(args.topologies),
