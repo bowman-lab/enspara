@@ -52,12 +52,20 @@ def process_command_line(argv):
         '-j', '--n_procs', default=psutil.cpu_count(), type=int,
         help="The number of cores to use while reassigning.")
     parser.add_argument(
+        '-m', '--mem-fraction', default=0.9, type=float,
+        help="The fraction of total RAM to use in deciding the batch size.")
+    parser.add_argument(
         '--output-tag', default='',
         help="An optional extra string prepended to output filenames (useful"
              "for giving this choice of parameters a name to separate it from"
              "other clusterings or proteins.")
 
     args = parser.parse_args(argv[1:])
+
+    if args.mem_fraction >= 1 or args.mem_fraction <= 0:
+        raise exception.ImproperlyConfigured(
+            "Flag --mem-fraction must be in range (0, 1). Got %s"
+            % args.mem_fraction)
 
     if len(args.topologies) != len(args.trajectories):
         raise exception.ImproperlyConfigured(
@@ -92,28 +100,27 @@ def compute_batches(lengths, batch_size):
     return batch_indices
 
 
-def determine_batch_size(n_atoms, dtype_bytes):
+def determine_batch_size(n_atoms, dtype_bytes, frac_mem):
     floats_per_frame = n_atoms * 3
     bytes_per_frame = floats_per_frame * dtype_bytes
 
     mem = psutil.virtual_memory()
 
-    batch_size = int(mem.total * 0.9 / bytes_per_frame)
+    batch_size = int(mem.total * frac_mem / bytes_per_frame)
+    batch_gb = batch_size * bytes_per_frame / (1024**3)
 
-    logger.info('Batch size set to %s frames (~%.2f GB).', batch_size,
-                round(batch_size * bytes_per_frame / (1024**3), 1))
-
-    return batch_size
+    return batch_size, batch_gb
 
 
-def batch_reassign(targets, centers, lengths, batch_size=None, n_procs=None):
+def batch_reassign(targets, centers, lengths, frac_mem, n_procs=None):
 
     example_center = centers[0]
 
-    bytes_per_float = example_center.xyz.dtype.itemsize
-    if batch_size is None:
-        batch_size = determine_batch_size(
-            example_center.n_atoms, bytes_per_float)
+    batch_size, batch_gb = determine_batch_size(example_center.n_atoms, example_center.xyz.dtype.itemsize, frac_mem)
+
+    logger.info(
+        'Batch max size set to %s frames (~%.2f GB, %.1f%% of total RAM).' %
+        (batch_size, batch_gb, frac_mem*100))
 
     if batch_size < max(lengths):
         raise exception.ImproperlyConfigured(
@@ -154,8 +161,10 @@ def batch_reassign(targets, centers, lengths, batch_size=None, n_procs=None):
     return assignments, distances
 
 
-def reassign(topologies, trajectories, atoms, centers, n_procs=None):
+def reassign(topologies, trajectories, atoms, centers, frac_mem=0.9,
+             n_procs=None):
 
+    # check input validity
     if len(topologies) != len(trajectories):
         raise exception.ImproperlyConfigured(
             "Number of topologies (%s) didn't match number of sets of "
@@ -167,6 +176,7 @@ def reassign(topologies, trajectories, atoms, centers, n_procs=None):
 
     tick = time.perf_counter()
 
+    # build flat list of targets
     targets = []
     for topfile, trjfiles, atoms in zip(topologies, trajectories, atoms):
         t = md.load(topfile).top
@@ -175,6 +185,7 @@ def reassign(topologies, trajectories, atoms, centers, n_procs=None):
             assert os.path.exists(trjfile)
             targets.append((trjfile, t, atom_ids))
 
+    # determine trajectory length
     tick_sounding = time.perf_counter()
     logger.info("Sounding dataset of %s trajectories and %s topologies.",
                 sum(len(t) for t in trajectories), len(topologies))
@@ -184,12 +195,14 @@ def reassign(topologies, trajectories, atoms, centers, n_procs=None):
         for f, top, aids in targets)
 
     logger.info("Sounded %s trajectories with %s frames (median length "
-                "%s) in %.1f seconds.",
+                "%i frames) in %.1f seconds.",
                 len(lengths), sum(lengths), np.median(lengths),
                 time.perf_counter() - tick_sounding)
 
+    example_center = centers[0]
+
     assignments, distances = batch_reassign(
-        targets, centers, lengths, n_procs=n_procs)
+        targets, centers, lengths, frac_mem=frac_mem, n_procs=n_procs)
 
     tock = time.perf_counter()
     logger.info("Reassignment took %.1f seconds.", tock - tick)
@@ -220,7 +233,7 @@ def main(argv=None):
 
     assig, dist = reassign(
         args.topologies, args.trajectories, [args.atoms]*len(args.topologies),
-        centers=centers, n_procs=args.n_procs)
+        centers=centers, n_procs=args.n_procs, frac_mem=args.mem_fraction)
 
     fstem = os.path.join(args.output_path, args.output_tag)
     ra.save(fstem+'-distances.h5', dist)

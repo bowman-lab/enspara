@@ -14,7 +14,7 @@ import mdtraj as md
 
 from sklearn.externals.joblib import Parallel, delayed
 
-from ..exception import ImproperlyConfigured, DataInvalid
+from .. import exception
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -115,14 +115,14 @@ def load_as_concatenated(filenames, lengths=None, processes=None,
 
     # configure arguments to md.load
     if kwargs and args:
-        raise ImproperlyConfigured(
+        raise exception.ImproperlyConfigured(
             "Additional unnamed args can only be supplied iff no "
             "additonal keyword args are supplied")
     elif kwargs:
         args = [kwargs]*len(filenames)
     elif args:
         if len(args) != len(filenames):
-            raise ImproperlyConfigured(
+            raise exception.ImproperlyConfigured(
                 "When add'l unnamed args are provided, len(args) == "
                 "len(filenames).")
     else:  # not args and not kwargs
@@ -141,11 +141,15 @@ def load_as_concatenated(filenames, lengths=None, processes=None,
     else:
         logger.debug("Using given lengths")
         if len(lengths) != len(filenames):
-            raise ImproperlyConfigured(
+            raise exception.ImproperlyConfigured(
                 "Lengths list (len %s) didn't match length of filenames"
                 " list (len %s)", len(lengths), len(filenames))
 
     root_trj = md.load(filenames[0], frame=0, **args[0])
+    # when we allocate the shared array below, we expect a float32
+    # c_double seems to work with trajectories that use float32s. Why?
+    # I have no idea.
+    assert root_trj.xyz.dtype == np.float32
     shape = root_trj.xyz.shape
 
     # TODO: check all inputs against root
@@ -153,8 +157,18 @@ def load_as_concatenated(filenames, lengths=None, processes=None,
     full_shape = (sum(lengths), shape[1], shape[2])
 
     # mp.Arrays are one-dimensional, so multiply the shape together for size
-    shared_array = mp.Array(ctypes.c_double, reduce(mul, full_shape, 1),
-                            lock=False)
+    try:
+        shared_array = mp.Array(ctypes.c_double, reduce(mul, full_shape, 1),
+                                lock=False)
+    except OSError as e:
+        if e.args[0] != 28:
+            raise
+        arr_bytes = reduce(mul, full_shape, 1) * ctypes.sizeof(ctypes.c_double)
+        raise exception.InsufficientResourceError(
+            "Couldn't allocate array of size %.2f GB. Run df -h to "
+            "ensure that shared memory (/tmp/shm or similar) can "
+            "accommodate an array of this size." % arr_bytes / 1024**3)
+
     logger.debug("Allocated array of shape %s", full_shape)
 
     with closing(mp.Pool(processes=processes, initializer=_init,
@@ -168,7 +182,7 @@ def load_as_concatenated(filenames, lengths=None, processes=None,
     shapes = proc.get()
 
     if sum(s[0] for s in shapes) != full_shape[0]:
-        raise DataInvalid(
+        raise exception.DataInvalid(
             "The provided lengths (n=%s, total frames %s) weren't correct. "
             "The correct total number of frames was %s.", len(lengths),
             sum(s[0] for s in shapes), full_shape[0])
@@ -250,7 +264,7 @@ def _slice_and_insert_xyz(spec, arr_shape, atoms):
         c = c.atom_slice(c.top.select(atoms))
 
     if c.xyz.shape[1:] != arr_shape[1:]:
-        raise DataInvalid(
+        raise exception.DataInvalid(
             'Trajectory at %s had improper shape %s, expected %s.' %
             ((start, end), c.xyz.shape, arr_shape))
 
