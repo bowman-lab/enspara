@@ -4,6 +4,7 @@ import argparse
 import logging
 import pickle
 import time
+import resource
 
 import psutil
 
@@ -223,7 +224,9 @@ def main(argv=None):
     being run as a script. Otherwise, it's silent and just exposes methods.'''
     args = process_command_line(argv)
 
+    mem_start = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
     tick = time.perf_counter()
+
     with open(args.centers, 'rb') as f:
         centers = concatenate_trjs(pickle.load(f), args.atoms, args.n_procs)
     logger.info('Loaded %s centers with %s atoms using selection "%s" '
@@ -235,11 +238,15 @@ def main(argv=None):
         args.topologies, args.trajectories, [args.atoms]*len(args.topologies),
         centers=centers, n_procs=args.n_procs, frac_mem=args.mem_fraction)
 
+    mem_end = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+    logger.info("Finished reassignments. Process memory usage was %.2f GB",
+                mem_end - mem_start / 1024**3)
+
     fstem = os.path.join(args.output_path, args.output_tag)
     ra.save(fstem+'-distances.h5', dist)
     ra.save(fstem+'-assignments.h5', assig)
 
-    logger.info("Finished reassignments. Data deposited in " +
+    logger.info("Finished writing data. Data deposited in " +
                 "%s-{distances,assignments}.h5", fstem)
 
     return 0
