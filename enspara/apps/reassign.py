@@ -5,6 +5,7 @@ import logging
 import pickle
 import time
 import resource
+import tracemalloc
 
 import psutil
 
@@ -53,8 +54,9 @@ def process_command_line(argv):
         '-j', '--n_procs', default=psutil.cpu_count(), type=int,
         help="The number of cores to use while reassigning.")
     parser.add_argument(
-        '-m', '--mem-fraction', default=0.9, type=float,
-        help="The fraction of total RAM to use in deciding the batch size.")
+        '-m', '--mem-fraction', default=0.5, type=float,
+        help="The fraction of total RAM to use in deciding the batch size. "
+             "Genrally, this number shouldn't be much higher than 0.5.")
     parser.add_argument(
         '--output-tag', default='',
         help="An optional extra string prepended to output filenames (useful"
@@ -106,8 +108,9 @@ def determine_batch_size(n_atoms, dtype_bytes, frac_mem):
     bytes_per_frame = floats_per_frame * dtype_bytes
 
     mem = psutil.virtual_memory()
+    bytes_total = mem.total
 
-    batch_size = int(mem.total * frac_mem / bytes_per_frame)
+    batch_size = int(bytes_total * frac_mem / bytes_per_frame)
     batch_gb = batch_size * bytes_per_frame / (1024**3)
 
     return batch_size, batch_gb
@@ -117,7 +120,9 @@ def batch_reassign(targets, centers, lengths, frac_mem, n_procs=None):
 
     example_center = centers[0]
 
-    batch_size, batch_gb = determine_batch_size(example_center.n_atoms, example_center.xyz.dtype.itemsize, frac_mem)
+    DTYPE_BYTES = 8
+    batch_size, batch_gb = determine_batch_size(
+        example_center.n_atoms, DTYPE_BYTES, frac_mem)
 
     logger.info(
         'Batch max size set to %s frames (~%.2f GB, %.1f%% of total RAM).' %
@@ -133,8 +138,6 @@ def batch_reassign(targets, centers, lengths, frac_mem, n_procs=None):
     assignments = []
     distances = []
 
-    mem_start = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
-
     for i, batch_indices in enumerate(batches):
         tick = time.perf_counter()
         logger.info("Starting batch %s of %s", i, len(batches))
@@ -149,19 +152,25 @@ def batch_reassign(targets, centers, lengths, frac_mem, n_procs=None):
                   for t, top, aids in batch_targets],
             processes=n_procs)
 
+        # although mdtraj loads as float32, load_as_concatenated
+        # loads float64. This should _never_ be hit.
+        assert xyz.dtype.itemsize == DTYPE_BYTES
+
         trj = md.Trajectory(xyz, topology=example_center.top)
+
         _, batch_assignments, batch_distances = \
             assign_to_nearest_center(trj, centers, md.rmsd)
 
         assignments.extend(partition_list(batch_assignments, batch_lengths))
         distances.extend(partition_list(batch_distances, batch_lengths))
 
-        mem_overhead = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
-        logger.info("Finished batch %s of %s in %.1f seconds and %.1f GB"
-                    "of memory overhead.",
-                    i, len(batches), time.perf_counter() - tick,
-                    (mem_overhead - mem_start) / 1024**3)
-
+        logger.info(
+            "Finished batch %s of %s in %.1f seconds. Coordinates array had "
+            "memory footprint of %.2f GB (of memory high-water mark of %.2f "
+            "GB).",
+            i, len(batches), time.perf_counter() - tick,
+            xyz.size * DTYPE_BYTES / 1024**3,
+            resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024**2)
 
     return assignments, distances
 
@@ -228,7 +237,6 @@ def main(argv=None):
     being run as a script. Otherwise, it's silent and just exposes methods.'''
     args = process_command_line(argv)
 
-    mem_start = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
     tick = time.perf_counter()
 
     with open(args.centers, 'rb') as f:
@@ -242,18 +250,22 @@ def main(argv=None):
         args.topologies, args.trajectories, [args.atoms]*len(args.topologies),
         centers=centers, n_procs=args.n_procs, frac_mem=args.mem_fraction)
 
-    mem_end = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
-    logger.info("Finished reassignments. Process memory usage was %.2f GB",
-                mem_end - mem_start / 1024**3)
+    mem_highwater = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+    logger.info(
+        "Finished reassignments in %.1f seconds. Process memory high-water "
+        "mark was %.2f GB (VRAM size is %.2f GB).",
+        time.perf_counter() - tick,
+        (mem_highwater / 1024**2),
+        psutil.virtual_memory().total / 1024**3)
 
     fstem = os.path.join(args.output_path, args.output_tag)
     ra.save(fstem+'-distances.h5', dist)
     ra.save(fstem+'-assignments.h5', assig)
 
-    logger.info("Finished writing data. Data deposited in " +
-                "%s-{distances,assignments}.h5", fstem)
+    logger.info("Wrote data at %s-{distances,assignments}.h5", fstem)
 
     return 0
 
 if __name__ == "__main__":
+    tracemalloc.start()
     sys.exit(main(sys.argv))
