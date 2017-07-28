@@ -167,7 +167,7 @@ def load_as_concatenated(filenames, lengths=None, processes=None,
         raise exception.InsufficientResourceError(
             "Couldn't allocate array of size %.2f GB. Run df -h to "
             "ensure that shared memory (/tmp/shm or similar) can "
-            "accommodate an array of this size." % arr_bytes / 1024**3)
+            "accommodate an array of this size." % (arr_bytes / 1024**3))
 
     logger.debug("Allocated array of shape %s", full_shape)
 
