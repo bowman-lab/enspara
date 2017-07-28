@@ -133,6 +133,8 @@ def batch_reassign(targets, centers, lengths, frac_mem, n_procs=None):
     assignments = []
     distances = []
 
+    mem_start = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+
     for i, batch_indices in enumerate(batches):
         tick = time.perf_counter()
         logger.info("Starting batch %s of %s", i, len(batches))
@@ -147,16 +149,18 @@ def batch_reassign(targets, centers, lengths, frac_mem, n_procs=None):
                   for t, top, aids in batch_targets],
             processes=n_procs)
 
+        trj = md.Trajectory(xyz, topology=example_center.top)
         _, batch_assignments, batch_distances = \
-            assign_to_nearest_center(
-                md.Trajectory(xyz, topology=example_center.top),
-                centers, md.rmsd)
+            assign_to_nearest_center(trj, centers, md.rmsd)
 
         assignments.extend(partition_list(batch_assignments, batch_lengths))
         distances.extend(partition_list(batch_distances, batch_lengths))
 
-        logger.info("Finished batch %s of %s in %.1f seconds.",
-                    i, len(batches), time.perf_counter() - tick)
+        mem_overhead = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+        logger.info("Finished batch %s of %s in %.1f seconds and %.1f GB"
+                    "of memory overhead.",
+                    i, len(batches), time.perf_counter() - tick,
+                    (mem_overhead - mem_start) / 1024**3)
 
 
     return assignments, distances
