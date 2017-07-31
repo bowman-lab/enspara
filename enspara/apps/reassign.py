@@ -5,7 +5,6 @@ import logging
 import pickle
 import time
 import resource
-import tracemalloc
 
 import psutil
 
@@ -272,5 +271,4 @@ def main(argv=None):
     return 0
 
 if __name__ == "__main__":
-    tracemalloc.start()
     sys.exit(main(sys.argv))
