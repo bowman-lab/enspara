@@ -145,29 +145,8 @@ def load_as_concatenated(filenames, lengths=None, processes=None,
                 "Lengths list (len %s) didn't match length of filenames"
                 " list (len %s)", len(lengths), len(filenames))
 
-    root_trj = md.load(filenames[0], frame=0, **args[0])
-    # when we allocate the shared array below, we expect a float32
-    # c_double seems to work with trajectories that use float32s. Why?
-    # I have no idea.
-    assert root_trj.xyz.dtype == np.float32
-    shape = root_trj.xyz.shape
-
-    # TODO: check all inputs against root
-
-    full_shape = (sum(lengths), shape[1], shape[2])
-
-    # mp.Arrays are one-dimensional, so multiply the shape together for size
-    try:
-        shared_array = mp.Array(ctypes.c_double, reduce(mul, full_shape, 1),
-                                lock=False)
-    except OSError as e:
-        if e.args[0] != 28:
-            raise
-        arr_bytes = reduce(mul, full_shape, 1) * ctypes.sizeof(ctypes.c_double)
-        raise exception.InsufficientResourceError(
-            ("Couldn't allocate array of size %.2f GB. Run df -h to "
-             "ensure that shared memory (/tmp/shm or similar) can "
-             "accommodate an array of this size.") % (arr_bytes / 1024**3))
+    full_shape, shared_array = shared_array_like(
+        lengths, example_trj=md.load(filenames[0], frame=0, **args[0]))
 
     logger.debug("Allocated array of shape %s", full_shape)
 
@@ -221,12 +200,9 @@ def concatenate_trjs(trj_list, atoms=None, n_procs=None):
         example_center = example_center.atom_slice(
             example_center.top.select(atoms))
 
-    intervals = np.cumsum(np.array([0] + [len(t) for t in trj_list]))
-    full_shape = (sum(map(len, trj_list)), example_center.n_atoms, 3)
-
-    shared_xyz = mp.Array(ctypes.c_double,
-                          full_shape[0] * full_shape[1] * full_shape[2],
-                          lock=False)
+    lengths = [len(t) for t in trj_list]
+    intervals = np.cumsum(np.array([0] + lengths))
+    full_shape, shared_xyz = shared_array_like(lengths, example_center)
 
     with closing(mp.Pool(processes=n_procs, initializer=_init,
                          initargs=(shared_xyz,))) as p:
@@ -238,6 +214,35 @@ def concatenate_trjs(trj_list, atoms=None, n_procs=None):
 
     xyz = _tonumpyarray(shared_xyz).reshape(full_shape)
     return md.Trajectory(xyz, topology=example_center.top)
+
+
+def shared_array_like(lengths, example_trj):
+
+    # when we allocate the shared array below, we expect a float32
+    # c_double seems to work with trajectories that use float32s. Why?
+    # I have no idea.
+    assert example_trj.xyz.dtype == np.float32
+    shape = example_trj.xyz.shape
+
+    # TODO: check all inputs against root
+
+    full_shape = (sum(lengths), shape[1], shape[2])
+
+    # mp.Arrays are one-dimensional, so multiply the shape together for size
+    try:
+        dtype = ctypes.c_float
+        shared_array = mp.Array(dtype, reduce(mul, full_shape, 1),
+                                lock=False)
+    except OSError as e:
+        if e.args[0] != 28:
+            raise
+        arr_bytes = reduce(mul, full_shape, 1) * ctypes.sizeof(dtype)
+        raise exception.InsufficientResourceError(
+            ("Couldn't allocate array of size %.2f GB. Run df -h to "
+             "ensure that shared memory (/tmp/shm or similar) can "
+             "accommodate an array of this size.") % (arr_bytes / 1024**3))
+
+    return full_shape, shared_array
 
 
 def _slice_and_insert_xyz(spec, arr_shape, atoms):
@@ -282,9 +287,9 @@ def _init(shared_array_):
     shared_array = shared_array_
 
 
-def _tonumpyarray(mp_arr):
+def _tonumpyarray(mp_arr, dtype='float32'):
     # mp_arr.get_obj if Array is locking, otherwise mp_arr.
-    return np.frombuffer(mp_arr)
+    return np.frombuffer(mp_arr, dtype=dtype)
 
 
 def _load_to_position(spec, arr_shape):

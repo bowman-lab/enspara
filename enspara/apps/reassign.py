@@ -120,7 +120,7 @@ def batch_reassign(targets, centers, lengths, frac_mem, n_procs=None):
 
     example_center = centers[0]
 
-    DTYPE_BYTES = 8
+    DTYPE_BYTES = 4
     batch_size, batch_gb = determine_batch_size(
         example_center.n_atoms, DTYPE_BYTES, frac_mem)
 
@@ -152,8 +152,9 @@ def batch_reassign(targets, centers, lengths, frac_mem, n_procs=None):
                   for t, top, aids in batch_targets],
             processes=n_procs)
 
-        # although mdtraj loads as float32, load_as_concatenated
-        # loads float64. This should _never_ be hit.
+        # mdtraj loads as float32, and load_as_concatenated should thus
+        # also load as float32. This should _never_ be hit, but there might be
+        # some platform-specific situation where double != float64?
         assert xyz.dtype.itemsize == DTYPE_BYTES
 
         trj = md.Trajectory(xyz, topology=example_center.top)
@@ -161,16 +162,20 @@ def batch_reassign(targets, centers, lengths, frac_mem, n_procs=None):
         _, batch_assignments, batch_distances = \
             assign_to_nearest_center(trj, centers, md.rmsd)
 
+        xyz_size = xyz.size
+        del trj, xyz
+
         assignments.extend(partition_list(batch_assignments, batch_lengths))
         distances.extend(partition_list(batch_distances, batch_lengths))
 
         logger.info(
             "Finished batch %s of %s in %.1f seconds. Coordinates array had "
-            "memory footprint of %.2f GB (of memory high-water mark of %.2f "
+            "memory footprint of %.2f GB (of memory high-water mark %.2f/%.2f "
             "GB).",
             i, len(batches), time.perf_counter() - tick,
-            xyz.size * DTYPE_BYTES / 1024**3,
-            resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024**2)
+            xyz_size * DTYPE_BYTES / 1024**3,
+            resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024**2,
+            psutil.virtual_memory().total / 1024**3)
 
     return assignments, distances
 
