@@ -6,6 +6,8 @@ import pickle
 import time
 import resource
 
+from functools import partial
+
 import psutil
 
 import numpy as np
@@ -158,9 +160,20 @@ def batch_reassign(targets, centers, lengths, frac_mem, n_procs=None):
 
         trj = md.Trajectory(xyz, topology=example_center.top)
 
-        _, batch_assignments, batch_distances = \
-            assign_to_nearest_center(trj, centers, md.rmsd)
+        t_center_0 = time.perf_counter()
+        trj.center_coordinates()
+        logger.debug("Precentered trajectories in %.1f seconds",
+                     time.perf_counter() - t_center_0)
 
+        t_assign_0 = time.perf_counter()
+        _, batch_assignments, batch_distances = \
+            assign_to_nearest_center(
+                trj, centers, partial(md.rmsd, precentered=True))
+        logger.debug("Assigned trajectories in %.1f seconds",
+                      time.perf_counter() - t_assign_0)
+
+        # clear memory of xyz and trj to allow cleanup to deallocate
+        # these large arrays; may help with memory high-water mark
         xyz_size = xyz.size
         del trj, xyz
 
@@ -191,6 +204,13 @@ def reassign(topologies, trajectories, atoms, centers, frac_mem=0.9,
         raise exception.ImproperlyConfigured(
             "Number of topologies (%s) didn't match number of atom selection "
             "strings (%s)." % (len(topologies), len(atoms)))
+
+    # coerce input centers to a trajectory
+    if hasattr(centers, 'center_coordinates'):
+        centers.center_coordinates()
+    else:
+        centers = concatenate_trjs(centers, n_procs)
+        centers.center_coordinates()
 
     tick = time.perf_counter()
 
