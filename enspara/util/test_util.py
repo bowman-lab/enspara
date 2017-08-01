@@ -490,6 +490,18 @@ class TestParallelLoad(unittest.TestCase):
                 top=self.top,
                 lengths=[len(t) for t in [t1, t2[::2], t3]])
 
+    def test_hdf5(self):
+
+        hdf5_fn = get_fn('frame0.h5')
+
+        t1 = md.load(hdf5_fn)
+
+        lengths, xyz = load_as_concatenated([hdf5_fn]*5)
+
+        assert_array_equal(lengths, [len(t1)]*5)
+        assert_array_equal(xyz.shape[1:], t1.xyz.shape[1:])
+        assert_array_equal(t1.xyz, xyz[0:t1.xyz.shape[0], :, :])
+
 
 class TestPartition(unittest.TestCase):
 

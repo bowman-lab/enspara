@@ -12,6 +12,9 @@ import math
 import numpy as np
 import mdtraj as md
 
+from mdtraj import io
+from mdtraj.core.trajectory import _get_extension
+
 from sklearn.externals.joblib import Parallel, delayed
 
 from ..exception import ImproperlyConfigured, DataInvalid
@@ -23,9 +26,12 @@ logger.setLevel(logging.INFO)
 def sound_trajectory(trj, **kwargs):
     """Determine the length of a trajectory on disk.
 
-    Uses a binary search-like system to figure out how long a trajectory
-    on disk is in (maybe) log(n) time and constant space by loading
-    individual frames from disk at exponentially increasing indices.
+    For H5 file formats, this is a trivial lookup of the shape parameter
+    tracked by the HDF5 file system. For other file formats, a binary
+    search-like system to figure out how long a trajectory on disk is
+    in (maybe) log(n) time and constant space by loading individual
+    frames from disk at exponentially increasing indices.
+
     Additional keyword args are passed on to md.load.
 
     Parameters
@@ -36,8 +42,52 @@ def sound_trajectory(trj, **kwargs):
     Returns
     ----------
     length: int
-        The length (in frames) of a trajectory on disk, loaded with
-        kwargs
+        The length (in frames) of a trajectory on disk, as though loaded
+        with kwargs
+
+    See Also
+    ----------
+    md.load
+    """
+
+    stride = kwargs.pop('stride', None)
+    stride = 1 if stride is None else stride
+
+    extension = _get_extension(trj)
+
+    if extension == '.h5':
+        logger.debug("Accessing shape of HDF5 '%s' with args: %s", trj, kwargs)
+
+        if 'top' in kwargs:
+            warnings.warn(
+                "kwarg 'top' is ignored when input to sound_trajectory "
+                "is an h5 file.", RuntimeWarning)
+
+        a = io.loadh(trj)
+        shape = a._handle.get_node('/coordinates').shape
+        a.close()
+
+        return math.ceil(shape[0] / stride)
+    else:
+        logger.debug("Actively sounding '%s' with args: %s", trj, kwargs)
+
+        return _sound_trajectory(trj, stride=stride, **kwargs)
+
+
+def _sound_trajectory(trj, **kwargs):
+    """Ascertains the length of an trajectory format that does not have
+    metadata on length.
+
+    Parameters
+    ----------
+    trj: file path
+        Path to the trajectory to sound.
+
+    Returns
+    ----------
+    length: int
+        The length (in frames) of a trajectory on disk, as though loaded
+        with kwargs
 
     See Also
     ----------
@@ -46,10 +96,6 @@ def sound_trajectory(trj, **kwargs):
 
     search_space = [0, sys.maxsize]
     base = 2
-    stride = kwargs.pop('stride', None)
-    stride = 1 if stride is None else stride
-
-    logger.debug("Sounding '%s' with args: %s", trj, kwargs)
 
     while search_space[0]+1 != search_space[1]:
         start = search_space[0]
@@ -66,7 +112,7 @@ def sound_trajectory(trj, **kwargs):
 
     # if stride is passed to md.load, it is ignored, because apparently
     # when you give it a frame dumps the stride argument.
-    length = math.ceil(search_space[1] / stride)
+    length = math.ceil(search_space[1] / kwargs['stride'])
 
     return length
 
