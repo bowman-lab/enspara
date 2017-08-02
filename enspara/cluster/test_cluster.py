@@ -16,9 +16,6 @@ from .util import find_cluster_centers
 
 from ..exception import DataInvalid, ImproperlyConfigured
 
-import matplotlib
-matplotlib.use('TkAgg')  # req'd for some environments (esp. macOS).
-
 
 class TestTrajClustering(unittest.TestCase):
 
@@ -271,7 +268,7 @@ class TestNumpyClustering(unittest.TestCase):
 
         assert_is(predict_result.centers, centers)
 
-    def test_hybrid(self):
+    def test_numpy_hybrid(self):
         N_CLUSTERS = 3
 
         result = hybrid(
@@ -284,12 +281,11 @@ class TestNumpyClustering(unittest.TestCase):
 
         assert len(result.center_indices) == N_CLUSTERS
 
-        centers = np.concatenate(find_cluster_centers(
-            np.concatenate(self.traj_lst), result.distances))
+        centers = find_cluster_centers(result.assignments, result.distances)
+        self.check_generators(
+            np.concatenate(self.traj_lst)[centers], distance=4.0)
 
-        self.check_generators(centers, distance=4.0)
-
-    def test_kcenters(self):
+    def test_numpy_kcenters(self):
         result = kcenters(
             np.concatenate(self.traj_lst),
             distance_method='euclidean',
@@ -298,12 +294,11 @@ class TestNumpyClustering(unittest.TestCase):
             init_cluster_centers=None,
             random_first_center=False)
 
-        centers = np.concatenate(find_cluster_centers(
-            np.concatenate(self.traj_lst), result.distances))
+        centers = find_cluster_centers(result.assignments, result.distances)
+        self.check_generators(
+            np.concatenate(self.traj_lst)[centers], distance=4.0)
 
-        self.check_generators(centers, distance=4.0)
-
-    def test_kmedoids(self):
+    def test_numpy_kmedoids(self):
         N_CLUSTERS = 3
 
         result = kmedoids(
@@ -315,12 +310,14 @@ class TestNumpyClustering(unittest.TestCase):
         assert len(np.unique(result.assignments)) == N_CLUSTERS
         assert len(result.center_indices) == N_CLUSTERS
 
-        centers = np.concatenate(find_cluster_centers(
-            np.concatenate(self.traj_lst), result.distances))
-
-        self.check_generators(centers, distance=2.0)
+        centers = find_cluster_centers(result.assignments, result.distances)
+        self.check_generators(
+            np.concatenate(self.traj_lst)[centers], distance=4.0)
 
     def check_generators(self, centers, distance):
+
+        import matplotlib
+        matplotlib.use('TkAgg')  # req'd for some environments (esp. macOS).
 
         try:
             for c in centers:

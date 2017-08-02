@@ -166,8 +166,7 @@ def batch_reassign(targets, centers, lengths, frac_mem, n_procs=None):
                      time.perf_counter() - t_center_0)
 
         t_assign_0 = time.perf_counter()
-        _, batch_assignments, batch_distances = \
-            assign_to_nearest_center(
+        batch_assignments, batch_distances = assign_to_nearest_center(
                 trj, centers, partial(md.rmsd, precentered=True))
         logger.debug("Assigned trajectories in %.1f seconds",
                       time.perf_counter() - t_assign_0)

@@ -1,7 +1,7 @@
 import numpy as np
 import mdtraj as md
 
-from nose.tools import assert_equal, assert_is, assert_is_not
+from nose.tools import timed, assert_equal, assert_is, assert_is_not
 from mdtraj.testing import get_fn
 from numpy.testing import assert_array_equal, assert_allclose
 
@@ -86,30 +86,6 @@ def test_unique_state_extraction():
     assert all(save_states.unique_states(assignments) == states[1:])
 
 
-def test_find_cluster_centers():
-
-    N_TRJS = 20
-    many_trjs = [md.load(get_fn('frame0.xtc'), top=get_fn('native.pdb'))
-                 for i in range(N_TRJS)]
-
-    distances = np.ones((N_TRJS, len(many_trjs[0])))
-
-    center_inds = [(0, 0), (5, 2), (15, 300)]
-
-    for ind in center_inds:
-        distances[center_inds[0], center_inds[1]] = 0
-
-    centers = find_cluster_centers(many_trjs, distances)
-
-    # we should get back the same number of centers as there are zeroes
-    # in the distances matrix
-    assert_equal(len(centers), np.count_nonzero(distances == 0))
-
-    for indx in center_inds:
-        expected_xyz = many_trjs[indx[0]][indx[1]].xyz
-        assert np.any(expected_xyz == np.array([c.xyz for c in centers]))
-
-
 def test_assign_to_nearest_center_few_centers():
 
     # assign_to_nearest_center takes two code paths, one for
@@ -118,13 +94,13 @@ def test_assign_to_nearest_center_few_centers():
     trj = md.load(get_fn('frame0.xtc'), top=get_fn('native.pdb'))
     center_frames = [0, int(len(trj)/3), int(len(trj)/2)]
 
-    ctr_inds, assigns, distances = assign_to_nearest_center(trj, trj[center_frames], md.rmsd)
+    assigns, distances = assign_to_nearest_center(
+        trj, trj[center_frames], md.rmsd)
 
     alldists = np.zeros((len(center_frames), len(trj)))
     for i, center_frame in enumerate(trj[center_frames]):
         alldists[i] = md.rmsd(trj, center_frame)
 
-    assert_array_equal(ctr_inds, center_frames)
     assert_allclose(np.min(alldists, axis=0), distances, atol=1e-3)
     assert_array_equal(np.argmin(alldists, axis=0), assigns)
 
@@ -137,12 +113,22 @@ def test_assign_to_nearest_center_many_centers():
     trj = md.load(get_fn('frame0.xtc'), top=get_fn('native.pdb'))
     center_frames = list(range(len(trj)))*2
 
-    ctr_inds, assigns, distances = assign_to_nearest_center(trj, trj[center_frames], md.rmsd)
+    assigns, distances = assign_to_nearest_center(
+        trj, trj[center_frames], md.rmsd)
 
     alldists = np.zeros((len(center_frames), len(trj)))
     for i, center_frame in enumerate(trj[center_frames]):
         alldists[i] = md.rmsd(trj, center_frame)
 
-    assert_array_equal(ctr_inds, np.unique(center_frames))
     assert_allclose(np.min(alldists, axis=0), distances, atol=1e-3)
     assert_array_equal(np.argmin(alldists, axis=0), assigns)
+
+
+def test_find_cluster_centers_ndarray():
+
+    d = np.array([0.2, 0.1, 0.1, 0.2])
+    a = np.array([1, 1, 7, 7])
+
+    ctrs = find_cluster_centers(assignments=a, distances=d)
+
+    assert_array_equal(ctrs, [1, 2])
