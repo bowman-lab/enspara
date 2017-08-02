@@ -3,11 +3,9 @@ import unittest
 import numpy as np
 
 from nose.tools import assert_raises, assert_equals, assert_is
-from numpy.testing import assert_array_equal
+from numpy.testing import assert_array_equal, assert_array_almost_equal
 
-from .committors import committors
-from .fluxes import reactive_fluxes
-
+from . import committors, reactive_fluxes, mfpts
 
 
 class Test_Fluxes(unittest.TestCase):
@@ -63,3 +61,38 @@ class Test_Fluxes(unittest.TestCase):
         # test fluxes without pops
         calc_fluxes = np.around(reactive_fluxes(Tij, 0, 2), 5)
         assert_array_equal(calc_fluxes, true_fluxes)
+
+    def test_mfpts(self):
+        tcounts = np.array([[2, 1, 1], [2, 1, 2], [3, 2, 1]])
+        T_test = tcounts/tcounts.sum(axis=1)[:,None]
+
+        # test all to all
+        all_mfpts = mfpts(T_test)
+        assert_array_almost_equal(
+            all_mfpts, np.array(
+                [
+                    [0., 3.71428571, 3.5],
+                    [2.3125, 0., 3.],
+                    [2.125, 3.42857143, 0.]]), 5)
+
+        # test all to sinks
+        sink_mfpts = mfpts(T_test, sinks=[0])
+        assert_array_almost_equal(
+            sink_mfpts,
+            np.array([0., 2.3125, 2.125]), 5)
+
+        #lagtime 1
+        sink_mfpts_lagtime1 = mfpts(T_test, sinks=[0,1])
+        assert_array_almost_equal(
+            sink_mfpts_lagtime1,
+            np.array([0., 0., 1.2]), 5)
+
+        # check lagtime
+        sink_mfpts_lagtime5 = mfpts(T_test, sinks=[0,1], lagtime=5.0)
+        assert_array_almost_equal(
+            sink_mfpts_lagtime1*5.0,
+            sink_mfpts_lagtime5, 5)
+        
+        assert_array_almost_equal(
+            mfpts(T_test)*5.0,
+            mfpts(T_test,lagtime=5), 5)
