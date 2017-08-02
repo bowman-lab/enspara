@@ -41,7 +41,7 @@ def _get_data_from_tprob(
         forward_committors = np.array(for_committors)
         if forward_committors.shape != (n_states,):
             raise ValueError(
-                "Shape of committors %s should be %s" % \
+                "Shape of committors %s should be %s" % 
                 (str(forward_committors.shape), str((n_states,))))
 
     # reverse committors if process is at equilibrium
@@ -90,7 +90,8 @@ def reactive_fluxes(
 
     # fij = pi_i * q-_i * Tij * q+_j
     fluxes = \
-        tprob * ((populations*reverse_committors)[:,None]) * forward_committors
+        tprob * ((populations * reverse_committors)[:, None]) \
+        * forward_committors
 
     fluxes[(np.arange(n_states), np.arange(n_states))] = np.zeros(n_states)
 
@@ -134,7 +135,7 @@ def net_fluxes(
 
     # get the net flux along each edge
     net_fluxes = fluxes - fluxes.T
-    net_fluxes[np.where(net_fluxes<0)] = 0
+    net_fluxes[np.where(net_fluxes < 0)] = 0
     return net_fluxes
 
 def reactive_populations(
@@ -175,6 +176,6 @@ def reactive_populations(
 
     # mR_i = pi_i * q+_i * q-_i
     densities = populations * forward_committors * reverse_committors
-    populations = densities/np.sum(densities)
+    populations = densities / np.sum(densities)
 
     return populations
