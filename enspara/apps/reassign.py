@@ -205,12 +205,13 @@ def reassign(topologies, trajectories, atoms, centers, frac_mem=0.9,
             "Number of topologies (%s) didn't match number of atom selection "
             "strings (%s)." % (len(topologies), len(atoms)))
 
-    # coerce input centers to a trajectory
-    if hasattr(centers, 'center_coordinates'):
-        centers.center_coordinates()
-    else:
-        centers = concatenate_trjs(centers, n_procs)
-        centers.center_coordinates()
+    # iteration across md.Trajectory is insanely slow. Do it only once here.
+    if isinstance(centers, md.Trajectory):
+        centers = [c for c in centers]
+
+    # precenter centers (there will be many RMSD calcs here)
+    for c in centers:
+        c.center_coordinates()
 
     tick = time.perf_counter()
 
