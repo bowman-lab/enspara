@@ -28,25 +28,36 @@ def process_command_line(argv):
     '''Parse the command line and do a first-pass on processing them into a
     format appropriate for the rest of the script.'''
 
-    parser = argparse.ArgumentParser(formatter_class=argparse.
-                                     ArgumentDefaultsHelpFormatter)
+    parser = argparse.ArgumentParser(
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        description="Cluster a set (or several sets) of trajectories "
+                    "into a single state space based upon RMSD.")
 
     parser.add_argument(
         '--trajectories', required=True, nargs="+", action='append',
-        help="The aligned xtc files to cluster.")
+        help="List of paths to aligned trajectory files to cluster. "
+             "All file types that MDTraj supports are supported here.")
     parser.add_argument(
-        '--topology', required=True, action='append',
-        help="The topology file for the trajectories.")
+        '--topology', required=True, action='append', dest='topologies',
+        help="The topology file for the trajectories. This flag must be"
+             " specified once for each instance of the --trajectories "
+             "flag. The first --topology flag is taken to be the "
+             "topology to use for the first instance of the "
+             "--trajectories flag, and so forth.")
     parser.add_argument(
         '--algorithm', required=True, choices=["khybrid"],
         help="The clustering algorithm to use.")
     parser.add_argument(
-        '--atoms', default='name C or name O or name CA or name N or name CB',
-        help="The atoms from the trajectories (using MDTraj atom-selection"
-             "syntax) to cluster based upon.")
+        '--atoms', action="append", required=True,
+        help="The atoms from the trajectories (using MDTraj "
+             "atom-selection syntax) to cluster based upon. Specify "
+             "once to apply this selection to every set of "
+             "trajectories specified by the --trajectories flag, or "
+             "once for each different topology (i.e. the number of "
+             "times --trajectories and --topology was specified.)")
     parser.add_argument(
         '--rmsd-cutoff', required=True, type=float,
-        help="The RMSD cutoff (in nm) to determine cluster size.")
+        help="The RMSD cutoff to determine cluster size. Units: nm.")
     parser.add_argument(
         '--processes', default=cpu_count(), type=int,
         help="Number processes to use for loading and clustering.")
@@ -56,7 +67,7 @@ def process_command_line(argv):
              "This can avoid md.rmsd's large-dataset segfault.")
     parser.add_argument(
         '--subsample', default=None, type=int,
-        help="Subsample the input trajectories by the given factor. "
+        help="Take only every nth frame when loading trajectories. "
              "1 implies no subsampling.")
     parser.add_argument(
         '--output-path', default='',
@@ -69,7 +80,15 @@ def process_command_line(argv):
 
     args = parser.parse_args(argv[1:])
 
-    if len(args.topology) != len(args.trajectories):
+    if len(args.atoms) == 1:
+        args.atoms = args.atoms * len(args.trajectories)
+    elif len(args.atoms) != len(args.trajectories):
+        raise exception.ImproperlyConfigured(
+            "Flag --atoms must be provided either once (selection is "
+            "applied to all trajectories) or the same number of times "
+            "--trajectories is supplied.")
+
+    if len(args.topologies) != len(args.trajectories):
         raise exception.ImproperlyConfigured(
             "The number of --topology and --trajectory flags must agree.")
 
@@ -77,8 +96,33 @@ def process_command_line(argv):
 
 
 def rmsd_hack(trj, ref, partitions=None, **kwargs):
+    '''Compute rmsd between trj and ref.
 
-    if partitions is None:
+    Accepts all parameters accepted by md.rmsd (not all present below),
+    but can batch the call into separate subcalls using `partitions`.
+    The primary purpose here is to avoid the segmentation fault that can
+    occur when computing rmsds over very large data sets.
+
+    Parameters
+    ----------
+    trj : md.Trajectory
+        For each conformation in this trajectory, compute the RMSD to
+        a particular 'reference' conformation in another trajectory
+        object.
+    ref : md.Trajectory
+        The object containing the reference conformation to measure distances
+        to.
+    partitions : int, default=None
+        The number of times to batch the call to `md.rmsd`.
+
+    See Also
+    --------
+    MDTraj's md.rmsd.
+    '''
+
+    if partitions is None or partitions == 1:
+        # this call is substantially faster because there is no serial
+        # memory shell game (as is present below).
         return md.rmsd(trj, ref)
 
     pivots = np.linspace(0, len(trj), num=partitions+1, dtype='int')
@@ -111,33 +155,36 @@ def filenames(args):
     }
 
 
-def load(topologies, trajectories, selection, stride, processes):
+def load(topologies, trajectories, selections, stride, processes):
 
-    sentinel_trj = md.load(topologies[0])
-    try:
-        # noop, but causes fast-fail w/bad args.atoms
-        sentinel_trj.top.select(selection)
-    except:
-        raise exception.DataInvalid((
-            "The provided selection '{s}' didn't match the topology"
-            "file, {t}").format(s=selection, t=topologies))
+    for top, selection in zip(topologies, selections):
+        sentinel_trj = md.load(top)
+        try:
+            # noop, but causes fast-fail w/bad args.atoms
+            sentinel_trj.top.select(selection)
+        except:
+            raise exception.ImproperlyConfigured((
+                "The provided selection '{s}' didn't match the topology "
+                "file, {t}").format(s=selection, t=top))
 
     flat_trjs = []
     configs = []
-    for topfile, trjset in zip(topologies, trajectories):
+    for topfile, trjset, selection in zip(topologies, trajectories,
+                                          selections):
         top = md.load(topfile).top
         for trj in trjset:
             flat_trjs.append(trj)
             configs.append({
                 'top': top,
                 'stride': stride,
-                'atom_indices': top.select(selection)
+                'atom_indices': top.select(selection),
                 })
 
     assert all([len(c['atom_indices']) == len(configs[0]['atom_indices'])
                 for c in configs]), \
         "Number of atoms across different input topologies differed: %s" % \
-        [(t, (c['atom_indices'])) for t, c in zip(topologies, configs)]
+        [(t, c['atom_indices'], c['selection'])
+         for t, c in zip(topologies, configs)]
 
     logger.info(
         "Loading %s trajectories with %s atoms using %s processes"
@@ -154,18 +201,25 @@ def load(topologies, trajectories, selection, stride, processes):
     return lengths, xyz, top.subset(top.select(selection))
 
 
-def load_asymm_frames(result, trajectories, topology, subsample):
+def load_asymm_frames(center_indices, trajectories, topology, subsample):
 
     frames = []
     begin_index = 0
     for topfile, trjset in zip(topology, trajectories):
         end_index = begin_index + len(trjset)
-        subframes = load_frames(
-            list(itertools.chain(*trajectories)),
-            [c for c in result.center_indices
-             if begin_index <= c[0] < end_index],
-            top=md.load(topfile).top,
-            stride=subsample)
+        target_centers = [c for c in center_indices
+                          if begin_index <= c[0] < end_index]
+
+        try:
+            subframes = load_frames(
+                list(itertools.chain(*trajectories)),
+                target_centers,
+                top=md.load(topfile).top,
+                stride=subsample)
+        except exception.ImproperlyConfigured:
+            logger.error('Failure to load cluster centers %s for topology %s',
+                         topfile, target_centers)
+            raise
 
         frames.extend(subframes)
         begin_index += len(trjset)
@@ -186,19 +240,20 @@ def main(argv=None):
     being run as a script. Otherwise, it's silent and just exposes methods.'''
     args = process_command_line(argv)
 
-    i = position_of_first_difference(args.topology)
+    i = position_of_first_difference(args.topologies)
 
     targets = {topf[i:]: "%s xtcs" % len(trjfs) for topf, trjfs
-               in zip(args.topology, args.trajectories)}
-    logger.info("Beginning RMSD Clustering app. Operating on targets:\n%s",
+               in zip(args.topologies, args.trajectories)}
+    logger.info("Beginning RMSD Clusutering app. Operating on targets:\n%s",
                 json.dumps(targets, indent=4))
 
     lengths, xyz, select_top = load(
-        args.topology, args.trajectories, selection=args.atoms,
+        args.topologies, args.trajectories, selections=args.atoms,
         stride=args.subsample, processes=args.processes)
 
     logger.info(
-        "Loading finished. Clustering using atoms matching '%s'.", args.atoms)
+        "Loading finished. Clustering using atoms %s matching '%s'.",
+        xyz.shape[1], args.atoms)
 
     clustering = KHybrid(
         metric=partial(rmsd_hack, partitions=args.partitions),
@@ -222,15 +277,15 @@ def main(argv=None):
     except FileExistsError:
         pass
 
+    centers = load_asymm_frames(result.center_indices, args.trajectories,
+                                args.topologies, args.subsample)
     with open(filenames(args)['centers'], 'wb') as f:
-        centers = load_asymm_frames(result, args.trajectories, args.topology,
-                                    args.subsample)
         pickle.dump(centers, f)
 
     if args.subsample:
         # overwrite temporary output with actual results
         assig, dist = reassign(
-            args.topology, args.trajectories, args.atoms,
+            args.topologies, args.trajectories, args.atoms,
             centers=result.centers)
 
         ra.save(filenames(args)['distances'], dist)
