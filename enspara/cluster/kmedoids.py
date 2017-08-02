@@ -45,7 +45,7 @@ def kmedoids(traj, distance_method, n_clusters, n_iters=5):
         center_indices=cluster_center_inds,
         assignments=assignments,
         distances=distances,
-        centers=cluster_center_inds)
+        centers=traj[cluster_center_inds])
 
 
 def _kmedoids_update(

@@ -18,24 +18,30 @@ def process_command_line(argv):
         "--features", required=True,
         help="The h5 file containin observations and features.")
     parser.add_argument(
-        "--cluster-algorithm", required=True,
+        "--cluster-algorithm", required=True, choices=['khybrid'],
         help="The algorithm to use for clustering.")
     parser.add_argument(
         "--cluster-radius", required=True, type=float,
         help="The radius to cluster to.")
     parser.add_argument(
         "--cluster-distance", default='euclidean',
+        choices=['euclidean', 'manhattan'],
         help="The metric for measuring distances")
 
     parser.add_argument(
         "--assignments", required=True,
-        help="Location for assignments output.")
+        help="Location for assignments output (h5 file).")
     parser.add_argument(
         "--distances", required=True,
-        help="Location for distances output.")
+        help="Location for distances output (h5 file).")
     parser.add_argument(
         "--center-indices", required=True,
-        help="Location for centers output.")
+        help="Location for indices output (pickle).")
+    parser.add_argument(
+        "--cluster-centers", required=True,
+        help="Location for cluster centers output (h5 file). These are "
+             "the feature vectors (from --features) that are found to "
+             "be cluster centers.")
 
     args = parser.parse_args(argv[1:])
 
@@ -78,6 +84,7 @@ def main(argv=None):
 
     ra.save(args.distances, result.distances)
     ra.save(args.assignments, result.assignments)
+    ra.save(args.cluster_centers, result.centers)
     pickle.dump(result.center_indices, open(args.center_indices, 'wb'))
 
     return 0
