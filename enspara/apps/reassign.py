@@ -207,7 +207,13 @@ def reassign(topologies, trajectories, atoms, centers, frac_mem=0.9,
 
     # iteration across md.Trajectory is insanely slow. Do it only once here.
     if isinstance(centers, md.Trajectory):
+        tick = time.perf_counter()
+        logger.info('Centers are an md.Trajectory. Creating trj-list to '
+                    'avoid repeated iteration.')
         centers = [c for c in centers]
+        logger.info('Built trj list in %.1f seconds.',
+                    time.perf_counter() - tick)
+
 
     # precenter centers (there will be many RMSD calcs here)
     for c in centers:
