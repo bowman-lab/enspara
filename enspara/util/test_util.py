@@ -461,7 +461,7 @@ class TestParallelLoad(unittest.TestCase):
         self.assertEqual(expected.shape, xyz.shape)
         self.assertTrue(np.all(expected == xyz))
 
-    def test_load_as_concatenated_lenghts_hint(self):
+    def test_load_as_concatenated_lengths_hint(self):
 
         selection = np.array([1, 3, 6])
 
@@ -490,6 +490,46 @@ class TestParallelLoad(unittest.TestCase):
                 [self.trj_fname]*3,
                 top=self.top,
                 lengths=[len(t) for t in [t1, t2[::2], t3]])
+
+    def test_hdf5(self):
+
+        hdf5_fn = get_fn('frame0.h5')
+
+        t1 = md.load(hdf5_fn)
+
+        lengths, xyz = load_as_concatenated([hdf5_fn]*5)
+
+        assert_array_equal(lengths, [len(t1)]*5)
+        assert_array_equal(xyz.shape[1:], t1.xyz.shape[1:])
+        assert_array_equal(t1.xyz, xyz[0:t1.xyz.shape[0], :, :])
+
+    def test_hdf5_multiarg(self):
+        '''
+        *args should work with load_as_concatenated h5s
+
+        Verify that when an *args is used on load_as_concatenated, each
+        arg is applied in order to each trajectory as it's loaded.
+        '''
+        selections = [np.array([1, 3, 6]), np.array([2, 4, 7])]
+        hdf5_fn = get_fn('frame0.h5')
+
+        t1 = md.load(hdf5_fn, atom_indices=selections[0])
+        t2 = md.load(hdf5_fn, atom_indices=selections[1])
+
+        args = [
+            {'atom_indices': selections[0]},
+            {'atom_indices': selections[1]}
+            ]
+
+        lengths, xyz = load_as_concatenated(
+            [hdf5_fn]*2,
+            processes=2,
+            args=args)  # called kwargs, it's actually applied as an arg vector
+
+        expected = np.concatenate([t1.xyz, t2.xyz])
+
+        self.assertEqual(expected.shape, xyz.shape)
+        self.assertTrue(np.all(expected == xyz))
 
 
 class TestConcatenateTrajs(unittest.TestCase):
