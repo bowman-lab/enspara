@@ -1,6 +1,7 @@
 import unittest
 import logging
 import tempfile
+import warnings
 
 import numpy as np
 import mdtraj as md
@@ -11,7 +12,7 @@ from nose.tools import assert_raises, assert_equals, assert_is, assert_true
 from numpy.testing import assert_array_equal
 
 from . import array as ra
-from .load import load_as_concatenated
+from .load import load_as_concatenated, concatenate_trjs
 
 from ..exception import DataInvalid, ImproperlyConfigured
 
@@ -397,9 +398,9 @@ class TestParallelLoad(unittest.TestCase):
     def test_load_as_concatenated_noargs(self):
         '''It's ok if no args are passed.'''
 
-        t1 = md.load(self.top_fname, top=self.top)
-        t2 = md.load(self.top_fname, top=self.top)
-        t3 = md.load(self.top_fname, top=self.top)
+        t1 = md.load(self.top_fname)
+        t2 = md.load(self.top_fname)
+        t3 = md.load(self.top_fname)
 
         lengths, xyz = load_as_concatenated([self.top_fname]*3)
 
@@ -460,7 +461,7 @@ class TestParallelLoad(unittest.TestCase):
         self.assertEqual(expected.shape, xyz.shape)
         self.assertTrue(np.all(expected == xyz))
 
-    def test_load_as_concatenated_lenghts_hint(self):
+    def test_load_as_concatenated_lengths_hint(self):
 
         selection = np.array([1, 3, 6])
 
@@ -489,6 +490,98 @@ class TestParallelLoad(unittest.TestCase):
                 [self.trj_fname]*3,
                 top=self.top,
                 lengths=[len(t) for t in [t1, t2[::2], t3]])
+
+    def test_hdf5(self):
+
+        hdf5_fn = get_fn('frame0.h5')
+
+        t1 = md.load(hdf5_fn)
+
+        lengths, xyz = load_as_concatenated([hdf5_fn]*5)
+
+        assert_array_equal(lengths, [len(t1)]*5)
+        assert_array_equal(xyz.shape[1:], t1.xyz.shape[1:])
+        assert_array_equal(t1.xyz, xyz[0:t1.xyz.shape[0], :, :])
+
+    def test_hdf5_multiarg(self):
+        '''
+        *args should work with load_as_concatenated h5s
+
+        Verify that when an *args is used on load_as_concatenated, each
+        arg is applied in order to each trajectory as it's loaded.
+        '''
+        selections = [np.array([1, 3, 6]), np.array([2, 4, 7])]
+        hdf5_fn = get_fn('frame0.h5')
+
+        t1 = md.load(hdf5_fn, atom_indices=selections[0])
+        t2 = md.load(hdf5_fn, atom_indices=selections[1])
+
+        args = [
+            {'atom_indices': selections[0]},
+            {'atom_indices': selections[1]}
+            ]
+
+        lengths, xyz = load_as_concatenated(
+            [hdf5_fn]*2,
+            processes=2,
+            args=args)  # called kwargs, it's actually applied as an arg vector
+
+        expected = np.concatenate([t1.xyz, t2.xyz])
+
+        self.assertEqual(expected.shape, xyz.shape)
+        self.assertTrue(np.all(expected == xyz))
+
+
+class TestConcatenateTrajs(unittest.TestCase):
+
+    def setUp(self):
+        self.trj_fname = get_fn('frame0.xtc')
+        self.top_fname = get_fn('native.pdb')
+        self.top = md.load(self.top_fname).top
+
+        logging.getLogger('enspara.util.load').setLevel(logging.DEBUG)
+
+    def test_concat_simple(self):
+
+        trjlist = [md.load(self.top_fname)] * 10
+        trj = concatenate_trjs(trjlist)
+
+        assert_equals(len(trjlist), len(trj))
+
+        for trjframe, trjlist_item in zip(trj, trjlist):
+            assert_array_equal(trjframe.xyz, trjlist_item.xyz)
+
+
+    def test_concat_atoms(self):
+
+        ATOMS = 'name N or name C or name CA'
+        trjlist = [md.load(self.top_fname)] * 10
+        trj = concatenate_trjs(trjlist, atoms=ATOMS)
+
+        assert_equals(len(trjlist), len(trj))
+
+        for trjframe, trjlist_item in zip(trj, trjlist):
+            sliced_item = trjlist_item.atom_slice(
+                trjlist_item.top.select(ATOMS))
+            assert_array_equal(trjframe.xyz, sliced_item.xyz)
+
+
+    def test_different_lengths(self):
+
+        trjlist = [md.load(self.top_fname)] * 5
+        trjlist.append(md.load(self.trj_fname, top=self.top_fname))
+
+        trj = concatenate_trjs(trjlist, atoms='name CA or name N or name C')
+
+        assert_equals(trj.xyz.shape, (506, 6, 3))
+
+    def test_mismatched(self):
+
+        trjlist = [md.load(self.top_fname)] * 5
+        trjlist.append(trjlist[0].atom_slice(np.arange(10)))
+
+        with assert_raises(DataInvalid):
+            trj = concatenate_trjs(trjlist)
 
 
 class TestPartition(unittest.TestCase):

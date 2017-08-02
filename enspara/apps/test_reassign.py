@@ -63,7 +63,7 @@ def test_reassign_script():
 
         runhelper(
             ['--centers', ctrs_f.name,
-             '--trajectories', trajectories,
+             '--trajectories', trajectories[0], trajectories[1],
              '--atoms', '(name N or name C or name CA or name H or name O)',
              '--topology', topologies])
 
@@ -85,12 +85,14 @@ def test_reassign_script_multitop():
         pickle.dump(centers, ctrs_f)
         ctrs_f.flush()
 
+        print(trajectories)
+
         runhelper(
             ['--centers', ctrs_f.name,
-             '--trajectories', trajectories[0],
+             '--trajectories', trajectories[0][0], trajectories[0][1],
              '--topology', topologies[0],
              '--atoms', '(name N or name C or name CA or name H or name O)',
-             '--trajectories', trajectories[1],
+             '--trajectories', trajectories[1][0], trajectories[1][1],
              '--topology', topologies[1],
              '--atoms', atoms])
 

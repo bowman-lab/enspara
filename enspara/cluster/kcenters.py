@@ -13,8 +13,8 @@ import logging
 
 import numpy as np
 
-from .util import assign_to_nearest_center, _get_distance_method, \
-    ClusterResult, Clusterer
+from .util import (assign_to_nearest_center, _get_distance_method,
+                   ClusterResult, Clusterer, find_cluster_centers)
 
 from ..exception import ImproperlyConfigured
 
@@ -93,8 +93,10 @@ def _kcenters_helper(
 
     if cluster_centers is not None:
         logger.info("Updating assignments to previous cluster centers")
-        cluster_center_inds, assignments, distances = assign_to_nearest_center(
+        assignments, distances = assign_to_nearest_center(
             traj, cluster_centers, distance_method)
+        cluster_center_inds = find_cluster_centers(assignments, distances)
+
         cluster_num = len(cluster_center_inds) + 1
         new_center_index = np.argmax(distances)
         max_distance = np.max(distances)
