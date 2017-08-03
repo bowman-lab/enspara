@@ -8,6 +8,15 @@ from mdtraj import io
 from ..exception import DataInvalid, ImproperlyConfigured
 
 
+def zeros_like(array, *args, **kwargs):
+
+    if hasattr(array, '_data'):
+        flat_arr = np.zeros_like(array._data)
+        return RaggedArray(array=flat_arr, lengths=array.lengths)
+    else:
+        return np.zeros_like(array)
+
+
 def where(mask):
     """As np.where, but on _either_ RaggedArrays or a numpy array.
 

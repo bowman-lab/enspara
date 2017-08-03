@@ -334,6 +334,23 @@ class Test_RaggedArray(unittest.TestCase):
             ra.RaggedArray([[True, False, True, True],
                             [True, True, True]]))
 
+    def test_ra_zeros_like(self):
+        a = ra.RaggedArray([[True, False, True, False],
+                            [False, True, False]])
+
+        b = ra.zeros_like(a)
+
+        assert_array_equal(a.lengths, b.lengths)
+        assert_equals(a.shape[0], b.shape[0])
+        assert_true((b == 0).all())
+        assert_is(type(b), ra.RaggedArray)
+
+        a = np.linspace(10, 20)
+        b = ra.zeros_like(a)
+
+        assert_array_equal(a.shape, b.shape)
+        assert_array_equal(np.zeros_like(a), b)
+
 
 class TestParallelLoad(unittest.TestCase):
 
