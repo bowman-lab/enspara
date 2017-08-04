@@ -334,6 +334,14 @@ class Test_RaggedArray(unittest.TestCase):
             ra.RaggedArray([[True, False, True, True],
                             [True, True, True]]))
 
+    def test_ra_operator_not_implemented(self):
+
+        a = ra.RaggedArray([[True, False, True, False],
+                [False, True, False]])
+
+        with assert_raises(NotImplementedError):
+            a > 'asdfasdfasd'
+
 
 class TestParallelLoad(unittest.TestCase):
 
