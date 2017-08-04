@@ -640,12 +640,10 @@ class RaggedArray(object):
         new_data = getattr(self._data, operator)(other)
 
         if new_data is NotImplemented:
-            raise NotImplementedError(
-                "Operation not understood: %s.%s on value "
-                "%s (type %s)." % (type(self), operator, other, type(other)))
-
-        return RaggedArray(
-            array=new_data, lengths=self.lengths, error_checking=False)
+            return NotImplemented
+        else:
+            return RaggedArray(array=new_data, lengths=self.lengths,
+                               error_checking=False)
 
     # Non-built in functions
     def all(self):

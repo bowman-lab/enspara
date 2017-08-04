@@ -339,7 +339,7 @@ class Test_RaggedArray(unittest.TestCase):
         a = ra.RaggedArray([[True, False, True, False],
                 [False, True, False]])
 
-        with assert_raises(NotImplementedError):
+        with assert_raises(TypeError):
             a > 'asdfasdfasd'
 
 
