@@ -8,6 +8,9 @@
 from __future__ import print_function, division, absolute_import
 
 import logging
+import multiprocessing as mp
+
+from functools import partial
 
 import numpy as np
 
@@ -181,7 +184,7 @@ def mi_row(row, states_a_list, states_b_list, n_a_states, n_b_states):
 
 
 def mi_matrix(states_a_list, states_b_list,
-              n_a_states_list, n_b_states_list, n_procs=1):
+              n_a_states_list, n_b_states_list, n_procs=None):
     """Compute the all-to-all matrix of mutual information across
     trajectories of assigned states.
 
@@ -211,10 +214,13 @@ def mi_matrix(states_a_list, states_b_list,
     check_features_states(states_a_list, n_a_states_list)
     check_features_states(states_b_list, n_b_states_list)
 
-    mi = Parallel(n_jobs=n_procs, max_nbytes='1M')(
-        delayed(mi_row)(i, states_a_list, states_b_list,
-                           n_a_states_list, n_b_states_list)
-        for i in range(n_features))
+    with mp.Pool(processes=n_procs) as p:
+        compute_mi_row = partial(
+            mi_row,
+            states_a_list=states_a_list, states_b_list=states_b_list,
+            n_a_states=n_a_states_list, n_b_states=n_b_states_list)
+
+        mi = p.map(compute_mi_row, (i for i in range(n_features)))
 
     mi = np.array(mi)
     mi += mi.T
