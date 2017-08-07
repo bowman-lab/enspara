@@ -14,8 +14,6 @@ from functools import partial
 
 import numpy as np
 
-from sklearn.externals.joblib import Parallel, delayed
-
 from .. import exception
 from .. import info_theory
 
@@ -75,9 +73,9 @@ def cards(trajectories, buffer_width=15, n_procs=1):
                        r.n_feature_states_, n_procs) + (r.atom_indices_,)
 
 
-def mi_matrices(feature_trajs, n_feature_states, n_procs):
+def cards_matrices(feature_trajs, n_feature_states, n_procs=None):
     """Compute ordered, disordered and ordered-disordered mutual
-    infrmation matrices for a set of trajectories.
+    infrmation matrices for a set of trajectories of state assignments.
 
     Parameters
     ----------
