@@ -1,4 +1,5 @@
 import tempfile
+import warnings
 
 from nose.tools import assert_equal, assert_is
 from numpy.testing import assert_array_equal, assert_allclose
@@ -212,7 +213,10 @@ def test_mle_types():
                 [[0, 2, 8],
                  [4, 2, 4],
                  [7, 3, 0]])
-            _, out_probs, _ = builders.mle(in_cts, **kwargs)
+
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                _, out_probs, _ = builders.mle(in_cts, **kwargs)
 
             assert_equal(
                 type(in_cts), type(out_probs),
