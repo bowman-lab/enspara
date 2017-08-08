@@ -8,6 +8,7 @@
 from __future__ import print_function, division, absolute_import
 
 import logging
+import ctypes
 import multiprocessing as mp
 
 from functools import partial
@@ -261,3 +262,38 @@ def check_features_states(states, n_states):
             ("The number of features differs between trajectories. "
              "Numbers of features were: {l}.").
             format(l=[len(t[0]) for t in states]))
+
+
+def _make_shared_array(ra):
+
+    size = ra.size()
+    dtype = ctypes.int
+
+    arr = mp.Array(dtype, shape, lock=False)
+
+    return arr
+
+
+def mi_matrix_ra(assignments_a, assignments_b, n_states_a, n_states_b):
+
+    # assignments_* shape=(n_trajectories, n_frames, n_features)
+
+    sa_a = _make_shared_array(assignments_a)
+    sa_b = _make_shared_array(assignments_b)
+
+    sa_a[:] = assignments_a.flatten()
+    sa_b[:] = assignments_b.flatten()
+
+    assignments_a._data = sa_a.reshape(assignments_a._data.shape())
+    assignments_b._data = sa_b.reshape(assignments_b._data.shape())
+
+    def _init(arr_a_, arr_b_, shape_a, shape_b, len_a, len_b):
+        global arr_a, arr_b
+        arr_a, arr_b = arr_a_, arr_b_
+
+    with closing(mp.Pool(processes=n_procs, initializer=_init,
+                         initargs=(sa_a, sa_b))) as p:
+        p.map(func, [(intervals[i], intervals[i+1], t)
+                     for i, t in enumerate(trj_list)])
+
+
