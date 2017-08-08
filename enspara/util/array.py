@@ -27,6 +27,19 @@ def where(mask):
 
 
 def save(output_name, ragged_array):
+    """Save a RaggedArray or numpy ndarray to disk as an HDF5 file.
+
+    Parameters
+    ----------
+    output_name : str
+        Path of file to write out.
+    ragged_array : np.ndarray, RaggedArray
+        Array to write to disk.
+
+    See Also
+    --------
+    mdtraj.io.saveh
+    """
 
     try:
         io.saveh(
