@@ -69,8 +69,8 @@ def cards(trajectories, buffer_width=15, n_procs=1):
     r = RotamerFeaturizer(buffer_width=buffer_width, n_procs=n_procs)
     r.fit(trajectories)
 
-    return mi_matrices(r.feature_trajectories_,
-                       r.n_feature_states_, n_procs) + (r.atom_indices_,)
+    return cards_matrices(r.feature_trajectories_,
+                          r.n_feature_states_, n_procs) + (r.atom_indices_,)
 
 
 def cards_matrices(feature_trajs, n_feature_states, n_procs=None):
@@ -167,10 +167,8 @@ def mi_row(row, states_a_list, states_b_list, n_a_states, n_b_states):
     if row == n_features:
         return mi
     for j in range(row+1, n_features):
-        jc = info_theory.joint_counts(
-            states_a_list[0][:, row], states_b_list[0][:, j],
-            n_a_states[row], n_b_states[j])
-        for k in range(1, n_traj):
+        jc = 0
+        for k in range(0, n_traj):
             jc += info_theory.joint_counts(
                 states_a_list[k][:, row], states_b_list[k][:, j],
                 n_a_states[row], n_b_states[j])
