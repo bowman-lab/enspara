@@ -153,8 +153,8 @@ def assign_order_disorder(rotamer_trajs):
                 transition_times[i][j], traj_len, mean_ordered_times[j],
                 mean_disordered_times[j])
 
-        disordered_trajs.append(dis_traj.astype('int'))
-    disorder_n_states = 2*np.ones(n_features, dtype='int')
+        disordered_trajs.append(dis_traj.astype('int16'))
+    disorder_n_states = 2*np.ones(n_features, dtype='int16')
 
     return disordered_trajs, disorder_n_states
 
