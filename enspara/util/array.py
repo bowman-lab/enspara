@@ -667,8 +667,9 @@ class RaggedArray(object):
     def min(self):
         return self._data.min()
 
+    @property
     def size(self):
-        return self._data.size()
+        return self._data.size
 
     def append(self, values):
         # if the incoming values is a RaggedArray, pull just the array
