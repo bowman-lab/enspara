@@ -350,6 +350,14 @@ class Test_RaggedArray(unittest.TestCase):
 
         assert_array_equal(a.shape, b.shape)
         assert_array_equal(np.zeros_like(a), b)
+        
+    def test_ra_operator_not_implemented(self):
+
+        a = ra.RaggedArray([[True, False, True, False],
+                [False, True, False]])
+
+        with assert_raises(TypeError):
+            a > 'asdfasdfasd'
 
 
 class TestParallelLoad(unittest.TestCase):

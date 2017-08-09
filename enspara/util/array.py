@@ -660,8 +660,12 @@ class RaggedArray(object):
         if type(other) is type(self):
             other = other._data
         new_data = getattr(self._data, operator)(other)
-        return RaggedArray(
-            array=new_data, lengths=self.lengths, error_checking=False)
+
+        if new_data is NotImplemented:
+            return NotImplemented
+        else:
+            return RaggedArray(array=new_data, lengths=self.lengths,
+                               error_checking=False)
 
     # Non-built in functions
     def all(self):
