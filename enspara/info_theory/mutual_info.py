@@ -7,10 +7,11 @@
 
 from __future__ import print_function, division, absolute_import
 
+import logging
 import warnings
 import ctypes
-import multiprocessing as mp
 
+import multiprocessing as mp
 from functools import partial
 
 import numpy as np
@@ -20,6 +21,10 @@ from ..util import array as ra
 
 from . import entropy
 from . import libinfo
+
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 
 def check_features_states(states, n_states):
@@ -72,22 +77,28 @@ def mi_matrix(assignments_a, assignments_b, n_states_a, n_states_b,
 
     assignments_a = _end_to_end_concat(assignments_a)
     sa_a = _make_shared_array(assignments_a, c_dtype)
+    logger.debug("Allocated shared-memory array of size %s", len(sa_a))
 
     if assignments_a is not assignments_b:
         assignments_b = _end_to_end_concat(assignments_b)
         sa_b = _make_shared_array(assignments_b, c_dtype)
+        logger.debug(
+            "Detected that assigments_a is not assignments_b, creating "
+            "second shared-memory array of size %s", len(sa_a))
     else:
+        logger.debug(
+            "Detected that assigments_a is the same as assignments_a; "
+            "not allocating a second shared-memory array")
         sa_b = sa_a
 
-    # inside _mi_parallel_cell, arrays are are concatenated by trajectory
+
+    mi = np.zeros((n_features, n_features))
+    mi_calc_indices = np.triu_indices_from(mi, k=1)
 
     # initializer function shares shared data with everybody.
     def _init(arr_a_, arr_b_):
         global arr_a, arr_b
         arr_a, arr_b = arr_a_, arr_b_
-
-    mi = np.zeros((n_features, n_features))
-    mi_calc_indices = np.triu_indices_from(mi, k=1)
 
     with mp.Pool(processes=n_procs, initializer=_init,
                  initargs=(sa_a, sa_b)) as p:
