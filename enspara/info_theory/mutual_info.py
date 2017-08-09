@@ -190,8 +190,6 @@ def _mi_parallel_cell(feature_id_a, feature_id_b, n_states_a, n_states_b,
     n_a = n_states_a[feature_id_a]
     n_b = n_states_b[feature_id_b]
 
-    print(trj_a.shape)
-
     jc = joint_counts(trj_a, trj_b, n_a, n_b)
 
     assert not np.any(np.isnan(jc))
