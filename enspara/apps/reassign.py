@@ -58,11 +58,16 @@ def process_command_line(argv):
         '-m', '--mem-fraction', default=0.5, type=float,
         help="The fraction of total RAM to use in deciding the batch size. "
              "Genrally, this number shouldn't be much higher than 0.5.")
+
+    ## OUTPUT ARGS
     parser.add_argument(
-        '--output-tag', default='',
-        help="An optional extra string prepended to output filenames (useful"
-             "for giving this choice of parameters a name to separate it from"
-             "other clusterings or proteins.")
+        '--distances', required=True,
+        help="Path to h5 file where distance to nearest cluster center "
+             "will be output.")
+    parser.add_argument(
+        '--assignments', required=True,
+        help="Path to h5 file where assignments to nearest center will "
+             "be ouput")
 
     args = parser.parse_args(argv[1:])
 
@@ -288,11 +293,11 @@ def main(argv=None):
         (mem_highwater / 1024**2),
         psutil.virtual_memory().total / 1024**3)
 
-    fstem = os.path.join(args.output_path, args.output_tag)
-    ra.save(fstem+'-distances.h5', dist)
-    ra.save(fstem+'-assignments.h5', assig)
+    ra.save(args.distances, dist)
+    ra.save(args.assignments, assig)
 
-    logger.info("Wrote data at %s-{distances,assignments}.h5", fstem)
+    logger.info("Wrote distances at %s.", args.distances)
+    logger.info("Wrote assignments at %s.", args.assignments)
 
     return 0
 
