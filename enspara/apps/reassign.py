@@ -209,7 +209,8 @@ def reassign(topologies, trajectories, atoms, centers, frac_mem=0.9,
         tick = time.perf_counter()
         logger.info('Centers are an md.Trajectory. Creating trj-list to '
                     'avoid repeated iteration.')
-        centers = [c for c in centers]
+        # using in-place copies to reduce memory usage (and for speed)
+        centers = [centers.slice(i, copy=False) for i in range(len(centers))]
         logger.info('Built trj list in %.1f seconds.',
                     time.perf_counter() - tick)
 
