@@ -29,6 +29,12 @@ def process_command_line(argv):
         help="The metric for measuring distances")
 
     parser.add_argument(
+        "--kmedoids-updates", default=5, type=int,
+        help="Number of iterations of kemedoids to perform when "
+             "refining the kcenters cluster assignments. Valid only "
+             "when --cluster-algorithm is 'khybrid'.")
+
+    parser.add_argument(
         "--assignments", required=True,
         help="Location for assignments output (h5 file).")
     parser.add_argument(
@@ -76,7 +82,8 @@ def main(argv=None):
 
     clustering = KHybrid(
         metric=args.cluster_distance,
-        cluster_radius=args.cluster_radius)
+        cluster_radius=args.cluster_radius,
+        kmedoids_updates=args.kmedoids_updates)
 
     clustering.fit(features._data)
 
