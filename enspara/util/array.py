@@ -8,6 +8,15 @@ from mdtraj import io
 from ..exception import DataInvalid, ImproperlyConfigured
 
 
+def zeros_like(array, *args, **kwargs):
+
+    if hasattr(array, '_data'):
+        flat_arr = np.zeros_like(array._data)
+        return RaggedArray(array=flat_arr, lengths=array.lengths)
+    else:
+        return np.zeros_like(array)
+
+
 def where(mask):
     """As np.where, but on _either_ RaggedArrays or a numpy array.
 
@@ -27,6 +36,19 @@ def where(mask):
 
 
 def save(output_name, ragged_array):
+    """Save a RaggedArray or numpy ndarray to disk as an HDF5 file.
+
+    Parameters
+    ----------
+    output_name : str
+        Path of file to write out.
+    ragged_array : np.ndarray, RaggedArray
+        Array to write to disk.
+
+    See Also
+    --------
+    mdtraj.io.saveh
+    """
 
     try:
         io.saveh(
@@ -38,13 +60,63 @@ def save(output_name, ragged_array):
         io.saveh(output_name, ragged_array)
 
 
-def load(input_name):
+def load(input_name, keys=None):
+    """Load a RaggedArray from the disk. If only 'arr_0' is present in
+    the target file, a numpy array is loaded instead.
+
+    Parameters
+    ----------
+    input_name: filename or file handle
+        File from which data will be loaded.
+    keys : list, default=None
+        If this option is specified, the ragged array is built from this
+        list of keys, each of which are assumed to be a row of the final
+        ragged array. An ellipsis can be provided to indicate all keys.
+    """
+
     ragged_load = io.loadh(input_name)
-    try:
-        return RaggedArray(
-            ragged_load['array'], lengths=ragged_load['lengths'])
-    except KeyError:
-        return ragged_load['arr_0']
+
+    if keys is None:
+        try:
+            return RaggedArray(
+                ragged_load['array'], lengths=ragged_load['lengths'])
+        except KeyError:
+            return ragged_load['arr_0']
+    else:
+        if keys is Ellipsis:
+            keys = ragged_load.keys()
+
+        shapes = [ragged_load._handle.get_node(where='/', name=k).shape
+                  for k in ragged_load.keys()]
+
+        if not all(len(shapes[0]) == len(shape) for shape in shapes):
+            raise DataInvalid(
+                "Loading a RaggedArray using HDF5 file keys requires that all "
+                "input arrays have the same dimension. Got shapes: %s"
+                % shapes)
+        for dim in range(1, len(shapes[0])):
+            if not all(shapes[0][dim] == shape[dim] for shape in shapes):
+                raise DataInvalid(
+                    "Loading a RaggedArray using HDF5 file keys requires that "
+                    "all input arrays share nonragged dimensions. Dimension "
+                    "%s didnt' match. Got shapes: %s" % (dim, shapes))
+
+        lengths = [shape[0] for shape in shapes]
+        first_shape = ragged_load[ragged_load.keys()[0]].shape
+
+        concat_shape = list(first_shape)
+        concat_shape[0] = sum(lengths)
+
+        concat = np.zeros(concat_shape)
+
+        start = 0
+        for key in ragged_load.keys():
+            arr = ragged_load[key]
+            end = start + len(arr)
+            concat[start:end] = arr
+            start = end
+
+        return RaggedArray(array=concat, lengths=lengths)
 
 
 def partition_indices(indices, traj_lengths):
@@ -534,6 +606,10 @@ class RaggedArray(object):
             iis = where(iis)
             self.__setitem__(iis, value)
 
+    def __invert__(self):
+        new_data = self._data.__invert__()
+        return RaggedArray(new_data, lengths=self.lengths)
+
     def __eq__(self, other):
         return self.map_operator('__eq__', other)
     def __lt__(self, other):
@@ -574,12 +650,22 @@ class RaggedArray(object):
         return self.map_operator('__mod__', other)
     def __rmod__(self, other):
         return self.map_operator('__rmod__', other)
+    def __or__(self, other):
+        return self.map_operator('__or__', other)
+    def __xor__(self, other):
+        return self.map_operator('__xor__', other)
+    def __and__(self, other):
+        return self.map_operator('__and__', other)
     def map_operator(self, operator, other):
         if type(other) is type(self):
             other = other._data
         new_data = getattr(self._data, operator)(other)
-        return RaggedArray(
-            array=new_data, lengths=self.lengths, error_checking=False)
+
+        if new_data is NotImplemented:
+            return NotImplemented
+        else:
+            return RaggedArray(array=new_data, lengths=self.lengths,
+                               error_checking=False)
 
     # Non-built in functions
     def all(self):
@@ -587,6 +673,16 @@ class RaggedArray(object):
 
     def any(self):
         return np.any(self._data)
+
+    def max(self):
+        return self._data.max()
+
+    def min(self):
+        return self._data.min()
+
+    @property
+    def size(self):
+        return self._data.size
 
     def append(self, values):
         # if the incoming values is a RaggedArray, pull just the array
@@ -615,4 +711,3 @@ class RaggedArray(object):
 
     def flatten(self):
         return self._data.flatten()
-

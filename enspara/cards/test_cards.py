@@ -55,6 +55,21 @@ def test_cards():
         assert_allclose(inds, np.loadtxt(f))
 
 
+def test_cards_generator():
+
+    gen = (t[0:1000] for t in TRJS)
+    lst = [t[0:1000] for t in TRJS]
+
+    gen_ss, gen_dd, gen_sd, gen_ds, gen_inds = cards.cards(gen)
+    lst_ss, lst_dd, lst_sd, lst_ds, lst_inds = cards.cards(lst)
+
+    assert_allclose(gen_ss, lst_ss)
+    assert_allclose(gen_sd, lst_sd)
+    assert_allclose(gen_ds, lst_ds)
+    assert_allclose(gen_dd, lst_dd)
+    assert_array_equal(gen_inds, lst_inds)
+
+
 def cards_split():
 
     pivot = len(TRJ)//2

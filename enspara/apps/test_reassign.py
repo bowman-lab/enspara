@@ -27,20 +27,19 @@ def runhelper(args):
     tf = hashlib.md5(str(datetime.now().timestamp())
                      .encode('utf-8')).hexdigest()[0:8]
 
+    assignfile = os.path.join(td, '-'.join([tf] + ['assignments.h5']))
+    distfile = os.path.join(td, '-'.join([tf] + ['distances.h5']))
+
     try:
         reassign.main([
             '',  # req'd because arg[0] is expected to be program name
-            '--output-path', td,
-            '--output-tag', tf] + args)
+            '--assignments', assignfile,
+            '--distances', distfile] + args)
 
-        assignfile = os.path.join(
-            td, '-'.join([tf] + ['assignments.h5']))
         assert os.path.isfile(assignfile), \
             "Couldn't find %s. Dir contained: %s" % (
             assignfile, os.listdir(os.path.dirname(assignfile)))
 
-        distfile = os.path.join(
-            td, '-'.join([tf] + ['distances.h5']))
         assert os.path.isfile(distfile), \
             "Couldn't find %s. Dir contained: %s" % (
             distfile, os.listdir(os.path.dirname(distfile)))
@@ -63,7 +62,8 @@ def test_reassign_script():
 
         runhelper(
             ['--centers', ctrs_f.name,
-             '--trajectories', trajectories,
+             '--trajectories', trajectories[0], trajectories[1],
+             '--atoms', '(name N or name C or name CA or name H or name O)',
              '--topology', topologies])
 
 
@@ -84,11 +84,14 @@ def test_reassign_script_multitop():
         pickle.dump(centers, ctrs_f)
         ctrs_f.flush()
 
+        print(trajectories)
+
         runhelper(
             ['--centers', ctrs_f.name,
-             '--trajectories', trajectories[0],
+             '--trajectories', trajectories[0][0], trajectories[0][1],
              '--topology', topologies[0],
-             '--trajectories', trajectories[1],
+             '--atoms', '(name N or name C or name CA or name H or name O)',
+             '--trajectories', trajectories[1][0], trajectories[1][1],
              '--topology', topologies[1],
              '--atoms', atoms])
 
@@ -106,13 +109,13 @@ def test_reassignment_function_memory():
     mem_highwater = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
 
     assigns, dists = reassign.reassign(
-        topologies, trajectories, atoms, centers)
+        topologies, trajectories, [atoms]*2, centers)
 
     new_highwater = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
     highwater_diff = (new_highwater - mem_highwater)
 
     print(new_highwater)
-    assert_less(highwater_diff, 2000000)
+    assert_less(highwater_diff, 4000000)
 
     assert_is(type(assigns), np.ndarray)
 
@@ -131,9 +134,11 @@ def test_reassignment_function_heterogenous():
         [get_fn('frame0.xtc'), get_fn('frame0.xtc')],
         [xtc2, xtc2]]
 
-    atoms = '(name N or name C or name CA or name H or name O) and (residue 2)'
+    atoms = [
+        '(name N or name O) and (residue 2 or residue 3)',
+        '(name CA) and (residue 3 to 5)']
     top = md.load(topologies[0]).top
-    centers = [c.atom_slice(top.select(atoms)) for c
+    centers = [c.atom_slice(top.select(atoms[0])) for c
                in md.load(trajectories[0][0], top=topologies[0])[::50]]
 
     assigns, dists = reassign.reassign(

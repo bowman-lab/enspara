@@ -117,7 +117,7 @@ def create_disorder_traj(transition_times, traj_len, ord_time, disord_time):
 
 def assign_order_disorder(rotamer_trajs):
     """Assigns each frame a disordered or ordered state (ordered=1; disorder=0).
-    
+
     Parameters
     ----------
     rotamer_trajs: array, shape=(n_features, n_frames)
@@ -130,13 +130,14 @@ def assign_order_disorder(rotamer_trajs):
 
     disorder_n_states: array, shape=(n_features,)
         The number of possible states for each feature in disordered_trajs (2)
-   
+
     References
     ----------
     [1] Singh, S., & Bowman, G. R. (2017). Quantifying Allosteric
         Communication via Correlations in Structure and Disorder.
         Biophysical Journal, 112(3), 498a.
     """
+
     logger.debug("Calculating ordered/disordered times")
     n_features = rotamer_trajs[0].shape[1]
     transition_times, mean_ordered_times, mean_disordered_times = \
@@ -152,8 +153,8 @@ def assign_order_disorder(rotamer_trajs):
                 transition_times[i][j], traj_len, mean_ordered_times[j],
                 mean_disordered_times[j])
 
-        disordered_trajs.append(dis_traj)
-    disorder_n_states = 2*np.ones(n_features, dtype='int')
+        disordered_trajs.append(dis_traj.astype('int16'))
+    disorder_n_states = 2*np.ones(n_features, dtype='int16')
 
     return disordered_trajs, disorder_n_states
 
@@ -161,7 +162,7 @@ def assign_order_disorder(rotamer_trajs):
 def transition_stats(rotamer_trajs):
     """Compute the transition time between disordered/ordered states and
     the mean transition time between a set of trajectories' mean tranisiton times
-    
+
     Parameters
     ----------
     rotamer_trajs: array, shape=(n_features, n_frames)
@@ -169,12 +170,16 @@ def transition_stats(rotamer_trajs):
 
     Returns
     -------
-    disordered_trajs: list, shape=(n_traj, n_frames, n_features)
-        List of n.arrays with disorder/order assignments for each trajectory
+    transition_times: list, shape=(n_traj, n_features, variable)
+        For each feature in each trajectory, computes the frames at which a state transition
+        occurs
 
-    disorder_n_states: array, shape=(n_features,)
-        The number of possible states for each feature in disordered_trajs (2)
-   
+    mean_ordered_times: array, shape=(n_features,)
+        Mean ordered time for each feature
+
+    mean_disordered_times: array, shape=(n_features,)
+        Mean disordered time for each feature
+
     References
     ----------
     [1] Singh, S., & Bowman, G. R. (2017). Quantifying Allosteric

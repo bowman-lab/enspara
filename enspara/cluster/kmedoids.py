@@ -10,7 +10,8 @@ from __future__ import print_function, division, absolute_import
 
 import logging
 
-from .util import assign_to_nearest_center, _get_distance_method, ClusterResult
+from .util import (assign_to_nearest_center, _get_distance_method,
+                   ClusterResult, find_cluster_centers)
 
 import numpy as np
 
@@ -30,8 +31,9 @@ def kmedoids(traj, distance_method, n_clusters, n_iters=5):
     while len(np.unique(cluster_center_inds)) < n_clusters:
         cluster_center_inds = np.random.randint(0, n_frames, n_clusters)
 
-    cluster_center_inds, assignments, distances = assign_to_nearest_center(
+    assignments, distances = assign_to_nearest_center(
         traj, traj[cluster_center_inds], distance_method)
+    cluster_center_inds = find_cluster_centers(assignments, distances)
 
     for i in range(n_iters):
         cluster_center_inds, assignments, distances = _kmedoids_update(
@@ -43,7 +45,7 @@ def kmedoids(traj, distance_method, n_clusters, n_iters=5):
         center_indices=cluster_center_inds,
         assignments=assignments,
         distances=distances,
-        centers=cluster_center_inds)
+        centers=traj[cluster_center_inds])
 
 
 def _kmedoids_update(
@@ -57,9 +59,11 @@ def _kmedoids_update(
         state_inds = np.where(assignments == i)[0]
         proposed_center_inds[i] = np.random.choice(state_inds)
     proposed_cluster_centers = traj[proposed_center_inds]
-    proposed_center_inds, proposed_assignments, proposed_distances = \
-        assign_to_nearest_center(traj, proposed_cluster_centers,
-                                 distance_method)
+
+    proposed_assignments, proposed_distances = assign_to_nearest_center(
+        traj, proposed_cluster_centers, distance_method)
+    proposed_center_inds = find_cluster_centers(
+        proposed_assignments, proposed_distances)
 
     mean_orig_dist_to_center = distances.dot(distances)/len(traj)
     mean_proposed_dist_to_center = proposed_distances.dot(

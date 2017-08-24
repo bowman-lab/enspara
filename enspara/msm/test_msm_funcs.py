@@ -1,4 +1,5 @@
 import tempfile
+import warnings
 
 from nose.tools import assert_equal, assert_is
 from numpy.testing import assert_array_equal, assert_allclose
@@ -130,36 +131,126 @@ def test_assigns_to_counts_negnums():
     assert_array_equal(counts.toarray(), expected)
 
 
+def test_normalize_types():
+
+    for kwargs in [{'calculate_eq_probs': True},
+                   {'calculate_eq_probs': False}]:
+
+        for arr_type in ARR_TYPES:
+
+            in_cts = arr_type(
+                [[0, 2, 8],
+                 [4, 2, 4],
+                 [7, 3, 0]])
+            _, out_probs, _ = builders.normalize(in_cts, **kwargs)
+
+            assert_equal(
+                type(in_cts), type(out_probs),
+                "builders.transpose was given %s but returned %s." %
+                (type(in_cts), type(out_probs)))
+
+            # cast to ndarray if necessary for comparison to correct result
+            try:
+                out_probs = out_probs.toarray()
+            except AttributeError:
+                pass
+
+            out_probs = np.round(out_probs, decimals=1)
+
+            expected = np.array(
+                [[0. , 0.2, 0.8],
+                 [0.4, 0.2, 0.4],
+                 [0.7, 0.3, 0.0]])
+
+            assert_array_equal(
+                out_probs,
+                expected)
+
+
 def test_transpose_types():
-    for arr_type in ARR_TYPES:
 
-        in_m = arr_type(
-            [[0, 2, 8],
-             [4, 2, 4],
-             [7, 3, 0]])
-        out_m = builders.transpose(in_m)
+    for kwargs in [{'calculate_eq_probs': True},
+                   {'calculate_eq_probs': False}]:
 
-        assert_equal(
-            type(in_m), type(out_m),
-            "builders.transpose was given %s but returned %s." %
-            (type(in_m), type(out_m)))
+        for arr_type in ARR_TYPES:
 
-        # cast to ndarray if necessary for comparison to correct result
-        try:
-            out_m = out_m.toarray()
-        except AttributeError:
-            pass
+            in_cts = arr_type(
+                [[0, 2, 8],
+                 [4, 2, 4],
+                 [7, 3, 0]])
+            _, out_probs, _ = builders.transpose(in_cts, **kwargs)
 
-        out_m = np.round(out_m, decimals=1)
+            assert_equal(
+                type(in_cts), type(out_probs),
+                "builders.transpose was given %s but returned %s." %
+                (type(in_cts), type(out_probs)))
 
-        expected = np.array(
-            [[0.0, 0.3, 0.7],
-             [0.4, 0.2, 0.4],
-             [0.7, 0.3, 0.0]])
+            # cast to ndarray if necessary for comparison to correct result
+            try:
+                out_probs = out_probs.toarray()
+            except AttributeError:
+                pass
 
-        assert_array_equal(
-            out_m,
-            expected)
+            out_probs = np.round(out_probs, decimals=1)
+
+            expected = np.array(
+                [[0.0, 0.3, 0.7],
+                 [0.4, 0.2, 0.4],
+                 [0.7, 0.3, 0.0]])
+
+            assert_array_equal(
+                out_probs,
+                expected)
+
+
+def test_mle_types():
+
+    for kwargs in [{'calculate_eq_probs': True},
+                   {'calculate_eq_probs': False}]:
+
+        for arr_type in ARR_TYPES:
+            in_cts = arr_type(
+                [[0, 2, 8],
+                 [4, 2, 4],
+                 [7, 3, 0]])
+
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                _, out_probs, _ = builders.mle(in_cts, **kwargs)
+
+            assert_equal(
+                type(in_cts), type(out_probs),
+                "builders.mle was given %s but returned %s." %
+                (type(in_cts), type(out_probs)))
+
+            # cast to ndarray if necessary for comparison to correct result
+            try:
+                out_probs = out_probs.toarray()
+            except AttributeError:
+                pass
+
+            out_probs = np.round(out_probs, decimals=1)
+
+            expected = np.array(
+                [[0.0, 0.2, 0.8],
+                 [0.4, 0.2, 0.4],
+                 [0.7, 0.3, 0.0]])
+
+            assert_array_equal(
+                out_probs,
+                expected)
+
+
+def test_mle_not_in_place():
+
+    in_cts = np.array(
+        [[0, 2, 8],
+         [4, 2, 4],
+         [7, 3, 0]])
+    in_cts_original = in_cts.copy()
+
+    out_cts, _, _ = builders.mle(in_cts, prior_counts=10)
+    assert_array_equal(out_cts, in_cts_original+10)
 
 
 def test_trim_disconnected():

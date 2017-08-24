@@ -1,18 +1,20 @@
 import unittest
 import logging
 import tempfile
+import warnings
 
 import numpy as np
 import mdtraj as md
+from mdtraj import io
 
 from mdtraj.testing import get_fn
-from nose.tools import assert_raises, assert_equals, assert_is
+from nose.tools import assert_raises, assert_equals, assert_is, assert_true
 from numpy.testing import assert_array_equal
 
 from . import array as ra
-from .load import load_as_concatenated
+from .load import load_as_concatenated, concatenate_trjs
 
-from ..exception import DataInvalid
+from ..exception import DataInvalid, ImproperlyConfigured
 
 
 def assert_ra_equal(a, b, **kwargs):
@@ -76,6 +78,28 @@ class Test_RaggedArray(unittest.TestCase):
             ra.save(f.name, a)
             b = ra.load(f.name)
             assert_array_equal(a, b)
+
+    def test_RaggedArray_load_h5_arrays(self):
+        src = np.array(range(55))
+        a = ra.RaggedArray(array=src, lengths=[25, 30])
+
+        with tempfile.NamedTemporaryFile(suffix='.h5') as f:
+            io.saveh(f.name, key0=a[0], key1=a[1])
+
+            b = ra.load(f.name, keys=['key0', 'key1'])
+
+        assert_ra_equal(a, b)
+
+        src = np.array([[0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
+                        [9, 8, 7, 6, 5, 4, 3, 2, 1, 0]]).T
+
+        a = ra.RaggedArray(array=src, lengths=[4, 6])
+
+        with tempfile.NamedTemporaryFile(suffix='.h5') as f:
+            io.saveh(f.name, key0=a[0], key1=a[1])
+            b = ra.load(f.name, keys=['key0', 'key1'])
+
+        assert_ra_equal(a, b)
 
     def test_RaggedArray_bad_size(self):
 
@@ -300,6 +324,51 @@ class Test_RaggedArray(unittest.TestCase):
             ra.where(a == 4),
             [[0, 1], [4, 0]])
 
+    def test_ra_invert(self):
+        a = ra.RaggedArray([[True, False, True, False],
+                            [False, True, False]])
+        b = ~a
+
+        assert_ra_equal(b, ra.RaggedArray([[False, True, False, True],
+                                           [True, False, True]]))
+
+    def test_ra_or(self):
+        a = ra.RaggedArray([[True, False, True, False],
+                            [False, True, False]])
+        b = ra.RaggedArray([[False, False, True, True],
+                            [True, False, True]])
+
+        c = a | b
+        assert_ra_equal(
+            c,
+            ra.RaggedArray([[True, False, True, True],
+                            [True, True, True]]))
+
+    def test_ra_zeros_like(self):
+        a = ra.RaggedArray([[True, False, True, False],
+                            [False, True, False]])
+
+        b = ra.zeros_like(a)
+
+        assert_array_equal(a.lengths, b.lengths)
+        assert_equals(a.shape[0], b.shape[0])
+        assert_true((b == 0).all())
+        assert_is(type(b), ra.RaggedArray)
+
+        a = np.linspace(10, 20)
+        b = ra.zeros_like(a)
+
+        assert_array_equal(a.shape, b.shape)
+        assert_array_equal(np.zeros_like(a), b)
+        
+    def test_ra_operator_not_implemented(self):
+
+        a = ra.RaggedArray([[True, False, True, False],
+                [False, True, False]])
+
+        with assert_raises(TypeError):
+            a > 'asdfasdfasd'
+
 
 class TestParallelLoad(unittest.TestCase):
 
@@ -364,9 +433,9 @@ class TestParallelLoad(unittest.TestCase):
     def test_load_as_concatenated_noargs(self):
         '''It's ok if no args are passed.'''
 
-        t1 = md.load(self.top_fname, top=self.top)
-        t2 = md.load(self.top_fname, top=self.top)
-        t3 = md.load(self.top_fname, top=self.top)
+        t1 = md.load(self.top_fname)
+        t2 = md.load(self.top_fname)
+        t3 = md.load(self.top_fname)
 
         lengths, xyz = load_as_concatenated([self.top_fname]*3)
 
@@ -426,6 +495,128 @@ class TestParallelLoad(unittest.TestCase):
 
         self.assertEqual(expected.shape, xyz.shape)
         self.assertTrue(np.all(expected == xyz))
+
+    def test_load_as_concatenated_lengths_hint(self):
+
+        selection = np.array([1, 3, 6])
+
+        t1 = md.load(self.trj_fname, top=self.top)
+        t2 = md.load(self.trj_fname, top=self.top)
+        t3 = md.load(self.trj_fname, top=self.top)
+
+        lengths, xyz = load_as_concatenated(
+            [self.trj_fname]*3,
+            top=self.top,
+            lengths=[len(t) for t in [t1, t2, t3]])
+
+        expected = np.concatenate([t1.xyz, t2.xyz, t3.xyz])
+
+        assert_equals(expected.shape, xyz.shape)
+        assert_true(np.all(expected == xyz))
+
+        with assert_raises(ImproperlyConfigured):
+            lengths, xyz = load_as_concatenated(
+                [self.trj_fname]*3,
+                top=self.top,
+                lengths=[len(t) for t in [t1, t3]])
+
+        with assert_raises(DataInvalid):
+            lengths, xyz = load_as_concatenated(
+                [self.trj_fname]*3,
+                top=self.top,
+                lengths=[len(t) for t in [t1, t2[::2], t3]])
+
+    def test_hdf5(self):
+
+        hdf5_fn = get_fn('frame0.h5')
+
+        t1 = md.load(hdf5_fn)
+
+        lengths, xyz = load_as_concatenated([hdf5_fn]*5)
+
+        assert_array_equal(lengths, [len(t1)]*5)
+        assert_array_equal(xyz.shape[1:], t1.xyz.shape[1:])
+        assert_array_equal(t1.xyz, xyz[0:t1.xyz.shape[0], :, :])
+
+    def test_hdf5_multiarg(self):
+        '''
+        *args should work with load_as_concatenated h5s
+
+        Verify that when an *args is used on load_as_concatenated, each
+        arg is applied in order to each trajectory as it's loaded.
+        '''
+        selections = [np.array([1, 3, 6]), np.array([2, 4, 7])]
+        hdf5_fn = get_fn('frame0.h5')
+
+        t1 = md.load(hdf5_fn, atom_indices=selections[0])
+        t2 = md.load(hdf5_fn, atom_indices=selections[1])
+
+        args = [
+            {'atom_indices': selections[0]},
+            {'atom_indices': selections[1]}
+            ]
+
+        lengths, xyz = load_as_concatenated(
+            [hdf5_fn]*2,
+            processes=2,
+            args=args)  # called kwargs, it's actually applied as an arg vector
+
+        expected = np.concatenate([t1.xyz, t2.xyz])
+
+        self.assertEqual(expected.shape, xyz.shape)
+        self.assertTrue(np.all(expected == xyz))
+
+
+class TestConcatenateTrajs(unittest.TestCase):
+
+    def setUp(self):
+        self.trj_fname = get_fn('frame0.xtc')
+        self.top_fname = get_fn('native.pdb')
+        self.top = md.load(self.top_fname).top
+
+        logging.getLogger('enspara.util.load').setLevel(logging.DEBUG)
+
+    def test_concat_simple(self):
+
+        trjlist = [md.load(self.top_fname)] * 10
+        trj = concatenate_trjs(trjlist)
+
+        assert_equals(len(trjlist), len(trj))
+
+        for trjframe, trjlist_item in zip(trj, trjlist):
+            assert_array_equal(trjframe.xyz, trjlist_item.xyz)
+
+
+    def test_concat_atoms(self):
+
+        ATOMS = 'name N or name C or name CA'
+        trjlist = [md.load(self.top_fname)] * 10
+        trj = concatenate_trjs(trjlist, atoms=ATOMS)
+
+        assert_equals(len(trjlist), len(trj))
+
+        for trjframe, trjlist_item in zip(trj, trjlist):
+            sliced_item = trjlist_item.atom_slice(
+                trjlist_item.top.select(ATOMS))
+            assert_array_equal(trjframe.xyz, sliced_item.xyz)
+
+
+    def test_different_lengths(self):
+
+        trjlist = [md.load(self.top_fname)] * 5
+        trjlist.append(md.load(self.trj_fname, top=self.top_fname))
+
+        trj = concatenate_trjs(trjlist, atoms='name CA or name N or name C')
+
+        assert_equals(trj.xyz.shape, (506, 6, 3))
+
+    def test_mismatched(self):
+
+        trjlist = [md.load(self.top_fname)] * 5
+        trjlist.append(trjlist[0].atom_slice(np.arange(10)))
+
+        with assert_raises(DataInvalid):
+            trj = concatenate_trjs(trjlist)
 
 
 class TestPartition(unittest.TestCase):
