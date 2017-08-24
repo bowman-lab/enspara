@@ -192,7 +192,7 @@ def load_as_concatenated(filenames, lengths=None, processes=None,
                 "Lengths list (len %s) didn't match length of filenames"
                 " list (len %s)", len(lengths), len(filenames))
 
-    full_shape, shared_array = shared_array_like(
+    full_shape, shared_array = shared_array_like_trj(
         lengths, example_trj=md.load(filenames[0], frame=0, **args[0]))
 
     logger.debug("Allocated array of shape %s", full_shape)
@@ -249,7 +249,7 @@ def concatenate_trjs(trj_list, atoms=None, n_procs=None):
 
     lengths = [len(t) for t in trj_list]
     intervals = np.cumsum(np.array([0] + lengths))
-    full_shape, shared_xyz = shared_array_like(lengths, example_center)
+    full_shape, shared_xyz = shared_array_like_trj(lengths, example_center)
 
     with closing(mp.Pool(processes=n_procs, initializer=_init,
                          initargs=(shared_xyz,))) as p:
@@ -263,7 +263,7 @@ def concatenate_trjs(trj_list, atoms=None, n_procs=None):
     return md.Trajectory(xyz, topology=example_center.top)
 
 
-def shared_array_like(lengths, example_trj):
+def shared_array_like_trj(lengths, example_trj):
 
     # when we allocate the shared array below, we expect a float32
     # c_double seems to work with trajectories that use float32s. Why?

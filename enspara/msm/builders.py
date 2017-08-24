@@ -110,7 +110,7 @@ def transpose(C, calculate_eq_probs=True):
     """
 
     C_sym = C + C.T
-    probs = row_normalize(C_sym)
+    probs = _row_normalize(C_sym)
 
     # C + C.T changes the type of sparse matrices, so recast here.
     if type(C) is not type(probs):
@@ -148,7 +148,7 @@ def normalize(C, calculate_eq_probs=True):
         Equilibrium probability distribution of `T`.
     """
 
-    probs = row_normalize(C)
+    probs = _row_normalize(C)
 
     equilibrium = None
     if calculate_eq_probs:
@@ -157,7 +157,7 @@ def normalize(C, calculate_eq_probs=True):
     return C, probs, equilibrium
 
 
-def row_normalize(C):
+def _row_normalize(C):
     """Normalize every row of a transition count matrix to obtain a
     transition probability matrix.
 
