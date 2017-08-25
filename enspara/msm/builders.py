@@ -64,7 +64,7 @@ def mle(C, prior_counts=None, calculate_eq_probs=True):
     C = C.astype('double')
 
     if prior_counts is not None:
-        C += prior_counts
+        C = _apply_prior_counts(C, prior_counts)
 
     sparsetype = np.array
     if scipy.sparse.issparse(C):
@@ -86,7 +86,7 @@ def mle(C, prior_counts=None, calculate_eq_probs=True):
     return C, T, equilibrium
 
 
-def transpose(C, calculate_eq_probs=True):
+def transpose(C, prior_counts=None, calculate_eq_probs=True):
     """Transform a counts matrix to a probability matrix using the
     transpose method.
 
@@ -109,8 +109,11 @@ def transpose(C, calculate_eq_probs=True):
         Equilibrium probability distribution of `T`.
     """
 
+    if prior_counts is not None:
+        C = _apply_prior_counts(C, prior_counts)
+
     C_sym = C + C.T
-    probs = row_normalize(C_sym)
+    probs = _row_normalize(C_sym)
 
     # C + C.T changes the type of sparse matrices, so recast here.
     if type(C) is not type(probs):
@@ -124,7 +127,7 @@ def transpose(C, calculate_eq_probs=True):
     return C_sym/2, probs, equilibrium
 
 
-def normalize(C, calculate_eq_probs=True):
+def normalize(C, prior_counts=None, calculate_eq_probs=True):
     """Transform a transition counts matrix to a transition probability
     matrix by row-normalizing it. This does not guarantee ergodicity or
     enforce equilibrium.
@@ -148,7 +151,10 @@ def normalize(C, calculate_eq_probs=True):
         Equilibrium probability distribution of `T`.
     """
 
-    probs = row_normalize(C)
+    if prior_counts is not None:
+        C = _apply_prior_counts(C, prior_counts)
+
+    probs = _row_normalize(C)
 
     equilibrium = None
     if calculate_eq_probs:
@@ -157,7 +163,17 @@ def normalize(C, calculate_eq_probs=True):
     return C, probs, equilibrium
 
 
-def row_normalize(C):
+def _apply_prior_counts(C, prior_counts):
+    """Apply prior_counts to counts matrix C
+    """
+
+    if prior_counts is not None:
+        C += prior_counts
+
+    return C
+
+
+def _row_normalize(C):
     """Normalize every row of a transition count matrix to obtain a
     transition probability matrix.
 

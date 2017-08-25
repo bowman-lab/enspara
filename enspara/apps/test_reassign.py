@@ -27,20 +27,19 @@ def runhelper(args):
     tf = hashlib.md5(str(datetime.now().timestamp())
                      .encode('utf-8')).hexdigest()[0:8]
 
+    assignfile = os.path.join(td, '-'.join([tf] + ['assignments.h5']))
+    distfile = os.path.join(td, '-'.join([tf] + ['distances.h5']))
+
     try:
         reassign.main([
             '',  # req'd because arg[0] is expected to be program name
-            '--output-path', td,
-            '--output-tag', tf] + args)
+            '--assignments', assignfile,
+            '--distances', distfile] + args)
 
-        assignfile = os.path.join(
-            td, '-'.join([tf] + ['assignments.h5']))
         assert os.path.isfile(assignfile), \
             "Couldn't find %s. Dir contained: %s" % (
             assignfile, os.listdir(os.path.dirname(assignfile)))
 
-        distfile = os.path.join(
-            td, '-'.join([tf] + ['distances.h5']))
         assert os.path.isfile(distfile), \
             "Couldn't find %s. Dir contained: %s" % (
             distfile, os.listdir(os.path.dirname(distfile)))

@@ -8,6 +8,15 @@ from mdtraj import io
 from ..exception import DataInvalid, ImproperlyConfigured
 
 
+def zeros_like(array, *args, **kwargs):
+
+    if hasattr(array, '_data'):
+        flat_arr = np.zeros_like(array._data)
+        return RaggedArray(array=flat_arr, lengths=array.lengths)
+    else:
+        return np.zeros_like(array)
+
+
 def where(mask):
     """As np.where, but on _either_ RaggedArrays or a numpy array.
 
@@ -651,8 +660,12 @@ class RaggedArray(object):
         if type(other) is type(self):
             other = other._data
         new_data = getattr(self._data, operator)(other)
-        return RaggedArray(
-            array=new_data, lengths=self.lengths, error_checking=False)
+
+        if new_data is NotImplemented:
+            return NotImplemented
+        else:
+            return RaggedArray(array=new_data, lengths=self.lengths,
+                               error_checking=False)
 
     # Non-built in functions
     def all(self):
@@ -666,6 +679,10 @@ class RaggedArray(object):
 
     def min(self):
         return self._data.min()
+
+    @property
+    def size(self):
+        return self._data.size
 
     def append(self, values):
         # if the incoming values is a RaggedArray, pull just the array
@@ -694,4 +711,3 @@ class RaggedArray(object):
 
     def flatten(self):
         return self._data.flatten()
-
