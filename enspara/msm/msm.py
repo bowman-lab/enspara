@@ -33,12 +33,22 @@ class MSM:
     '''
 
     __slots__ = ['lag_time', 'sliding_window', 'trim', 'method',
-                 'tcounts_', 'tprobs_', 'eq_probs_', 'mapping_']
+                 'max_n_states', 'tcounts_', 'tprobs_', 'eq_probs_',
+                 'mapping_']
 
-    def __init__(self, lag_time, method, trim=False, sliding_window=True):
+    @classmethod
+    def from_assignments(cls, assignments, **kwargs):
+        m = cls(**kwargs)
+        m.fit(assignments)
+        return m
+
+    def __init__(
+            self, lag_time, method, trim=False, sliding_window=True,
+            max_n_states=None):
 
         self.lag_time = lag_time
         self.trim = trim
+        self.max_n_states = max_n_states
 
         if callable(method):
             self.method = method
@@ -60,6 +70,7 @@ class MSM:
 
         tcounts = assigns_to_counts(
             assigns,
+            max_n_states=self.max_n_states,
             lag_time=self.lag_time,
             sliding_window=self.sliding_window)
 
