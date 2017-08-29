@@ -122,7 +122,7 @@ def transpose(C, prior_counts=None, calculate_eq_probs=True):
 
     equilibrium = None
     if calculate_eq_probs:
-        equilibrium = np.array(np.sum(C_sym, axis=1) / np.sum(C_sym)).flatten()
+        equilibrium = np.array(C_sym.sum(axis=1) / C_sym.sum()).flatten()
 
     return C_sym/2, probs, equilibrium
 
