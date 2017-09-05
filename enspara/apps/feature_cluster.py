@@ -1,6 +1,7 @@
 import sys
 import argparse
 import pickle
+import os
 
 from mdtraj import io
 from msmbuilder.libdistance import cdist
@@ -9,6 +10,15 @@ from enspara import exception
 from enspara.cluster import KHybrid
 from enspara.util import array as ra
 
+class readable_dir(argparse.Action):
+    def __call__(self, parser, namespace, values, option_string=None):
+        prospective_dir= os.path.dirname(os.path.abspath(values))
+        if not os.path.isdir(prospective_dir):
+            raise argparse.ArgumentTypeError("readable_dir:{0} is not a valid path".format(prospective_dir))
+        if os.access(prospective_dir, os.R_OK):
+            setattr(namespace,self.dest,values)
+        else:
+            raise argparse.ArgumentTypeError("readable_dir:{0} is not a readable dir".format(prospective_dir))
 
 def process_command_line(argv):
     parser = argparse.ArgumentParser(formatter_class=argparse.
@@ -17,6 +27,7 @@ def process_command_line(argv):
     parser.add_argument(
         "--features", required=True,
         help="The h5 file containin observations and features.")
+
     parser.add_argument(
         "--cluster-algorithm", required=True, choices=['khybrid'],
         help="The algorithm to use for clustering.")
@@ -27,7 +38,6 @@ def process_command_line(argv):
         "--cluster-distance", default='euclidean',
         choices=['euclidean', 'manhattan'],
         help="The metric for measuring distances")
-
     parser.add_argument(
         "--kmedoids-updates", default=5, type=int,
         help="Number of iterations of kemedoids to perform when "
@@ -35,19 +45,23 @@ def process_command_line(argv):
              "when --cluster-algorithm is 'khybrid'.")
 
     parser.add_argument(
-        "--assignments", required=True,
+        "--assignments", action=readable_dir, required=True,
         help="Location for assignments output (h5 file).")
     parser.add_argument(
-        "--distances", required=True,
+        "--distances", action=readable_dir, required=True,
         help="Location for distances output (h5 file).")
     parser.add_argument(
-        "--center-indices", required=True,
+        "--center-indices", action=readable_dir, required=True,
         help="Location for indices output (pickle).")
     parser.add_argument(
-        "--cluster-centers", required=True,
+        "--cluster-centers", action=readable_dir, required=True,
         help="Location for cluster centers output (h5 file). These are "
              "the feature vectors (from --features) that are found to "
              "be cluster centers.")
+
+    parser.add_argument(
+        "--overwrite", action='store_true',
+        help="Flag to overwrite when output file exists.")
 
     args = parser.parse_args(argv[1:])
 
@@ -55,6 +69,12 @@ def process_command_line(argv):
         args.cluster_distance = diff_euclidean
     elif args.cluster_distance.lower() == 'manhattan':
         args.cluster_distance = diff_manhattan
+
+
+    a_file_exists = any(os.path.isfile(getattr(args, o)) for o in
+	['assignments', 'distances', 'center_indices', 'cluster_centers'])
+    if a_file_exists and not args.overwrite:
+        raise FileExistsError
 
     assert args.cluster_algorithm.lower() == 'khybrid'
 
