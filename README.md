@@ -1,6 +1,23 @@
 # enspara
 Statistical Trajectory Analysis and Guidance
 
+## Installing 
+Confirm Anaconda is installed on local machine and create/activate environment.\
+Clone enspara from github to local machine: \
+`git clone git@github.com:gbowman/enspara.git` \
+Enter enspara from home directory and: \
+`python setup.py build_ext --inplace` \
+If setup failed, `conda install` necessary packages and rerun setup command. Return to home directory and: 
+```
+mkdir modules 
+cd modules 
+ln -s ~/enspara/enspara 
+vim ~/.bashrc
+```
+Add the following line to the bash script: \
+`PYTHONPATH="$PYTHONPATH:directory path to modules"`\
+This completes the process of installing enspara on your local machine.
+
 ## Clustering Large Trajectory Sets
 
 Clustering usually requires a single array, but trajectories are normally fragmented in multiple files. Our `load_as_concatenated` function will load multiple trajectories into a single numpy array. The only requirement is that each trajectory have the same number of atoms. Their topologies need not match, nor must their lengths match.
