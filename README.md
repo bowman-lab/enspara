@@ -2,20 +2,22 @@
 Statistical Trajectory Analysis and Guidance
 
 ## Installing 
-Confirm Anaconda is installed on local machine and create/activate environment.\
-Clone enspara from github to local machine: \
-`git clone git@github.com:gbowman/enspara.git` \
-Enter enspara from home directory and: \
-`python setup.py build_ext --inplace` \
-If setup failed, `conda install` necessary packages and rerun setup command. Return to home directory and: 
+1) Confirm Anaconda is installed on local machine and create/activate environment.
+2) Clone enspara from github to local machine: \
+`git clone git@github.com:gbowman/enspara.git` 
+3) Enter enspara from home directory and: \
+`python setup.py build_ext --inplace` 
+If setup failed, `conda install` necessary packages and rerun setup command. 
+4) Return to home directory and: 
 ```
 mkdir modules 
 cd modules 
 ln -s ~/enspara/enspara 
 vim ~/.bashrc
 ```
-Add the following line to the bash script: \
-`PYTHONPATH="$PYTHONPATH:directory path to modules"`\
+5) Add the following line to the bash script: \
+`PYTHONPATH="directory path to modules:$PYTHONPATH"`
+
 This completes the process of installing enspara on your local machine.
 
 ## Clustering Large Trajectory Sets
