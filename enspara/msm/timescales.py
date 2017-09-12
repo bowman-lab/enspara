@@ -27,7 +27,7 @@ def calc_imp_times(assigns, lag_time, n_states, n_times, method,
     '''
     C = assigns_to_counts(
         assigns,
-        n_states=n_states,
+        max_n_states=n_states,
         lag_time=lag_time,
         sliding_window=sliding_window)
 
