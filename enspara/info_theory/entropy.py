@@ -26,7 +26,7 @@ def Q_from_assignments(
 
     # get counts matrix
     Q_counts = assigns_to_counts(
-        assignments, n_states=n_states, lag_time=lag_time)
+        assignments, max_n_states=n_states, lag_time=lag_time)
 
     # add prior counts
     Q_counts = np.array(Q_counts.todense()) + prior_counts
