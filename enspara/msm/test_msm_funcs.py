@@ -292,3 +292,35 @@ def test_trim_disconnected():
 
         expected_mapping = TrimMapping([(0, 0), (1, 1)])
         assert_equal(mapping, expected_mapping)
+
+def test_prior_counts():
+
+    given = np.array(
+        [
+            [1, 2, 0, 0],
+            [2, 1, 0, 1],
+            [0, 0, 1, 0],
+            [0, 1, 0, 2]])
+
+    prior = 1
+    expected_counts = given + prior
+
+    calculated_counts, _, _ = builders.normalize(
+        given, prior_counts=prior, calculate_eq_probs=False)
+    assert_array_equal(calculated_counts, expected_counts)
+   
+    calculated_counts, _, _ = builders.transpose(
+        given, prior_counts=prior, calculate_eq_probs=False)
+    assert_array_equal(calculated_counts, expected_counts)
+
+def test_prior_inplace():
+
+    given = np.array([[1,1],[1,1]])
+    prior = 1
+
+    new, _, _ = builders.normalize(given, prior_counts=prior)
+    test = given+1
+    assert_array_equal(test, new)
+
+    new, _, _ = builders.normalize(given, prior_counts=prior, inplace=True)
+    assert_array_equal(given, new)
