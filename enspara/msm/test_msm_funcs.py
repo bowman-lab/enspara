@@ -313,14 +313,11 @@ def test_prior_counts():
         given, prior_counts=prior, calculate_eq_probs=False)
     assert_array_equal(calculated_counts, expected_counts)
 
-def test_prior_inplace():
+    rows,cols = np.nonzero(given)
+    data = given[rows,cols]
+    sparse_counts = scipy.sparse.coo_matrix(
+        (data, (rows, cols)), shape=given.shape)
+    calculated_counts, _, _ = builders.normalize(
+        sparse_counts, prior_counts=prior, calculate_eq_probs=False)
+    assert_array_equal(calculated_counts, expected_counts)
 
-    given = np.array([[1,1],[1,1]])
-    prior = 1
-
-    new, _, _ = builders.normalize(given, prior_counts=prior)
-    test = given+1
-    assert_array_equal(test, new)
-
-    new, _, _ = builders.normalize(given, prior_counts=prior, inplace=True)
-    assert_array_equal(given, new)

@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 
-def mle(C, prior_counts=None, calculate_eq_probs=True, inplace=False):
+def mle(C, prior_counts=None, calculate_eq_probs=True):
     """Transform a counts matrix to a probability matrix using
     maximum-liklihood estimation (prinz) method.
 
@@ -63,7 +63,7 @@ def mle(C, prior_counts=None, calculate_eq_probs=True, inplace=False):
     # a counts matrix to take integers?
     C = C.astype('double')
 
-    C = _apply_prior_counts(C, prior_counts, inplace=inplace)
+    C = _apply_prior_counts(C, prior_counts)
 
     sparsetype = np.array
     if scipy.sparse.issparse(C):
@@ -85,7 +85,7 @@ def mle(C, prior_counts=None, calculate_eq_probs=True, inplace=False):
     return C, T, equilibrium
 
 
-def transpose(C, prior_counts=None, calculate_eq_probs=True, inplace=False):
+def transpose(C, prior_counts=None, calculate_eq_probs=True):
     """Transform a counts matrix to a probability matrix using the
     transpose method.
 
@@ -108,7 +108,7 @@ def transpose(C, prior_counts=None, calculate_eq_probs=True, inplace=False):
         Equilibrium probability distribution of `T`.
     """
 
-    C = _apply_prior_counts(C, prior_counts, inplace=inplace)
+    C = _apply_prior_counts(C, prior_counts)
 
     C_sym = C + C.T
     probs = _row_normalize(C_sym)
@@ -125,7 +125,7 @@ def transpose(C, prior_counts=None, calculate_eq_probs=True, inplace=False):
     return C_sym/2, probs, equilibrium
 
 
-def normalize(C, prior_counts=None, calculate_eq_probs=True, inplace=False):
+def normalize(C, prior_counts=None, calculate_eq_probs=True):
     """Transform a transition counts matrix to a transition probability
     matrix by row-normalizing it. This does not guarantee ergodicity or
     enforce equilibrium.
@@ -149,7 +149,7 @@ def normalize(C, prior_counts=None, calculate_eq_probs=True, inplace=False):
         Equilibrium probability distribution of `T`.
     """
 
-    C = _apply_prior_counts(C, prior_counts, inplace=inplace)
+    C = _apply_prior_counts(C, prior_counts)
 
     probs = _row_normalize(C)
 
@@ -160,19 +160,15 @@ def normalize(C, prior_counts=None, calculate_eq_probs=True, inplace=False):
     return C, probs, equilibrium
 
 
-def _apply_prior_counts(C, prior_counts, inplace=False):
+def _apply_prior_counts(C, prior_counts):
     """Apply prior_counts to counts matrix C
     """
 
-    if not inplace:
-        C = C.copy()
-
     if prior_counts is not None:
         try:
-            C += prior_counts
+            C = C + prior_counts
         except NotImplementedError:
-            C = np.array(C.todense())
-            C += prior_counts
+            C = np.array(C.todense()) + prior_counts
 
     return C
 
