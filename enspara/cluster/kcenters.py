@@ -23,7 +23,9 @@ logger = logging.getLogger(__name__)
 
 class KCenters(Clusterer):
 
-    def __init__(self, metric, n_clusters=None, cluster_radius=None):
+    def __init__(
+            self, metric, n_clusters=None, cluster_radius=None,
+            random_first_center=False):
 
         super(KCenters, self).__init__(metric)
 
@@ -33,8 +35,13 @@ class KCenters(Clusterer):
 
         self.n_clusters = n_clusters
         self.cluster_radius = cluster_radius
+        self.random_first_center = random_first_center
 
-    def fit(self, X):
+    def fit(self, X, init_cluster_centers=None):
+        """Takes trajectories, X, and performs KCenters clustering.
+        Optionally continues clustering from an initial set of cluster
+        centers.
+        """
 
         t0 = time.clock()
 
@@ -43,7 +50,8 @@ class KCenters(Clusterer):
             distance_method=self.metric,
             n_clusters=self.n_clusters,
             dist_cutoff=self.cluster_radius,
-            random_first_center=False)
+            init_cluster_centers=init_cluster_centers,
+            random_first_center=self.random_first_center)
 
         self.runtime_ = time.clock() - t0
 

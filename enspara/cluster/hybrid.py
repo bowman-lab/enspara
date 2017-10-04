@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 class KHybrid(Clusterer):
 
     def __init__(self, metric, n_clusters=None, cluster_radius=None,
-                 kmedoids_updates=5):
+                 kmedoids_updates=5, random_first_center=False):
 
         super(KHybrid, self).__init__(metric)
 
@@ -35,8 +35,13 @@ class KHybrid(Clusterer):
         self.kmedoids_updates = kmedoids_updates
         self.n_clusters = n_clusters
         self.cluster_radius = cluster_radius
+        self.random_first_center = random_first_center
 
-    def fit(self, X):
+    def fit(self, X, init_cluster_centers=None):
+        """Takes trajectories, X, and performs KHybrid clustering.
+        Optionally continues clustering from an initial set of cluster
+        centers.
+        """
 
         starttime = time.clock()
 
@@ -44,7 +49,9 @@ class KHybrid(Clusterer):
             X, self.metric,
             n_iters=self.kmedoids_updates,
             n_clusters=self.n_clusters,
-            dist_cutoff=self.cluster_radius)
+            dist_cutoff=self.cluster_radius,
+            random_first_center=self.random_first_center,
+            init_cluster_centers=init_cluster_centers)
 
         self.runtime_ = time.clock() - starttime
 
