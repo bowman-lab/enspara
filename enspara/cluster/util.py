@@ -201,7 +201,7 @@ def find_cluster_centers(assignments, distances):
     """
 
     if len(distances) != len(assignments):
-        raise exception.DataInvalid(
+        raise DataInvalid(
             "Length of distances (%s) must match length of assignments "
             "(%s)." % (len(distances), len(assignments)))
 
@@ -214,7 +214,7 @@ def find_cluster_centers(assignments, distances):
 
         center_inds[i] = ind
 
-    return list(center_inds)
+    return center_inds
 
 
 def load_frames(filenames, indices, **kwargs):
