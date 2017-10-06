@@ -214,7 +214,7 @@ def find_cluster_centers(assignments, distances):
 
         center_inds[i] = ind
 
-    return center_inds
+    return list(center_inds)
 
 
 def load_frames(filenames, indices, **kwargs):
