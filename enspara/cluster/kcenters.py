@@ -105,7 +105,7 @@ def _kcenters_helper(
             traj, cluster_centers, distance_method)
         cluster_center_inds = find_cluster_centers(assignments, distances)
 
-        cluster_num = len(cluster_center_inds) + 1
+        cluster_num = len(cluster_center_inds) 
         new_center_index = np.argmax(distances)
         max_distance = np.max(distances)
 
