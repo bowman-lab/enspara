@@ -37,10 +37,17 @@ class KCenters(Clusterer):
         self.cluster_radius = cluster_radius
         self.random_first_center = random_first_center
 
-    def fit(self, X, init_cluster_centers=None):
+    def fit(self, X, init_centers=None):
         """Takes trajectories, X, and performs KCenters clustering.
         Optionally continues clustering from an initial set of cluster
         centers.
+
+        Parameters
+        ----------
+        X : array-like, shape=(n_observations, n_features(, n_atoms))
+            Data to cluster.
+        init_centers : array-like, shape=(n_centers, n_features(, n_atoms))
+            Begin clustring with these centers as cluster centers.
         """
 
         t0 = time.clock()
@@ -50,7 +57,7 @@ class KCenters(Clusterer):
             distance_method=self.metric,
             n_clusters=self.n_clusters,
             dist_cutoff=self.cluster_radius,
-            init_cluster_centers=init_cluster_centers,
+            init_centers=init_centers,
             random_first_center=self.random_first_center)
 
         self.runtime_ = time.clock() - t0
@@ -58,7 +65,7 @@ class KCenters(Clusterer):
 
 def kcenters(
         traj, distance_method, n_clusters=np.inf, dist_cutoff=0,
-        init_cluster_centers=None, random_first_center=False):
+        init_centers=None, random_first_center=False):
 
     if (n_clusters is np.inf) and (dist_cutoff is 0):
             raise ImproperlyConfigured("Either n_clusters or cluster_radius "
@@ -76,8 +83,7 @@ def kcenters(
 
     cluster_center_inds, assignments, distances = _kcenters_helper(
         traj, distance_method, n_clusters=n_clusters, dist_cutoff=dist_cutoff,
-        cluster_centers=init_cluster_centers,
-        random_first_center=random_first_center)
+        cluster_centers=init_centers, random_first_center=random_first_center)
 
     return ClusterResult(
         center_indices=cluster_center_inds,
@@ -105,7 +111,7 @@ def _kcenters_helper(
             traj, cluster_centers, distance_method)
         cluster_center_inds = find_cluster_centers(assignments, distances)
 
-        cluster_num = len(cluster_center_inds) 
+        cluster_num = len(cluster_center_inds)
         new_center_index = np.argmax(distances)
         max_distance = np.max(distances)
 

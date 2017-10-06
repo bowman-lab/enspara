@@ -6,7 +6,8 @@ import numpy as np
 import mdtraj as md
 from mdtraj.testing import get_fn
 
-from nose.tools import assert_raises, assert_less, assert_true, assert_is
+from nose.tools import (assert_raises, assert_less, assert_true, assert_is,
+                        assert_equal)
 from numpy.testing import assert_array_equal
 
 from .hybrid import KHybrid, hybrid
@@ -142,7 +143,7 @@ class TestTrajClustering(unittest.TestCase):
         results = [hybrid(
             self.trj,
             distance_method='rmsd',
-            init_cluster_centers=None,
+            init_centers=None,
             n_clusters=N_CLUSTERS,
             random_first_center=False,
             n_iters=100
@@ -169,7 +170,7 @@ class TestTrajClustering(unittest.TestCase):
         result = kcenters(
             self.trj,
             distance_method='rmsd',
-            init_cluster_centers=None,
+            init_centers=None,
             dist_cutoff=0.1,
             random_first_center=False
             )
@@ -190,7 +191,7 @@ class TestTrajClustering(unittest.TestCase):
             self.trj,
             distance_method='rmsd',
             n_clusters=N_CLUSTERS,
-            init_cluster_centers=None,
+            init_centers=None,
             random_first_center=False
             )
 
@@ -268,6 +269,24 @@ class TestNumpyClustering(unittest.TestCase):
 
         assert_is(predict_result.centers, centers)
 
+    def test_kcenters_hot_start(self):
+
+        clust = KCenters('euclidean', cluster_radius=6)
+
+        clust.fit(
+            X=np.concatenate(self.traj_lst),
+            init_centers=np.array(self.generators[0:2], dtype=float))
+
+        print(clust.result_.center_indices, len(clust.result_.center_indices))
+
+        assert_equal(len(clust.result_.center_indices), 3)
+        assert_equal(len(np.unique(clust.result_.center_indices)),
+                     np.max(clust.result_.assignments)+1)
+
+        # because two centers were generators, only one center
+        # should actually be a frame
+        assert_equal(len(np.where(clust.result_.distances == 0)), 1)
+
     def test_numpy_hybrid(self):
         N_CLUSTERS = 3
 
@@ -291,7 +310,7 @@ class TestNumpyClustering(unittest.TestCase):
             distance_method='euclidean',
             n_clusters=3,
             dist_cutoff=2,
-            init_cluster_centers=None,
+            init_centers=None,
             random_first_center=False)
 
         centers = find_cluster_centers(result.assignments, result.distances)
