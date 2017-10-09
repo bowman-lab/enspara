@@ -103,7 +103,8 @@ def _kcenters_helper(
         logger.info("Updating assignments to previous cluster centers")
         assignments, distances = assign_to_nearest_center(
             traj, cluster_centers, distance_method)
-        cluster_center_inds = find_cluster_centers(assignments, distances)
+        cluster_center_inds = list(
+            find_cluster_centers(assignments, distances))
 
         cluster_num = len(cluster_center_inds) 
         new_center_index = np.argmax(distances)
