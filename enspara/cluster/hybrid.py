@@ -37,13 +37,18 @@ class KHybrid(Clusterer):
         self.cluster_radius = cluster_radius
         self.random_first_center = random_first_center
 
-    def fit(self, X, init_cluster_centers=None):
+    def fit(self, X, init_centers=None):
         """Takes trajectories, X, and performs KHybrid clustering.
         Optionally continues clustering from an initial set of cluster
         centers.
+
+        Parameters
+        ----------
+        X : array-like, shape=(n_observations, n_features(, n_atoms))
+            Data to cluster.
         """
 
-        starttime = time.clock()
+        t0 = time.clock()
 
         self.result_ = hybrid(
             X, self.metric,
@@ -51,22 +56,21 @@ class KHybrid(Clusterer):
             n_clusters=self.n_clusters,
             dist_cutoff=self.cluster_radius,
             random_first_center=self.random_first_center,
-            init_cluster_centers=init_cluster_centers)
+            init_centers=init_centers)
 
-        self.runtime_ = time.clock() - starttime
+        self.runtime_ = time.clock() - t0
 
 
 def hybrid(
         traj, distance_method, n_iters=5, n_clusters=np.inf,
         dist_cutoff=0, random_first_center=False,
-        init_cluster_centers=None):
+        init_centers=None):
 
     distance_method = _get_distance_method(distance_method)
 
     result = kcenters(
         traj, distance_method, n_clusters=n_clusters, dist_cutoff=dist_cutoff,
-        init_cluster_centers=init_cluster_centers,
-        random_first_center=random_first_center)
+        init_centers=init_centers, random_first_center=random_first_center)
 
     for i in range(n_iters):
         cluster_center_inds, assignments, distances = _hybrid_medoids_update(
