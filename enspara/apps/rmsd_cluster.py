@@ -9,16 +9,17 @@ import json
 from functools import partial
 from multiprocessing import cpu_count
 
-import numpy as np
 import mdtraj as md
 
-from enspara.cluster import KHybrid
+from enspara.apps.reassign import reassign
+from enspara.apps.util import readable_dir
+
+from enspara.cluster import KHybrid, KCenters
 from enspara.util import array as ra
 from enspara.cluster.util import load_frames
 from enspara.util import load_as_concatenated
 from enspara import exception
 
-from enspara.apps.reassign import reassign
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -33,6 +34,7 @@ def process_command_line(argv):
         description="Cluster a set (or several sets) of trajectories "
                     "into a single state space based upon RMSD.")
 
+    # INPUTS
     parser.add_argument(
         '--trajectories', required=True, nargs="+", action='append',
         help="List of paths to aligned trajectory files to cluster. "
@@ -44,8 +46,10 @@ def process_command_line(argv):
              "flag. The first --topology flag is taken to be the "
              "topology to use for the first instance of the "
              "--trajectories flag, and so forth.")
+
+    # PARAMETERS
     parser.add_argument(
-        '--algorithm', required=True, choices=["khybrid"],
+        '--algorithm', required=True, choices=["khybrid", "kcenters"],
         help="The clustering algorithm to use.")
     parser.add_argument(
         '--atoms', action="append", required=True,
@@ -69,14 +73,17 @@ def process_command_line(argv):
         '--subsample', default=None, type=int,
         help="Take only every nth frame when loading trajectories. "
              "1 implies no subsampling.")
+
+    # OUTPUT
     parser.add_argument(
-        '--output-path', default='',
-        help="The output path for results (distances, assignments, centers).")
+        '--distances', required=True, action=readable_dir,
+        help="The location to write the distances file.")
     parser.add_argument(
-        '--output-tag', default='',
-        help="An optional extra string prepended to output filenames (useful"
-             "for giving this choice of parameters a name to separate it from"
-             "other clusterings or proteins.")
+        '--centers', required=True, action=readable_dir,
+        help="The location to write the cluster center structures.")
+    parser.add_argument(
+        '--assignments', required=True, action=readable_dir,
+        help="The location to write the cluster center structures.")
 
     args = parser.parse_args(argv[1:])
 
@@ -92,67 +99,12 @@ def process_command_line(argv):
         raise exception.ImproperlyConfigured(
             "The number of --topology and --trajectory flags must agree.")
 
+    if args.algorithm == 'kcenters':
+        args.Clusterer = KCenters
+    elif args.algorithm == 'khybrid':
+        args.Clusterer = KHybrid
+
     return args
-
-
-def rmsd_hack(trj, ref, partitions=None, **kwargs):
-    '''Compute rmsd between trj and ref.
-
-    Accepts all parameters accepted by md.rmsd (not all present below),
-    but can batch the call into separate subcalls using `partitions`.
-    The primary purpose here is to avoid the segmentation fault that can
-    occur when computing rmsds over very large data sets.
-
-    Parameters
-    ----------
-    trj : md.Trajectory
-        For each conformation in this trajectory, compute the RMSD to
-        a particular 'reference' conformation in another trajectory
-        object.
-    ref : md.Trajectory
-        The object containing the reference conformation to measure distances
-        to.
-    partitions : int, default=None
-        The number of times to batch the call to `md.rmsd`.
-
-    See Also
-    --------
-    MDTraj's md.rmsd.
-    '''
-
-    if partitions is None or partitions == 1:
-        # this call is substantially faster because there is no serial
-        # memory shell game (as is present below).
-        return md.rmsd(trj, ref)
-
-    pivots = np.linspace(0, len(trj), num=partitions+1, dtype='int')
-
-    rmsds = np.zeros(len(trj))
-
-    for i in range(len(pivots)-1):
-        s = slice(pivots[i], pivots[i+1])
-        rmsds[s] = md.rmsd(trj[s], ref, **kwargs)
-
-    return rmsds
-
-
-def filenames(args):
-
-    tag_params = [
-        args.output_tag,
-        args.algorithm,
-        str(args.rmsd_cutoff)]
-
-    if args.subsample:
-        tag_params.append(str(args.subsample)+'subsample')
-
-    path_stub = os.path.join(args.output_path, '-'.join(tag_params))
-
-    return {
-        'distances': path_stub+'-distances.h5',
-        'centers': path_stub+'-centers.pkl',
-        'assignments': path_stub+'-assignments.h5',
-    }
 
 
 def load(topologies, trajectories, selections, stride, processes):
@@ -255,8 +207,8 @@ def main(argv=None):
         "Loading finished. Clustering using atoms %s matching '%s'.",
         xyz.shape[1], args.atoms)
 
-    clustering = KHybrid(
-        metric=partial(rmsd_hack, partitions=args.partitions),
+    clustering = args.Clusterer(
+        metric=md.rmsd,
         cluster_radius=args.rmsd_cutoff)
 
     # md.rmsd requires an md.Trajectory object, so wrap `xyz` in
@@ -269,7 +221,7 @@ def main(argv=None):
 
     result = clustering.result_.partition(lengths)
 
-    outdir = os.path.dirname(filenames(args)['centers'])
+    outdir = os.path.dirname(args.centers)
     logger.info("Saving cluster centers at %s", outdir)
 
     try:
@@ -279,7 +231,7 @@ def main(argv=None):
 
     centers = load_asymm_frames(result.center_indices, args.trajectories,
                                 args.topologies, args.subsample)
-    with open(filenames(args)['centers'], 'wb') as f:
+    with open(args.centers, 'wb') as f:
         pickle.dump(centers, f)
 
     if args.subsample:
@@ -288,14 +240,14 @@ def main(argv=None):
             args.topologies, args.trajectories, args.atoms,
             centers=result.centers)
 
-        ra.save(filenames(args)['distances'], dist)
-        ra.save(filenames(args)['assignments'], assig)
+        ra.save(args.distances, dist)
+        ra.save(args.assignments, assig)
     else:
-        ra.save(filenames(args)['distances'], result.distances)
-        ra.save(filenames(args)['assignments'], result.assignments)
+        ra.save(args.distances, result.distances)
+        ra.save(args.assignments, result.assignments)
 
     logger.info("Success! Data can be found in %s.",
-                os.path.dirname(filenames(args)['distances']))
+                os.path.dirname(args.distances))
 
     return 0
 

@@ -7,18 +7,10 @@ from mdtraj import io
 from msmbuilder.libdistance import cdist
 
 from enspara import exception
+from enspara.apps import readable_dir
 from enspara.cluster import KHybrid
 from enspara.util import array as ra
 
-class readable_dir(argparse.Action):
-    def __call__(self, parser, namespace, values, option_string=None):
-        prospective_dir= os.path.dirname(os.path.abspath(values))
-        if not os.path.isdir(prospective_dir):
-            raise argparse.ArgumentTypeError("readable_dir:{0} is not a valid path".format(prospective_dir))
-        if os.access(prospective_dir, os.R_OK):
-            setattr(namespace,self.dest,values)
-        else:
-            raise argparse.ArgumentTypeError("readable_dir:{0} is not a readable dir".format(prospective_dir))
 
 def process_command_line(argv):
     parser = argparse.ArgumentParser(formatter_class=argparse.
@@ -70,9 +62,9 @@ def process_command_line(argv):
     elif args.cluster_distance.lower() == 'manhattan':
         args.cluster_distance = diff_manhattan
 
-
-    a_file_exists = any(os.path.isfile(getattr(args, o)) for o in
-	['assignments', 'distances', 'center_indices', 'cluster_centers'])
+    a_file_exists = any(
+        os.path.isfile(getattr(args, o)) for o in
+        ['assignments', 'distances', 'center_indices', 'cluster_centers'])
     if a_file_exists and not args.overwrite:
         raise FileExistsError
 
