@@ -7,7 +7,7 @@ from mdtraj import io
 from msmbuilder.libdistance import cdist
 
 from enspara import exception
-from enspara.apps import readable_dir
+from enspara.apps.util import readable_dir
 from enspara.cluster import KHybrid
 from enspara.util import array as ra
 
