@@ -4,12 +4,13 @@ from numpy.testing import (assert_array_equal, assert_allclose,
 
 import numpy as np
 
-from enspara import cards
 from enspara import exception
 
 from enspara.util import array as ra
 from enspara.info_theory import mutual_info
 
+
+# GENERATORS FOR BUILDING ARRAYS
 
 def zero_mi_np():
     n_trjs = 3
@@ -51,6 +52,8 @@ def nonzero_mi_list():
     l = [row for row in a]
     return l, n_states
 
+
+# ACTUAL TESTS
 
 def test_check_feature_size():
 
@@ -104,6 +107,8 @@ def test_asymmetrical_mi_zero():
 
 
 def test_symmetrical_mi_nonzero():
+    # test that the MI matrix for sets of uncorrelated things results
+    # in zero MI
 
     nonzero_mi_funcs = [nonzero_mi_np, nonzero_mi_ra, nonzero_mi_list]
     for a, n_states in (f() for f in nonzero_mi_funcs):
@@ -117,6 +122,8 @@ def test_symmetrical_mi_nonzero():
 
 
 def test_asymmetrical_mi_nonzero():
+    # test that the MI matrix for sets of uncorrelated things results
+    # in zero MI, but on asymmetrical data, i.e. a[i] != b[i]
 
     zero_mi_funcs = [zero_mi_np, zero_mi_ra, zero_mi_list]
 
@@ -153,3 +160,27 @@ def test_joint_count_binning():
     jc = mutual_info.joint_counts(trj1, trj2, 3, 3)
     assert_equal(jc.dtype, 'int')
     assert_array_equal(jc, expected_jc)
+
+
+def test_symmetrical_apc_zero():
+    # test that the APC matrix for sets of uncorrelated things results
+    # in zero APC
+    zero_mi_funcs = [zero_mi_np, zero_mi_ra, zero_mi_list]
+
+    for a, n_states in (f() for f in zero_mi_funcs):
+        apc = mutual_info.apc_matrix(a, a, n_states, n_states)
+        assert_allclose(apc, 0, atol=1e-3)
+
+
+def test_asymmetrical_apc_zero():
+    # test that the APC matrix for sets of uncorrelated things results
+    # in zero APC, but on asymmetrical data, i.e. a[i] != b[i]
+
+    zero_mi_funcs = [zero_mi_np, zero_mi_ra, zero_mi_list]
+
+    for gen_f in zero_mi_funcs:
+        a, n_a = gen_f()
+        b, n_b = gen_f()
+
+        apc = mutual_info.apc_matrix(a, b, n_a, n_b)
+        assert_allclose(apc, 0, atol=1e-3)

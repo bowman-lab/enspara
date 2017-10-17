@@ -43,6 +43,48 @@ def check_features_states(states, n_states):
             format(l=[len(t[0]) for t in states]))
 
 
+def apc_matrix(assignments_a, assignments_b, n_states_a, n_states_b,
+               n_procs=None):
+    """Compute the average product correlation for a given distribution.
+
+    Parameters
+    ----------
+    assignments_a : array, shape=(n_trajectories, n_frames, n_features)
+        Array of assigned/binned features
+    assignments_b : array, shape=(n_trajectories, n_frames, n_features)
+        Array of assigned/binned features
+    n_a_states_list : array, shape(n_features_a,)
+        Number of possible states for each feature in `states_a`
+    n_b_states_list : array, shape=(n_features_b,)
+        Number of possible states for each feature in `states_b`
+
+    Returns
+    -------
+    apc : float
+        The average product correlation between each pair of states in
+        assignments_a and assignments_b
+
+    References
+    ----------
+    [1] Dunn, S.D., et al (2008) Bioinformatics 24 (3): 330--40.
+    [2] Lopez, T., et al (2017) Nat. Struct. & Mol. Biol. 24: 726--33.
+        doi:10.1038/nsmb.3440
+    """
+
+    mi_arr = mi_matrix(assignments_a, assignments_b, n_states_a, n_states_b,
+                       n_procs=None)
+
+    apc_matrix = np.zeros_like(mi_arr)
+
+    for i in range(mi_arr.shape[0]):
+        for j in range(mi_arr.shape[1]):
+            apc = np.sum(mi_arr[i, :] * mi_arr[:, j])
+            apc /= mi_arr.shape[0] * mi_arr.shape[1]
+            apc_matrix[i, j] = apc
+
+    return apc_matrix
+
+
 def mi_matrix(assignments_a, assignments_b, n_states_a, n_states_b,
               n_procs=None):
     """Compute the all-to-all matrix of mutual information across
@@ -90,7 +132,6 @@ def mi_matrix(assignments_a, assignments_b, n_states_a, n_states_b,
             "Detected that assigments_a is the same as assignments_a; "
             "not allocating a second shared-memory array")
         sa_b = sa_a
-
 
     mi = np.zeros((n_features, n_features))
     mi_calc_indices = np.triu_indices_from(mi, k=1)
