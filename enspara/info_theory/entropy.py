@@ -169,13 +169,17 @@ def energy_to_probability(u, kT=2.479):
 
 
 def shannon_entropy(p, normalize=True):
-    """Compute the Shannon entropy of a distribution.
+    """Compute the Shannon entropy of a uni- or multi-variate
+    distribution.
 
     Parameters
     ----------
-    p : ndarray, (shape=(n_states,))
-        Vector of probabilities representing the distribution over which
-        to calculate the entropy.
+    p : np.ndarray
+        Vector or matrix of probabilities representing the (potentially
+        multivariate) distribution over which to calculate the entropy.
+    normalize : bool, default=True
+        Forcibly normalize the sum of p to one. (Not in place;
+        duplicates p.)
 
     Returns
     -------
@@ -186,8 +190,8 @@ def shannon_entropy(p, normalize=True):
     if normalize:
         p = np.copy(p) / np.sum(p)
 
-    inds = np.where(p > 0)[0]
-    H = -p[inds].dot(np.log(p[inds]))
+    H = -np.sum(p * np.log(p, where=(p > 0)))
+
     return H
 
 

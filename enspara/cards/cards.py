@@ -5,11 +5,7 @@
 # Unauthorized copying of this file, via any medium is strictly prohibited
 # Proprietary and confidential
 
-from __future__ import print_function, division, absolute_import
-
 import logging
-
-import numpy as np
 
 from .. import exception
 from .. import info_theory
@@ -102,8 +98,6 @@ def cards_matrices(feature_trajs, n_feature_states, n_procs=None):
 
     disordered_trajs, disorder_n_states = disorder.assign_order_disorder(
         feature_trajs)
-
-    print(disordered_trajs[0].dtype, feature_trajs[0].dtype)
 
     logger.debug("Calculating structural mutual information")
     structural_mi = info_theory.mi_matrix(

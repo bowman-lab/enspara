@@ -63,8 +63,7 @@ def mle(C, prior_counts=None, calculate_eq_probs=True):
     # a counts matrix to take integers?
     C = C.astype('double')
 
-    if prior_counts is not None:
-        C = _apply_prior_counts(C, prior_counts)
+    C = _apply_prior_counts(C, prior_counts)
 
     sparsetype = np.array
     if scipy.sparse.issparse(C):
@@ -109,8 +108,7 @@ def transpose(C, prior_counts=None, calculate_eq_probs=True):
         Equilibrium probability distribution of `T`.
     """
 
-    if prior_counts is not None:
-        C = _apply_prior_counts(C, prior_counts)
+    C = _apply_prior_counts(C, prior_counts)
 
     C_sym = C + C.T
     probs = _row_normalize(C_sym)
@@ -151,8 +149,7 @@ def normalize(C, prior_counts=None, calculate_eq_probs=True):
         Equilibrium probability distribution of `T`.
     """
 
-    if prior_counts is not None:
-        C = _apply_prior_counts(C, prior_counts)
+    C = _apply_prior_counts(C, prior_counts)
 
     probs = _row_normalize(C)
 
@@ -168,7 +165,10 @@ def _apply_prior_counts(C, prior_counts):
     """
 
     if prior_counts is not None:
-        C += prior_counts
+        try:
+            C = C + prior_counts
+        except NotImplementedError:
+            C = np.array(C.todense()) + prior_counts
 
     return C
 

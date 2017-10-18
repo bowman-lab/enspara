@@ -292,3 +292,32 @@ def test_trim_disconnected():
 
         expected_mapping = TrimMapping([(0, 0), (1, 1)])
         assert_equal(mapping, expected_mapping)
+
+def test_prior_counts():
+
+    given = np.array(
+        [
+            [1, 2, 0, 0],
+            [2, 1, 0, 1],
+            [0, 0, 1, 0],
+            [0, 1, 0, 2]])
+
+    prior = 1
+    expected_counts = given + prior
+
+    calculated_counts, _, _ = builders.normalize(
+        given, prior_counts=prior, calculate_eq_probs=False)
+    assert_array_equal(calculated_counts, expected_counts)
+   
+    calculated_counts, _, _ = builders.transpose(
+        given, prior_counts=prior, calculate_eq_probs=False)
+    assert_array_equal(calculated_counts, expected_counts)
+
+    rows,cols = np.nonzero(given)
+    data = given[rows,cols]
+    sparse_counts = scipy.sparse.coo_matrix(
+        (data, (rows, cols)), shape=given.shape)
+    calculated_counts, _, _ = builders.normalize(
+        sparse_counts, prior_counts=prior, calculate_eq_probs=False)
+    assert_array_equal(calculated_counts, expected_counts)
+
