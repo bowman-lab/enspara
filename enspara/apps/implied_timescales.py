@@ -39,13 +39,17 @@ def process_command_line(argv):
              "trajectory ids. This is useful for handling assignments "
              "for shared state space clusterings.")
     parser.add_argument(
-        "--processes", default=cpu_count(), type=int,
-        help="Number of cores to use.")
+        "--processes", default=max(1, cpu_count()/4), type=int,
+        help="Number of processes to use. Because eigenvector "
+             "decompositions are thread-parallelized, this should "
+             "usually be several times smaller than the number of "
+             "cores availiable on your machine.")
     parser.add_argument(
-        "--trim", default=False, action="store_true")
+        "--trim", default=False, action="store_true",
+        help="Turn ergodic trimming on.")
     parser.add_argument(
         "--plot", default=None,
-        help="Path for the implied timescales plot.")
+        help="File path for the implied timescales plot.")
 
     args = parser.parse_args(argv[1:])
 

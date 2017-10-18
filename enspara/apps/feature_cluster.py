@@ -3,7 +3,6 @@ import argparse
 import pickle
 import os
 
-from mdtraj import io
 from msmbuilder.libdistance import cdist
 
 from enspara import exception
@@ -84,11 +83,9 @@ def diff_manhattan(trj, ref):
 def main(argv=None):
     args = process_command_line(argv)
 
-    keys = io.loadh(args.features).keys()
-
     try:
         features = ra.load(
-            args.features, keys=sorted(keys, key=lambda x: x.split('_')[-1]))
+            args.features, keys=...)
     except exception.DataInvalid:
         features = ra.load(args.features)
 
