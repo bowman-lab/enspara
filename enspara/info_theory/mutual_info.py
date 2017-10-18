@@ -48,14 +48,10 @@ def nmi_apc_matrix(assignments, n_states, n_procs=None):
 
     Parameters
     ----------
-    assignments_a : array, shape=(n_trajectories, n_frames, n_features)
+    assignments : array, shape=(n_trajectories, n_frames, n_features)
         Array of assigned/binned features
-    assignments_b : array, shape=(n_trajectories, n_frames, n_features)
-        Array of assigned/binned features
-    n_a_states_list : array, shape(n_features_a,)
+    n_states : array, shape(n_features_a,)
         Number of possible states for each feature in `states_a`
-    n_b_states_list : array, shape=(n_features_b,)
-        Number of possible states for each feature in `states_b`
 
     Returns
     -------
@@ -124,9 +120,9 @@ def apc_matrix(assignments_a, assignments_b, n_states_a, n_states_b,
         Array of assigned/binned features
     assignments_b : array, shape=(n_trajectories, n_frames, n_features)
         Array of assigned/binned features
-    n_a_states_list : array, shape(n_features_a,)
+    n_states_a : array, shape(n_features_a,)
         Number of possible states for each feature in `states_a`
-    n_b_states_list : array, shape=(n_features_b,)
+    n_states_b : array, shape=(n_features_b,)
         Number of possible states for each feature in `states_b`
 
     Returns
@@ -232,13 +228,13 @@ def mi_matrix(assignments_a, assignments_b, n_states_a, n_states_b,
 
     Parameters
     ----------
-    assignments_a : array, shape=(n_trajectories, n_frames, n_features)
+    assignments_a : array-like, shape=(n_trajectories, n_frames, n_features)
         Array of assigned/binned features
-    assignments_b : array, shape=(n_trajectories, n_frames, n_features)
+    assignments_b : array-like, shape=(n_trajectories, n_frames, n_features)
         Array of assigned/binned features
-    n_a_states_list : array, shape(n_features_a,)
+    n_states_a : array, shape(n_features_a,)
         Number of possible states for each feature in `states_a`
-    n_b_states_list : array, shape=(n_features_b,)
+    n_states_b : array, shape=(n_features_b,)
         Number of possible states for each feature in `states_b`
     compute_diagonal: bool, default=True
         Compute the diagonal of the MI matrix, which is the Shannon
