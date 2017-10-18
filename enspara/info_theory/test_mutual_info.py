@@ -267,7 +267,7 @@ def test_symmetrical_nmi_apc_nonzero():
         assert_equal(nmi_apc[-1, -1], 1)
         assert_equal(nmi_apc[-2, -2], 1)
 
-        assert_allclose(nmi_apc, 1, atol=1e-2)
+        assert_allclose(nmi_apc, 1, atol=1e-1)
 
 
 def test_network_deconvolution():

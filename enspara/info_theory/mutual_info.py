@@ -5,8 +5,6 @@
 # Unauthorized copying of this file, via any medium is strictly prohibited
 # Proprietary and confidential
 
-from __future__ import print_function, division, absolute_import
-
 import logging
 import warnings
 import ctypes
@@ -191,6 +189,7 @@ def deconvolute_network(G_obs):
     G_dir = np.matmul(np.matmul(w, sig_dir), inv(w))
 
     return G_dir
+
 
 def mi_to_apc(mi_arr):
     """Given a mutual information matrix, compute the average product
