@@ -244,7 +244,7 @@ def test_nmi_apc_zero():
     zero_mi_funcs = [zero_mi_np, zero_mi_ra, zero_mi_list]
 
     for a, n_states in (f() for f in zero_mi_funcs):
-        nmi_apc = mutual_info.nmi_apc_matrix(a, a, n_states, n_states)
+        nmi_apc = mutual_info.nmi_apc_matrix(a, n_states)
 
         assert_allclose(np.diag(nmi_apc), -np.inf, atol=0.001)
         nmi_apc[np.diag_indices_from(nmi_apc)] = 1
@@ -259,7 +259,7 @@ def test_nmi_apc_nonzero():
     nonzero_mi_funcs = [nonzero_mi_np, nonzero_mi_ra, nonzero_mi_list]
     for a, n_states in (f() for f in nonzero_mi_funcs):
 
-        nmi_apc = mutual_info.nmi_apc_matrix(a, a, n_states, n_states)
+        nmi_apc = mutual_info.nmi_apc_matrix(a, n_states)
 
         assert_allclose(np.diag(nmi_apc), -np.inf)
         nmi_apc[np.diag_indices_from(nmi_apc)] = 1
