@@ -5,8 +5,6 @@
 # Unauthorized copying of this file, via any medium is strictly prohibited
 # Proprietary and confidential
 
-from __future__ import print_function, division, absolute_import
-
 import logging
 import warnings
 import ctypes
@@ -43,10 +41,78 @@ def check_features_states(states, n_states):
             format(l=[len(t[0]) for t in states]))
 
 
-def mi_matrix(assignments_a, assignments_b, n_states_a, n_states_b,
-              n_procs=None):
-    """Compute the all-to-all matrix of mutual information across
-    trajectories of assigned states.
+def nmi_apc_matrix(assignments, n_states, n_procs=None):
+    """Compute the normalized mutual information-average product
+    correlation across trajectories of assigned states, messages,
+    sequences, etc.
+
+    Parameters
+    ----------
+    assignments : array, shape=(n_trajectories, n_frames, n_features)
+        Array of assigned/binned features
+    n_states : array, shape(n_features_a,)
+        Number of possible states for each feature in `states_a`
+
+    Returns
+    -------
+    nmi_apc : float
+        The NNI-APC between each pair of states in assignments_a and
+        assignments_b
+
+    Notes
+    -----
+    This function implements the NMI-APC metric proposed by Lopez et al
+    for assessing sequence covariation. The equation is a combination of
+    normalized mutual entropy (NMI) and average product correlation
+    (APC), both of which are used for sequence covariation. The equation
+    for NMI-APC is
+
+    NMI-APC(M_i, M_j) = I(M_i, M_j) - APC(M_i, M_j) / H(M_i, M_j)
+
+    where I is the mutual information and H is the shannon entropy of
+    the joint distributions of random variables/distributions M_i and
+    M_j. Supplimentary Note 1 in ref [1] is an excellent summary of this
+    approach.
+
+    See Also
+    --------
+    mi_matrix : computes the mutual information for a message.
+    apc_matrix : computes the average product correlation for a set of
+        assignments
+
+    References
+    ----------
+    [1] Dunn, S.D., et al (2008) Bioinformatics 24 (3): 330--40.
+    [2] Lopez, T., et al (2017) Nat. Struct. & Mol. Biol. 24: 726--33.
+        doi:10.1038/nsmb.3440
+    """
+
+    # compute mutual information
+    mi_arr = mi_matrix(assignments, assignments, n_states, n_states, n_procs)
+    apc_arr = mi_to_apc(mi_arr)
+    nmi_apc_arr = mi_arr - apc_arr
+
+    H_marginal = np.diag(mi_arr)
+
+    # compute the joint shannon entropies using MI and marginal entropies
+    H_joint = np.zeros_like(nmi_apc_arr)
+    for i in range(H_joint.shape[0]):
+        for j in range(H_joint.shape[1]):
+            H_joint[i, j] = mi_arr[i, j] - H_marginal[i] - H_marginal[j]
+
+    # normalize NMI-APC by joint entropies.
+    with warnings.catch_warnings():
+        # suppress potential divide by zero
+        warnings.simplefilter("ignore")
+        nmi_apc_arr /= H_joint
+
+    return nmi_apc_arr
+
+
+def apc_matrix(assignments_a, assignments_b, n_states_a, n_states_b,
+               n_procs=None):
+    """Compute the average product correlation for  trajectories of
+    assigned states, messages, sequences, etc.
 
     Parameters
     ----------
@@ -54,10 +120,126 @@ def mi_matrix(assignments_a, assignments_b, n_states_a, n_states_b,
         Array of assigned/binned features
     assignments_b : array, shape=(n_trajectories, n_frames, n_features)
         Array of assigned/binned features
-    n_a_states_list : array, shape(n_features_a,)
+    n_states_a : array, shape(n_features_a,)
         Number of possible states for each feature in `states_a`
-    n_b_states_list : array, shape=(n_features_b,)
+    n_states_b : array, shape=(n_features_b,)
         Number of possible states for each feature in `states_b`
+
+    Returns
+    -------
+    apc : float
+        The average product correlation between each pair of states in
+        assignments_a and assignments_b
+
+    See Also
+    --------
+    mi_matrix : computes the mutual information for sets of
+        messages/assignments/sequences.
+
+    References
+    ----------
+    [1] Dunn, S.D., et al (2008) Bioinformatics 24 (3): 330--40.
+    [2] Lopez, T., et al (2017) Nat. Struct. & Mol. Biol. 24: 726--33.
+        doi:10.1038/nsmb.3440
+    """
+
+    mi_arr = mi_matrix(assignments_a, assignments_b, n_states_a, n_states_b,
+                       n_procs)
+    apc_matrix = mi_to_apc(mi_arr)
+
+    return apc_matrix
+
+
+def deconvolute_network(G_obs):
+    """Compute the deconvolution of a given network. This method
+    attempts to estimate the direct network given a network that is a
+    combination of direct and indirect effects. For example, if A is
+    correlated with B and B is correlated with C, then A and C will also
+    be correlated.
+
+    Specifically, this method solves for G_dir given G_obs:
+
+    G_obs = G_dir + G_dir^2 + G_dir^3 + ...
+          = G_dir * (I - G_dir)^-1
+
+    Parameters
+    ----------
+    G_obs : ndarray, shape=(n, n)
+        Weight matrix for the observed correlations in the network
+
+    Returns
+    -------
+    G_dir : ndarray, shape=(n, n)
+        The direct correlations inferred from G_obs
+
+    References
+    ----------
+    [1] Feizi, S., et al (2013) Nat. Biotechnol 31 (8): 726--33.
+    """
+
+    from numpy.linalg import eig, inv
+
+    v, w = eig(G_obs)
+    v_dir = v / (1 + v)
+    sig_dir = np.diagflat(v_dir)
+    G_dir = np.matmul(np.matmul(w, sig_dir), inv(w))
+
+    return G_dir
+
+
+def mi_to_apc(mi_arr):
+    """Given a mutual information matrix, compute the average product
+    correlation.
+
+    Parameters
+    ----------
+    mi_arr : ndarray, shape=(n_features, n_features)
+        Mutual information matrix of which to compute the APC.
+
+    Returns
+    -------
+    apc_matrix : ndarray, shape=(n_features, n_features)
+
+    Notes
+    -----
+    The equation for APC given MI is
+
+    APC(M_i, M_j) = Σr I(M_i, M_r)*I(M_j, M_r) ; r ∈ [0, n_features]
+    """
+
+    if len(mi_arr.shape) != 2:
+        raise exception.DataInvalid(
+            'MI arrays must be 2D. Got %s.' % len(mi_arr.shape))
+    if mi_arr.shape[0] != mi_arr.shape[1]:
+        raise exception.DataInvalid(
+            "Only square MI arrays' APC can be computed. Shape was %s."
+            % mi_arr.shape)
+    if not np.all(mi_arr.T == mi_arr):
+        raise exception.DataInvalid(
+            "Only symmetric MI arrays' APC can be computed")
+
+    return np.matmul(mi_arr, mi_arr) / np.prod(mi_arr.shape)
+
+
+def mi_matrix(assignments_a, assignments_b, n_states_a, n_states_b,
+              compute_diagonal=True, n_procs=None):
+    """Compute the all-to-all matrix of mutual information across
+    trajectories of assigned states.
+
+    Parameters
+    ----------
+    assignments_a : array-like, shape=(n_trajectories, n_frames, n_features)
+        Array of assigned/binned features
+    assignments_b : array-like, shape=(n_trajectories, n_frames, n_features)
+        Array of assigned/binned features
+    n_states_a : array, shape(n_features_a,)
+        Number of possible states for each feature in `states_a`
+    n_states_b : array, shape=(n_features_b,)
+        Number of possible states for each feature in `states_b`
+    compute_diagonal: bool, default=True
+        Compute the diagonal of the MI matrix, which is the Shannon
+        entropy of the univariate distribution (i.e. the feature
+        itself).
     n_procs : int, default=1
         Number of cores to parallelize this computation across
 
@@ -83,17 +265,17 @@ def mi_matrix(assignments_a, assignments_b, n_states_a, n_states_b,
         assignments_b = _end_to_end_concat(assignments_b)
         sa_b = _make_shared_array(assignments_b, c_dtype)
         logger.debug(
-            "Detected that assigments_a is not assignments_b, creating "
+            "Detected that assignments_a is not assignments_b, creating "
             "second shared-memory array of size %s", len(sa_a))
     else:
         logger.debug(
-            "Detected that assigments_a is the same as assignments_a; "
+            "Detected that assignments_a is the same as assignments_a; "
             "not allocating a second shared-memory array")
         sa_b = sa_a
 
-
     mi = np.zeros((n_features, n_features))
-    mi_calc_indices = np.triu_indices_from(mi, k=1)
+    mi_calc_indices = np.triu_indices_from(
+        mi, k=(0 if compute_diagonal else 1))
 
     # initializer function shares shared data with everybody.
     def _init(arr_a_, arr_b_):
