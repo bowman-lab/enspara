@@ -19,32 +19,39 @@ from . import rmsd_cluster
 from .. import cards
 
 
-def runhelper(args, expected_size):
+def runhelper(args, expected_size, algorithm='khybrid'):
 
     td = tempfile.mkdtemp(dir=os.getcwd())
     tf = hashlib.md5(str(datetime.now().timestamp())
                      .encode('utf-8')).hexdigest()[0:8]
+    base = os.path.join(td, tf)
+
+    fnames = {
+        'distances': base+'distances.h5',
+        'assignments': base+'assignments.h5',
+        'centers': base+'centers.pkl',
+    }
 
     try:
         rmsd_cluster.main([
             '',  # req'd because arg[0] is expected to be program name
-            '--output-path', td,
-            '--output-tag', tf] + args)
+            '--distances', fnames['distances'],
+            '--centers', fnames['centers'],
+            '--assignments', fnames['assignments']] + args)
 
-        file_tag = [tf, 'khybrid', '0.1']
+        file_tag = [tf, algorithm, '0.1']
 
         # append the subsample to the expected output tags when relevant
         if '--subsample' in args:
             file_tag.append(
                 args[args.index('--subsample')+1]+'subsample')
 
-        assignfile = os.path.join(
-            td, '-'.join(file_tag + ['assignments.h5']))
-        assert os.path.isfile(assignfile), \
+        assert os.path.isfile(fnames['assignments']), \
             "Couldn't find %s. Dir contained: %s" % (
-            assignfile, os.listdir(os.path.dirname(assignfile)))
+                fnames['assignments'],
+                os.listdir(os.path.dirname(fnames['assignments'])))
 
-        assigns = ra.load(assignfile)
+        assigns = ra.load(fnames['assignments'])
         if type(assigns) is ra.RaggedArray:
             assert_equal(len(assigns), expected_size[0])
             assert_equal(assigns._data.dtype, np.int)
@@ -53,14 +60,12 @@ def runhelper(args, expected_size):
             assert_equal(assigns.shape, expected_size)
             assert_equal(assigns.dtype, np.int)
 
-        distfile = os.path.join(
-            td, '-'.join(file_tag + ['distances.h5']))
+        distfile = fnames['assignments']
         assert os.path.isfile(distfile), \
             "Couldn't find %s. Dir contained: %s" % (
             distfile, os.listdir(os.path.dirname(distfile)))
 
-        ctrsfile = os.path.join(
-            td, '-'.join(file_tag + ['centers.pkl']))
+        ctrsfile = fnames['centers']
         assert os.path.isfile(ctrsfile), \
             "Couldn't find %s. Dir contained: %s" % (
             ctrsfile, os.listdir(os.path.dirname(ctrsfile)))
@@ -81,6 +86,20 @@ def test_rmsd_cluster_basic():
         '--atoms', '(name N or name C or name CA or name H or name O)',
         '--algorithm', 'khybrid'],
         expected_size=expected_size)
+
+
+def test_rmsd_cluster_basic_kcenters():
+
+    expected_size = (2, 501)
+
+    runhelper([
+        '--trajectories', get_fn('frame0.xtc'), get_fn('frame0.xtc'),
+        '--topology', get_fn('native.pdb'),
+        '--rmsd-cutoff', '0.1',
+        '--atoms', '(name N or name C or name CA or name H or name O)',
+        '--algorithm', 'kcenters'],
+        expected_size=expected_size,
+        algorithm='kcenters')
 
 
 def test_rmsd_cluster_broken_atoms():
