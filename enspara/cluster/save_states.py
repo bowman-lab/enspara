@@ -70,10 +70,11 @@ def save_states(
         nconfs_in_state = len(state_iis[0])
         if nconfs_in_state >= n_confs:
             center_picks = np.array([0])
-            center_picks = np.append(
-                center_picks,
-                np.random.choice(
-                    range(1, nconfs_in_state), n_confs-1, replace=False))
+            if n_confs > 1:
+                center_picks = np.append(
+                    center_picks,
+                    np.random.choice(
+                        range(1, nconfs_in_state), n_confs-1, replace=False))
         else:
             center_picks = np.array([0])
             center_picks = np.append(
