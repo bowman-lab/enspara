@@ -96,9 +96,6 @@ def mi_to_nmi_apc(mutual_information, H_marginal=None):
     apc_arr = mi_to_apc(mutual_information)
     nmi = mi_to_nmi(mutual_information, H_marginal)
 
-    print(apc_arr)
-    print(nmi)
-
     with warnings.catch_warnings():
         # zeros in the NMI matix cause nans
         warnings.simplefilter("ignore")
@@ -183,6 +180,10 @@ def mi_to_nmi(mutual_information, H_marginal=None):
 
     if H_marginal is None:
         H_marginal = np.diag(mutual_information)
+    if np.any(H_marginal == 0):
+        warnings.warn(
+            'H_marginal contains zero entries. This may lead to '
+            'negative information.')
 
     if len(H_marginal) != len(mutual_information):
         raise exception.DataInvalid(
@@ -206,16 +207,19 @@ def mi_to_nmi(mutual_information, H_marginal=None):
 
     # compute the joint shannon entropies using MI and marginal entropies
     H_joint = np.zeros_like(mutual_information)
-    for i in range(H_joint.shape[0]):
-        for j in range(H_joint.shape[1]):
+    for i in range(len(H_joint)):
+        for j in range(len(H_joint)):
             H_joint[i, j] = (
                 H_marginal[i] + H_marginal[j] -
                 mutual_information[i, j])
 
-    assert np.all(H_joint == H_joint.T)
-
     nmi = mutual_information / H_joint
-    assert np.all(np.diag(nmi) == 1)
+
+    # all diagonal entries should be 1
+    np.fill_diagonal(nmi, 1)
+
+    # nans introduced by H_joint == 0 should be 0
+    nmi[np.isnan(nmi)] = 0
 
     return nmi
 

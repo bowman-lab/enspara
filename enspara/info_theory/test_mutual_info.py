@@ -1,3 +1,5 @@
+import warnings
+
 from nose.tools import assert_equal, assert_raises
 from numpy.testing import (assert_array_equal, assert_allclose,
                            assert_almost_equal)
@@ -196,7 +198,7 @@ def test_nmi_apc_zeros():
     assert_almost_equal(
         nmi_apc,
         np.array([[0.575, 0.0],
-                  [0, 0.575]]))
+                  [0,     0.575]]))
 
 
 def test_nmi_apc_nonzero():
@@ -204,8 +206,6 @@ def test_nmi_apc_nonzero():
                    [0.2, 1.7]])
 
     nmi_apc = mutual_info.mi_to_nmi_apc(mi)
-
-    print(nmi_apc)
 
     assert_almost_equal(
         nmi_apc,
@@ -231,6 +231,28 @@ def test_nmi():
     nmi2 = mutual_info.mi_to_nmi(mi, H_marginal=np.array([1, 1]))
 
     assert_allclose(nmi, nmi2)
+
+
+def test_nmi_diagonal():
+
+    mi = np.array([[1.7, 0.0],
+                   [0.0, 1.7]])
+
+    nmi = mutual_info.mi_to_nmi(mi)
+
+    assert_allclose(nmi, np.diag([1.0, 1.0]))
+
+
+def test_nmi_zerodiag():
+
+    mi = np.array([[0.0001, 0.1],
+                   [0.1, -0]])
+
+    with warnings.catch_warnings(record=True) as w:
+        nmi = mutual_info.mi_to_nmi(mi)
+        assert len(w) > 0
+
+    assert np.all(~np.isnan(nmi))
 
 
 def test_network_deconvolution():
