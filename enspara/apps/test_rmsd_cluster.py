@@ -19,7 +19,8 @@ from . import rmsd_cluster
 from .. import cards
 
 
-def runhelper(args, expected_size, algorithm='khybrid'):
+def runhelper(args, expected_size, algorithm='khybrid',
+              expect_reassignment=True):
 
     td = tempfile.mkdtemp(dir=os.getcwd())
     tf = hashlib.md5(str(datetime.now().timestamp())
@@ -39,31 +40,28 @@ def runhelper(args, expected_size, algorithm='khybrid'):
             '--centers', fnames['centers'],
             '--assignments', fnames['assignments']] + args)
 
-        file_tag = [tf, algorithm, '0.1']
+        if expect_reassignment:
+            assert os.path.isfile(fnames['assignments']), \
+                "Couldn't find %s. Dir contained: %s" % (
+                    fnames['assignments'],
+                    os.listdir(os.path.dirname(fnames['assignments'])))
 
-        # append the subsample to the expected output tags when relevant
-        if '--subsample' in args:
-            file_tag.append(
-                args[args.index('--subsample')+1]+'subsample')
+            assigns = ra.load(fnames['assignments'])
+            if type(assigns) is ra.RaggedArray:
+                assert_equal(len(assigns), expected_size[0])
+                assert_equal(assigns._data.dtype, np.int)
+                assert_array_equal(assigns.lengths, expected_size[1])
+            else:
+                assert_equal(assigns.shape, expected_size)
+                assert_equal(assigns.dtype, np.int)
 
-        assert os.path.isfile(fnames['assignments']), \
-            "Couldn't find %s. Dir contained: %s" % (
-                fnames['assignments'],
-                os.listdir(os.path.dirname(fnames['assignments'])))
-
-        assigns = ra.load(fnames['assignments'])
-        if type(assigns) is ra.RaggedArray:
-            assert_equal(len(assigns), expected_size[0])
-            assert_equal(assigns._data.dtype, np.int)
-            assert_array_equal(assigns.lengths, expected_size[1])
+            distfile = fnames['distances']
+            assert os.path.isfile(distfile), \
+                "Couldn't find %s. Dir contained: %s" % (
+                distfile, os.listdir(os.path.dirname(distfile)))
         else:
-            assert_equal(assigns.shape, expected_size)
-            assert_equal(assigns.dtype, np.int)
-
-        distfile = fnames['assignments']
-        assert os.path.isfile(distfile), \
-            "Couldn't find %s. Dir contained: %s" % (
-            distfile, os.listdir(os.path.dirname(distfile)))
+            assert not os.path.isfile(fnames['assignments'])
+            assert not os.path.isfile(fnames['distances'])
 
         ctrsfile = fnames['centers']
         assert os.path.isfile(ctrsfile), \
@@ -157,21 +155,7 @@ def test_rmsd_cluster_multiprocess():
         expected_size=expected_size)
 
 
-def test_rmsd_cluster_partition():
-
-    expected_size = (2, 501)
-
-    runhelper([
-        '--trajectories', get_fn('frame0.xtc'), get_fn('frame0.xtc'),
-        '--topology', get_fn('native.pdb'),
-        '--rmsd-cutoff', '0.1',
-        '--atoms', '(name N or name C or name CA or name H or name O)',
-        '--algorithm', 'khybrid',
-        '--partition', '4'],
-        expected_size=expected_size)
-
-
-def test_rmsd_cluster_partition_and_subsample():
+def test_rmsd_cluster_subsample_and_noreassign():
 
     expected_size = (2, 501)
 
@@ -183,7 +167,8 @@ def test_rmsd_cluster_partition_and_subsample():
         '--algorithm', 'khybrid',
         '--processes', '4',
         '--subsample', '4',
-        '--partition', '4'],
+        '--no-reassign'],
+        expect_reassignment=False,
         expected_size=expected_size)
 
 
@@ -204,27 +189,6 @@ def test_rmsd_cluster_multitop():
                    'and (residue 2)',
         '--rmsd-cutoff', '0.1',
         '--algorithm', 'khybrid'],
-        expected_size=expected_size)
-
-
-def test_rmsd_cluster_multitop_partition():
-
-    expected_size = (3, (501, 501, 5001))
-
-    xtc2 = os.path.join(cards.__path__[0], 'test_data', 'trj0.xtc')
-    top2 = os.path.join(cards.__path__[0], 'test_data', 'PROT_only.pdb')
-
-    runhelper([
-        '--trajectories', get_fn('frame0.xtc'), get_fn('frame0.xtc'),
-        '--trajectories', xtc2,
-        '--topology', get_fn('native.pdb'),
-        '--topology', top2,
-        '--atoms', '(name N or name C or name CA or name H or name O) '
-                   'and (residue 2)',
-        '--rmsd-cutoff', '0.1',
-        '--algorithm', 'khybrid',
-        '--partition', '4',
-        '--subsample', '4'],
         expected_size=expected_size)
 
 
@@ -259,4 +223,42 @@ def test_rmsd_cluster_multitop_multiselection():
         '--rmsd-cutoff', '0.1',
         '--algorithm', 'khybrid',
         '--subsample', '4'],
+        expected_size=(expected_size[0], expected_size[1][::-1]))
+
+
+def test_rmsd_cluster_multitop_multiselection_noreassign():
+
+    expected_size = (3, (501, 501, 5001))
+
+    xtc2 = os.path.join(cards.__path__[0], 'test_data', 'trj0.xtc')
+    top2 = os.path.join(cards.__path__[0], 'test_data', 'PROT_only.pdb')
+
+    runhelper([
+        '--trajectories', get_fn('frame0.xtc'), get_fn('frame0.xtc'),
+        '--topology', get_fn('native.pdb'),
+        '--atoms', '(name N or name O) and (residue 2)',
+        '--trajectories', xtc2,
+        '--topology', top2,
+        '--atoms', '(name CA) and (residue 3 or residue 4)',
+        '--rmsd-cutoff', '0.1',
+        '--algorithm', 'khybrid',
+        '--subsample', '4',
+        '--no-reassign'],
+        expected_size=expected_size,
+        expect_reassignment=False)
+
+    # reverse the order. This will catch some cases where the first
+    # selection works on both.
+    runhelper([
+        '--trajectories', xtc2,
+        '--topology', top2,
+        '--atoms', '(name CA) and (residue 3 or residue 4)',
+        '--trajectories', get_fn('frame0.xtc'), get_fn('frame0.xtc'),
+        '--topology', get_fn('native.pdb'),
+        '--atoms', '(name N or name O) and (residue 2)',
+        '--rmsd-cutoff', '0.1',
+        '--algorithm', 'khybrid',
+        '--subsample', '4',
+        '--no-reassign'],
+        expect_reassignment=False,
         expected_size=(expected_size[0], expected_size[1][::-1]))
