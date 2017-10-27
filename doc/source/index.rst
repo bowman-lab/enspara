@@ -3,14 +3,22 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to enspara's documentation!
-===================================
+Enspara is for building & analyzing big MSMs
+============================================
+
+* MSM estimation and manipulation
+* Turn-key applications for clustering and analysis
+* Transition path theory
+* Information theory
+* Ragged ndarrays
 
 Contents:
 
 .. toctree::
    :maxdepth: 2
 
+   installation
+   cookbook
 
 
 Indices and tables
