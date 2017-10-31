@@ -1,6 +1,7 @@
 from __future__ import print_function, division, absolute_import
 
 import unittest
+import warnings
 
 import numpy as np
 import mdtraj as md
@@ -336,7 +337,10 @@ class TestNumpyClustering(unittest.TestCase):
     def check_generators(self, centers, distance):
 
         import matplotlib
-        matplotlib.use('TkAgg')  # req'd for some environments (esp. macOS).
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            # req'd for some environments (esp. macOS).
+            matplotlib.use('TkAgg')
 
         try:
             for c in centers:
