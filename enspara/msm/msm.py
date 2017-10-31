@@ -92,6 +92,9 @@ class MSM:
 
     @property
     def n_states_(self):
+        """The number of states in this Markov state model. If requested
+        before fitting, an ImproperlyConfigured exception is raised.
+        """
         if hasattr(self, 'tprobs_'):
             assert self.tprobs_.shape[0] == self.tcounts_.shape[0]
             return self.tprobs_.shape[0]
@@ -101,6 +104,9 @@ class MSM:
 
     @property
     def config(self):
+        """The configuration of this Markov state model, including
+        lag_time, sliding_window, trim, and method.
+        """
         return {
             'lag_time': self.lag_time,
             'sliding_window': self.sliding_window,
