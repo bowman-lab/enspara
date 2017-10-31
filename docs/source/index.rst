@@ -3,7 +3,7 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Enspara is for building & analyzing big MSMs
+Enspara: MSMs at Scale
 ============================================
 
 * MSM estimation and manipulation
@@ -19,6 +19,8 @@ Contents:
 
    installation
    cookbook
+   api
+   modules
 
 
 Indices and tables

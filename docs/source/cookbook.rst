@@ -14,6 +14,7 @@ Clustering usually requires a single array, but trajectories are normally fragme
 The `KHybrid` class, one of the clustering algorithms we implemented, follows the scikit-learn API.
 
 .. code-block:: python
+
 	import mdtraj as md
 
 	from enspara.cluster import KHybrid
@@ -52,6 +53,7 @@ Building an MSM
 Using the object-level interface
 
 .. code-block:: python
+
 	from enspara.msm import MSM, builders
 
 	# build the MSM fitter with a lag time of 100 (frames) and
@@ -68,6 +70,7 @@ Using the object-level interface
 Using the function-level interface
 
 .. code-block:: python
+
 	from enspara.msm import builders
 	from enspara.msm.transition_matrices import assigns_to_counts, TrimMapping, \
 	    eq_probs, trim_disconnected
@@ -93,6 +96,7 @@ Changing logging
 	level of `util.load` to DEBUG.
 
 .. code-block:: python
+
 	import logging
 
 	logging.getLogger('enspara.util.load').setLevel(logging.DEBUG)

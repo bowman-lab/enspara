@@ -36,4 +36,8 @@ If setup failed, `conda install` necessary packages and rerun setup command.
 
 	PYTHONPATH="$PYTHONPATH:/path/to/enspara"
 
-This completes the process of installing enspara on your local machine.
+6. Check that you've been successful:
+
+.. code-block:: bash
+
+	python -c 'import enspara'
