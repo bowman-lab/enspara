@@ -24,12 +24,3 @@ enspara\.info\_theory\.mutual\_info module
     :members:
     :undoc-members:
     :show-inheritance:
-
-
-Module contents
----------------
-
-.. automodule:: enspara.info_theory
-    :members:
-    :undoc-members:
-    :show-inheritance:

@@ -16,12 +16,3 @@ enspara\.geometry\.rotamer module
     :members:
     :undoc-members:
     :show-inheritance:
-
-
-Module contents
----------------
-
-.. automodule:: enspara.geometry
-    :members:
-    :undoc-members:
-    :show-inheritance:

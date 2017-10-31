@@ -49,12 +49,3 @@ enspara\.msm\.transition\_matrices module
     :members:
     :undoc-members:
     :show-inheritance:
-
-
-Module contents
----------------
-
-.. automodule:: enspara.msm
-    :members:
-    :undoc-members:
-    :show-inheritance:

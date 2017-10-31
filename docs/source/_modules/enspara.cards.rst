@@ -24,12 +24,3 @@ enspara\.cards\.featurizers module
     :members:
     :undoc-members:
     :show-inheritance:
-
-
-Module contents
----------------
-
-.. automodule:: enspara.cards
-    :members:
-    :undoc-members:
-    :show-inheritance:

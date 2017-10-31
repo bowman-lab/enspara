@@ -22,12 +22,3 @@ enspara\.util\.parallel module
     :members:
     :undoc-members:
     :show-inheritance:
-
-
-Module contents
----------------
-
-.. automodule:: enspara.util
-    :members:
-    :undoc-members:
-    :show-inheritance:

@@ -40,12 +40,3 @@ enspara\.cluster\.util module
     :members:
     :undoc-members:
     :show-inheritance:
-
-
-Module contents
----------------
-
-.. automodule:: enspara.cluster
-    :members:
-    :undoc-members:
-    :show-inheritance:

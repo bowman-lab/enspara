@@ -16,12 +16,3 @@ enspara\.tpt\.tpt module
     :members:
     :undoc-members:
     :show-inheritance:
-
-
-Module contents
----------------
-
-.. automodule:: enspara.tpt
-    :members:
-    :undoc-members:
-    :show-inheritance:
