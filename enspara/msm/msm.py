@@ -1,3 +1,7 @@
+"""This submodule contains the MSM object and associated book-keeping
+features.
+"""
+
 import os
 import shutil
 import tempfile

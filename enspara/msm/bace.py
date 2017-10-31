@@ -1,3 +1,13 @@
+"""An implementation of the Baysean Agglomerative Clustering Engine
+(BACE).
+
+References
+----------
+.. [1] Bowman, G. R. Improved coarse-graining of Markov state models via
+       explicit consideration of statistical uncertainty. J Chem Phys
+       137, 134111 (2012).
+"""
+
 import logging
 import functools
 import multiprocessing
