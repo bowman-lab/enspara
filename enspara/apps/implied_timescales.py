@@ -68,7 +68,10 @@ def main(argv=None):
     being run as a script. Otherwise, it's silent and just exposes methods.'''
     args = process_command_line(argv)
 
-    assignments = ra.load(args.assignments)
+    try:
+        assignments = ra.load(args.assignments)
+    except KeyError:
+        assignments = ra.load(args.assignments, keys=...)
     if args.trj_ids is not None:
         assignments = assignments[args.trj_ids]
 

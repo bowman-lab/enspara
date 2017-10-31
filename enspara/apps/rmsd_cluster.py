@@ -5,8 +5,8 @@ import logging
 import itertools
 import pickle
 import json
+import warnings
 
-from functools import partial
 from multiprocessing import cpu_count
 
 import mdtraj as md
@@ -66,13 +66,13 @@ def process_command_line(argv):
         '--processes', default=cpu_count(), type=int,
         help="Number processes to use for loading and clustering.")
     parser.add_argument(
-        '--partitions', default=None, type=int,
-        help="Use this number of pivots when delegating to md.rmsd. "
-             "This can avoid md.rmsd's large-dataset segfault.")
-    parser.add_argument(
         '--subsample', default=None, type=int,
         help="Take only every nth frame when loading trajectories. "
              "1 implies no subsampling.")
+    parser.add_argument(
+        '--no-reassign', default=False, action='store_true',
+        help="Do not do a reassigment step. Ignored if --subsample is "
+             "not supplied or 1.")
 
     # OUTPUT
     parser.add_argument(
@@ -103,6 +103,12 @@ def process_command_line(argv):
         args.Clusterer = KCenters
     elif args.algorithm == 'khybrid':
         args.Clusterer = KHybrid
+
+    if args.subsample is None:
+        args.subsample = 1
+
+    if args.no_reassign and args.subsample == 1:
+        warnings.warn("When subsampling is 1, --no-reassign has no effect.")
 
     return args
 
@@ -234,7 +240,12 @@ def main(argv=None):
     with open(args.centers, 'wb') as f:
         pickle.dump(centers, f)
 
-    if args.subsample:
+    if args.subsample == 1:
+        logger.debug("Subsampling was 1, not reassigning.")
+        ra.save(args.distances, result.distances)
+        ra.save(args.assignments, result.assignments)
+    if not args.no_reassign:
+        logger.debug("Reassigning data from subsampling of %s", args.subsample)
         # overwrite temporary output with actual results
         assig, dist = reassign(
             args.topologies, args.trajectories, args.atoms,
@@ -243,8 +254,7 @@ def main(argv=None):
         ra.save(args.distances, dist)
         ra.save(args.assignments, assig)
     else:
-        ra.save(args.distances, result.distances)
-        ra.save(args.assignments, result.assignments)
+        logger.debug("Got --no-reassign, not doing reassigment")
 
     logger.info("Success! Data can be found in %s.",
                 os.path.dirname(args.distances))
