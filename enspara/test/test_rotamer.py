@@ -9,7 +9,7 @@ import mdtraj as md
 from .. import cards
 from .. import geometry
 
-TEST_DATA_DIR = os.path.join(os.path.dirname(__file__), 'test_data')
+TEST_DATA_DIR = os.path.join(os.path.dirname(__file__), 'geometry_data')
 
 TOP = md.load(os.path.join(TEST_DATA_DIR, "PROT_only.pdb")).top
 TRJ = md.load(os.path.join(TEST_DATA_DIR, "trj0.xtc"), top=TOP)

@@ -10,10 +10,10 @@ from nose.tools import (assert_raises, assert_less, assert_true, assert_is,
                         assert_equal)
 from numpy.testing import assert_array_equal
 
-from .hybrid import KHybrid, hybrid
-from .kcenters import KCenters, kcenters
-from .kmedoids import kmedoids
-from .util import find_cluster_centers
+from ..cluster.hybrid import KHybrid, hybrid
+from ..cluster.kcenters import KCenters, kcenters
+from ..cluster.kmedoids import kmedoids
+from ..cluster.util import find_cluster_centers
 
 from ..exception import DataInvalid, ImproperlyConfigured
 
@@ -241,7 +241,7 @@ class TestNumpyClustering(unittest.TestCase):
 
     def test_predict(self):
 
-        from .util import ClusterResult
+        from ..cluster.util import ClusterResult
 
         centers = np.array(self.generators, dtype='float64')
 
@@ -324,7 +324,7 @@ class TestNumpyClustering(unittest.TestCase):
             np.concatenate(self.traj_lst),
             distance_method='euclidean',
             n_clusters=N_CLUSTERS,
-            n_iters=10000)
+            n_iters=1000)
 
         assert len(np.unique(result.assignments)) == N_CLUSTERS
         assert len(result.center_indices) == N_CLUSTERS

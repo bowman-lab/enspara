@@ -4,7 +4,7 @@ from numpy.testing import assert_array_equal
 import numpy as np
 
 from ..util import array as ra
-from . import disorder
+from ..cards import disorder
 
 
 def test_transition_times():
