@@ -82,9 +82,11 @@ def test_implied_timescales():
 
     assert_allclose(tscales, expected, rtol=1e-03)
 
-    tscales = implied_timescales(
-        in_assigns, lag_times=range(1, 5), method=builders.transpose,
-        trim=False, n_times=3)
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        tscales = implied_timescales(
+            in_assigns, lag_times=range(1, 5), method=builders.transpose,
+            trim=False, n_times=3)
 
     assert_equal(tscales.shape, (4, 3))
 
