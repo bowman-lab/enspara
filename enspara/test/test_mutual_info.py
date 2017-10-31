@@ -1,3 +1,5 @@
+import warnings
+
 from nose.tools import assert_equal, assert_raises
 from numpy.testing import (assert_array_equal, assert_allclose,
                            assert_almost_equal)
@@ -67,6 +69,7 @@ def test_mi_to_apc():
          [0.0955, 0.0833, 0.0211],
          [0.0244, 0.0211, 0.0566]])
 
+    assert_allclose(apc[0, 0], np.sum(mi[0, :]**2)/9)
     assert_almost_equal(apc, expected_apc, decimal=4)
 
 
@@ -137,8 +140,6 @@ def test_symmetrical_mi_nonzero():
 
         mi = mutual_info.mi_matrix(a, a, n_states, n_states)
 
-        print(mi.shape)
-
         assert_almost_equal(mi[-1, -2], 0.86114, decimal=3)
         mi[-1, -2] = mi[-2, -1] = 0
 
@@ -189,85 +190,69 @@ def test_joint_count_binning():
     assert_array_equal(jc, expected_jc)
 
 
-def test_symmetrical_apc_zero():
-    # test that the APC matrix for sets of uncorrelated things results
-    # in zero APC
-    zero_mi_funcs = [zero_mi_np, zero_mi_ra, zero_mi_list]
+def test_nmi_apc_zeros():
+    mi = np.array([[1.7, 0.0],
+                   [0.0, 1.7]])
 
-    for a, n_states in (f() for f in zero_mi_funcs):
-        apc = mutual_info.apc_matrix(a, a, n_states, n_states)
-
-        assert_allclose(np.diag(apc), 0, atol=0.2)
-        apc[np.diag_indices_from(apc)] = 0
-
-        assert_allclose(apc, 0, atol=1e-3)
-
-
-def test_asymmetrical_apc_zero():
-    # test that the APC matrix for sets of uncorrelated things results
-    # in zero APC, but on asymmetrical data, i.e. a[i] != b[i]
-
-    zero_mi_funcs = [zero_mi_np, zero_mi_ra, zero_mi_list]
-
-    for gen_f in zero_mi_funcs:
-        a, n_a = gen_f()
-        b, n_b = gen_f()
-
-        apc = mutual_info.apc_matrix(a, b, n_a, n_b)
-
-        assert_allclose(np.diag(apc), 0, atol=0.1)
-        apc[np.diag_indices_from(apc)] = 0
-
-        assert_allclose(apc, 0, atol=1e-3)
-
-
-def test_apc_nonzero():
-    # test that the MI matrix for sets of uncorrelated things results
-    # in zero MI
-
-    nonzero_mi_funcs = [nonzero_mi_np, nonzero_mi_ra, nonzero_mi_list]
-    for a, n_states in (f() for f in nonzero_mi_funcs):
-
-        apc = mutual_info.apc_matrix(a, a, n_states, n_states)
-
-        # nonzero APC gives rise to higher self-correlations?
-        assert_almost_equal(apc[-1, -1], 2.96752422e-02, decimal=3)
-        assert_almost_equal(apc[-2, -2], 2.96752422e-02, decimal=3)
-        apc[-2, -2] = apc[-1, -1] = 0
-
-        assert_allclose(apc, 0, atol=1e-3)
-
-
-def test_nmi_apc_zero():
-    # test that the APC matrix for sets of uncorrelated things results
-    # in zero APC
-    zero_mi_funcs = [zero_mi_np, zero_mi_ra, zero_mi_list]
-
-    for a, n_states in (f() for f in zero_mi_funcs):
-        nmi_apc = mutual_info.nmi_apc_matrix(a, n_states)
-
-        assert_allclose(np.diag(nmi_apc), -np.inf, atol=0.001)
-        nmi_apc[np.diag_indices_from(nmi_apc)] = 1
-
-        assert_allclose(nmi_apc, 1, atol=1e-3)
+    nmi_apc = mutual_info.mi_to_nmi_apc(mi)
+    assert_almost_equal(
+        nmi_apc,
+        np.array([[0.575, 0.0],
+                  [0,     0.575]]))
 
 
 def test_nmi_apc_nonzero():
-    # test that the MI matrix for sets of uncorrelated things results
-    # in zero MI
+    mi = np.array([[1.7, 0.2],
+                   [0.2, 1.7]])
 
-    nonzero_mi_funcs = [nonzero_mi_np, nonzero_mi_ra, nonzero_mi_list]
-    for a, n_states in (f() for f in nonzero_mi_funcs):
+    nmi_apc = mutual_info.mi_to_nmi_apc(mi)
 
-        nmi_apc = mutual_info.nmi_apc_matrix(a, n_states)
+    assert_almost_equal(
+        nmi_apc,
+        np.array([[0.574, 0.005],
+                  [0.005, 0.574]]),
+        decimal=2)
 
-        assert_allclose(np.diag(nmi_apc), -np.inf)
-        nmi_apc[np.diag_indices_from(nmi_apc)] = 1
 
-        assert_equal(nmi_apc[-1, -1], 1)
-        assert_equal(nmi_apc[-2, -2], 1)
+def test_nmi():
 
-        assert_allclose(nmi_apc, 1, atol=1e-1)
+    mi = np.array([[1.0, 0.1],
+                   [0.1, 1.0]])
+
+    nmi = mutual_info.mi_to_nmi(mi)
+
+    assert_allclose(
+        nmi,
+        np.array([[1.0,      0.052632],
+                  [0.052632, 1.0]]),
+        rtol=1e-4)
+
+    mi[0, 0] = mi[1, 1] = 0
+    nmi2 = mutual_info.mi_to_nmi(mi, H_marginal=np.array([1, 1]))
+
+    assert_allclose(nmi, nmi2)
+
+
+def test_nmi_diagonal():
+
+    mi = np.array([[1.7, 0.0],
+                   [0.0, 1.7]])
+
+    nmi = mutual_info.mi_to_nmi(mi)
+
+    assert_allclose(nmi, np.diag([1.0, 1.0]))
+
+
+def test_nmi_zerodiag():
+
+    mi = np.array([[0.0001, 0.1],
+                   [0.1, -0]])
+
+    with warnings.catch_warnings(record=True) as w:
+        nmi = mutual_info.mi_to_nmi(mi)
+        assert len(w) > 0
+
+    assert np.all(~np.isnan(nmi))
 
 
 def test_network_deconvolution():
