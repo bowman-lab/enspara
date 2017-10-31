@@ -5,7 +5,7 @@ import numpy as np
 from nose.tools import assert_raises, assert_equals, assert_is
 from numpy.testing import assert_array_equal, assert_array_almost_equal
 
-from . import committors, reactive_fluxes, mfpts
+from ..tpt import committors, reactive_fluxes, mfpts
 
 
 class Test_Fluxes(unittest.TestCase):
@@ -92,7 +92,7 @@ class Test_Fluxes(unittest.TestCase):
         assert_array_almost_equal(
             sink_mfpts_lagtime1*5.0,
             sink_mfpts_lagtime5, 5)
-        
+
         assert_array_almost_equal(
             mfpts(T_test)*5.0,
             mfpts(T_test,lagtime=5), 5)

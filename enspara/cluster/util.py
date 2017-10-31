@@ -14,12 +14,14 @@ from collections import namedtuple
 import mdtraj as md
 import numpy as np
 
+from sklearn.base import BaseEstimator as SklearnBaseEstimator
+
 from ..exception import ImproperlyConfigured, DataInvalid
 from ..util import partition_list, partition_indices
 from ..util import array as ra
 
 
-class Clusterer(object):
+class Clusterer(SklearnBaseEstimator):
     """Clusterer class defines the base API for a clustering object in
     the sklearn style.
     """

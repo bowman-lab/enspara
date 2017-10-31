@@ -1,3 +1,7 @@
+"""This submodule contains the MSM object and associated book-keeping
+features.
+"""
+
 import os
 import shutil
 import tempfile
@@ -9,6 +13,8 @@ import numpy as np
 from scipy import sparse
 from scipy.io import mmwrite, mmread
 
+from sklearn.base import BaseEstimator as SklearnBaseEstimator
+
 from ..exception import ImproperlyConfigured
 from . import builders
 from .transition_matrices import assigns_to_counts, TrimMapping, \
@@ -18,9 +24,8 @@ from .transition_matrices import assigns_to_counts, TrimMapping, \
 logger = logging.getLogger(__name__)
 
 
-class MSM:
-    '''
-    The MSM class is an sklearn-style wrapper class for the methods in
+class MSM(SklearnBaseEstimator):
+    """The MSM class is an sklearn-style wrapper class for the methods in
     the enspara.msm module for construction Markov state models.
 
     It takes a `lag_time`, the amount of time to wait to assume that two
@@ -30,7 +35,7 @@ class MSM:
 
     The option `trim` determines if states without a transition both in
     and out will be excluded.
-    '''
+    """
 
     __slots__ = ['lag_time', 'sliding_window', 'trim', 'method',
                  'max_n_states', 'tcounts_', 'tprobs_', 'eq_probs_',
@@ -88,6 +93,9 @@ class MSM:
 
     @property
     def n_states_(self):
+        """The number of states in this Markov state model. If requested
+        before fitting, an ImproperlyConfigured exception is raised.
+        """
         if hasattr(self, 'tprobs_'):
             assert self.tprobs_.shape[0] == self.tcounts_.shape[0]
             return self.tprobs_.shape[0]
@@ -97,6 +105,9 @@ class MSM:
 
     @property
     def config(self):
+        """The configuration of this Markov state model, including
+        lag_time, sliding_window, trim, and method.
+        """
         return {
             'lag_time': self.lag_time,
             'sliding_window': self.sliding_window,
