@@ -17,14 +17,6 @@ enspara\.geometry\.rotamer module
     :undoc-members:
     :show-inheritance:
 
-enspara\.geometry\.test\_rotamer module
----------------------------------------
-
-.. automodule:: enspara.geometry.test_rotamer
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
 
 Module contents
 ---------------

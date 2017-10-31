@@ -1,7 +1,8 @@
 enspara
-===============
+=======
 
-.. toctree::
+.. autosummary::
+    :toctree: ../_modules
 
     enspara.apps
     enspara.cards

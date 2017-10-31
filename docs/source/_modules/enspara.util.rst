@@ -1,13 +1,11 @@
 enspara\.util
 =============
 
-enspara\.util\.array module
----------------------------
-
-.. automodule:: enspara.util.array
+.. automodule:: enspara.util
     :members:
     :undoc-members:
     :show-inheritance:
+
 
 enspara\.util\.load module
 --------------------------
@@ -21,14 +19,6 @@ enspara\.util\.parallel module
 ------------------------------
 
 .. automodule:: enspara.util.parallel
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-enspara\.util\.test\_util module
---------------------------------
-
-.. automodule:: enspara.util.test_util
     :members:
     :undoc-members:
     :show-inheritance:

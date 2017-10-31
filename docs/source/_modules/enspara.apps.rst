@@ -33,22 +33,6 @@ enspara\.apps\.rmsd\_cluster module
     :undoc-members:
     :show-inheritance:
 
-enspara\.apps\.test\_reassign module
-------------------------------------
-
-.. automodule:: enspara.apps.test_reassign
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-enspara\.apps\.test\_rmsd\_cluster module
------------------------------------------
-
-.. automodule:: enspara.apps.test_rmsd_cluster
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
 enspara\.apps\.util module
 --------------------------
 

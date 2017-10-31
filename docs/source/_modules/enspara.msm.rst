@@ -1,8 +1,6 @@
-enspara\.msm package
-====================
+enspara\.msm
+============
 
-Submodules
-----------
 
 enspara\.msm\.bace module
 -------------------------
@@ -32,38 +30,6 @@ enspara\.msm\.synthetic\_data module
 ------------------------------------
 
 .. automodule:: enspara.msm.synthetic_data
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-enspara\.msm\.test\_bace module
--------------------------------
-
-.. automodule:: enspara.msm.test_bace
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-enspara\.msm\.test\_data module
--------------------------------
-
-.. automodule:: enspara.msm.test_data
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-enspara\.msm\.test\_msm\_funcs module
--------------------------------------
-
-.. automodule:: enspara.msm.test_msm_funcs
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-enspara\.msm\.test\_msm\_obj module
------------------------------------
-
-.. automodule:: enspara.msm.test_msm_obj
     :members:
     :undoc-members:
     :show-inheritance:

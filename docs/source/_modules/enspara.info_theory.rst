@@ -25,22 +25,6 @@ enspara\.info\_theory\.mutual\_info module
     :undoc-members:
     :show-inheritance:
 
-enspara\.info\_theory\.test\_entropy module
--------------------------------------------
-
-.. automodule:: enspara.info_theory.test_entropy
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-enspara\.info\_theory\.test\_mutual\_info module
-------------------------------------------------
-
-.. automodule:: enspara.info_theory.test_mutual_info
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
 
 Module contents
 ---------------

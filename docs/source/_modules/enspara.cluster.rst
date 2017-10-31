@@ -33,22 +33,6 @@ enspara\.cluster\.save\_states module
     :undoc-members:
     :show-inheritance:
 
-enspara\.cluster\.test\_cluster module
---------------------------------------
-
-.. automodule:: enspara.cluster.test_cluster
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-enspara\.cluster\.test\_util module
------------------------------------
-
-.. automodule:: enspara.cluster.test_util
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
 enspara\.cluster\.util module
 -----------------------------
 

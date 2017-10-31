@@ -9,14 +9,6 @@ enspara\.tpt\.core module
     :undoc-members:
     :show-inheritance:
 
-enspara\.tpt\.test\_fluxes module
----------------------------------
-
-.. automodule:: enspara.tpt.test_fluxes
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
 enspara\.tpt\.tpt module
 ------------------------
 
