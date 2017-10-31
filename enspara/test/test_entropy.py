@@ -6,8 +6,9 @@ from nose.tools import assert_raises
 from ..msm import builders
 from ..exception import DataInvalid
 
-from .entropy import Q_from_assignments, relative_entropy_per_state, \
-    relative_entropy_msm, kl_divergence
+from ..info_theory.entropy import (
+    Q_from_assignments, relative_entropy_per_state,
+    relative_entropy_msm, kl_divergence)
 
 
 def test_Q_from_assignments():

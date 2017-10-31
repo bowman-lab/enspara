@@ -1,6 +1,6 @@
 import numpy as np
 
-from .transition_matrices import TrimMapping
+from ..msm.transition_matrices import TrimMapping
 
 
 TRIMMABLE = {
