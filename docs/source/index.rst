@@ -19,8 +19,7 @@ Contents:
 
    installation
    cookbook
-   api
-   modules
+   _modules/modules
 
 
 Indices and tables
