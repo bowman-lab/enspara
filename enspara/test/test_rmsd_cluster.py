@@ -15,8 +15,11 @@ from numpy.testing import assert_array_equal
 from .. import exception
 from ..util import array as ra
 
-from . import rmsd_cluster
+from ..apps import rmsd_cluster
 from .. import cards
+
+
+TEST_DIR = os.path.dirname(__file__)
 
 
 def runhelper(args, expected_size, algorithm='khybrid'):
@@ -192,8 +195,8 @@ def test_rmsd_cluster_multitop():
     expected_size = (3, (501, 501, 5001))
 
     # trj is length 5001
-    xtc2 = os.path.join(cards.__path__[0], 'test_data', 'trj0.xtc')
-    top2 = os.path.join(cards.__path__[0], 'test_data', 'PROT_only.pdb')
+    xtc2 = os.path.join(TEST_DIR, 'cards_data', 'trj0.xtc')
+    top2 = os.path.join(TEST_DIR, 'cards_data', 'PROT_only.pdb')
 
     runhelper([
         '--trajectories', get_fn('frame0.xtc'), get_fn('frame0.xtc'),
@@ -211,8 +214,8 @@ def test_rmsd_cluster_multitop_partition():
 
     expected_size = (3, (501, 501, 5001))
 
-    xtc2 = os.path.join(cards.__path__[0], 'test_data', 'trj0.xtc')
-    top2 = os.path.join(cards.__path__[0], 'test_data', 'PROT_only.pdb')
+    xtc2 = os.path.join(TEST_DIR, 'cards_data', 'trj0.xtc')
+    top2 = os.path.join(TEST_DIR, 'cards_data', 'PROT_only.pdb')
 
     runhelper([
         '--trajectories', get_fn('frame0.xtc'), get_fn('frame0.xtc'),
@@ -232,8 +235,8 @@ def test_rmsd_cluster_multitop_multiselection():
 
     expected_size = (3, (501, 501, 5001))
 
-    xtc2 = os.path.join(cards.__path__[0], 'test_data', 'trj0.xtc')
-    top2 = os.path.join(cards.__path__[0], 'test_data', 'PROT_only.pdb')
+    xtc2 = os.path.join(TEST_DIR, 'cards_data', 'trj0.xtc')
+    top2 = os.path.join(TEST_DIR, 'cards_data', 'PROT_only.pdb')
 
     runhelper([
         '--trajectories', get_fn('frame0.xtc'), get_fn('frame0.xtc'),

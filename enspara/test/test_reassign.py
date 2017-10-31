@@ -18,7 +18,10 @@ from numpy.testing import assert_array_equal, assert_allclose
 from .. import cards
 from ..util import array as ra
 
-from . import reassign
+from ..apps import reassign
+
+
+TEST_DIR = os.path.dirname(__file__)
 
 
 def runhelper(args):
@@ -69,8 +72,8 @@ def test_reassign_script():
 
 def test_reassign_script_multitop():
 
-    xtc2 = os.path.join(cards.__path__[0], 'test_data', 'trj0.xtc')
-    top2 = os.path.join(cards.__path__[0], 'test_data', 'PROT_only.pdb')
+    xtc2 = os.path.join(TEST_DIR, 'cards_data', 'trj0.xtc')
+    top2 = os.path.join(TEST_DIR, 'cards_data', 'PROT_only.pdb')
 
     topologies = [get_fn('native.pdb'), top2]
     trajectories = [
@@ -126,8 +129,8 @@ def test_reassignment_function_memory():
 
 def test_reassignment_function_heterogenous():
 
-    xtc2 = os.path.join(cards.__path__[0], 'test_data', 'trj0.xtc')
-    top2 = os.path.join(cards.__path__[0], 'test_data', 'PROT_only.pdb')
+    xtc2 = os.path.join(TEST_DIR, 'cards_data', 'trj0.xtc')
+    top2 = os.path.join(TEST_DIR, 'cards_data', 'PROT_only.pdb')
 
     topologies = [get_fn('native.pdb'), top2]
     trajectories = [

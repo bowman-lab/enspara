@@ -1,3 +1,10 @@
+"""The builders submodule is where all the methods that fit a transition
+probability matrix and/or equilibrium probability distributions of an
+MSM live. All the builders (i.e. anything in this module not prefixed
+with an underscore) should be safe to pass to an MSM object as its
+builder.
+"""
+
 import logging
 import warnings
 

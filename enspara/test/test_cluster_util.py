@@ -9,7 +9,7 @@ from enspara.cluster.util import (find_cluster_centers, ClusterResult,
                                   assign_to_nearest_center)
 from enspara.util import array as ra
 
-from . import save_states
+from ..cluster import save_states
 
 
 def test_ClusterResult_partition_np():
