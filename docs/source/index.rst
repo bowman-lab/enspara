@@ -19,7 +19,7 @@ Contents:
 
    installation
    cookbook
-   _modules/modules
+   _modules/enspara
 
 
 Indices and tables
