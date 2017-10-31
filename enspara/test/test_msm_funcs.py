@@ -7,11 +7,11 @@ from numpy.testing import assert_array_equal, assert_allclose
 import numpy as np
 import scipy.sparse
 
-from . import builders
-from .transition_matrices import assigns_to_counts, eigenspectrum, \
+from ..msm import builders
+from ..msm.transition_matrices import assigns_to_counts, eigenspectrum, \
    trim_disconnected, TrimMapping
-from .timescales import implied_timescales
-from .test_data import TRIMMABLE
+from ..msm.timescales import implied_timescales
+from .msm_data import TRIMMABLE
 
 # array types we want to guarantee support for
 ARR_TYPES = [
@@ -82,9 +82,11 @@ def test_implied_timescales():
 
     assert_allclose(tscales, expected, rtol=1e-03)
 
-    tscales = implied_timescales(
-        in_assigns, lag_times=range(1, 5), method=builders.transpose,
-        trim=False, n_times=3)
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        tscales = implied_timescales(
+            in_assigns, lag_times=range(1, 5), method=builders.transpose,
+            trim=False, n_times=3)
 
     assert_equal(tscales.shape, (4, 3))
 
@@ -308,7 +310,7 @@ def test_prior_counts():
     calculated_counts, _, _ = builders.normalize(
         given, prior_counts=prior, calculate_eq_probs=False)
     assert_array_equal(calculated_counts, expected_counts)
-   
+
     calculated_counts, _, _ = builders.transpose(
         given, prior_counts=prior, calculate_eq_probs=False)
     assert_array_equal(calculated_counts, expected_counts)

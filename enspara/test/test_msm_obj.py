@@ -7,10 +7,10 @@ from numpy.testing import assert_allclose, assert_array_equal
 
 import numpy as np
 
-from .msm import MSM
-from . import builders
+from ..msm.msm import MSM
+from ..msm import builders
 
-from .test_data import TRIMMABLE
+from .msm_data import TRIMMABLE
 
 
 def test_create_msm():
