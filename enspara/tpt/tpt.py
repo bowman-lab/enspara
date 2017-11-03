@@ -12,7 +12,9 @@ References
        1192-1219 (2009).
 """
 from __future__ import print_function, division, absolute_import
+
 import numpy as np
+from scipy import sparse
 
 from . import committors
 from ..msm.transition_matrices import eq_probs
@@ -25,6 +27,7 @@ def _get_data_from_tprob(tprob, sources, sinks, populations):
     """A helper function for parsing data and returning relevant
        parameters for TPT analysis
     """
+
     sources = np.array(sources).reshape((-1,))
     sinks = np.array(sinks).reshape((-1,))
     # check to see if populations exist
@@ -69,13 +72,19 @@ def reactive_fluxes(tprob, sources, sinks, populations=None):
     """
 
     # parse data and obtain relevant parameters
+
     populations, n_states, forward_committors, reverse_committors = \
         _get_data_from_tprob(tprob, sources, sinks, populations)
 
     # fij = pi_i * q-_i * Tij * q+_j
-    fluxes = \
-        tprob * ((populations * reverse_committors)[:, None]) \
-        * forward_committors
+    if sparse.issparse(tprob):
+        fluxes = tprob.multiply((populations * reverse_committors)[:, None])\
+                      .multiply(forward_committors)
+        fluxes = fluxes.tolil()
+    else:
+        fluxes = \
+            tprob * ((populations * reverse_committors)[:, None]) \
+            * forward_committors
 
     fluxes[(np.arange(n_states), np.arange(n_states))] = np.zeros(n_states)
 

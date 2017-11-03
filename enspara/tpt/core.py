@@ -11,7 +11,12 @@ References
        American Mathematical Society Providence (2006)
 """
 from __future__ import print_function, division, absolute_import
+
+import warnings
+
 import numpy as np
+import scipy.sparse
+
 from ..msm.transition_matrices import eq_probs
 
 __all__ = ['committors', 'mfpts']
@@ -66,6 +71,10 @@ def committors(tprob, sources, sinks):
     sinks = np.array(sinks, dtype=int).reshape((-1, 1)).flatten()
     all_absorbing = np.append(sources, sinks)
 
+    if scipy.sparse.issparse(tprob):
+        # required indexing operations are fast with LIL matrices
+        tprob = tprob.tolil()
+
     n_states = tprob.shape[0]
 
     # R is the list of probabilities of going from a state to an absorbing one
@@ -77,7 +86,11 @@ def committors(tprob, sources, sinks):
     I_m_Q = _I_m_Q(tprob, all_absorbing, n_states=n_states)
 
     # solves for committors: committors = N*R, where N = (I-Q)^-1
-    committors = np.linalg.solve(I_m_Q, R).flatten()
+    with warnings.catch_warnings():
+        # ignore 'SparseEfficiencyWarning: spsolve requires A be CSC or CSR
+        # matrix format'; TODO: is this because I_m_Q is dense?
+        warnings.simplefilter("ignore")
+        committors = scipy.sparse.linalg.spsolve(I_m_Q, R).flatten()
 
     return committors
 
