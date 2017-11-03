@@ -1,4 +1,4 @@
-# Author(s): Maxwell Zimmerman 
+# Author(s): Maxwell Zimmerman
 
 """
 Core theorems for understanding transitions in MSMs. Calculation of
@@ -11,10 +11,16 @@ References
        American Mathematical Society Providence (2006)
 """
 from __future__ import print_function, division, absolute_import
+
+import warnings
+
 import numpy as np
+import scipy.sparse
+
 from ..msm.transition_matrices import eq_probs
 
 __all__ = ['committors', 'mfpts']
+
 
 def _I_m_Q(tprob, absorbing_states, n_states=None):
     """Calculates (I-Q) as is defined in ref [1]. This is fundamental
@@ -30,9 +36,9 @@ def _I_m_Q(tprob, absorbing_states, n_states=None):
     I_m_Q[absorbing_states, absorbing_states] = 1.0
     return I_m_Q
 
+
 def committors(tprob, sources, sinks):
-    """
-    Get the forward committors of the reaction sources -> sinks.
+    """Get the forward committors of the reaction sources -> sinks.
     The forward committor probability, q+, for a state is the
     probability that it reaches a defined sink state(s) before it
     reaches a source state(s). The reverse committor, q-, is the
@@ -65,6 +71,10 @@ def committors(tprob, sources, sinks):
     sinks = np.array(sinks, dtype=int).reshape((-1, 1)).flatten()
     all_absorbing = np.append(sources, sinks)
 
+    if scipy.sparse.issparse(tprob):
+        # required indexing operations are fast with LIL matrices
+        tprob = tprob.tolil()
+
     n_states = tprob.shape[0]
 
     # R is the list of probabilities of going from a state to an absorbing one
@@ -74,16 +84,20 @@ def committors(tprob, sources, sinks):
 
     # (I-Q)
     I_m_Q = _I_m_Q(tprob, all_absorbing, n_states=n_states)
-    
+
     # solves for committors: committors = N*R, where N = (I-Q)^-1
-    committors = np.linalg.solve(I_m_Q, R).flatten()
+    with warnings.catch_warnings():
+        # ignore 'SparseEfficiencyWarning: spsolve requires A be CSC or CSR
+        # matrix format'; TODO: is this because I_m_Q is dense?
+        warnings.simplefilter("ignore")
+        committors = scipy.sparse.linalg.spsolve(I_m_Q, R).flatten()
 
     return committors
 
 
 def mfpts(tprob, sinks=None, populations=None, lagtime=1.):
     """Calclate the mean first passage times for all states in an MSM.
- oll     Eitherto all or all to a set of sinks.
+    Either all to all or to a set of sinks.
 
     Parameters
     ----------
@@ -132,4 +146,3 @@ def mfpts(tprob, sinks=None, populations=None, lagtime=1.):
         c[sinks] = 0
         mfpts = lagtime * np.linalg.solve(I_m_Q, c)
     return mfpts
-
