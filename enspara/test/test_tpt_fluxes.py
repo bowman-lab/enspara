@@ -2,7 +2,6 @@ import unittest
 
 import numpy as np
 
-from nose.tools import assert_raises, assert_equals, assert_is
 from numpy.testing import assert_array_equal, assert_array_almost_equal
 
 from ..tpt import committors, reactive_fluxes, mfpts
@@ -55,7 +54,8 @@ class Test_Fluxes(unittest.TestCase):
         true_fluxes = np.around(true_fluxes, 5)
 
         # test fluxes
-        calc_fluxes = np.around(reactive_fluxes(Tij, 0, 2, populations=pops), 5)
+        calc_fluxes = np.around(reactive_fluxes(
+            Tij, 0, 2, populations=pops), 5)
         assert_array_equal(calc_fluxes, true_fluxes)
 
         # test fluxes without pops

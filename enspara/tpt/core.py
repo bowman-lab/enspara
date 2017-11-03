@@ -1,4 +1,4 @@
-# Author(s): Maxwell Zimmerman 
+# Author(s): Maxwell Zimmerman
 
 """
 Core theorems for understanding transitions in MSMs. Calculation of
@@ -16,6 +16,7 @@ from ..msm.transition_matrices import eq_probs
 
 __all__ = ['committors', 'mfpts']
 
+
 def _I_m_Q(tprob, absorbing_states, n_states=None):
     """Calculates (I-Q) as is defined in ref [1]. This is fundamental
     for calculating committors and mfpts.
@@ -30,9 +31,9 @@ def _I_m_Q(tprob, absorbing_states, n_states=None):
     I_m_Q[absorbing_states, absorbing_states] = 1.0
     return I_m_Q
 
+
 def committors(tprob, sources, sinks):
-    """
-    Get the forward committors of the reaction sources -> sinks.
+    """Get the forward committors of the reaction sources -> sinks.
     The forward committor probability, q+, for a state is the
     probability that it reaches a defined sink state(s) before it
     reaches a source state(s). The reverse committor, q-, is the
@@ -74,7 +75,7 @@ def committors(tprob, sources, sinks):
 
     # (I-Q)
     I_m_Q = _I_m_Q(tprob, all_absorbing, n_states=n_states)
-    
+
     # solves for committors: committors = N*R, where N = (I-Q)^-1
     committors = np.linalg.solve(I_m_Q, R).flatten()
 
@@ -83,7 +84,7 @@ def committors(tprob, sources, sinks):
 
 def mfpts(tprob, sinks=None, populations=None, lagtime=1.):
     """Calclate the mean first passage times for all states in an MSM.
- oll     Eitherto all or all to a set of sinks.
+    Either all to all or to a set of sinks.
 
     Parameters
     ----------
@@ -132,4 +133,3 @@ def mfpts(tprob, sinks=None, populations=None, lagtime=1.):
         c[sinks] = 0
         mfpts = lagtime * np.linalg.solve(I_m_Q, c)
     return mfpts
-
