@@ -2,6 +2,8 @@ import tempfile
 import shutil
 import os
 
+import multiprocessing as mp
+
 from nose.tools import assert_equal, assert_false, assert_true
 from numpy.testing import assert_allclose, assert_array_equal
 
@@ -104,3 +106,25 @@ def test_msm_roundtrip():
             shutil.rmtree(msmfile)
         except:
             pass
+
+
+def _fit_assig(msm_data):
+    assig, m = msm_data
+
+    m.fit(assig)
+    return m
+
+
+def test_msm_mp():
+    assigs = TRIMMABLE['assigns']
+
+    m = MSM(lag_time=1, method=builders.normalize, max_n_states=4)
+    msm_data = list(zip([assigs]*5, [m]*5))
+    p = mp.Pool(processes=1)
+    ms = p.map(_fit_assig, msm_data)
+    p.terminate()
+
+    assert len(ms) == 5
+    assert all(getattr(m, 'max_n_states') == 4 for m in ms)
+
+    return
