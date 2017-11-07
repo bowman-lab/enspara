@@ -1,8 +1,7 @@
 import tempfile
 import shutil
 import os
-
-import multiprocessing as mp
+import pickle
 
 from nose.tools import assert_equal, assert_false, assert_true
 from numpy.testing import assert_allclose, assert_array_equal
@@ -108,23 +107,18 @@ def test_msm_roundtrip():
             pass
 
 
-def _fit_assig(msm_data):
-    assig, m = msm_data
+def test_msm_roundtrip_pickle():
 
-    m.fit(assig)
-    return m
-
-
-def test_msm_mp():
     assigs = TRIMMABLE['assigns']
-
     m = MSM(lag_time=1, method=builders.normalize, max_n_states=4)
-    msm_data = list(zip([assigs]*5, [m]*5))
-    p = mp.Pool(processes=1)
-    ms = p.map(_fit_assig, msm_data)
-    p.terminate()
 
-    assert len(ms) == 5
-    assert all(getattr(m, 'max_n_states') == 4 for m in ms)
+    m.fit(assigs)
 
-    return
+    with tempfile.NamedTemporaryFile() as tmp_f:
+        print(tmp_f.name)
+        pickle.dump(m, tmp_f)
+        tmp_f.flush()
+
+        m2 = pickle.load(open(tmp_f.name, 'rb'))
+
+    assert_equal(m, m2)
