@@ -37,10 +37,6 @@ class MSM(SklearnBaseEstimator):
     and out will be excluded.
     """
 
-    __slots__ = ['lag_time', 'sliding_window', 'trim', 'method',
-                 'max_n_states', 'tcounts_', 'tprobs_', 'eq_probs_',
-                 'mapping_']
-
     @classmethod
     def from_assignments(cls, assignments, **kwargs):
         m = cls(**kwargs)
