@@ -1,10 +1,67 @@
-# Author(s): Maxwell Zimmerman, Justin Porter
-
 import ctypes
 import itertools
 import multiprocessing as mp
 import numpy as np
+
 from . import msm
+from .. import exception
+
+
+def bootstrap(func, data, n_trials, n_procs=1, **kwargs):
+    """Do a bootstrap sampling of `func` on `data`.
+
+    Parameters
+    ----------
+    func : callable
+        A function that can be called on `data` to compute the
+        bootstrapped value. Should return the relevant values.
+    data : object
+        Data to run `func` on.
+    n_trials : int
+        Number of bootstrapping trials to run.
+    n_procs : int
+        The number of parallel bootstrappings to run.
+
+    Notes
+    -----
+    Additional arguments as `kwargs` are passed in to `func` as
+    parameters.
+    """
+
+    # make a shared data array of ints (does not support anything else)
+    shared_data = _make_shared_array(data, ctypes.c_int)
+    shared_data_shape = data.shape
+    # generate random sample indices
+    rand_sampling_iis = [
+        np.random.choice(np.arange(data.shape[0]), data.shape[0])
+        for i in np.arange(n_trials)]
+    strap_data = list(
+        zip(
+            itertools.repeat(func), rand_sampling_iis,
+            itertools.repeat(kwargs)))
+    # map
+    with mp.Pool(
+            processes=n_procs, initializer=_init,
+            initargs=(shared_data, shared_data_shape)) as p:
+        straps = p.map(_single_strap, strap_data)
+        p.terminate()
+    return straps
+
+
+def MSMs(assignments, lag_time, method, n_trials, max_n_states=None,
+         n_procs=1, chunk_by=None, **kwargs):
+    """bootstraps msms"""
+    if chunk_by is not None:
+        assignments = _chunk_assignments(assignments, chunk_by)
+    msms = bootstrap(
+        msm.MSM.from_assignments, assignments, lag_time=lag_time,
+        method=method, n_trials=n_trials, max_n_states=max_n_states,
+        n_procs=n_procs, **kwargs)
+    return msms
+
+
+def _chunk_assignments(assignments, chunk_by):
+    pass
 
 
 def _make_shared_array(in_array, dtype):
@@ -33,53 +90,3 @@ def _init(bootstrap_data_, shape_data):
     bootstrap_data = np.frombuffer(
         bootstrap_data_, dtype=np.int32).reshape(shape_data)
     return
-
-
-def bootstrap(func, data, n_trials, n_procs=1, **kwargs):
-    # make a shared data array of ints (does not support anything else)
-    shared_data = _make_shared_array(data, ctypes.c_int)
-    shared_data_shape = data.shape
-    # generate random sample indices
-    rand_sampling_iis = [
-        np.random.choice(np.arange(data.shape[0]), data.shape[0])
-        for i in np.arange(n_trials)]
-    strap_data = list(
-        zip(
-            itertools.repeat(func), rand_sampling_iis,
-            itertools.repeat(kwargs)))
-    # map
-    with mp.Pool(
-            processes=n_procs, initializer=_init,
-            initargs=(shared_data, shared_data_shape)) as p:
-        straps = p.map(_single_strap, strap_data)
-        p.terminate()
-    return straps
-
-
-def _chunk_assignments(assignments, chunk_by):
-    pass
-
-
-def MSMs(
-        assignments, lag_time, method, n_trials, max_n_states=None,
-        n_procs=1, chunk_by=None, **kwargs):
-    """bootstraps msms"""
-    if chunk_by is not None:
-        assignments = _chunk_assignments(assignments, chunk_by)
-    msms = bootstrap(
-        msm.MSM.from_assignments, assignments, lag_time=lag_time,
-        method=method, n_trials=n_trials, max_n_states=max_n_states,
-        n_procs=n_procs, **kwargs)
-    return msms
-    
-
-def observable_distributions(
-        observable, msms):
-    """bootstrap the observable"""
-    msms = bootstrap(
-        msm.MSM.from_assignments, assignments, n_trials, n_procs=n_procs,
-        **kwargs)
-    distributions = [single_msm.eq_probs_*observable for single_msm in msms]
-    return distributions
-
-
