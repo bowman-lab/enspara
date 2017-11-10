@@ -133,6 +133,24 @@ def test_assigns_to_counts_negnums():
     assert_array_equal(counts.toarray(), expected)
 
 
+def test_assigns_to_counts_1d():
+    """assigns_to_counts handles 1d arrays gracefully
+    """
+
+    in_m = np.array(
+            [[0, 2,  0, -1],
+             [1, 2, -1, -1],
+             [1, 0,  0, 1]]).flatten()
+
+    counts = assigns_to_counts(in_m)
+
+    expected = np.array([[1, 2, 1],
+                         [1, 0, 1],
+                         [1, 1, 0]])
+
+    assert_array_equal(counts.toarray(), expected)
+
+
 def test_normalize_types():
 
     for kwargs in [{'calculate_eq_probs': True},

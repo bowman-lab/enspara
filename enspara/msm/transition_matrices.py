@@ -134,7 +134,9 @@ def assigns_to_counts(
         A transition count matrix.
     """
 
-    n_traj = len(assigns)
+    # if it's 1d, later stuff will fail
+    if len(assigns.shape) == 1:
+        assigns = assigns.reshape(1, -1)
 
     assigns = np.array([a[np.where(a != -1)] for a in assigns])
 
