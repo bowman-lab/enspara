@@ -261,8 +261,8 @@ def mi_to_apc(mi_arr):
     return np.matmul(mi_arr, mi_arr) / (len(mi_arr) * len(mi_arr))
 
 
-def mi_matrix(assignments_a, assignments_b, n_states_a, n_states_b,
-              compute_diagonal=True, n_procs=None):
+def mi_matrix(assignments_a, assignments_b, n_states_a,
+              n_states_b, compute_diagonal=True, n_procs=None):
     """Compute the all-to-all matrix of mutual information across
     trajectories of assigned states.
 
@@ -272,10 +272,11 @@ def mi_matrix(assignments_a, assignments_b, n_states_a, n_states_b,
         Array of assigned/binned features
     assignments_b : array-like, shape=(n_trajectories, n_frames, n_features)
         Array of assigned/binned features
-    n_states_a : array, shape(n_features_a,)
-        Number of possible states for each feature in `states_a`
-    n_states_b : array, shape=(n_features_b,)
-        Number of possible states for each feature in `states_b`
+    n_states_a : int or array, shape(n_features_a,)
+        Number of possible states for each feature in `states_a`. If an
+        integer is given, it is assumed to apply to all features.
+    n_states_b : int or array, shape=(n_features_b,)
+        As `n_states_a`, but for `assignments_b`
     compute_diagonal: bool, default=True
         Compute the diagonal of the MI matrix, which is the Shannon
         entropy of the univariate distribution (i.e. the feature
@@ -300,6 +301,11 @@ def mi_matrix(assignments_a, assignments_b, n_states_a, n_states_b,
     assignments_a = _end_to_end_concat(assignments_a)
     sa_a = _make_shared_array(assignments_a, c_dtype)
     logger.debug("Allocated shared-memory array of size %s", len(sa_a))
+
+    if not hasattr(n_states_a, '__len__'):
+        n_states_a = [n_states_a] * n_features
+    if not hasattr(n_states_b, '__len__'):
+        n_states_b = [n_states_b] * n_features
 
     if assignments_a is not assignments_b:
         assignments_b = _end_to_end_concat(assignments_b)
