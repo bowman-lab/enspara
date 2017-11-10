@@ -193,7 +193,7 @@ def main(argv=None):
 
     targets = {os.path.basename(topf): "%s xtcs" % len(trjfs) for topf, trjfs
                in zip(args.topologies, args.trajectories)}
-    logger.info("Beginning RMSD Clusutering app. Operating on targets:\n%s",
+    logger.info("Beginning RMSD Clustering app. Operating on targets:\n%s",
                 json.dumps(targets, indent=4))
 
     tick = time.perf_counter()
