@@ -1,11 +1,13 @@
 import tempfile
 import warnings
 
-from nose.tools import assert_equal, assert_is
+from nose.tools import assert_equal, assert_is, raises
 from numpy.testing import assert_array_equal, assert_allclose
 
 import numpy as np
 import scipy.sparse
+
+from .. import exception
 
 from ..msm import builders
 from ..msm.transition_matrices import assigns_to_counts, eigenspectrum, \
@@ -133,6 +135,7 @@ def test_assigns_to_counts_negnums():
     assert_array_equal(counts.toarray(), expected)
 
 
+@raises(exception.DataInvalid)
 def test_assigns_to_counts_1d():
     """assigns_to_counts handles 1d arrays gracefully
     """
