@@ -86,6 +86,31 @@ Using the function-level interface
     eq_probs_ = eq_probs(tprobs)
 
 
+Coarse-graining with BACE
+-------------------------
+
+BACE is an algorithm for converting a large, fine-grained Markov state model into
+a smaller, coarser-grained model.
+
+.. code-block:: python
+
+    from enspara import array as ra
+    from enspara import msm
+
+    assigs = ra.load('path/to/assignments.h5')
+
+    m = msm.MSM(lag_time=20, method=msm.builders.transpose)
+    m.fit(assigs)
+
+    bayes_factors, labels = msm.bace.bace(m.tcounts_, n_macrostates=2, n_procs=8)
+
+This code will create two dictionaries, ``bayes_factors``, which contains a mapping from
+number of microstates (up to ``n_microstates`` as specified in the call to ``bace()``) to
+a the Bayes' factor for the model with that number of microstates, and ``labels``, a
+mapping from number of microstates to a labeling of the initial microstates of ``m`` into
+a that number of microstates.
+
+
 Changing logging
 ----------------
     Enspara uses python's logging module. Each file has its own logger, which are
