@@ -59,7 +59,7 @@ def process_command_line(argv):
         help="The fraction of total RAM to use in deciding the batch size. "
              "Genrally, this number shouldn't be much higher than 0.5.")
 
-    ## OUTPUT ARGS
+    # OUTPUT ARGS
     parser.add_argument(
         '--distances', required=True,
         help="Path to h5 file where distance to nearest cluster center "
@@ -149,8 +149,6 @@ def batch_reassign(targets, centers, lengths, frac_mem, n_procs=None):
         logger.info("Starting batch %s of %s", i, len(batches))
         batch_targets = [targets[i] for i in batch_indices]
 
-        trajectory_files = [tfile for tfile, top, aids in batch_targets]
-
         batch_lengths, xyz = load_as_concatenated(
             [tfile for tfile, top, aids in batch_targets],
             lengths=[lengths[i] for i in batch_indices],
@@ -174,7 +172,7 @@ def batch_reassign(targets, centers, lengths, frac_mem, n_procs=None):
         batch_assignments, batch_distances = assign_to_nearest_center(
                 trj, centers, partial(md.rmsd, precentered=True))
         logger.debug("Assigned trajectories in %.1f seconds",
-                      time.perf_counter() - t_assign_0)
+                     time.perf_counter() - t_assign_0)
 
         # clear memory of xyz and trj to allow cleanup to deallocate
         # these large arrays; may help with memory high-water mark
@@ -219,7 +217,6 @@ def reassign(topologies, trajectories, atoms, centers, frac_mem=0.9,
         logger.info('Built trj list in %.1f seconds.',
                     time.perf_counter() - tick)
 
-
     # precenter centers (there will be many RMSD calcs here)
     for c in centers:
         c.center_coordinates()
@@ -248,8 +245,6 @@ def reassign(topologies, trajectories, atoms, centers, frac_mem=0.9,
                 "%i frames) in %.1f seconds.",
                 len(lengths), sum(lengths), np.median(lengths),
                 time.perf_counter() - tick_sounding)
-
-    example_center = centers[0]
 
     assignments, distances = batch_reassign(
         targets, centers, lengths, frac_mem=frac_mem, n_procs=n_procs)

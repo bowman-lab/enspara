@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 class KHybrid(Clusterer):
 
     def __init__(self, metric, n_clusters=None, cluster_radius=None,
-                 kmedoids_updates=5):
+                 kmedoids_updates=5, random_first_center=False):
 
         super(KHybrid, self).__init__(metric)
 
@@ -35,31 +35,42 @@ class KHybrid(Clusterer):
         self.kmedoids_updates = kmedoids_updates
         self.n_clusters = n_clusters
         self.cluster_radius = cluster_radius
+        self.random_first_center = random_first_center
 
-    def fit(self, X):
+    def fit(self, X, init_centers=None):
+        """Takes trajectories, X, and performs KHybrid clustering.
+        Optionally continues clustering from an initial set of cluster
+        centers.
 
-        starttime = time.clock()
+        Parameters
+        ----------
+        X : array-like, shape=(n_observations, n_features(, n_atoms))
+            Data to cluster.
+        """
+
+        t0 = time.clock()
 
         self.result_ = hybrid(
             X, self.metric,
             n_iters=self.kmedoids_updates,
             n_clusters=self.n_clusters,
-            dist_cutoff=self.cluster_radius)
+            dist_cutoff=self.cluster_radius,
+            random_first_center=self.random_first_center,
+            init_centers=init_centers)
 
-        self.runtime_ = time.clock() - starttime
+        self.runtime_ = time.clock() - t0
 
 
 def hybrid(
         traj, distance_method, n_iters=5, n_clusters=np.inf,
         dist_cutoff=0, random_first_center=False,
-        init_cluster_centers=None):
+        init_centers=None):
 
     distance_method = _get_distance_method(distance_method)
 
     result = kcenters(
         traj, distance_method, n_clusters=n_clusters, dist_cutoff=dist_cutoff,
-        init_cluster_centers=init_cluster_centers,
-        random_first_center=random_first_center)
+        init_centers=init_centers, random_first_center=random_first_center)
 
     for i in range(n_iters):
         cluster_center_inds, assignments, distances = _hybrid_medoids_update(

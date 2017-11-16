@@ -72,22 +72,27 @@ def load(input_name, keys=None):
         If this option is specified, the ragged array is built from this
         list of keys, each of which are assumed to be a row of the final
         ragged array. An ellipsis can be provided to indicate all keys.
+
+    Returns
+    -------
+    ra : RaggedArray
+        A ragged array from disk.
     """
 
-    ragged_load = io.loadh(input_name)
+    handle = io.loadh(input_name)
 
     if keys is None:
         try:
             return RaggedArray(
-                ragged_load['array'], lengths=ragged_load['lengths'])
+                handle['array'], lengths=handle['lengths'])
         except KeyError:
-            return ragged_load['arr_0']
+            return handle['arr_0']
     else:
         if keys is Ellipsis:
-            keys = ragged_load.keys()
+            keys = handle.keys()
 
-        shapes = [ragged_load._handle.get_node(where='/', name=k).shape
-                  for k in ragged_load.keys()]
+        shapes = [handle._handle.get_node(where='/', name=k).shape
+                  for k in keys]
 
         if not all(len(shapes[0]) == len(shape) for shape in shapes):
             raise DataInvalid(
@@ -102,7 +107,7 @@ def load(input_name, keys=None):
                     "%s didnt' match. Got shapes: %s" % (dim, shapes))
 
         lengths = [shape[0] for shape in shapes]
-        first_shape = ragged_load[ragged_load.keys()[0]].shape
+        first_shape = handle[handle.keys()[0]].shape
 
         concat_shape = list(first_shape)
         concat_shape[0] = sum(lengths)
@@ -110,8 +115,8 @@ def load(input_name, keys=None):
         concat = np.zeros(concat_shape)
 
         start = 0
-        for key in ragged_load.keys():
-            arr = ragged_load[key]
+        for key in keys:
+            arr = handle[key]
             end = start + len(arr)
             concat[start:end] = arr
             start = end

@@ -1,7 +1,6 @@
 import unittest
 import logging
 import tempfile
-import warnings
 
 import numpy as np
 import mdtraj as md
@@ -11,8 +10,8 @@ from mdtraj.testing import get_fn
 from nose.tools import assert_raises, assert_equals, assert_is, assert_true
 from numpy.testing import assert_array_equal
 
-from . import array as ra
-from .load import load_as_concatenated, concatenate_trjs
+from ..util import array as ra
+from ..util.load import load_as_concatenated, concatenate_trjs
 
 from ..exception import DataInvalid, ImproperlyConfigured
 
@@ -101,6 +100,20 @@ class Test_RaggedArray(unittest.TestCase):
 
         assert_ra_equal(a, b)
 
+    def test_RaggedArray_load_specific_h5_arrays(self):
+
+        src = np.array(range(55))
+        a = ra.RaggedArray(array=src, lengths=[25, 30])
+
+        with tempfile.NamedTemporaryFile(suffix='.h5') as f:
+            io.saveh(f.name, key0=a[0], key1=a[1])
+
+            b = ra.load(f.name, keys=['key1'])
+
+        print(a[1])
+        print(b)
+        assert_array_equal(a[1], b[0])
+
     def test_RaggedArray_bad_size(self):
 
         with assert_raises(DataInvalid):
@@ -173,7 +186,6 @@ class Test_RaggedArray(unittest.TestCase):
                 [
                     2, 3, 4, 5, 6, 7, 8, 9, 8, 9, 12, 13, 14, 13, 14, 17,
                     18, 19, 18, 19]))
-
 
     def test_RaggedArray_slicing(self):
         src = np.array(range(60))
@@ -350,11 +362,11 @@ class Test_RaggedArray(unittest.TestCase):
 
         assert_array_equal(a.shape, b.shape)
         assert_array_equal(np.zeros_like(a), b)
-        
+
     def test_ra_operator_not_implemented(self):
 
         a = ra.RaggedArray([[True, False, True, False],
-                [False, True, False]])
+                            [False, True, False]])
 
         with assert_raises(TypeError):
             a > 'asdfasdfasd'
@@ -488,8 +500,6 @@ class TestParallelLoad(unittest.TestCase):
 
     def test_load_as_concatenated_lengths_hint(self):
 
-        selection = np.array([1, 3, 6])
-
         t1 = md.load(self.trj_fname, top=self.top)
         t2 = md.load(self.trj_fname, top=self.top)
         t3 = md.load(self.trj_fname, top=self.top)
@@ -576,7 +586,6 @@ class TestConcatenateTrajs(unittest.TestCase):
         for trjframe, trjlist_item in zip(trj, trjlist):
             assert_array_equal(trjframe.xyz, trjlist_item.xyz)
 
-
     def test_concat_atoms(self):
 
         ATOMS = 'name N or name C or name CA'
@@ -589,7 +598,6 @@ class TestConcatenateTrajs(unittest.TestCase):
             sliced_item = trjlist_item.atom_slice(
                 trjlist_item.top.select(ATOMS))
             assert_array_equal(trjframe.xyz, sliced_item.xyz)
-
 
     def test_different_lengths(self):
 
@@ -606,7 +614,7 @@ class TestConcatenateTrajs(unittest.TestCase):
         trjlist.append(trjlist[0].atom_slice(np.arange(10)))
 
         with assert_raises(DataInvalid):
-            trj = concatenate_trjs(trjlist)
+            concatenate_trjs(trjlist)
 
 
 class TestPartition(unittest.TestCase):

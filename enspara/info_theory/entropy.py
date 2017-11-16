@@ -26,7 +26,7 @@ def Q_from_assignments(
 
     # get counts matrix
     Q_counts = assigns_to_counts(
-        assignments, n_states=n_states, lag_time=lag_time)
+        assignments, max_n_states=n_states, lag_time=lag_time)
 
     # add prior counts
     Q_counts = np.array(Q_counts.todense()) + prior_counts
@@ -168,9 +168,30 @@ def energy_to_probability(u, kT=2.479):
     return p
 
 
-def shannon_entropy(p):
-    inds = np.where(p > 0)[0]
-    H = -p[inds].dot(np.log(p[inds]))
+def shannon_entropy(p, normalize=True):
+    """Compute the Shannon entropy of a uni- or multi-variate
+    distribution.
+
+    Parameters
+    ----------
+    p : np.ndarray
+        Vector or matrix of probabilities representing the (potentially
+        multivariate) distribution over which to calculate the entropy.
+    normalize : bool, default=True
+        Forcibly normalize the sum of p to one. (Not in place;
+        duplicates p.)
+
+    Returns
+    -------
+    H : float
+        The Shannon entropy of the distribution
+    """
+
+    if normalize:
+        p = np.copy(p) / np.sum(p)
+
+    H = -np.sum(p * np.log(p, where=(p > 0)))
+
     return H
 
 

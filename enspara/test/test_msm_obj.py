@@ -1,16 +1,17 @@
 import tempfile
 import shutil
 import os
+import pickle
 
 from nose.tools import assert_equal, assert_false, assert_true
 from numpy.testing import assert_allclose, assert_array_equal
 
 import numpy as np
 
-from .msm import MSM
-from . import builders
+from ..msm.msm import MSM
+from ..msm import builders
 
-from .test_data import TRIMMABLE
+from .msm_data import TRIMMABLE
 
 
 def test_create_msm():
@@ -104,3 +105,20 @@ def test_msm_roundtrip():
             shutil.rmtree(msmfile)
         except:
             pass
+
+
+def test_msm_roundtrip_pickle():
+
+    assigs = TRIMMABLE['assigns']
+    m = MSM(lag_time=1, method=builders.normalize, max_n_states=4)
+
+    m.fit(assigs)
+
+    with tempfile.NamedTemporaryFile() as tmp_f:
+        print(tmp_f.name)
+        pickle.dump(m, tmp_f)
+        tmp_f.flush()
+
+        m2 = pickle.load(open(tmp_f.name, 'rb'))
+
+    assert_equal(m, m2)
