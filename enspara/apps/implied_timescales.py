@@ -46,7 +46,10 @@ def process_command_line(argv):
     parser.add_argument(
         "--plot", default=None,
         help="Path for the implied timescales plot.")
-
+    parser.add_argument(
+        "--logscale", action='store_true',
+        help='Flag to output y-axis log scale plot' 
+    )
     args = parser.parse_args(argv[1:])
 
     args.lag_times = range(*map(int, args.lag_times.split(':')))
@@ -76,6 +79,8 @@ def main(argv=None):
     for i in range(args.n_eigenvalues):
         plt.plot(args.lag_times, tscales[:, i],
                  label=r'$\lambda_{i}$'.format(i=i+1))
+    if args.logscale:
+        plt.yscale('log')
 
     plt.ylabel('Eigenmotion Speed (frames)')
     plt.xlabel('Lag Time (frames)')
