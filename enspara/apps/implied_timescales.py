@@ -3,6 +3,8 @@ import argparse
 
 from multiprocessing import cpu_count
 
+import numpy as np
+
 from enspara.msm import implied_timescales, builders
 from enspara.util import array as ra
 
@@ -47,6 +49,12 @@ def process_command_line(argv):
     parser.add_argument(
         "--trim", default=False, action="store_true",
         help="Turn ergodic trimming on.")
+
+    parser.add_argument(
+        "--timestep", default=None, type=float,
+        help='A conversion between frames and nanoseconds (i.e. frames '
+             'per nanosecond) to scale the axes to physical units '
+             '(rather than frames).')
     parser.add_argument(
         "--plot", default=None,
         help="Path for the implied timescales plot.")
@@ -83,15 +91,26 @@ def main(argv=None):
         sliding_window=True, trim=args.trim,
         method=args.symmetrization, n_procs=args.processes)
 
+    if args.timestep:
+        unit_factor = args.timestep
+        unit_str = 'ns'
+    else:
+        unit_factor = 1
+        unit_str = 'frames'
+
+    # scale x and y axes to nanoseconds
+    lag_times = np.array(args.lag_times) / unit_factor
+    tscales /= unit_factor
+
     for i in range(args.n_eigenvalues):
-        plt.plot(args.lag_times, tscales[:, i],
+        plt.plot(lag_times, tscales[:, i] / unit_factor,
                  label=r'$\lambda_{i}$'.format(i=i+1))
 
     if args.logscale:
         plt.yscale('log')
 
-    plt.ylabel('Eigenmotion Speed (frames)')
-    plt.xlabel('Lag Time (frames)')
+    plt.ylabel('Eigenmotion Speed [{u}]'.format(u=unit_str))
+    plt.xlabel('Lag Time [{u}]'.format(u=unit_str))
     plt.legend(frameon=False)
 
     plt.savefig(args.plot, dpi=300)
