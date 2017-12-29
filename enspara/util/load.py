@@ -1,6 +1,7 @@
 import logging
 import sys
 import warnings
+import math
 
 import multiprocessing as mp
 from itertools import count
@@ -8,12 +9,12 @@ from contextlib import closing
 from functools import partial, reduce
 import ctypes
 from operator import mul
-import math
+
+import tables
 
 import numpy as np
 import mdtraj as md
 
-from mdtraj import io
 from mdtraj.core.trajectory import _get_extension
 
 from sklearn.externals.joblib import Parallel, delayed
@@ -57,22 +58,56 @@ def sound_trajectory(trj, **kwargs):
     extension = _get_extension(trj)
 
     if extension == '.h5':
-        logger.debug("Accessing shape of HDF5 '%s' with args: %s", trj, kwargs)
-
         if 'top' in kwargs:
             warnings.warn(
                 "kwarg 'top' is ignored when input to sound_trajectory "
                 "is an h5 file.", RuntimeWarning)
-
-        a = io.loadh(trj)
-        shape = a._handle.get_node('/coordinates').shape
-        a.close()
-
-        return math.ceil(shape[0] / stride)
+        n_frames = _sound_h5(trj)
+    elif extension == '.xtc':
+        n_frames = _sound_xtc(trj)
     else:
         logger.debug("Actively sounding '%s' with args: %s", trj, kwargs)
+        n_frames = _sound_trajectory(trj, stride=stride, **kwargs)
 
-        return _sound_trajectory(trj, stride=stride, **kwargs)
+    return math.ceil(n_frames / stride)
+
+
+def _sound_xtc(trj):
+    """Specialized code for XTC files, that is faster than general
+    sounding code.
+
+    Parameters
+    ----------
+    trj: file path
+        Path to the trajectory to sound.
+    stride: int
+        Stride that will be used when the file is ultimately loaded.
+
+    Returns
+    ----------
+    length: int
+        The length (in frames) of a trajectory on disk, as though loaded
+        with kwargs
+    """
+
+    with md.formats.XTCTrajectoryFile(trj) as f:
+        l, _ = f._calc_len_and_offsets()
+
+    return l
+
+
+def _sound_h5(trj):
+    """Specialized code for HDF5 files which is faster than the general
+    purpose code.
+    """
+
+    logger.debug("Accessing shape of HDF5 '%s'", trj)
+
+    with tables.open_file(trj) as f:
+        print(f)
+        s = f.get_node('/coordinates').shape
+
+    return s[0]
 
 
 def _sound_trajectory(trj, **kwargs):
@@ -113,7 +148,7 @@ def _sound_trajectory(trj, **kwargs):
 
     # if stride is passed to md.load, it is ignored, because apparently
     # when you give it a frame dumps the stride argument.
-    length = math.ceil(search_space[1] / kwargs['stride'])
+    length = search_space[1]
 
     return length
 
