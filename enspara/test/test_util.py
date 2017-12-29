@@ -107,11 +107,8 @@ class Test_RaggedArray(unittest.TestCase):
 
         with tempfile.NamedTemporaryFile(suffix='.h5') as f:
             io.saveh(f.name, key0=a[0], key1=a[1])
-
             b = ra.load(f.name, keys=['key1'])
 
-        print(a[1])
-        print(b)
         assert_array_equal(a[1], b[0])
 
     def test_RaggedArray_bad_size(self):
