@@ -1,21 +1,14 @@
 import logging
-import sys
-import warnings
 import math
 
 import multiprocessing as mp
-from itertools import count
 from contextlib import closing
 from functools import partial, reduce
 import ctypes
 from operator import mul
 
-import tables
-
 import numpy as np
 import mdtraj as md
-
-from mdtraj.core.trajectory import _get_extension
 
 from sklearn.externals.joblib import Parallel, delayed
 
@@ -25,7 +18,7 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 
-def sound_trajectory(trj, **kwargs):
+def sound_trajectory(trj, stride=1):
     """Determine the length of a trajectory on disk.
 
     For H5 file formats, this is a trivial lookup of the shape parameter
@@ -52,105 +45,10 @@ def sound_trajectory(trj, **kwargs):
     md.load
     """
 
-    stride = kwargs.pop('stride', None)
-    stride = 1 if stride is None else stride
-
-    extension = _get_extension(trj)
-
-    if extension == '.h5':
-        if 'top' in kwargs:
-            warnings.warn(
-                "kwarg 'top' is ignored when input to sound_trajectory "
-                "is an h5 file.", RuntimeWarning)
-        n_frames = _sound_h5(trj)
-    elif extension == '.xtc':
-        n_frames = _sound_xtc(trj)
-    else:
-        logger.debug("Actively sounding '%s' with args: %s", trj, kwargs)
-        n_frames = _sound_trajectory(trj, stride=stride, **kwargs)
+    with md.open(trj) as f:
+        n_frames = len(f)
 
     return math.ceil(n_frames / stride)
-
-
-def _sound_xtc(trj):
-    """Specialized code for XTC files, that is faster than general
-    sounding code.
-
-    Parameters
-    ----------
-    trj: file path
-        Path to the trajectory to sound.
-    stride: int
-        Stride that will be used when the file is ultimately loaded.
-
-    Returns
-    ----------
-    length: int
-        The length (in frames) of a trajectory on disk, as though loaded
-        with kwargs
-    """
-
-    with md.formats.XTCTrajectoryFile(trj) as f:
-        l, _ = f._calc_len_and_offsets()
-
-    return l
-
-
-def _sound_h5(trj):
-    """Specialized code for HDF5 files which is faster than the general
-    purpose code.
-    """
-
-    logger.debug("Accessing shape of HDF5 '%s'", trj)
-
-    with tables.open_file(trj) as f:
-        print(f)
-        s = f.get_node('/coordinates').shape
-
-    return s[0]
-
-
-def _sound_trajectory(trj, **kwargs):
-    """Ascertains the length of an trajectory format that does not have
-    metadata on length.
-
-    Parameters
-    ----------
-    trj: file path
-        Path to the trajectory to sound.
-
-    Returns
-    ----------
-    length: int
-        The length (in frames) of a trajectory on disk, as though loaded
-        with kwargs
-
-    See Also
-    ----------
-    md.load
-    """
-
-    search_space = [0, sys.maxsize]
-    base = 2
-
-    while search_space[0]+1 != search_space[1]:
-        start = search_space[0]
-        for iteration in count():
-            frame = start+(base**iteration)
-
-            try:
-                md.load(trj, frame=frame, **kwargs)
-                search_space[0] = frame
-            except (IndexError, IOError):
-                # TODO: why is it IndexError sometimes, and IOError others?
-                search_space[1] = frame
-                break
-
-    # if stride is passed to md.load, it is ignored, because apparently
-    # when you give it a frame dumps the stride argument.
-    length = search_space[1]
-
-    return length
 
 
 def load_as_concatenated(filenames, lengths=None, processes=None,
@@ -218,7 +116,7 @@ def load_as_concatenated(filenames, lengths=None, processes=None,
         logger.debug("Sounding %s trajectories with %s processes.",
                      len(filenames), processes)
         lengths = Parallel(n_jobs=processes)(
-            delayed(sound_trajectory)(f, **kw)
+            delayed(sound_trajectory)(f, kw.get('stride', 1))
             for f, kw in zip(filenames, args))
     else:
         logger.debug("Using given lengths")
