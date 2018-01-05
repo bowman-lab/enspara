@@ -161,7 +161,7 @@ class TestTrajClustering(unittest.TestCase):
         all_dists = np.concatenate([r.distances for r in results])
         assert_less(
             abs(np.average(all_dists) - 0.085),
-            0.011)
+            0.012)
 
         assert_less(
             abs(np.std(result.distances) - 0.0187),
