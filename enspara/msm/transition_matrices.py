@@ -16,6 +16,7 @@ import scipy.sparse
 import scipy.sparse.linalg
 from scipy.sparse.csgraph import connected_components
 
+from .. import exception
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -134,7 +135,13 @@ def assigns_to_counts(
         A transition count matrix.
     """
 
-    n_traj = len(assigns)
+    # if it's 1d, later stuff will fail
+    if len(assigns.shape) == 1:
+        raise exception.DataInvalid(
+            'The given assignments array has 1-dimensional shape %s. '
+            'Two dimensional shapes = (n_trj, n_frames) are expected. '
+            'If this is really what you want, try using '
+            'assignments.reshape(1, -1) to create a single-row 2d array.')
 
     assigns = np.array([a[np.where(a != -1)] for a in assigns])
 
