@@ -1,20 +1,14 @@
 import logging
-import sys
-import warnings
+import math
 
 import multiprocessing as mp
-from itertools import count
 from contextlib import closing
 from functools import partial, reduce
 import ctypes
 from operator import mul
-import math
 
 import numpy as np
 import mdtraj as md
-
-from mdtraj import io
-from mdtraj.core.trajectory import _get_extension
 
 from sklearn.externals.joblib import Parallel, delayed
 
@@ -24,7 +18,7 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 
-def sound_trajectory(trj, **kwargs):
+def sound_trajectory(trj, stride=1):
     """Determine the length of a trajectory on disk.
 
     For H5 file formats, this is a trivial lookup of the shape parameter
@@ -51,71 +45,10 @@ def sound_trajectory(trj, **kwargs):
     md.load
     """
 
-    stride = kwargs.pop('stride', None)
-    stride = 1 if stride is None else stride
+    with md.open(trj) as f:
+        n_frames = len(f)
 
-    extension = _get_extension(trj)
-
-    if extension == '.h5':
-        logger.debug("Accessing shape of HDF5 '%s' with args: %s", trj, kwargs)
-
-        if 'top' in kwargs:
-            warnings.warn(
-                "kwarg 'top' is ignored when input to sound_trajectory "
-                "is an h5 file.", RuntimeWarning)
-
-        a = io.loadh(trj)
-        shape = a._handle.get_node('/coordinates').shape
-        a.close()
-
-        return math.ceil(shape[0] / stride)
-    else:
-        logger.debug("Actively sounding '%s' with args: %s", trj, kwargs)
-
-        return _sound_trajectory(trj, stride=stride, **kwargs)
-
-
-def _sound_trajectory(trj, **kwargs):
-    """Ascertains the length of an trajectory format that does not have
-    metadata on length.
-
-    Parameters
-    ----------
-    trj: file path
-        Path to the trajectory to sound.
-
-    Returns
-    ----------
-    length: int
-        The length (in frames) of a trajectory on disk, as though loaded
-        with kwargs
-
-    See Also
-    ----------
-    md.load
-    """
-
-    search_space = [0, sys.maxsize]
-    base = 2
-
-    while search_space[0]+1 != search_space[1]:
-        start = search_space[0]
-        for iteration in count():
-            frame = start+(base**iteration)
-
-            try:
-                md.load(trj, frame=frame, **kwargs)
-                search_space[0] = frame
-            except (IndexError, IOError):
-                # TODO: why is it IndexError sometimes, and IOError others?
-                search_space[1] = frame
-                break
-
-    # if stride is passed to md.load, it is ignored, because apparently
-    # when you give it a frame dumps the stride argument.
-    length = math.ceil(search_space[1] / kwargs['stride'])
-
-    return length
+    return math.ceil(n_frames / stride)
 
 
 def load_as_concatenated(filenames, lengths=None, processes=None,
@@ -183,7 +116,7 @@ def load_as_concatenated(filenames, lengths=None, processes=None,
         logger.debug("Sounding %s trajectories with %s processes.",
                      len(filenames), processes)
         lengths = Parallel(n_jobs=processes)(
-            delayed(sound_trajectory)(f, **kw)
+            delayed(sound_trajectory)(f, kw.get('stride', 1))
             for f, kw in zip(filenames, args))
     else:
         logger.debug("Using given lengths")

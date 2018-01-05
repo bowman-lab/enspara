@@ -238,8 +238,7 @@ def reassign(topologies, trajectories, atoms, centers, frac_mem=0.9,
                 sum(len(t) for t in trajectories), len(topologies))
 
     lengths = Parallel(n_jobs=n_procs)(
-        delayed(sound_trajectory)(f, top=top, atom_indices=aids)
-        for f, top, aids in targets)
+        delayed(sound_trajectory)(f) for f, _, _ in targets)
 
     logger.info("Sounded %s trajectories with %s frames (median length "
                 "%i frames) in %.1f seconds.",
