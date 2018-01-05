@@ -6,6 +6,7 @@ import itertools
 import pickle
 import json
 import warnings
+import time
 
 from multiprocessing import cpu_count
 
@@ -145,7 +146,7 @@ def load(topologies, trajectories, selections, stride, processes):
          for t, c in zip(topologies, configs)]
 
     logger.info(
-        "Loading %s trajectories with %s atoms using %s processes"
+        "Loading %s trajectories with %s atoms using %s processes "
         "(subsampling %s)",
         len(flat_trjs), len(top.select(selection)), processes, stride)
     assert len(top.select(selection)) > 0, "No atoms selected for clustering"
@@ -185,33 +186,24 @@ def load_asymm_frames(center_indices, trajectories, topology, subsample):
     return frames
 
 
-def position_of_first_difference(paths):
-    for i, chars in enumerate(zip(*paths)):
-        if not all(chars[0] == char_i for char_i in chars):
-            break
-
-    return i
-
-
 def main(argv=None):
     '''Run the driver script for this module. This code only runs if we're
     being run as a script. Otherwise, it's silent and just exposes methods.'''
     args = process_command_line(argv)
 
-    i = position_of_first_difference(args.topologies)
-
-    targets = {topf[i:]: "%s xtcs" % len(trjfs) for topf, trjfs
+    targets = {os.path.basename(topf): "%s xtcs" % len(trjfs) for topf, trjfs
                in zip(args.topologies, args.trajectories)}
-    logger.info("Beginning RMSD Clusutering app. Operating on targets:\n%s",
+    logger.info("Beginning RMSD Clustering app. Operating on targets:\n%s",
                 json.dumps(targets, indent=4))
 
+    tick = time.perf_counter()
     lengths, xyz, select_top = load(
         args.topologies, args.trajectories, selections=args.atoms,
         stride=args.subsample, processes=args.processes)
 
     logger.info(
-        "Loading finished. Clustering using atoms %s matching '%s'.",
-        xyz.shape[1], args.atoms)
+        "Loading finished in (%s s). Clustering using atoms %s matching '%s'.",
+        round(time.perf_counter() - tick, 2), xyz.shape[1], args.atoms)
 
     clustering = args.Clusterer(
         metric=md.rmsd,
