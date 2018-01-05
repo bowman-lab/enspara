@@ -149,6 +149,25 @@ def test_symmetrical_mi_nonzero():
         assert_allclose(mi, 0, atol=1e-3)
 
 
+def test_symmetrical_mi_nonzero_int_shape_spec():
+    # test that when we use an integer (rather than a list of integers)
+    # that we correctly assume that the integer is just repeated for all
+    # of the various features.
+
+    nonzero_mi_funcs = [nonzero_mi_np, nonzero_mi_ra, nonzero_mi_list]
+    for a, n_states in (f() for f in nonzero_mi_funcs):
+
+        mi = mutual_info.mi_matrix(a, a, 5, 5)
+
+        assert_almost_equal(mi[-1, -2], 0.86114, decimal=3)
+        mi[-1, -2] = mi[-2, -1] = 0
+
+        assert_almost_equal(np.diag(mi), 1.722, decimal=2)
+        mi[np.diag_indices_from(mi)] = 0
+
+        assert_allclose(mi, 0, atol=1e-3)
+
+
 def test_asymmetrical_mi_nonzero():
     # test that the MI matrix for sets of uncorrelated things results
     # in zero MI, but on asymmetrical data, i.e. a[i] != b[i]
