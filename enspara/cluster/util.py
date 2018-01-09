@@ -263,6 +263,48 @@ def load_frames(filenames, indices, **kwargs):
     return centers
 
 
+def mpi_distribute_frame(data, world_index, owner_rank):
+    """Distribute an element of an array to every node in an MPI swarm.
+
+    Parameters
+    ----------
+    data : array-like or md.Trajectory
+        Data array with frames to distribute. The frame will be taken
+        from axis 0 of the input.
+    world_index : int
+        Position of the target frame in `data` on the node that owns it
+    owner_rank : int
+        Rank of the node that owns the datum that we'll broadcast.
+
+    Returns
+    -------
+    frame : array-like or md.Trajectory
+        A single slice of `data`, of shape `data.shape[1:]`.
+    """
+
+    from mpi4py import MPI
+
+    rank = MPI.COMM_WORLD.Get_rank()
+
+    if hasattr(data, 'xyz'):
+        if rank == owner_rank:
+            frame = data[world_index].xyz
+        else:
+            frame = np.empty_like(data[0].xyz)
+    else:
+        if rank == owner_rank:
+            frame = data[world_index]
+        else:
+            frame = np.empty_like(data[0])
+
+    MPI.COMM_WORLD.Bcast(frame, root=owner_rank)
+
+    if hasattr(data, 'top'):
+        return type(data)(frame, topology=data.top)
+    else:
+        return type(data)(frame)
+
+
 def _get_distance_method(metric):
     if metric == 'rmsd':
         return md.rmsd

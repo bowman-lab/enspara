@@ -14,7 +14,7 @@ from numpy.testing import assert_array_equal
 from ..cluster.hybrid import KHybrid, hybrid
 from ..cluster.kcenters import KCenters, kcenters
 from ..cluster.kmedoids import kmedoids
-from ..cluster.util import find_cluster_centers
+from ..cluster.util import find_cluster_centers, mpi_distribute_frame
 
 from ..exception import DataInvalid, ImproperlyConfigured
 
@@ -136,8 +136,7 @@ class TestTrajClustering(unittest.TestCase):
 
     def test_hybrid(self):
         '''
-        Check that hybrid clustering is behaving as expected on
-        md.Trajectory objects.
+        Clustering works on md.Trajectories.
         '''
         N_CLUSTERS = 5
 
@@ -147,7 +146,7 @@ class TestTrajClustering(unittest.TestCase):
             init_centers=None,
             n_clusters=N_CLUSTERS,
             random_first_center=False,
-            n_iters=100
+            n_iters=10
             ) for i in range(10)]
 
         result = results[0]
@@ -368,6 +367,20 @@ class TestNumpyClustering(unittest.TestCase):
             scatter(x_centers, y_centers, s=40, c='y')
             show()
             raise
+
+
+def test_mpi_distribute_frame_ndarray():
+
+    datas = [
+        np.arange(10*100*3).reshape(10, 100, 3),
+
+    ]
+
+    for data in datas:
+        d = mpi_distribute_frame(data, 7, 0)
+
+        assert d == data[7]
+        assert type(d) is type(data)
 
 
 if __name__ == '__main__':
