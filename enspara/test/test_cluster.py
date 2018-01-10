@@ -5,18 +5,18 @@ import warnings
 import time
 import os
 
+from functools import wraps
+
 import numpy as np
 import mdtraj as md
 from mdtraj.testing import get_fn
 
 from nose.tools import (assert_raises, assert_less, assert_true, assert_is,
                         assert_equal)
-from numpy.testing import assert_array_equal
+from numpy.testing import assert_array_equal, assert_allclose
 
 from ..cluster.hybrid import KHybrid, hybrid
-from ..cluster import kcenters
-from ..cluster.kmedoids import kmedoids
-from ..cluster.util import find_cluster_centers, mpi_distribute_frame
+from ..cluster import kcenters, kmedoids, util
 
 from ..exception import DataInvalid, ImproperlyConfigured
 
@@ -121,7 +121,7 @@ class TestTrajClustering(unittest.TestCase):
 
         N_CLUSTERS = 5
 
-        result = kmedoids(
+        result = kmedoids.kmedoids(
             self.trj,
             distance_method='rmsd',
             n_clusters=N_CLUSTERS,
@@ -283,6 +283,88 @@ def test_kcenters_mpi_numpy():
         assert_array_equal(mpi_ctr_inds, r.center_indices)
 
 
+def fix_rng(seed=0):
+    def decorator(f):
+        @wraps(f)
+        def wrapper(*args, **kwargs):
+
+            state = np.random.get_state()
+            np.random.seed(seed)
+
+            try:
+                return f(*args, **kwargs)
+            finally:
+                np.random.set_state(state)
+
+        return wrapper
+    return decorator
+
+@fix_rng()
+def test_kmedoids_update_mpi_mdtraj():
+    from mpi4py import MPI
+    MPI_RANK = MPI.COMM_WORLD.Get_rank()
+    MPI_SIZE = MPI.COMM_WORLD.Get_size()
+
+    trj = md.load(get_fn('frame0.h5'))
+    DIST_FUNC = md.rmsd
+
+    data = trj[MPI_RANK::MPI_SIZE]
+
+    r = kcenters.kcenters_mpi(data, DIST_FUNC, n_clusters=10)
+    local_distances, local_assignments, local_ctr_inds = r
+
+    r = kmedoids._kmedoids_update_mpi(
+        data, DIST_FUNC, local_ctr_inds, local_assignments, local_distances)
+    local_ctr_inds, local_assignments, local_distances = r
+
+    mpi_ctr_inds = [(i*MPI_SIZE)+r for r, i in local_ctr_inds]
+
+    assert_array_equal(
+        mpi_ctr_inds,
+        [  1, 429, 101, 104, 309, 262, 132, 350,  51, 333])
+
+    true_assigs, true_dists = util.assign_to_nearest_center(
+        trj, trj[mpi_ctr_inds], DIST_FUNC)
+
+    assert_allclose(local_assignments, true_assigs[MPI_RANK::MPI_SIZE])
+    assert_allclose(local_distances, true_dists[MPI_RANK::MPI_SIZE],
+                    rtol=1e-06, atol=1e-03)
+
+
+@fix_rng()
+def test_kmedoids_update_mpi_numpy():
+    from mpi4py import MPI
+    MPI_RANK = MPI.COMM_WORLD.Get_rank()
+    MPI_SIZE = MPI.COMM_WORLD.Get_size()
+
+    trj = md.load(get_fn('frame0.h5')).xyz[:, :, 0].copy()
+
+    data = trj[MPI_RANK::MPI_SIZE]
+
+    def DIST_FUNC(X, x):
+        return np.square(X -x).sum(axis=1)
+
+    r = kcenters.kcenters_mpi(data, DIST_FUNC, n_clusters=10)
+    local_distances, local_assignments, local_ctr_inds = r
+
+    r = kmedoids._kmedoids_update_mpi(
+        data, DIST_FUNC, local_ctr_inds, local_assignments, local_distances)
+    local_ctr_inds, local_assignments, local_distances = r
+
+    mpi_ctr_inds = [(i*MPI_SIZE)+r for r, i in local_ctr_inds]
+
+    assert_array_equal(
+        mpi_ctr_inds,
+        [  0, 230, 262, 354,  55, 432, 211, 142, 325, 366])
+
+    true_assigs, true_dists = util.assign_to_nearest_center(
+        trj, trj[mpi_ctr_inds], DIST_FUNC)
+
+    assert_allclose(local_assignments, true_assigs[MPI_RANK::MPI_SIZE])
+    assert_allclose(local_distances, true_dists[MPI_RANK::MPI_SIZE],
+                    rtol=1e-06, atol=1e-03)
+
+
 
 class TestNumpyClustering(unittest.TestCase):
 
@@ -379,7 +461,8 @@ class TestNumpyClustering(unittest.TestCase):
 
         assert len(result.center_indices) == N_CLUSTERS
 
-        centers = find_cluster_centers(result.assignments, result.distances)
+        centers = util.find_cluster_centers(
+            result.assignments, result.distances)
         self.check_generators(
             np.concatenate(self.traj_lst)[centers], distance=4.0)
 
@@ -392,14 +475,15 @@ class TestNumpyClustering(unittest.TestCase):
             init_centers=None,
             random_first_center=False)
 
-        centers = find_cluster_centers(result.assignments, result.distances)
+        centers = util.find_cluster_centers(
+            result.assignments, result.distances)
         self.check_generators(
             np.concatenate(self.traj_lst)[centers], distance=4.0)
 
     def test_numpy_kmedoids(self):
         N_CLUSTERS = 3
 
-        result = kmedoids(
+        result = kmedoids.kmedoids(
             np.concatenate(self.traj_lst),
             distance_method='euclidean',
             n_clusters=N_CLUSTERS,
@@ -408,7 +492,8 @@ class TestNumpyClustering(unittest.TestCase):
         assert len(np.unique(result.assignments)) == N_CLUSTERS
         assert len(result.center_indices) == N_CLUSTERS
 
-        centers = find_cluster_centers(result.assignments, result.distances)
+        centers = util.find_cluster_centers(
+            result.assignments, result.distances)
         self.check_generators(
             np.concatenate(self.traj_lst)[centers], distance=4.0)
 
@@ -453,7 +538,7 @@ def test_mpi_distribute_frame_ndarray():
     from mpi4py import MPI
     data = np.arange(10*100*3).reshape(10, 100, 3)
 
-    d = mpi_distribute_frame(data, 7, MPI.COMM_WORLD.Get_size()-1)
+    d = util.mpi_distribute_frame(data, 7, MPI.COMM_WORLD.Get_size()-1)
 
     assert_array_equal(d, data[7])
     assert_is(type(d), type(data))
@@ -464,7 +549,7 @@ def test_mpi_distribute_frame_mdtraj():
     from mpi4py import MPI
     data = md.load(get_fn('frame0.h5'))
 
-    d = mpi_distribute_frame(data, 7, MPI.COMM_WORLD.Get_size()-1)
+    d = util.mpi_distribute_frame(data, 7, MPI.COMM_WORLD.Get_size()-1)
 
     assert_array_equal(d.xyz, data[7].xyz)
     assert_is(type(d), type(data))

@@ -13,16 +13,14 @@ import logging
 
 import numpy as np
 
-from .util import (assign_to_nearest_center, _get_distance_method,
-                   ClusterResult, Clusterer, find_cluster_centers,
-                   mpi_distribute_frame)
-
+from ..util import log
 from ..exception import ImproperlyConfigured
+from . import util
 
 logger = logging.getLogger(__name__)
 
 
-class KCenters(Clusterer):
+class KCenters(util.Clusterer):
 
     def __init__(
             self, metric, n_clusters=None, cluster_radius=None,
@@ -109,7 +107,7 @@ def kcenters(
             raise ImproperlyConfigured("Either n_clusters or cluster_radius "
                                        "is required for KHybrid clustering")
 
-    distance_method = _get_distance_method(distance_method)
+    distance_method = util._get_distance_method(distance_method)
 
     if n_clusters is None and dist_cutoff is None:
         raise ImproperlyConfigured(
@@ -123,7 +121,7 @@ def kcenters(
         traj, distance_method, n_clusters=n_clusters, dist_cutoff=dist_cutoff,
         cluster_centers=init_centers, random_first_center=random_first_center)
 
-    return ClusterResult(
+    return util.ClusterResult(
         center_indices=cluster_center_inds,
         assignments=assignments,
         distances=distances,
@@ -149,10 +147,10 @@ def _kcenters_helper(
 
     if cluster_centers is not None:
         logger.info("Updating assignments to previous cluster centers")
-        assignments, distances = assign_to_nearest_center(
+        assignments, distances = util.assign_to_nearest_center(
             traj, cluster_centers, distance_method)
         cluster_center_inds = list(
-            find_cluster_centers(assignments, distances))
+            util.find_cluster_centers(assignments, distances))
 
         cluster_num = len(cluster_center_inds)
         new_center_index = np.argmax(distances)
@@ -231,7 +229,7 @@ def kcenters_mpi(
             raise ImproperlyConfigured("Either n_clusters or cluster_radius "
                                        "is required for KHybrid clustering")
 
-    distance_method = _get_distance_method(distance_method)
+    distance_method = util._get_distance_method(distance_method)
 
     if n_clusters is None and dist_cutoff is None:
         raise ImproperlyConfigured(
@@ -241,35 +239,54 @@ def kcenters_mpi(
     elif n_clusters is not None and dist_cutoff is None:
         dist_cutoff = 0
 
-    cluster_num = 0
     min_max_dist = np.inf
 
     distances = np.full(shape=(len(traj),), fill_value=np.inf)
-    assignments = np.zeros(shape=(len(traj),)) - 1
-    world_ctr_inds = []
+    assignments = np.zeros(shape=(len(traj),), dtype=np.int32) - 1
+    ctr_inds = []
 
-    new_cluster_center_owner = 0
-    new_cluster_center_index = 0
+    while (len(ctr_inds) < n_clusters) and (min_max_dist > dist_cutoff):
 
-    while (cluster_num < n_clusters) and (min_max_dist > dist_cutoff):
+        min_max_dist, distances, assignments, center_inds = \
+            _kcenters_iteration_mpi(traj, distance_method, distances,
+                                    assignments, ctr_inds)
 
-        tick = time.perf_counter()
-        new_center = mpi_distribute_frame(
-            data=traj,
-            world_index=new_cluster_center_index,
-            owner_rank=new_cluster_center_owner)
-        tock = time.perf_counter()
-        logger.debug("Distributed cluster ctr in %.2f sec", tock-tick)
+        if COMM.Get_rank() == 0:
+            logger.info(
+                "Center %s gives max dist of %.6f (stopping @ %.6f).",
+                len(center_inds), min_max_dist, dist_cutoff)
 
-        new_dists = distance_method(traj, new_center)
+    if COMM.Get_rank() == 0:
+        logger.info(
+            "Found %s clusters @ %s",
+            len(ctr_inds), ctr_inds)
 
-        inds = (new_dists < distances)
+    return distances, assignments, ctr_inds
 
-        distances[inds] = new_dists[inds]
-        assignments[inds] = cluster_num
 
-        world_ctr_inds.append(
-            (new_cluster_center_owner, new_cluster_center_index))
+def _kcenters_iteration_mpi(traj, distance_method, distances, assignments,
+                            center_inds=None):
+    """The core inner loop of the kcenters iteration protocol. This can
+    be used to start and stop doing kcenters (for example to save
+    frequently or do checkpointing).
+    """
+
+    from mpi4py import MPI
+    COMM = MPI.COMM_WORLD
+
+    assert len(traj) == len(distances)
+    assert len(traj) == len(assignments)
+    assert np.issubdtype(type(assignments[0]), np.integer)
+
+    if center_inds is None:
+        center_inds = []
+
+    if len(center_inds) == 0:
+        new_cluster_center_index = 0
+        new_cluster_center_owner = 0
+
+        min_max_dist = np.inf
+    else:
 
         dist_locs = np.zeros((COMM.Get_size(),), dtype=int) - 1
         dist_vals = np.zeros((COMM.Get_size(),), dtype=float) - 1
@@ -277,36 +294,38 @@ def kcenters_mpi(
         dist_locs[COMM.Get_rank()] = np.argmax(distances)
         dist_vals[COMM.Get_rank()] = np.max(distances)
 
-        tick = time.perf_counter()
-        COMM.Allgather(
-            [dist_locs[COMM.Get_rank()], MPI.DOUBLE],
-            [dist_locs, MPI.DOUBLE])
-        COMM.Allgather(
-            [dist_vals[COMM.Get_rank()], MPI.FLOAT],
-            [dist_vals, MPI.FLOAT])
-        tock = time.perf_counter()
-        logger.debug("Gathered distances in %.2f sec", tock-tick)
+        with log.timed("Gathered distances in %.2f sec", logger.debug):
+            COMM.Allgather(
+                [dist_locs[COMM.Get_rank()], MPI.DOUBLE],
+                [dist_locs, MPI.DOUBLE])
+            COMM.Allgather(
+                [dist_vals[COMM.Get_rank()], MPI.FLOAT],
+                [dist_vals, MPI.FLOAT])
 
         assert np.all(dist_locs >= 0)
         assert np.all(dist_vals >= 0)
 
-        min_max_dist = np.min(dist_vals)
         new_cluster_center_owner = np.argmax(dist_vals)
         new_cluster_center_index = dist_locs[new_cluster_center_owner]
 
-        if COMM.Get_rank() == 0:
-            logger.info(
-                "Center %s from rank %s, frame %s, gives max dist of %.5f "
-                "(stopping @ %s).",
-                cluster_num, new_cluster_center_owner,
-                new_cluster_center_index, dist_vals[new_cluster_center_owner],
-                dist_cutoff)
+        min_max_dist = np.max(dist_vals)
 
-        cluster_num += 1
+    with log.timed("Distributed cluster ctr in %.2f sec",
+                   log_func=logger.info):
+        new_center = util.mpi_distribute_frame(
+            data=traj,
+            world_index=new_cluster_center_index,
+            owner_rank=new_cluster_center_owner)
 
-    if COMM.Get_rank() == 0:
-        logger.info(
-            "Found %s clusters @ %s",
-            len(world_ctr_inds), world_ctr_inds)
+    with log.timed("Computed distance in %.2f sec", log_func=logger.info):
+        new_dists = distance_method(traj, new_center)
 
-    return distances, assignments, world_ctr_inds
+    inds = (new_dists < distances)
+
+    distances[inds] = new_dists[inds]
+    assignments[inds] = len(center_inds)
+
+    center_inds.append(
+        (new_cluster_center_owner, new_cluster_center_index))
+
+    return min_max_dist, distances, assignments, center_inds
