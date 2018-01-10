@@ -2,6 +2,8 @@ from __future__ import print_function, division, absolute_import
 
 import unittest
 import warnings
+import time
+import os
 
 import numpy as np
 import mdtraj as md
@@ -12,7 +14,7 @@ from nose.tools import (assert_raises, assert_less, assert_true, assert_is,
 from numpy.testing import assert_array_equal
 
 from ..cluster.hybrid import KHybrid, hybrid
-from ..cluster.kcenters import KCenters, kcenters
+from ..cluster import kcenters
 from ..cluster.kmedoids import kmedoids
 from ..cluster.util import find_cluster_centers, mpi_distribute_frame
 
@@ -27,7 +29,7 @@ class TestTrajClustering(unittest.TestCase):
 
         self.trj = md.load(self.trj_fname, top=self.top_fname)
 
-    def test_centers_object(self):
+    def test_kcenters_object(self):
         # '''
         # KHybrid() clusterer should produce correct output.
         # '''
@@ -35,10 +37,10 @@ class TestTrajClustering(unittest.TestCase):
         CLUSTER_RADIUS = 0.1
 
         with assert_raises(ImproperlyConfigured):
-            KCenters(metric=md.rmsd)
+            kcenters.KCenters(metric=md.rmsd)
 
         # Test n clusters
-        clustering = KCenters(
+        clustering = kcenters.KCenters(
             metric=md.rmsd,
             n_clusters=N_CLUSTERS)
 
@@ -49,7 +51,7 @@ class TestTrajClustering(unittest.TestCase):
             clustering.labels_
 
         # Test dist_cutoff
-        clustering = KCenters(
+        clustering = kcenters.KCenters(
             metric=md.rmsd,
             cluster_radius=CLUSTER_RADIUS)
 
@@ -60,7 +62,7 @@ class TestTrajClustering(unittest.TestCase):
             clustering.distances_
 
         # Test n clusters and dist_cutoff
-        clustering = KCenters(
+        clustering = kcenters.KCenters(
             metric=md.rmsd,
             n_clusters=N_CLUSTERS,
             cluster_radius=CLUSTER_RADIUS)
@@ -167,7 +169,7 @@ class TestTrajClustering(unittest.TestCase):
             0.005)
 
     def test_kcenters_maxdist(self):
-        result = kcenters(
+        result = kcenters.kcenters(
             self.trj,
             distance_method='rmsd',
             init_centers=None,
@@ -187,7 +189,7 @@ class TestTrajClustering(unittest.TestCase):
     def test_kcenters_nclust(self):
         N_CLUSTERS = 3
 
-        result = kcenters(
+        result = kcenters.kcenters(
             self.trj,
             distance_method='rmsd',
             n_clusters=N_CLUSTERS,
@@ -203,6 +205,41 @@ class TestTrajClustering(unittest.TestCase):
                                0.10387578309920734)
         self.assertAlmostEqual(np.std(result.distances),
                                0.018355072790569946)
+
+def test_kcenters_mpi():
+    from mpi4py import MPI
+    MPI_RANK = MPI.COMM_WORLD.Get_rank()
+    MPI_SIZE = MPI.COMM_WORLD.Get_size()
+
+    trj = md.load(get_fn('frame0.h5'))
+
+    data = trj[MPI_RANK::MPI_SIZE]
+
+    r = kcenters.kcenters_mpi(data, md.rmsd, n_clusters=10)
+    world_distances, world_assignments, world_ctr_inds = r
+
+    mpi_assigs = np.empty((len(trj),), dtype=world_assignments.dtype)
+    mpi_dists = np.empty((len(trj),), dtype=world_distances.dtype)
+    mpi_ctr_inds = [(i*MPI_SIZE)+r for r, i in world_ctr_inds]
+
+    try:
+        np.save('assig%s.npy' % MPI_RANK, world_assignments)
+        np.save('dists%s.npy' % MPI_RANK, world_distances)
+        time.sleep(2)
+
+        for i in range(MPI_SIZE):
+            mpi_assigs[i::MPI_SIZE] = np.load('assig%s.npy' % i)
+            mpi_dists[i::MPI_SIZE] = np.load('dists%s.npy' % i)
+    finally:
+        os.remove('assig%s.npy' % MPI_RANK)
+        os.remove('dists%s.npy' % MPI_RANK)
+
+    if MPI_RANK == 0:
+        r = kcenters.kcenters(trj, md.rmsd, n_clusters=10)
+
+        assert_array_equal(mpi_assigs, r.assignments)
+        assert_array_equal(mpi_dists, r.distances)
+        assert_array_equal(mpi_ctr_inds, r.center_indices)
 
 
 class TestNumpyClustering(unittest.TestCase):
@@ -251,7 +288,7 @@ class TestNumpyClustering(unittest.TestCase):
             distances=None,
             center_indices=None)
 
-        clust = KCenters('euclidean', cluster_radius=2)
+        clust = kcenters.KCenters('euclidean', cluster_radius=2)
 
         clust.result_ = result
 
@@ -271,7 +308,7 @@ class TestNumpyClustering(unittest.TestCase):
 
     def test_kcenters_hot_start(self):
 
-        clust = KCenters('euclidean', cluster_radius=6)
+        clust = kcenters.KCenters('euclidean', cluster_radius=6)
 
         clust.fit(
             X=np.concatenate(self.traj_lst),
@@ -305,7 +342,7 @@ class TestNumpyClustering(unittest.TestCase):
             np.concatenate(self.traj_lst)[centers], distance=4.0)
 
     def test_numpy_kcenters(self):
-        result = kcenters(
+        result = kcenters.kcenters(
             np.concatenate(self.traj_lst),
             distance_method='euclidean',
             n_clusters=3,
@@ -371,16 +408,24 @@ class TestNumpyClustering(unittest.TestCase):
 
 def test_mpi_distribute_frame_ndarray():
 
-    datas = [
-        np.arange(10*100*3).reshape(10, 100, 3),
+    from mpi4py import MPI
+    data = np.arange(10*100*3).reshape(10, 100, 3)
 
-    ]
+    d = mpi_distribute_frame(data, 7, MPI.COMM_WORLD.Get_size()-1)
 
-    for data in datas:
-        d = mpi_distribute_frame(data, 7, 0)
+    assert_array_equal(d, data[7])
+    assert_is(type(d), type(data))
 
-        assert d == data[7]
-        assert type(d) is type(data)
+
+def test_mpi_distribute_frame_mdtraj():
+
+    from mpi4py import MPI
+    data = md.load(get_fn('frame0.h5'))
+
+    d = mpi_distribute_frame(data, 7, MPI.COMM_WORLD.Get_size()-1)
+
+    assert_array_equal(d.xyz, data[7].xyz)
+    assert_is(type(d), type(data))
 
 
 if __name__ == '__main__':

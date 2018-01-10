@@ -14,7 +14,8 @@ import logging
 import numpy as np
 
 from .util import (assign_to_nearest_center, _get_distance_method,
-                   ClusterResult, Clusterer, find_cluster_centers)
+                   ClusterResult, Clusterer, find_cluster_centers,
+                   mpi_distribute_frame)
 
 from ..exception import ImproperlyConfigured
 
@@ -66,6 +67,43 @@ class KCenters(Clusterer):
 def kcenters(
         traj, distance_method, n_clusters=np.inf, dist_cutoff=0,
         init_centers=None, random_first_center=False):
+    """KCenters implementation for MPI.
+
+    In this function, `traj` is assumed to be only a subset of the data
+    in a SIMD execution environment. As a consequence, some
+    inter-process communication is required. The user is responsible for
+    partitioning the data in `traj` appropriately across the workers and
+    for assembling the results correctly.
+
+    Parameters
+    ----------
+        traj : array-like
+            The data to cluster with kcenters.
+        distance_method : callable
+            A callable that takes two arguments: an array of shape `traj.shape` and and array of shape `traj.shape[1:]`, and
+            returns an array of shape `traj.shape[0]`, representing the
+            'distance' between each element of the `traj` and a proposed
+            cluster center.
+        n_clusters : int (default=np.inf)
+            Stop finding new cluster centers when the number of clsuters
+            reaches this value.
+        dist_cutoff : float (default=0)
+            Stop finding new cluster centers when the maximum minimum
+            distance between any point and a cluster center reaches this
+            value.
+        init_centers : array-like, shape=(n_centers, n_featers)
+            A list of observations to use as the first `n_centers`
+            centers before discovering new centers with the kcenters
+            algorithm.
+        random_first_center : bool, default=False
+            When false, center 0 is always frame 0. If True, this value
+            is chosen randomly.
+    Returns
+    -------
+        result : ClusterResult
+            Subclass of NamedTuple containing assignments, distances,
+            and center indices for this function.
+    """
 
     if (n_clusters is np.inf) and (dist_cutoff is 0):
             raise ImproperlyConfigured("Either n_clusters or cluster_radius "
@@ -145,51 +183,46 @@ def _kcenters_helper(
     return cluster_center_inds, assignments, distances
 
 
-def mpi_distribute_frame(data, world_index, owner_rank):
-    """Distribute an element of an array to every node in an MPI swarm.
+def kcenters_mpi(
+        traj, distance_method, n_clusters=np.inf, dist_cutoff=0):
+    """KCenters implementation for MPI.
+
+    In this function, `traj` is assumed to be only a subset of the data
+    in a SIMD execution environment. As a consequence, some
+    inter-process communication is required. The user is responsible for
+    partitioning the data in `traj` appropriately across the workers and
+    for assembling the results correctly.
 
     Parameters
     ----------
-    data : array-like or md.Trajectory
-        Data array with frames to distribute. The frame will be taken
-        from axis 0 of the input.
-    world_index : int
-        Position of the target frame in `data` on the node that owns it
-    owner_rank : int
-        Rank of the node that owns the datum that we'll broadcast.
+        traj : array-like
+            The data to cluster with kcenters.
+        distance_method : callable
+            A callable that takes two arguments: an array of shape `traj.shape` and and array of shape `traj.shape[1:]`, and
+            returns an array of shape `traj.shape[0]`, representing the
+            'distance' between each element of the `traj` and a proposed
+            cluster center.
+        n_clusters : int (default=np.inf)
+            Stop finding new cluster centers when the number of clsuters
+            reaches this value.
+        dist_cutoff : float (default=0)
+            Stop finding new cluster centers when the maximum minimum
+            distance between any point and a cluster center reaches this
+            value.
 
     Returns
     -------
-    frame : array-like or md.Trajectory
-        A single slice of `data`, of shape `data.shape[1:]`.
+        world_distances : np.ndarray, shape=(n_observations,)
+            For each observation in this MPI worker's world, the
+            distance between that observation and the nearest cluster
+            center
+        world_assignments : np.ndarray, shape=(n_observations,)
+            For each observation in this MPI worker's world, the
+            assignment of that observation to the nearest cluster center
+        world_center_indices : list of tuples
+            For each cluster center, a list of the pairs
+            (owner_rank, world_index).
     """
-
-    from mpi4py import MPI
-
-    rank = MPI.COMM_WORLD.Get_rank()
-
-    if hasattr(data, 'xyz'):
-        if rank == owner_rank:
-            frame = data[world_index].xyz
-        else:
-            frame = np.empty_like(data[0].xyz)
-    else:
-        if rank == owner_rank:
-            frame = data[world_index]
-        else:
-            frame = np.empty_like(data[0])
-
-    MPI.COMM_WORLD.Bcast(frame, root=owner_rank)
-
-    if hasattr(data, 'top'):
-        return type(data)(frame, topology=data.top)
-    else:
-        return type(data)(frame)
-
-
-def kcenters_mpi(
-        traj, distance_method, n_clusters=np.inf, dist_cutoff=0,
-        init_centers=None):
 
     from mpi4py import MPI
     COMM = MPI.COMM_WORLD
@@ -222,11 +255,11 @@ def kcenters_mpi(
 
         tick = time.perf_counter()
         new_center = mpi_distribute_frame(
-            index=new_cluster_center_index,
-            owner=new_cluster_center_owner,
-            trjs=traj)
+            data=traj,
+            world_index=new_cluster_center_index,
+            owner_rank=new_cluster_center_owner)
         tock = time.perf_counter()
-        logging.debug("Distributed cluster ctr in %.2f sec", tock-tick)
+        logger.debug("Distributed cluster ctr in %.2f sec", tock-tick)
 
         new_dists = distance_method(traj, new_center)
 
@@ -252,21 +285,17 @@ def kcenters_mpi(
             [dist_vals[COMM.Get_rank()], MPI.FLOAT],
             [dist_vals, MPI.FLOAT])
         tock = time.perf_counter()
-        logging.debug("Gathered distances in %.2f sec", tock-tick)
-        # logging.debug("World max-dists are %s", dist_vals)
+        logger.debug("Gathered distances in %.2f sec", tock-tick)
 
         assert np.all(dist_locs >= 0)
         assert np.all(dist_vals >= 0)
-
-        # logging.debug("Gathered distance locations %s", dist_locs)
-        # logging.debug("Gathered distance values %s", dist_vals)
 
         min_max_dist = np.min(dist_vals)
         new_cluster_center_owner = np.argmax(dist_vals)
         new_cluster_center_index = dist_locs[new_cluster_center_owner]
 
         if COMM.Get_rank() == 0:
-            logging.info(
+            logger.info(
                 "Center %s from rank %s, frame %s, gives max dist of %.5f "
                 "(stopping @ %s).",
                 cluster_num, new_cluster_center_owner,
@@ -276,7 +305,7 @@ def kcenters_mpi(
         cluster_num += 1
 
     if COMM.Get_rank() == 0:
-        logging.info(
+        logger.info(
             "Found %s clusters @ %s",
             len(world_ctr_inds), world_ctr_inds)
 

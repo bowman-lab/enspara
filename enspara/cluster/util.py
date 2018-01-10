@@ -286,6 +286,12 @@ def mpi_distribute_frame(data, world_index, owner_rank):
 
     rank = MPI.COMM_WORLD.Get_rank()
 
+    mpi_size = MPI.COMM_WORLD.Get_size()
+    if owner_rank >= mpi_size:
+        raise ImproperlyConfigured(
+            'In MPI swarm of size %s, recieved owner rank == %s.',
+            mpi_size, owner_rank)
+
     if hasattr(data, 'xyz'):
         if rank == owner_rank:
             frame = data[world_index].xyz
@@ -302,7 +308,7 @@ def mpi_distribute_frame(data, world_index, owner_rank):
     if hasattr(data, 'top'):
         return type(data)(frame, topology=data.top)
     else:
-        return type(data)(frame)
+        return frame
 
 
 def _get_distance_method(metric):
