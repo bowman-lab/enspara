@@ -206,7 +206,7 @@ class TestTrajClustering(unittest.TestCase):
         self.assertAlmostEqual(np.std(result.distances),
                                0.018355072790569946)
 
-def test_kcenters_mpi():
+def test_kcenters_mpi_traj():
     from mpi4py import MPI
     MPI_RANK = MPI.COMM_WORLD.Get_rank()
     MPI_SIZE = MPI.COMM_WORLD.Get_size()
@@ -225,6 +225,7 @@ def test_kcenters_mpi():
     try:
         np.save('assig%s.npy' % MPI_RANK, world_assignments)
         np.save('dists%s.npy' % MPI_RANK, world_distances)
+        MPI.COMM_WORLD.Barrier()
         time.sleep(2)
 
         for i in range(MPI_SIZE):
@@ -240,6 +241,47 @@ def test_kcenters_mpi():
         assert_array_equal(mpi_assigs, r.assignments)
         assert_array_equal(mpi_dists, r.distances)
         assert_array_equal(mpi_ctr_inds, r.center_indices)
+
+
+def test_kcenters_mpi_numpy():
+    from mpi4py import MPI
+    MPI_RANK = MPI.COMM_WORLD.Get_rank()
+    MPI_SIZE = MPI.COMM_WORLD.Get_size()
+
+    trj = md.load(get_fn('frame0.h5')).xyz[:, :, 0].copy()
+
+    data = trj[MPI_RANK::MPI_SIZE]
+
+    def euc(X, x):
+        return np.square(X -x).sum(axis=1)
+
+    r = kcenters.kcenters_mpi(data, euc, n_clusters=10)
+    world_distances, world_assignments, world_ctr_inds = r
+
+    mpi_assigs = np.empty((len(trj),), dtype=world_assignments.dtype)
+    mpi_dists = np.empty((len(trj),), dtype=world_distances.dtype)
+    mpi_ctr_inds = [(i*MPI_SIZE)+r for r, i in world_ctr_inds]
+
+    try:
+        np.save('assig%s.npy' % MPI_RANK, world_assignments)
+        np.save('dists%s.npy' % MPI_RANK, world_distances)
+        MPI.COMM_WORLD.Barrier()
+        time.sleep(2)
+
+        for i in range(MPI_SIZE):
+            mpi_assigs[i::MPI_SIZE] = np.load('assig%s.npy' % i)
+            mpi_dists[i::MPI_SIZE] = np.load('dists%s.npy' % i)
+    finally:
+        os.remove('assig%s.npy' % MPI_RANK)
+        os.remove('dists%s.npy' % MPI_RANK)
+
+    if MPI_RANK == 0:
+        r = kcenters.kcenters(trj, euc, n_clusters=10)
+
+        assert_array_equal(mpi_assigs, r.assignments)
+        assert_array_equal(mpi_dists, r.distances)
+        assert_array_equal(mpi_ctr_inds, r.center_indices)
+
 
 
 class TestNumpyClustering(unittest.TestCase):
