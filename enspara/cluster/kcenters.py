@@ -65,13 +65,14 @@ class KCenters(util.Clusterer):
 def kcenters(
         traj, distance_method, n_clusters=np.inf, dist_cutoff=0,
         init_centers=None, random_first_center=False):
-    """KCenters implementation for MPI.
+    """The functional (rather than object-oriented) implementation of
+    the k-centers clustering algorithm.
 
-    In this function, `traj` is assumed to be only a subset of the data
-    in a SIMD execution environment. As a consequence, some
-    inter-process communication is required. The user is responsible for
-    partitioning the data in `traj` appropriately across the workers and
-    for assembling the results correctly.
+    K-centers is essentially an outlier detection algorithm. It
+    iteratively searches out the point that is most distant from all
+    existing cluster centers, and adds it as a new cluster centers.
+    Its worst-case runtime is O(kn), where k is the number of cluster
+    centers and n is the number of observations.
 
     Parameters
     ----------
@@ -101,6 +102,10 @@ def kcenters(
         result : ClusterResult
             Subclass of NamedTuple containing assignments, distances,
             and center indices for this function.
+
+    References
+    ----------
+    .. [1] Gonzalez, T. F. Clustering to minimize the maximum intercluster distance. Theoretical Computer Science 38, 293–306 (1985).
     """
 
     if (n_clusters is np.inf) and (dist_cutoff is 0):
