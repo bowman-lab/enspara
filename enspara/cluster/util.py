@@ -263,6 +263,99 @@ def load_frames(filenames, indices, **kwargs):
     return centers
 
 
+def mpi_distribute_frame(data, world_index, owner_rank):
+    """Distribute an element of an array to every node in an MPI swarm.
+
+    Parameters
+    ----------
+    data : array-like or md.Trajectory
+        Data array with frames to distribute. The frame will be taken
+        from axis 0 of the input.
+    world_index : int
+        Position of the target frame in `data` on the node that owns it
+    owner_rank : int
+        Rank of the node that owns the datum that we'll broadcast.
+
+    Returns
+    -------
+    frame : array-like or md.Trajectory
+        A single slice of `data`, of shape `data.shape[1:]`.
+    """
+
+    from mpi4py import MPI
+
+    rank = MPI.COMM_WORLD.Get_rank()
+
+    mpi_size = MPI.COMM_WORLD.Get_size()
+    if owner_rank >= mpi_size:
+        raise ImproperlyConfigured(
+            'In MPI swarm of size %s, recieved owner rank == %s.',
+            mpi_size, owner_rank)
+
+    if hasattr(data, 'xyz'):
+        if rank == owner_rank:
+            frame = data[world_index].xyz
+        else:
+            frame = np.empty_like(data[0].xyz)
+    else:
+        if rank == owner_rank:
+            frame = data[world_index]
+        else:
+            frame = np.empty_like(data[0])
+
+    MPI.COMM_WORLD.Bcast(frame, root=owner_rank)
+
+    if hasattr(data, 'xyz'):
+        wrapped_data = data[0]
+        wrapped_data.xyz = frame
+        return wrapped_data
+    else:
+        return frame
+
+
+def mpi_np_choice(world_array):
+    """As `numpy.random.choice` but parallel across nodes.
+    """
+    from mpi4py import MPI
+    COMM = MPI.COMM_WORLD
+
+    # First, we'll determine which of the world the newly proposed
+    # center will come from by choosing it according to a biased die
+    # roll.
+    n_states = np.zeros((COMM.Get_size(),), dtype=int) - 1
+    n_states[COMM.Get_rank()] = len(world_array)
+
+    #TODO: could this be Gather instead of Allgather?
+    COMM.Allgather(
+        [n_states[COMM.Get_rank()], MPI.DOUBLE],
+        [n_states, MPI.DOUBLE])
+
+    assert np.all(n_states >= 0)
+
+    if COMM.Get_rank() == 0:
+        owner_of_proposed = np.random.choice(
+            np.arange(len(n_states)),
+            p=n_states/n_states.sum())
+    else:
+        owner_of_proposed = None
+
+    owner_of_proposed = MPI.COMM_WORLD.bcast(owner_of_proposed, root=0)
+
+    assert owner_of_proposed >= 0
+
+    if COMM.Get_rank() == owner_of_proposed:
+        index_of_proposed = np.random.choice(world_array)
+    else:
+        index_of_proposed = None
+
+    index_of_proposed = MPI.COMM_WORLD.bcast(
+        index_of_proposed, root=owner_of_proposed)
+
+    assert index_of_proposed >= 0
+
+    return (owner_of_proposed, index_of_proposed)
+
+
 def _get_distance_method(metric):
     if metric == 'rmsd':
         return md.rmsd
