@@ -5,11 +5,11 @@ import pickle
 import time
 import resource
 import psutil
+import warnings
 
 import multiprocessing as mp
 
 from glob import glob
-from functools import partial
 
 import numpy as np
 import mdtraj as md
@@ -36,7 +36,7 @@ from enspara.cluster.kcenters import kcenters_mpi
 from enspara.cluster.kmedoids import _kmedoids_update_mpi
 
 from enspara.apps.util import readable_dir
-from enspara.util.load import load_as_concatenated, sound_trajectory
+from enspara.util.load import load_as_concatenated
 
 
 def process_command_line(argv):
@@ -74,11 +74,11 @@ def process_command_line(argv):
              "clustering.")
 
     parser.add_argument(
-        "--distances", required=True, action=readable_dir,
-        help="Path to output distances npy.")
+        "--distances", action=readable_dir,
+        help="Path to output distances h5.")
     parser.add_argument(
-        "--assignments", required=True, action=readable_dir,
-        help="Path to output assignments npy.")
+        "--assignments", action=readable_dir,
+        help="Path to output assignments h5.")
     parser.add_argument(
         "--center-indices", required=True, action=readable_dir,
         help="Path to output center-indices pickle.")
@@ -89,6 +89,11 @@ def process_command_line(argv):
     args = parser.parse_args(argv[1:])
 
     args.trajectories = glob(args.trajectories)
+
+    if args.subsample > 1 and args.distances:
+        warnings.warn('When subsampling > 1, distances are also subsampled.')
+    if args.subsample > 1 and args.assignments:
+        warnings.warn('When subsampling > 1, assignments are also subsampled.')
 
     return args
 
@@ -223,7 +228,8 @@ def main(argv=None):
         (tock - tick)/60)
 
     for i in range(args.kmedoids_iters):
-        with timed(f"KMedoids iteration {i} took %.2f sec", logging.info):
+        with timed("KMedoids iteration {i} took %.2f sec".format(i=i),
+                   logging.info):
             local_ctr_inds, local_assigs, local_dists = _kmedoids_update_mpi(
                 trjs, md.rmsd, local_ctr_inds, local_assigs, local_dists)
 
@@ -231,18 +237,23 @@ def main(argv=None):
         all_dists = assemble_per_frame_array(global_lengths, local_dists)
         all_assigs = assemble_per_frame_array(global_lengths, local_assigs)
         ctr_inds = convert_center_indices(local_ctr_inds, global_lengths)
+        ctr_inds = partition_indices(ctr_inds, global_lengths)
 
     if RANK == 0:
         logging.info("Dumping center indices to %s", args.center_indices)
         with open(args.center_indices, 'wb') as f:
             pickle.dump(ctr_inds, f)
 
-        np.save(args.distances, all_dists)
-        np.save(args.assignments, all_assigs)
+        if args.distances:
+            ra.save(args.distances,
+                    ra.RaggedArray(all_dists, lengths=global_lengths))
+        if args.assignments:
+            ra.save(args.assignments,
+                    ra.RaggedArray(all_assigs, lengths=global_lengths))
 
         centers = load_frames(
             args.trajectories,
-            partition_indices(ctr_inds, global_lengths),
+            ctr_inds,
             stride=args.subsample,
             top=md.load(args.topology).top)
 

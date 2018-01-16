@@ -5,8 +5,6 @@ import warnings
 import time
 import os
 
-from functools import wraps
-
 import numpy as np
 import mdtraj as md
 from mdtraj.testing import get_fn
@@ -17,9 +15,9 @@ from numpy.testing import assert_array_equal, assert_allclose
 
 from ..cluster.hybrid import KHybrid, hybrid
 from ..cluster import kcenters, kmedoids, util
-
 from ..exception import DataInvalid, ImproperlyConfigured
 
+from .util import fix_np_rng
 
 class TestTrajClustering(unittest.TestCase):
 
@@ -283,23 +281,7 @@ def test_kcenters_mpi_numpy():
         assert_array_equal(mpi_ctr_inds, r.center_indices)
 
 
-def fix_rng(seed=0):
-    def decorator(f):
-        @wraps(f)
-        def wrapper(*args, **kwargs):
-
-            state = np.random.get_state()
-            np.random.seed(seed)
-
-            try:
-                return f(*args, **kwargs)
-            finally:
-                np.random.set_state(state)
-
-        return wrapper
-    return decorator
-
-@fix_rng()
+@fix_np_rng()
 def test_kmedoids_update_mpi_mdtraj():
     from mpi4py import MPI
     MPI_RANK = MPI.COMM_WORLD.Get_rank()
@@ -331,7 +313,7 @@ def test_kmedoids_update_mpi_mdtraj():
                     rtol=1e-06, atol=1e-03)
 
 
-@fix_rng()
+@fix_np_rng()
 def test_kmedoids_update_mpi_numpy():
     from mpi4py import MPI
     MPI_RANK = MPI.COMM_WORLD.Get_rank()
