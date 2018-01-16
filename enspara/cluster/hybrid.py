@@ -48,7 +48,7 @@ class KHybrid(Clusterer):
             Data to cluster.
         """
 
-        t0 = time.clock()
+        t0 = time.perf_counter()
 
         self.result_ = hybrid(
             X, self.metric,
@@ -58,7 +58,7 @@ class KHybrid(Clusterer):
             random_first_center=self.random_first_center,
             init_centers=init_centers)
 
-        self.runtime_ = time.clock() - t0
+        self.runtime_ = time.perf_counter() - t0
 
 
 def hybrid(

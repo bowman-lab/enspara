@@ -19,6 +19,39 @@ logger = logging.getLogger(__name__)
 
 
 def kmedoids(traj, distance_method, n_clusters, n_iters=5):
+    """K-Medoids clustering.
+
+    K-Medoids is a clustering algorithm similar to the k-means algorithm
+    but the center of each cluster is required to actually be an
+    observation in the input data.
+
+    Parameters
+    ----------
+    traj : array-like, shape=(n_observations, n_features, *)
+        Data to cluster. The user is responsible for pre-partitioning
+        this data across nodes.
+    distance_method : callable
+        Function that takes a parameter like `traj` and a single frame
+        of `traj` (_i.e._ traj.shape[1:]).
+    cluster_center_inds : list, [(owner_rank, world_index), ...]
+        A list of the locations of center indices in terms of the rank
+        of the node that owns them and the index within that world.
+    assignments : ndarray, shape=(traj.shape[0],)
+        Array indicating the assignment of each frame in `traj` to a
+        cluster center.
+    n_iters : int, default=5
+        Number of rounds of new proposed centers to run.
+
+    Returns
+    -------
+    result : ClusterResult
+        Subclass of NamedTuple containing assignments, distances,
+        and center indices for this function.
+
+    References
+    ----------
+    .. [1]  Chodera, J. D., Singhal, N., Pande, V. S., Dill, K. A. & Swope, W. C. Automatic discovery of metastable states for the construction of Markov models of macromolecular conformational dynamics. J. Chem. Phys. 126, 155101 (2007).
+    """
 
     distance_method = util._get_distance_method(distance_method)
 
