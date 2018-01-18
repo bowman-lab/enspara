@@ -14,7 +14,8 @@ from collections import namedtuple
 import mdtraj as md
 import numpy as np
 
-from sklearn.base import BaseEstimator as SklearnBaseEstimator
+from sklearn.base import BaseEstimator, ClusterMixin
+
 from sklearn.utils import check_random_state
 
 from ..exception import ImproperlyConfigured, DataInvalid
@@ -22,7 +23,7 @@ from ..util import partition_list, partition_indices
 from ..util import array as ra
 
 
-class Clusterer(SklearnBaseEstimator):
+class Clusterer(BaseEstimator, ClusterMixin):
     """Clusterer class defines the base API for a clustering object in
     the sklearn style.
     """

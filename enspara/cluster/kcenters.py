@@ -92,6 +92,7 @@ class KCenters(util.Clusterer):
             random_first_center=self.random_first_center)
 
         self.runtime_ = time.clock() - t0
+        return self
 
 
 def kcenters(

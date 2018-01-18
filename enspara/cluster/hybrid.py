@@ -90,6 +90,8 @@ class KHybrid(Clusterer):
 
         self.runtime_ = time.perf_counter() - t0
 
+        return self
+
 
 class KHybridMPI(Clusterer):
 
@@ -131,11 +133,9 @@ class KHybridMPI(Clusterer):
                 ctr_inds, assigs, dists,
                 random_state=self.random_state)
 
-        self.labels_ = assigs
-        self.distances_ = dists
-        self.center_indices_ = ctr_inds
-
         self.runtime_ = time.perf_counter() - t0
+
+        return self
 
 
 def hybrid(
