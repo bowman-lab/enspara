@@ -304,9 +304,8 @@ def test_kmedoids_update_mpi_mdtraj():
 
     mpi_ctr_inds = [(i*MPI_SIZE)+r for r, i in local_ctr_inds]
 
-    assert_array_equal(
-        mpi_ctr_inds,
-        [357, 429,  24, 103, 473, 123, 408, 107,  49, 228])
+    expected_inds = [  0,  44, 400, 105, 372, 327, 242, 346,  54, 295]
+    assert_array_equal(mpi_ctr_inds, expected_inds)
 
     true_assigs, true_dists = util.assign_to_nearest_center(
         trj, trj[mpi_ctr_inds], DIST_FUNC)

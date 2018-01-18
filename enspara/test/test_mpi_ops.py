@@ -68,12 +68,20 @@ def test_mpi_np_choice_fixed_rng():
     r, o = mpi.ops.np_choice(
         a[mpi.MPI_RANK::mpi.MPI_SIZE],
         random_state=0)
-    assert_equal((r, o), (1, 3))
+    global_ind = mpi.ops.convert_local_indices(
+        [(r, o)],
+        [len(a[r::mpi.MPI_SIZE]) for r in range(mpi.MPI_SIZE)])[0]
+
+    assert_equal(global_ind, 12)
 
     r, o = mpi.ops.np_choice(
         a[mpi.MPI_RANK::mpi.MPI_SIZE],
         random_state=1)
-    assert_equal((r, o), (0, 5))
+    global_ind = mpi.ops.convert_local_indices(
+        [(r, o)],
+        [len(a[r::mpi.MPI_SIZE]) for r in range(mpi.MPI_SIZE)])[0]
+
+    assert_equal(global_ind, 5)
 
 
 @attr('mpi')

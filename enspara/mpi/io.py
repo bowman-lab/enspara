@@ -4,7 +4,7 @@ import numpy as np
 from ..util.load import load_as_concatenated
 from .. import exception
 
-from . import MPI, MPI_RANK, MPI_SIZE
+from . import MPI_RANK, MPI_SIZE
 from .ops import assemble_striped_array
 
 

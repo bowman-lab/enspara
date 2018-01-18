@@ -219,16 +219,12 @@ def np_choice(local_array, random_state=None):
         global_index = None
 
     global_index = MPI.COMM_WORLD.bcast(global_index, root=0)
-    logger.debug("RANK %s: %s", MPI_RANK, global_index)
 
     starts = np.zeros(len(n_states), dtype=int)
     starts[1:] = np.cumsum(n_states)[0:-1]
 
     owner_rank = np.searchsorted(np.cumsum(n_states)-1, global_index)
     local_index = global_index - starts[owner_rank]
-
-    logger.debug("RANK %s: %s (%s, %s)", MPI_RANK, global_index,
-                 owner_rank, local_index)
 
     assert local_index >= 0
 
