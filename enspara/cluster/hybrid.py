@@ -12,8 +12,6 @@ import logging
 
 import numpy as np
 
-from sklearn.utils import check_random_state
-
 from . import kcenters
 from . import kmedoids
 from .util import _get_distance_method, ClusterResult, Clusterer
@@ -87,7 +85,8 @@ class KHybrid(Clusterer):
             n_clusters=self.n_clusters,
             dist_cutoff=self.cluster_radius,
             random_first_center=self.random_first_center,
-            init_centers=init_centers)
+            init_centers=init_centers,
+            random_state=self.random_state)
 
         self.runtime_ = time.perf_counter() - t0
 
@@ -96,7 +95,7 @@ class KHybridMPI(Clusterer):
 
     def __init__(self, n_clusters=None, cluster_radius=None,
                  kmedoids_updates=5, random_first_center=False,
-                 random_state=None, *args, **kwargs):
+                 *args, **kwargs):
 
         if n_clusters is None and cluster_radius is None:
             raise ImproperlyConfigured("Either n_clusters or cluster_radius "
@@ -140,20 +139,20 @@ class KHybridMPI(Clusterer):
 
 
 def hybrid(
-        traj, distance_method, n_iters=5, n_clusters=np.inf,
+        X, distance_method, n_iters=5, n_clusters=np.inf,
         dist_cutoff=0, random_first_center=False,
         init_centers=None, random_state=None):
 
     distance_method = _get_distance_method(distance_method)
 
     result = kcenters.kcenters(
-        traj, distance_method, n_clusters=n_clusters, dist_cutoff=dist_cutoff,
+        X, distance_method, n_clusters=n_clusters, dist_cutoff=dist_cutoff,
         init_centers=init_centers, random_first_center=random_first_center)
 
     for i in range(n_iters):
         cluster_center_inds, assignments, distances = \
             kmedoids._kmedoids_update(
-                traj, distance_method,
+                X, distance_method,
                 result.center_indices, result.assignments, result.distances,
                 acceptance_criterion=np.max,
                 random_state=random_state)
@@ -164,4 +163,4 @@ def hybrid(
         center_indices=cluster_center_inds,
         assignments=assignments,
         distances=distances,
-        centers=traj[cluster_center_inds])
+        centers=X[cluster_center_inds])

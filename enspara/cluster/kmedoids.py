@@ -22,7 +22,7 @@ from . import util
 logger = logging.getLogger(__name__)
 
 
-def kmedoids(traj, distance_method, n_clusters, n_iters=5):
+def kmedoids(X, distance_method, n_clusters, n_iters=5):
     """K-Medoids clustering.
 
     K-Medoids is a clustering algorithm similar to the k-means algorithm
@@ -31,17 +31,17 @@ def kmedoids(traj, distance_method, n_clusters, n_iters=5):
 
     Parameters
     ----------
-    traj : array-like, shape=(n_observations, n_features, *)
+    X : array-like, shape=(n_observations, n_features, *)
         Data to cluster. The user is responsible for pre-partitioning
         this data across nodes.
     distance_method : callable
-        Function that takes a parameter like `traj` and a single frame
-        of `traj` (_i.e._ traj.shape[1:]).
+        Function that takes a parameter like `X` and a single frame
+        of `X` (_i.e._ X.shape[1:]).
     cluster_center_inds : list, [(owner_rank, world_index), ...]
         A list of the locations of center indices in terms of the rank
         of the node that owns them and the index within that world.
-    assignments : ndarray, shape=(traj.shape[0],)
-        Array indicating the assignment of each frame in `traj` to a
+    assignments : ndarray, shape=(X.shape[0],)
+        Array indicating the assignment of each frame in `X` to a
         cluster center.
     n_iters : int, default=5
         Number of rounds of new proposed centers to run.
@@ -59,7 +59,7 @@ def kmedoids(traj, distance_method, n_clusters, n_iters=5):
 
     distance_method = util._get_distance_method(distance_method)
 
-    n_frames = len(traj)
+    n_frames = len(X)
 
     # for short lists, np.random.random_integers sometimes forgets to assign
     # something to each cluster. This will simply repeat the assignments if
@@ -69,12 +69,12 @@ def kmedoids(traj, distance_method, n_clusters, n_iters=5):
         cluster_center_inds = np.random.randint(0, n_frames, n_clusters)
 
     assignments, distances = util.assign_to_nearest_center(
-        traj, traj[cluster_center_inds], distance_method)
+        X, X[cluster_center_inds], distance_method)
     cluster_center_inds = util.find_cluster_centers(assignments, distances)
 
     for i in range(n_iters):
         cluster_center_inds, assignments, distances = _kmedoids_update(
-            traj, distance_method, cluster_center_inds, assignments,
+            X, distance_method, cluster_center_inds, assignments,
             distances)
         logger.info("KMedoids update %s", i)
 
@@ -82,31 +82,40 @@ def kmedoids(traj, distance_method, n_clusters, n_iters=5):
         center_indices=cluster_center_inds,
         assignments=assignments,
         distances=distances,
-        centers=traj[cluster_center_inds])
+        centers=X[cluster_center_inds])
 
 
-def _kmedoids_update_mpi(traj, distance_method, cluster_center_inds,
-                         assignments, distances, random_state=None):
+def _msq(x):
+    return np.dot(x, x) / len(x)
+
+
+def _kmedoids_update_mpi(
+        X, distance_method, cluster_center_inds, assignments,
+        distances, acceptance_criterion=_msq, random_state=None):
     """K-Medoids clustering using MPI to parallelze the computation
     across multiple computers over a network in a SIMD fashion.
 
     Parameters
     ----------
-    traj : array-like, shape=(n_observations, n_features, *)
+    X : array-like, shape=(n_observations, n_features, *)
         Data to cluster. The user is responsible for pre-partitioning
         this data across nodes.
     distance_method : callable
-        Function that takes a parameter like `traj` and a single frame
-        of `traj` (_i.e._ traj.shape[1:]).
+        Function that takes a parameter like `X` and a single frame
+        of `X` (_i.e._ X.shape[1:]).
     cluster_center_inds : list, [(owner_rank, world_index), ...]
         A list of the locations of center indices in terms of the rank
         of the node that owns them and the index within that world.
-    assignments : ndarray, shape=(traj.shape[0],)
-        Array indicating the assignment of each frame in `traj` to a
+    assignments : ndarray, shape=(X.shape[0],)
+        Array indicating the assignment of each frame in `X` to a
         cluster center.
-    distances : ndarray, shape=(traj.shape[0],)
+    distances : ndarray, shape=(X.shape[0],)
         Array giving the distance between this observation/frame and the
         relevant cluster center.
+    acceptance_criterion : callable
+        Function returning a number that should be lower to accept a set
+        of proposed centers (i.e. the criterion minimized by the
+        algorithm).
     random_state : numpy.RandomState
         RandomState object used to indentify new centers.
 
@@ -124,8 +133,8 @@ def _kmedoids_update_mpi(traj, distance_method, cluster_center_inds,
     """
 
     assert np.issubdtype(type(assignments[0]), np.integer)
-    assert len(assignments) == len(traj)
-    assert len(distances) == len(traj)
+    assert len(assignments) == len(X)
+    assert len(distances) == len(X)
     random_state = check_random_state(random_state)
 
     proposed_center_inds = []
@@ -145,13 +154,13 @@ def _kmedoids_update_mpi(traj, distance_method, cluster_center_inds,
                     log_func=logger.debug):
         for center_idx, (rank, frame_idx) in enumerate(proposed_center_inds):
             new_center = mpi.ops.distribute_frame(
-                data=traj, owner_rank=rank, world_index=frame_idx)
+                data=X, owner_rank=rank, world_index=frame_idx)
             proposed_cluster_centers[center_idx] = new_center
 
     with log.timed("Computing distances to new cluster centers took %.2f sec",
                     log_func=logger.debug):
         tu = util.assign_to_nearest_center(
-            traj, proposed_cluster_centers, distance_method)
+            X, proposed_cluster_centers, distance_method)
         proposed_assignments, proposed_distances = tu
 
     with log.timed("Computed quality of new clustering in %.3f.",
@@ -172,27 +181,23 @@ def _kmedoids_update_mpi(traj, distance_method, cluster_center_inds,
         return cluster_center_inds, assignments, distances
 
 
-def msq(x):
-    return np.dot(x, x) / len(x)
-
-
 def _kmedoids_update(
-        traj, distance_method, cluster_center_inds, assignments,
-        distances, acceptance_criterion=msq, random_state=None):
+        X, distance_method, cluster_center_inds, assignments,
+        distances, acceptance_criterion=_msq, random_state=None):
 
     assert np.issubdtype(type(assignments[0]), np.integer)
-    assert len(assignments) == len(traj)
-    assert len(distances) == len(traj)
+    assert len(assignments) == len(X)
+    assert len(distances) == len(X)
     random_state = check_random_state(random_state)
 
     proposed_center_inds = np.zeros(len(cluster_center_inds), dtype=int)
     for i in range(len(cluster_center_inds)):
         state_inds = np.where(assignments == i)[0]
         proposed_center_inds[i] = random_state.choice(state_inds)
-    proposed_cluster_centers = traj[proposed_center_inds]
+    proposed_cluster_centers = X[proposed_center_inds]
 
     proposed_assignments, proposed_distances = util.assign_to_nearest_center(
-        traj, proposed_cluster_centers, distance_method)
+        X, proposed_cluster_centers, distance_method)
     proposed_center_inds = util.find_cluster_centers(
         proposed_assignments, proposed_distances)
 
