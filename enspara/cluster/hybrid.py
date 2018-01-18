@@ -151,10 +151,13 @@ def hybrid(
         init_centers=init_centers, random_first_center=random_first_center)
 
     for i in range(n_iters):
-        cluster_center_inds, assignments, distances = _hybrid_medoids_update(
-            traj, distance_method,
-            result.center_indices, result.assignments, result.distances,
-            random_state)
+        cluster_center_inds, assignments, distances = \
+            kmedoids._kmedoids_update(
+                traj, distance_method,
+                result.center_indices, result.assignments, result.distances,
+                acceptance_criterion=np.max,
+                random_state=random_state)
+
         logger.info("KMedoids update %s of %s", i, n_iters)
 
     return ClusterResult(
@@ -162,19 +165,3 @@ def hybrid(
         assignments=assignments,
         distances=distances,
         centers=traj[cluster_center_inds])
-
-
-def _hybrid_medoids_update(
-        traj, distance_method, cluster_center_inds, assignments, distances,
-        random_state=None):
-
-    proposed_center_inds, proposed_assignments, proposed_distances =\
-        kmedoids._kmedoids_update(traj, distance_method, cluster_center_inds,
-                                  assignments, distances, random_state)
-
-    max_orig_dist_to_center = distances.max()
-    max_proposed_dist_to_center = proposed_distances.max()
-    if max_proposed_dist_to_center <= max_orig_dist_to_center:
-        return proposed_center_inds, proposed_assignments, proposed_distances
-    else:
-        return cluster_center_inds, assignments, distances

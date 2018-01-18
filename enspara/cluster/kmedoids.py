@@ -172,9 +172,13 @@ def _kmedoids_update_mpi(traj, distance_method, cluster_center_inds,
         return cluster_center_inds, assignments, distances
 
 
+def msq(x):
+    return np.dot(x, x) / len(x)
+
+
 def _kmedoids_update(
         traj, distance_method, cluster_center_inds, assignments,
-        distances, random_state=None):
+        distances, acceptance_criterion=msq, random_state=None):
 
     assert np.issubdtype(type(assignments[0]), np.integer)
     assert len(assignments) == len(traj)
@@ -192,9 +196,9 @@ def _kmedoids_update(
     proposed_center_inds = util.find_cluster_centers(
         proposed_assignments, proposed_distances)
 
-    mean_orig_dist_to_center = distances.dot(distances)/len(traj)
-    mean_proposed_dist_to_center = proposed_distances.dot(
-        proposed_distances)/len(traj)
+    mean_orig_dist_to_center = acceptance_criterion(distances)
+    mean_proposed_dist_to_center = acceptance_criterion(proposed_distances)
+
     if mean_proposed_dist_to_center <= mean_orig_dist_to_center:
         return proposed_center_inds, proposed_assignments, proposed_distances
     else:
