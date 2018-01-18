@@ -58,12 +58,15 @@ def assemble_striped_array(local_arr):
     total_dim1 = COMM.allreduce(len(local_arr), op=MPI.SUM)
     total_shape = (total_dim1,) + local_arr.shape[1:]
 
+    if not np.all(local_arr > 0):
+        raise ImproperlyConfigured("On rank %s, a length <= 0 was found. Lengths must be strictly greater than zero." % MPI_RANK)
+
     global_lengths = np.zeros(total_shape, dtype=local_arr.dtype) - 1
 
     for i in range(MPI_SIZE):
         global_lengths[i::MPI_SIZE] = COMM.bcast(local_arr, root=i)
 
-    assert np.all(global_lengths > 0)
+    assert np.all(global_lengths > 0), global_lengths
 
     return global_lengths
 

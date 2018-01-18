@@ -15,6 +15,7 @@ import mdtraj as md
 import numpy as np
 
 from sklearn.base import BaseEstimator as SklearnBaseEstimator
+from sklearn.utils import check_random_state
 
 from ..exception import ImproperlyConfigured, DataInvalid
 from ..util import partition_list, partition_indices
@@ -26,8 +27,14 @@ class Clusterer(SklearnBaseEstimator):
     the sklearn style.
     """
 
-    def __init__(self, metric):
-        self.metric = _get_distance_method(metric)
+    def __init__(self, *args, **kwargs):
+
+        self.metric = _get_distance_method(kwargs.pop('metric'))
+        # super().__init__(self, *args, **kwargs)
+
+        self.random_state = check_random_state(
+            kwargs.pop('random_state', None))
+
 
     def fit(self, X):
         raise NotImplementedError("All Clusterers should implement fit().")

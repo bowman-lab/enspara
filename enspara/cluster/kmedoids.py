@@ -12,6 +12,8 @@ import logging
 
 import numpy as np
 
+from sklearn.utils import check_random_state
+
 from ..util import log
 from .. import mpi
 
@@ -84,7 +86,7 @@ def kmedoids(traj, distance_method, n_clusters, n_iters=5):
 
 
 def _kmedoids_update_mpi(traj, distance_method, cluster_center_inds,
-                         assignments, distances, random_state):
+                         assignments, distances, random_state=None):
     """K-Medoids clustering using MPI to parallelze the computation
     across multiple computers over a network in a SIMD fashion.
 
@@ -124,6 +126,7 @@ def _kmedoids_update_mpi(traj, distance_method, cluster_center_inds,
     assert np.issubdtype(type(assignments[0]), np.integer)
     assert len(assignments) == len(traj)
     assert len(distances) == len(traj)
+    random_state = check_random_state(random_state)
 
     proposed_center_inds = []
 
@@ -171,16 +174,17 @@ def _kmedoids_update_mpi(traj, distance_method, cluster_center_inds,
 
 def _kmedoids_update(
         traj, distance_method, cluster_center_inds, assignments,
-        distances):
+        distances, random_state=None):
 
     assert np.issubdtype(type(assignments[0]), np.integer)
     assert len(assignments) == len(traj)
     assert len(distances) == len(traj)
+    random_state = check_random_state(random_state)
 
     proposed_center_inds = np.zeros(len(cluster_center_inds), dtype=int)
     for i in range(len(cluster_center_inds)):
         state_inds = np.where(assignments == i)[0]
-        proposed_center_inds[i] = np.random.choice(state_inds)
+        proposed_center_inds[i] = random_state.choice(state_inds)
     proposed_cluster_centers = traj[proposed_center_inds]
 
     proposed_assignments, proposed_distances = util.assign_to_nearest_center(

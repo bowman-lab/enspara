@@ -23,12 +23,39 @@ logger = logging.getLogger(__name__)
 
 
 class KCenters(util.Clusterer):
+    """Sklearn-style object for kcenters clustering.
+
+    K-centers is essentially an outlier detection algorithm. It
+    iteratively searches out the point that is most distant from all
+    existing cluster centers, and adds it as a new cluster centers.
+    Its worst-case runtime is O(kn), where k is the number of cluster
+    centers and n is the number of observations.
+
+    Parameters
+    ----------
+    metric : required
+        Distance metric used while comparing data points.
+    n_clusters : int, default=None
+        The number of clusters to build using kcenters. When none,
+        only `cluster_radius` is used.
+    cluster_radius : float, default=None
+        The minimum maximum cluster-datum distance to use in when
+        adding cluster centers in the kcenters step. When `None`,
+        only `n_clusters` is used.
+    random_first_center : bool, default=False
+        Choose a random center as the first center, rather than
+        choosing the zeroth element (default)
+    random_state : int or np.RandomState
+        Random state to use to seed the random number generator.
+
+    References
+    ----------
+    .. [1] Gonzalez, T. F. Clustering to minimize the maximum intercluster distance. Theoretical Computer Science 38, 293–306 (1985).
+    """
 
     def __init__(
-            self, metric, n_clusters=None, cluster_radius=None,
-            random_first_center=False):
-
-        super(KCenters, self).__init__(metric)
+            self, n_clusters=None, cluster_radius=None,
+            random_first_center=False, *args, **kwargs):
 
         if n_clusters is None and cluster_radius is None:
             raise ImproperlyConfigured("Either n_clusters or cluster_radius "
@@ -37,6 +64,9 @@ class KCenters(util.Clusterer):
         self.n_clusters = n_clusters
         self.cluster_radius = cluster_radius
         self.random_first_center = random_first_center
+
+        super().__init__(self, *args, **kwargs)
+
 
     def fit(self, X, init_centers=None):
         """Takes trajectories, X, and performs KCenters clustering.

@@ -11,6 +11,8 @@ from mdtraj.testing import get_fn
 
 from nose.tools import (assert_raises, assert_less, assert_true, assert_is,
                         assert_equal)
+from nose.plugins.attrib import attr
+
 from numpy.testing import assert_array_equal, assert_allclose
 
 from ..cluster.hybrid import KHybrid, hybrid
@@ -146,7 +148,8 @@ class TestTrajClustering(unittest.TestCase):
             init_centers=None,
             n_clusters=N_CLUSTERS,
             random_first_center=False,
-            n_iters=10
+            n_iters=10,
+            random_state=0,
             ) for i in range(10)]
 
         result = results[0]
@@ -158,10 +161,8 @@ class TestTrajClustering(unittest.TestCase):
         # we do this here because hybrid seems to be more unstable than the
         # other two testing methods for some reason.
         all_dists = np.concatenate([r.distances for r in results])
-        assert_less(
-            abs(np.average(all_dists) - 0.085),
-            0.012)
 
+        assert_equal(round(np.average(all_dists), 7), 0.0992478)
         assert_less(
             abs(np.std(result.distances) - 0.0187),
             0.005)
@@ -204,6 +205,7 @@ class TestTrajClustering(unittest.TestCase):
         self.assertAlmostEqual(np.std(result.distances),
                                0.018355072790569946)
 
+@attr('mpi')
 def test_kcenters_mpi_traj():
     from ..mpi import MPI
     MPI_RANK = MPI.COMM_WORLD.Get_rank()
@@ -241,6 +243,7 @@ def test_kcenters_mpi_traj():
         assert_array_equal(mpi_ctr_inds, r.center_indices)
 
 
+@attr('mpi')
 def test_kcenters_mpi_numpy():
     from ..mpi import MPI
     MPI_RANK = MPI.COMM_WORLD.Get_rank()
@@ -281,7 +284,7 @@ def test_kcenters_mpi_numpy():
         assert_array_equal(mpi_ctr_inds, r.center_indices)
 
 
-@fix_np_rng()
+@attr('mpi')
 def test_kmedoids_update_mpi_mdtraj():
     from ..mpi import MPI
     MPI_RANK = MPI.COMM_WORLD.Get_rank()
@@ -297,14 +300,14 @@ def test_kmedoids_update_mpi_mdtraj():
 
     r = kmedoids._kmedoids_update_mpi(
         data, DIST_FUNC, local_ctr_inds, local_assignments, local_distances,
-        random_state=np.random.mtrand._rand)
+        random_state=0)
     local_ctr_inds, local_assignments, local_distances = r
 
     mpi_ctr_inds = [(i*MPI_SIZE)+r for r, i in local_ctr_inds]
 
     assert_array_equal(
         mpi_ctr_inds,
-        [  0,  44, 400, 105, 372, 327, 242, 346,  54, 295])
+        [357, 429,  24, 103, 473, 123, 408, 107,  49, 228])
 
     true_assigs, true_dists = util.assign_to_nearest_center(
         trj, trj[mpi_ctr_inds], DIST_FUNC)
@@ -314,7 +317,7 @@ def test_kmedoids_update_mpi_mdtraj():
                     rtol=1e-06, atol=1e-03)
 
 
-@fix_np_rng()
+@attr('mpi')
 def test_kmedoids_update_mpi_numpy():
     from ..mpi import MPI
     MPI_RANK = MPI.COMM_WORLD.Get_rank()
@@ -331,7 +334,10 @@ def test_kmedoids_update_mpi_numpy():
     local_distances, local_assignments, local_ctr_inds = r
 
     r = kmedoids._kmedoids_update_mpi(
-        data, DIST_FUNC, local_ctr_inds, local_assignments, local_distances)
+        data, DIST_FUNC, local_ctr_inds, local_assignments, local_distances,
+        random_state=0
+        )
+
     local_ctr_inds, local_assignments, local_distances = r
 
     mpi_ctr_inds = [(i*MPI_SIZE)+r for r, i in local_ctr_inds]
@@ -346,6 +352,12 @@ def test_kmedoids_update_mpi_numpy():
     assert_allclose(local_assignments, true_assigs[MPI_RANK::MPI_SIZE])
     assert_allclose(local_distances, true_dists[MPI_RANK::MPI_SIZE],
                     rtol=1e-06, atol=1e-03)
+
+
+# @attr('mpi')
+# def test_KHybridMPI_numpy():
+
+
 
 
 
@@ -395,7 +407,7 @@ class TestNumpyClustering(unittest.TestCase):
             distances=None,
             center_indices=None)
 
-        clust = kcenters.KCenters('euclidean', cluster_radius=2)
+        clust = kcenters.KCenters(metric='euclidean', cluster_radius=2)
 
         clust.result_ = result
 
@@ -415,7 +427,7 @@ class TestNumpyClustering(unittest.TestCase):
 
     def test_kcenters_hot_start(self):
 
-        clust = kcenters.KCenters('euclidean', cluster_radius=6)
+        clust = kcenters.KCenters(metric='euclidean', cluster_radius=6)
 
         clust.fit(
             X=np.concatenate(self.traj_lst),
