@@ -1,4 +1,7 @@
+import logging
 import numpy as np
+
+from sklearn.utils import check_random_state
 
 from ..exception import ImproperlyConfigured
 from ..util import array as ra
@@ -6,6 +9,7 @@ from ..util import array as ra
 from . import MPI, MPI_RANK, MPI_SIZE
 
 COMM = MPI.COMM_WORLD
+logger = logging.getLogger(__name__)
 
 
 def convert_local_indices(local_ctr_inds, global_lengths):
@@ -177,17 +181,32 @@ def distribute_frame(data, world_index, owner_rank):
         return frame
 
 
-def np_choice(world_array, random_state):
+def np_choice(local_array, random_state=None):
     """As `numpy.random.choice` but parallel across nodes.
+
+    Parameters
+    ----------
+    local_array : ndarray
+        An array that's striped across multiple nodes in an MPI swarm.
+    random_state : int or np.RandomState
+        State of the RNG to use for the randomized part of the choice.
+
+    Returns
+    -------
+    owner_rank : int
+        Rank of the node that owns the slice that's chosen.
+    local_index : int
+        Index within the owner node's local array.
     """
+
+    random_state = check_random_state(random_state)
 
     # First, we'll determine which of the world the newly proposed
     # center will come from by choosing it according to a biased die
     # roll.
     n_states = np.zeros((MPI_SIZE,), dtype=int) - 1
-    n_states[MPI_RANK] = len(world_array)
+    n_states[MPI_RANK] = len(local_array)
 
-    #TODO: could this be Gather instead of Allgather?
     COMM.Allgather(
         [n_states[MPI_RANK], MPI.DOUBLE],
         [n_states, MPI.DOUBLE])
@@ -195,24 +214,22 @@ def np_choice(world_array, random_state):
     assert np.all(n_states >= 0)
 
     if MPI_RANK == 0:
-        owner_of_proposed = np.random.choice(
-            np.arange(len(n_states)),
-            p=n_states/n_states.sum())
+        global_index = random_state.randint(sum(n_states))
     else:
-        owner_of_proposed = None
+        global_index = None
 
-    owner_of_proposed = MPI.COMM_WORLD.bcast(owner_of_proposed, root=0)
+    global_index = MPI.COMM_WORLD.bcast(global_index, root=0)
+    logger.debug("RANK %s: %s", MPI_RANK, global_index)
 
-    assert owner_of_proposed >= 0
+    starts = np.zeros(len(n_states), dtype=int)
+    starts[1:] = np.cumsum(n_states)[0:-1]
 
-    if MPI_RANK == owner_of_proposed:
-        index_of_proposed = random_state.choice(world_array)
-    else:
-        index_of_proposed = None
+    owner_rank = np.searchsorted(np.cumsum(n_states)-1, global_index)
+    local_index = global_index - starts[owner_rank]
 
-    index_of_proposed = MPI.COMM_WORLD.bcast(
-        index_of_proposed, root=owner_of_proposed)
+    logger.debug("RANK %s: %s (%s, %s)", MPI_RANK, global_index,
+                 owner_rank, local_index)
 
-    assert index_of_proposed >= 0
+    assert local_index >= 0
 
-    return (owner_of_proposed, index_of_proposed)
+    return (owner_rank, local_index)

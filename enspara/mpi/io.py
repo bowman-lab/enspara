@@ -2,6 +2,7 @@
 import numpy as np
 
 from ..util.load import load_as_concatenated
+from .. import exception
 
 from . import MPI, MPI_RANK, MPI_SIZE
 from .ops import assemble_striped_array
@@ -40,6 +41,12 @@ def load_as_striped(filenames, *args, **kwargs):
     --------
     enspara.util.load.load_as_concatenated
     """
+
+    if len(filenames) < MPI_SIZE:
+        raise exception.ImproperlyConfigured(
+            "To stripe files across MPI workers, at least 1 file per "
+            "node must be given. MPI size is %s, number of files is %s."
+            % (MPI_SIZE, len(filenames)))
 
     local_lengths, my_xyz = load_as_concatenated(
         filenames=filenames[MPI_RANK::MPI_SIZE], *args, **kwargs)
