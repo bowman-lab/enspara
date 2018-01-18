@@ -205,7 +205,7 @@ class TestTrajClustering(unittest.TestCase):
                                0.018355072790569946)
 
 def test_kcenters_mpi_traj():
-    from mpi4py import MPI
+    from ..mpi import MPI
     MPI_RANK = MPI.COMM_WORLD.Get_rank()
     MPI_SIZE = MPI.COMM_WORLD.Get_size()
 
@@ -242,7 +242,7 @@ def test_kcenters_mpi_traj():
 
 
 def test_kcenters_mpi_numpy():
-    from mpi4py import MPI
+    from ..mpi import MPI
     MPI_RANK = MPI.COMM_WORLD.Get_rank()
     MPI_SIZE = MPI.COMM_WORLD.Get_size()
 
@@ -283,7 +283,7 @@ def test_kcenters_mpi_numpy():
 
 @fix_np_rng()
 def test_kmedoids_update_mpi_mdtraj():
-    from mpi4py import MPI
+    from ..mpi import MPI
     MPI_RANK = MPI.COMM_WORLD.Get_rank()
     MPI_SIZE = MPI.COMM_WORLD.Get_size()
 
@@ -296,7 +296,8 @@ def test_kmedoids_update_mpi_mdtraj():
     local_distances, local_assignments, local_ctr_inds = r
 
     r = kmedoids._kmedoids_update_mpi(
-        data, DIST_FUNC, local_ctr_inds, local_assignments, local_distances)
+        data, DIST_FUNC, local_ctr_inds, local_assignments, local_distances,
+        random_state=np.random.mtrand._rand)
     local_ctr_inds, local_assignments, local_distances = r
 
     mpi_ctr_inds = [(i*MPI_SIZE)+r for r, i in local_ctr_inds]
@@ -315,7 +316,7 @@ def test_kmedoids_update_mpi_mdtraj():
 
 @fix_np_rng()
 def test_kmedoids_update_mpi_numpy():
-    from mpi4py import MPI
+    from ..mpi import MPI
     MPI_RANK = MPI.COMM_WORLD.Get_rank()
     MPI_SIZE = MPI.COMM_WORLD.Get_size()
 
@@ -513,29 +514,6 @@ class TestNumpyClustering(unittest.TestCase):
             scatter(x_centers, y_centers, s=40, c='y')
             show()
             raise
-
-
-def test_mpi_distribute_frame_ndarray():
-
-    from mpi4py import MPI
-    data = np.arange(10*100*3).reshape(10, 100, 3)
-
-    d = util.mpi_distribute_frame(data, 7, MPI.COMM_WORLD.Get_size()-1)
-
-    assert_array_equal(d, data[7])
-    assert_is(type(d), type(data))
-
-
-def test_mpi_distribute_frame_mdtraj():
-
-    from mpi4py import MPI
-    data = md.load(get_fn('frame0.h5'))
-
-    d = util.mpi_distribute_frame(data, 7, MPI.COMM_WORLD.Get_size()-1)
-
-    assert_array_equal(d.xyz, data[7].xyz)
-    assert_is(type(d), type(data))
-
 
 if __name__ == '__main__':
     unittest.main()

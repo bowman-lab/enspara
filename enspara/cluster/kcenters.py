@@ -15,6 +15,8 @@ import numpy as np
 
 from ..util import log
 from ..exception import ImproperlyConfigured
+from .. import mpi
+
 from . import util
 
 logger = logging.getLogger(__name__)
@@ -226,7 +228,7 @@ def kcenters_mpi(traj, distance_method, n_clusters=np.inf, dist_cutoff=0):
             (owner_rank, world_index).
     """
 
-    from mpi4py import MPI
+    from ..mpi import MPI
     COMM = MPI.COMM_WORLD
 
     if (n_clusters is np.inf) and (dist_cutoff is 0):
@@ -275,7 +277,7 @@ def _kcenters_iteration_mpi(traj, distance_method, distances, assignments,
     frequently or do checkpointing).
     """
 
-    from mpi4py import MPI
+    from ..mpi import MPI
     COMM = MPI.COMM_WORLD
 
     assert len(traj) == len(distances)
@@ -316,7 +318,7 @@ def _kcenters_iteration_mpi(traj, distance_method, distances, assignments,
 
     with log.timed("Distributed cluster ctr in %.2f sec",
                    log_func=logger.info):
-        new_center = util.mpi_distribute_frame(
+        new_center = mpi.ops.distribute_frame(
             data=traj,
             world_index=new_cluster_center_index,
             owner_rank=new_cluster_center_owner)

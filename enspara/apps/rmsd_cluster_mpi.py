@@ -14,29 +14,29 @@ from glob import glob
 import numpy as np
 import mdtraj as md
 
-from mpi4py import MPI
+from enspara.mpi import MPI_RANK, MPI_SIZE, MPI
+from enspara import mpi
 
+MPI = MPI
 COMM = MPI.COMM_WORLD
-RANK = COMM.Get_rank()
-SIZE = COMM.Get_size()
 
-RANKSTR = "[Rank %s]" % RANK
+RANKSTR = "[Rank %s]" % MPI_RANK
 
 logging.basicConfig(
-    level=logging.DEBUG if RANK == 0 else logging.INFO,
+    level=logging.DEBUG if MPI_RANK == 0 else logging.INFO,
     format=('%(asctime)s ' + RANKSTR +
             ' %(name)-8s %(levelname)-7s %(message)s'),
     datefmt='%m-%d-%Y %H:%M:%S')
-
-from enspara.util import array as ra
-from enspara.util.log import timed
 
 from enspara.cluster.util import load_frames, partition_indices
 from enspara.cluster.kcenters import kcenters_mpi
 from enspara.cluster.kmedoids import _kmedoids_update_mpi
 
 from enspara.apps.util import readable_dir
+
 from enspara.util.load import load_as_concatenated
+from enspara.util import array as ra
+from enspara.util.log import timed
 
 
 def process_command_line(argv):
@@ -98,75 +98,6 @@ def process_command_line(argv):
     return args
 
 
-def staged_kcenters(trjs, dist_func, cluster_radii, n_clusters,
-                    stage_callback=None):
-
-    local_dists = np.empty(shape=(len(trjs)), dtype=np.float32)
-    local_dists.fill(np.inf)
-    local_assigs = np.empty(shape=(len(trjs)), dtype=np.int)
-    local_assigs.fill(0)
-    local_ctr_inds = []
-    cur_radius = np.inf
-
-    for radius in sorted(cluster_radii):
-        while len(local_ctr_inds) < n_clusters and cur_radius > radius:
-            cur_radius, local_dists, local_assigs, local_ctr_inds = \
-                _kcenters_iteration_mpi(
-                    trjs, md.rmsd,
-                    distances=local_dists,
-                    assignments=local_assigs,
-                    center_inds=local_ctr_inds)
-
-        stage_callback(cur_radius, local_dists, local_assigs,
-                       local_ctr_inds)
-
-    return local_dists, local_assigs, local_ctr_inds
-
-
-def distribute_lengths(n_files, local_lengths):
-
-    global_lengths = np.zeros((n_files,), dtype=local_lengths.dtype) - 1
-
-    with timed("Distributed length information in %s", logging.info):
-        logging.info("%s", local_lengths)
-        for i in range(SIZE):
-            global_lengths[i::SIZE] = COMM.bcast(local_lengths, root=i)
-
-    assert np.all(global_lengths > 0)
-
-    return global_lengths
-
-
-def assemble_per_frame_array(global_lengths, local_array):
-
-    global_array = np.zeros((np.sum(global_lengths),)) - 1
-    global_ra = ra.RaggedArray(global_array, lengths=global_lengths)
-
-    for rank in range(SIZE):
-        rank_array = COMM.bcast(local_array, root=rank)
-        rank_ra = ra.RaggedArray(
-            rank_array, lengths=global_lengths[rank::SIZE])
-
-        global_ra[rank::SIZE] = rank_ra
-
-    assert np.all(global_ra._data) >= 0
-
-    return global_ra._data
-
-
-def convert_center_indices(local_ctr_inds, global_lengths):
-
-    global_indexing = np.arange(np.sum(global_lengths))
-    file_origin_ra = ra.RaggedArray(global_indexing, lengths=global_lengths)
-
-    ctr_inds = []
-    for rank, local_frameid in local_ctr_inds:
-        global_frameid = file_origin_ra[rank::SIZE].flatten()[local_frameid]
-        ctr_inds.append(global_frameid)
-
-    return ctr_inds
-
-
 def main(argv=None):
     '''Run the driver script for this module. This code only runs if we're
     being run as a script. Otherwise, it's silent and just exposes methods.'''
@@ -175,20 +106,19 @@ def main(argv=None):
     top = md.load(args.topology).top
     atom_ids = top.select(args.selection)
 
-    logging.info("Running with %s total workers.", SIZE)
+    logging.info("Running with %s total workers.", MPI_SIZE)
 
     logging.info(
         "Loading trajectories [%s::%s]; selection == '%s' w/ "
-        "subsampling %s", RANK, SIZE, args.selection, args.subsample)
+        "subsampling %s", MPI_RANK, MPI_SIZE, args.selection, args.subsample)
 
     with timed("load_as_concatenated took %.2f sec", logging.info):
-        local_lengths, my_xyz = load_as_concatenated(
-            filenames=args.trajectories[RANK::SIZE],
+        global_lengths, my_xyz = mpi.io.load_as_striped(
+            filenames=args.trajectories,
             top=top,
             atom_indices=atom_ids,
             stride=args.subsample,
             processes=args.processes)
-        local_lengths = np.array(local_lengths, dtype=int)
 
     with timed("Turned over array in %.2f min", logging.info):
         xyz = my_xyz.copy()
@@ -197,12 +127,10 @@ def main(argv=None):
 
     logging.info(
         "Loaded %s frames in %s trjs (%.2fG).",
-        len(my_xyz), len(local_lengths),
+        len(my_xyz), len(args.trajectories) // MPI_SIZE,
         my_xyz.data.nbytes / 1024**3)
 
     trjs = md.Trajectory(my_xyz, topology=top.subset(atom_ids))
-
-    global_lengths = distribute_lengths(len(args.trajectories), local_lengths)
 
     logging.info(
         "Beginning kcenters clustering with memory footprint of %.2fG "
@@ -231,18 +159,25 @@ def main(argv=None):
         with timed("KMedoids iteration {i} took %.2f sec".format(i=i),
                    logging.info):
             local_ctr_inds, local_assigs, local_dists = _kmedoids_update_mpi(
-                trjs, md.rmsd, local_ctr_inds, local_assigs, local_dists)
+                trjs, md.rmsd, local_ctr_inds, local_assigs, local_dists,
+                np.random.mtrand._rand)
 
     with timed("Reassembled dist and assign arrays in %.2f sec", logging.info):
-        all_dists = assemble_per_frame_array(global_lengths, local_dists)
-        all_assigs = assemble_per_frame_array(global_lengths, local_assigs)
-        ctr_inds = convert_center_indices(local_ctr_inds, global_lengths)
+        all_dists = mpi.ops.assemble_striped_ragged_array(
+            local_dists, global_lengths)
+        all_assigs = mpi.ops.assemble_striped_ragged_array(
+            local_assigs, global_lengths)
+
+        ctr_inds = mpi.ops.convert_local_indices(
+            local_ctr_inds, global_lengths)
         ctr_inds = partition_indices(ctr_inds, global_lengths)
 
-    if RANK == 0:
+    if MPI_RANK == 0:
         logging.info("Dumping center indices to %s", args.center_indices)
+
         with open(args.center_indices, 'wb') as f:
-            pickle.dump(ctr_inds, f)
+            pickle.dump(
+                [(trj, frame*args.subsample) for trj, frame in ctr_inds], f)
 
         if args.distances:
             ra.save(args.distances,

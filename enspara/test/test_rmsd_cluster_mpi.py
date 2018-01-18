@@ -18,6 +18,7 @@ from numpy.testing import assert_array_equal, assert_allclose
 from ..apps import rmsd_cluster_mpi
 from ..cluster.util import assign_to_nearest_center
 from ..util import array as ra
+from ..mpi import MPI
 
 from .util import fix_np_rng
 
@@ -105,11 +106,17 @@ def test_rmsd_cluster_mpi_basic():
         shutil.copy(TRJFILE, os.path.join(tdname, 'frame0.xtc'))
         shutil.copy(TRJFILE, os.path.join(tdname, 'frame1.xtc'))
 
+        tdname = MPI.COMM_WORLD.bcast(tdname, root=0)
+
+        print('rank', MPI.COMM_WORLD.Get_rank())
+        MPI.COMM_WORLD.Barrier()
+
         a, d, i, s = runhelper([
             '--trajectories', os.path.join(tdname, 'frame?.xtc'),
             '--topology', TOPFILE,
             '--cluster-radii', '0.1',
-            '--selection', SELECTION
+            '--selection', SELECTION,
+            '--kmedoids-iters', 0,
             ],
             expected_size=expected_size)
 
@@ -119,7 +126,8 @@ def test_rmsd_cluster_mpi_basic():
     trj = md.load(TRJFILE, top=TOPFILE)
     trj_sele = trj.atom_slice(trj.top.select(SELECTION))
 
-    expected_i = [(1, 194), (1, 40), (0, 430), (1, 420)]
+    # expected_i = [(1, 194), (1, 40), (0, 430), (1, 420)]
+    expected_i = [[  0,   0], [  0,  42], [  0, 430], [  0, 319]]
     assert_array_equal(i, expected_i)
 
     expected_s = md.join([trj[i[1]] for i in expected_i])
@@ -139,17 +147,20 @@ def test_rmsd_cluster_mpi_selection():
 
     expected_size = (1, 501)
 
+    TRJFILE = get_fn('frame0.xtc')
+    TOPFILE = get_fn('native.pdb')
+    SELECTION = '(name N or name C or name CA)'
+
     a, d, i, s = runhelper([
-        '--trajectories', get_fn('frame0.xtc'),
-        '--topology', get_fn('native.pdb'),
+        '--trajectories', TRJFILE,
+        '--topology', TOPFILE,
         '--cluster-radii', '0.1',
-        '--selection', '(name N or name C or name CA)'],
+        '--selection', SELECTION],
         expected_size=expected_size)
 
 
 @fix_np_rng()
 def test_rmsd_cluster_mpi_subsample():
-
 
     TRJFILE = get_fn('frame0.xtc')
     TOPFILE = get_fn('native.pdb')
@@ -159,6 +170,8 @@ def test_rmsd_cluster_mpi_subsample():
     expected_size = (5, (np.ceil(501 / 3),)*5)
 
     with tempfile.TemporaryDirectory() as tdname:
+
+        tdname = MPI.COMM_WORLD.bcast(tdname, root=0)
 
         for i in range(expected_size[0]):
             shutil.copy(TRJFILE, os.path.join(tdname, 'frame%s.xtc' % i))
@@ -177,10 +190,10 @@ def test_rmsd_cluster_mpi_subsample():
     a = a.flatten()
     d = d.flatten()
 
-    trj = md.load(TRJFILE, top=TOPFILE)[::SUBSAMPLE_FACTOR]
+    trj = md.load(TRJFILE, top=TOPFILE)
     trj_sele = trj.atom_slice(trj.top.select(SELECTION))
 
-    expected_i = [(0, 160), (4, 18), (3, 114), (3, 24)]
+    expected_i = [(0, 480), (4, 54), (3, 342), (3, 72)]
     assert_array_equal(i, expected_i)
 
     expected_s = md.join([trj[i[1]] for i in expected_i])
@@ -192,5 +205,5 @@ def test_rmsd_cluster_mpi_subsample():
         md.join([trj_sele]*expected_size[0]),
         md.join([trj_sele[i[1]] for i in expected_i]), md.rmsd)
 
-    assert_array_equal(expect_a, a)
-    assert_allclose(expect_d, d, atol=1e-4)
+    assert_array_equal(expect_a[::SUBSAMPLE_FACTOR], a)
+    assert_allclose(expect_d[::SUBSAMPLE_FACTOR], d, atol=1e-4)

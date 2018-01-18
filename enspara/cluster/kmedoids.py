@@ -13,6 +13,8 @@ import logging
 import numpy as np
 
 from ..util import log
+from .. import mpi
+
 from . import util
 
 logger = logging.getLogger(__name__)
@@ -81,30 +83,8 @@ def kmedoids(traj, distance_method, n_clusters, n_iters=5):
         centers=traj[cluster_center_inds])
 
 
-def mpi_mean(local_array):
-    """Compute the mean of an array across all MPI nodes.
-    """
-
-    from mpi4py import MPI
-    COMM = MPI.COMM_WORLD
-
-    local_sum = np.sum(local_array)
-    local_len = len(local_array)
-
-    global_sum = np.zeros(1) - 1
-    global_len = np.zeros(1) - 1
-
-    global_sum = COMM.allreduce(local_sum, op=MPI.SUM)
-    global_len = COMM.allreduce(local_len, op=MPI.SUM)
-
-    assert global_len >= 0
-    assert global_sum >= local_sum
-
-    return global_sum / local_len
-
-
 def _kmedoids_update_mpi(traj, distance_method, cluster_center_inds,
-                         assignments, distances):
+                         assignments, distances, random_state):
     """K-Medoids clustering using MPI to parallelze the computation
     across multiple computers over a network in a SIMD fashion.
 
@@ -125,6 +105,8 @@ def _kmedoids_update_mpi(traj, distance_method, cluster_center_inds,
     distances : ndarray, shape=(traj.shape[0],)
         Array giving the distance between this observation/frame and the
         relevant cluster center.
+    random_state : numpy.RandomState
+        RandomState object used to indentify new centers.
 
     Returns
     -------
@@ -149,7 +131,7 @@ def _kmedoids_update_mpi(traj, distance_method, cluster_center_inds,
                     log_func=logger.debug):
         for i in range(len(cluster_center_inds)):
             world_state_inds = np.where(assignments == i)[0]
-            r, i = util.mpi_np_choice(world_state_inds)
+            r, i = mpi.ops.np_choice(world_state_inds, random_state)
             proposed_center_inds.append((r, i))
 
     assert len(proposed_center_inds) == len(cluster_center_inds)
@@ -159,7 +141,7 @@ def _kmedoids_update_mpi(traj, distance_method, cluster_center_inds,
     with log.timed("Distributing proposed cluster centers took %.2f sec",
                     log_func=logger.debug):
         for center_idx, (rank, frame_idx) in enumerate(proposed_center_inds):
-            new_center = util.mpi_distribute_frame(
+            new_center = mpi.ops.distribute_frame(
                 data=traj, owner_rank=rank, world_index=frame_idx)
             proposed_cluster_centers[center_idx] = new_center
 
@@ -171,8 +153,9 @@ def _kmedoids_update_mpi(traj, distance_method, cluster_center_inds,
 
     with log.timed("Computed quality of new clustering in %.3f.",
                     log_func=logger.debug):
-        mean_proposed_dist_to_center = mpi_mean(np.square(proposed_distances))
-        mean_orig_dist_to_center = mpi_mean(np.square(distances))
+        mean_proposed_dist_to_center = mpi.ops.mean(np.square(
+            proposed_distances))
+        mean_orig_dist_to_center = mpi.ops.mean(np.square(distances))
 
     if mean_proposed_dist_to_center <= mean_orig_dist_to_center:
         logger.info(
