@@ -1,16 +1,14 @@
 import os
 import tempfile
-import hashlib
 import shutil
 import pickle
 import warnings
-
-from datetime import datetime
 
 import mdtraj as md
 from mdtraj.testing import get_fn
 
 from nose.tools import assert_equal
+from nose.plugins.attrib import attr
 
 import numpy as np
 from numpy.testing import assert_array_equal, assert_allclose
@@ -18,7 +16,7 @@ from numpy.testing import assert_array_equal, assert_allclose
 from ..apps import rmsd_cluster_mpi
 from ..cluster.util import assign_to_nearest_center
 from ..util import array as ra
-from ..mpi import MPI
+from ..mpi import MPI, MPI_RANK, MPI_SIZE
 
 from .util import fix_np_rng
 
@@ -27,16 +25,17 @@ TEST_DIR = os.path.dirname(__file__)
 
 def runhelper(args, expected_size, expect_reassignment=True):
 
-    td = tempfile.mkdtemp(dir=os.getcwd())
-    tf = hashlib.md5(str(datetime.now().timestamp())
-                     .encode('utf-8')).hexdigest()[0:8]
-    base = os.path.join(td, tf)
+    if MPI_RANK == 0:
+        td = tempfile.mkdtemp()
+    else:
+        td = None
+    td = MPI.COMM_WORLD.bcast(td, root=0)
 
     fnames = {
-        'center-inds': base+'center-inds.pkl',
-        'center-structs': base+'center-structs.pkl',
-        'distances': base+'distances.h5',
-        'assignments': base+'assignments.h5',
+        'center-inds': td+'/center-inds.pkl',
+        'center-structs': td+'/center-structs.pkl',
+        'distances': td+'/distances.h5',
+        'assignments': td+'/assignments.h5',
     }
 
     try:
@@ -46,6 +45,7 @@ def runhelper(args, expected_size, expect_reassignment=True):
             '--assignments', fnames['assignments'],
             '--center-indices', fnames['center-inds'],
             '--center-structures', fnames['center-structs']] + args)
+        MPI.COMM_WORLD.Barrier()
 
         if expect_reassignment:
             assert os.path.isfile(fnames['assignments']), \
@@ -86,13 +86,15 @@ def runhelper(args, expected_size, expect_reassignment=True):
             center_structs = pickle.load(f)
 
     finally:
-        shutil.rmtree(td)
-        pass
+        MPI.COMM_WORLD.Barrier()
+        if MPI_RANK == 0:
+            shutil.rmtree(td)
 
     return assigns, dists, center_inds, center_structs
 
 
 @fix_np_rng()
+@attr('mpi')
 def test_rmsd_cluster_mpi_basic():
 
     expected_size = (2, 501)
@@ -143,23 +145,7 @@ def test_rmsd_cluster_mpi_basic():
     assert_allclose(expect_d, d, atol=1e-4)
 
 
-def test_rmsd_cluster_mpi_selection():
-
-    expected_size = (1, 501)
-
-    TRJFILE = get_fn('frame0.xtc')
-    TOPFILE = get_fn('native.pdb')
-    SELECTION = '(name N or name C or name CA)'
-
-    a, d, i, s = runhelper([
-        '--trajectories', TRJFILE,
-        '--topology', TOPFILE,
-        '--cluster-radii', '0.1',
-        '--selection', SELECTION],
-        expected_size=expected_size)
-
-
-@fix_np_rng()
+@attr('mpi')
 def test_rmsd_cluster_mpi_subsample():
 
     TRJFILE = get_fn('frame0.xtc')
@@ -183,7 +169,9 @@ def test_rmsd_cluster_mpi_subsample():
                 '--topology', TOPFILE,
                 '--cluster-radii', '0.1',
                 '--subsample', str(SUBSAMPLE_FACTOR),
-                '--selection', SELECTION
+                '--selection', SELECTION,
+                '--random-state', str(2),
+                '--kmedoids-iters', str(1),
                 ],
                 expected_size=expected_size)
 
@@ -193,7 +181,15 @@ def test_rmsd_cluster_mpi_subsample():
     trj = md.load(TRJFILE, top=TOPFILE)
     trj_sele = trj.atom_slice(trj.top.select(SELECTION))
 
-    expected_i = [(0, 480), (4, 54), (3, 342), (3, 72)]
+    if MPI_SIZE == 1:
+        expected_i = [[ 1,  3], [ 0, 45], [ 0, 24], [ 0, 66]]
+    elif MPI_SIZE == 2:
+        expected_i = [[ 2,  3], [ 0, 45], [ 0, 24], [ 1, 12]]
+    else:
+        raise NotImplementedError(
+            "We dont know what the right answer to this test is with "
+            "MPI size %s" % MPI_SIZE)
+
     assert_array_equal(i, expected_i)
 
     expected_s = md.join([trj[i[1]] for i in expected_i])

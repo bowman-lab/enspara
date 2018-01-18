@@ -11,8 +11,9 @@ import multiprocessing as mp
 
 from glob import glob
 
-import numpy as np
 import mdtraj as md
+
+from sklearn.utils import check_random_state
 
 from enspara.mpi import MPI_RANK, MPI_SIZE, MPI
 from enspara import mpi
@@ -34,7 +35,6 @@ from enspara.cluster.kmedoids import _kmedoids_update_mpi
 
 from enspara.apps.util import readable_dir
 
-from enspara.util.load import load_as_concatenated
 from enspara.util import array as ra
 from enspara.util.log import timed
 
@@ -65,13 +65,16 @@ def process_command_line(argv):
              "More than one value can be supplied, and a kcenters set"
              "will be saved at each value")
     parser.add_argument(
-        "--kmedoids-iters", default=5, metavar='I', type=int,
+        "--kmedoids-iters", default=5, type=int,
         help="Number of iterations of kmedoids to run.")
 
     parser.add_argument(
         '--processes', default=mp.cpu_count(), type=int,
         help="Number processes to use (on each node) for loading and "
              "clustering.")
+    parser.add_argument(
+        '--random-state', default=None, type=int,
+        help="Give a fixed random seed to ensure reproducible results")
 
     parser.add_argument(
         "--distances", action=readable_dir,
@@ -89,6 +92,7 @@ def process_command_line(argv):
     args = parser.parse_args(argv[1:])
 
     args.trajectories = glob(args.trajectories)
+    args.radom_state = check_random_state(args.random_state)
 
     if args.subsample > 1 and args.distances:
         warnings.warn('When subsampling > 1, distances are also subsampled.')
@@ -160,7 +164,7 @@ def main(argv=None):
                    logging.info):
             local_ctr_inds, local_assigs, local_dists = _kmedoids_update_mpi(
                 trjs, md.rmsd, local_ctr_inds, local_assigs, local_dists,
-                np.random.mtrand._rand)
+                random_state=args.random_state)
 
     with timed("Reassembled dist and assign arrays in %.2f sec", logging.info):
         all_dists = mpi.ops.assemble_striped_ragged_array(

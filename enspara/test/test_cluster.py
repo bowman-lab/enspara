@@ -19,7 +19,6 @@ from ..cluster.hybrid import KHybrid, hybrid
 from ..cluster import kcenters, kmedoids, util
 from ..exception import DataInvalid, ImproperlyConfigured
 
-from .util import fix_np_rng
 
 class TestTrajClustering(unittest.TestCase):
 
