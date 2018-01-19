@@ -373,12 +373,11 @@ def test_kmedoids_pam_update_numpy():
     assert_array_equal(ind, [0, 7, 17])
 
     expect_assig, expect_dists = util.assign_to_nearest_center(
-        X, ind, DIST_FUNC)
+        X, X[ind], DIST_FUNC)
 
+    assert_array_equal(np.unique(assig), np.arange(len(means)))
     assert_array_equal(assig, expect_assig)
     assert_array_equal(dists, expect_dists)
-
-    assert False
 
 
 class TestNumpyClustering(unittest.TestCase):
