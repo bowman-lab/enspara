@@ -18,6 +18,7 @@ from sklearn.base import BaseEstimator, ClusterMixin
 
 from sklearn.utils import check_random_state
 
+from .. import mpi
 from ..exception import ImproperlyConfigured, DataInvalid
 from ..util import partition_list, partition_indices
 from ..util import array as ra

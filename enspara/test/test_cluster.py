@@ -13,6 +13,8 @@ from nose.tools import (assert_raises, assert_less, assert_true, assert_is,
                         assert_equal)
 from nose.plugins.attrib import attr
 
+from sklearn.datasets import make_blobs
+
 from numpy.testing import assert_array_equal, assert_allclose
 
 from ..cluster.hybrid import KHybrid, hybrid
@@ -352,11 +354,31 @@ def test_kmedoids_update_mpi_numpy():
                     rtol=1e-06, atol=1e-03)
 
 
-# @attr('mpi')
-# def test_KHybridMPI_numpy():
+def test_kmedoids_pam_update_numpy():
 
+    def DIST_FUNC(X, x):
+        return np.square(X - x).sum(axis=1)
 
+    means = [(0, 0), (0, 10), (10, 0)]
+    X, y = make_blobs(centers=means, random_state=0)
 
+    r = kcenters.kcenters(X, DIST_FUNC, n_clusters=3)
+    ind = r.center_indices
+    assig = r.assignments
+    dists = r.distances
+
+    ind, dists, assig = kmedoids._kmedoids_pam_update(
+        X, DIST_FUNC, ind, assig, dists, random_state=0)
+
+    assert_array_equal(ind, [0, 7, 17])
+
+    expect_assig, expect_dists = util.assign_to_nearest_center(
+        X, ind, DIST_FUNC)
+
+    assert_array_equal(assig, expect_assig)
+    assert_array_equal(dists, expect_dists)
+
+    assert False
 
 
 class TestNumpyClustering(unittest.TestCase):
