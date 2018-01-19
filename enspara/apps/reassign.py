@@ -36,7 +36,7 @@ def process_command_line(argv):
 
     parser.add_argument(
         '--centers', required=True,
-        help="The centers to use for reassignment.")
+        help="Center structures (as a pickle) to use for reassignment.")
     parser.add_argument(
         '--trajectories', required=True, nargs="+", action='append',
         help="The aligned xtc files to cluster.")
