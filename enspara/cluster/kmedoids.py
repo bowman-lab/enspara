@@ -239,18 +239,16 @@ def _kmedoids_pam_update(
     # this list will be updated as we go; this is primarily because we want
     # to limit the amount of communication that happens when we're running
     # MPI mode.
-    medoid_coords = np.empty(
-        shape=(len(cluster_center_inds),) + X.shape[1:],
-        dtype=X.dtype)
+    medoid_coords = []
     if hasattr(cluster_center_inds[0], '__len__'):
         assert len(cluster_center_inds[0]) == 2
         for center_idx, (rank, frame_idx) in enumerate(cluster_center_inds):
             assert rank < mpi.MPI_SIZE
             new_center = mpi.ops.distribute_frame(
                 data=X, owner_rank=rank, world_index=frame_idx)
-            medoid_coords[center_idx] = new_center
+            medoid_coords.append(new_center)
     else:
-        medoid_coords[:] = X[cluster_center_inds]
+        medoid_coords = [X[i] for i in cluster_center_inds]
 
     assert len(cluster_center_inds) == len(np.unique(assignments))
     for cid in np.unique(assignments):
