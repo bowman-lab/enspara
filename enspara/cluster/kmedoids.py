@@ -14,7 +14,7 @@ import numpy as np
 
 from sklearn.utils import check_random_state
 
-from ..util import log
+from ..util.log import timed
 from .. import mpi
 
 from . import util
@@ -86,103 +86,11 @@ def kmedoids(X, distance_method, n_clusters, n_iters=5):
 
 
 def _msq(x):
-    return np.dot(x, x) / len(x)
-
-
-def _kmedoids_update_mpi(
-        X, distance_method, cluster_center_inds, assignments,
-        distances, acceptance_criterion=_msq, random_state=None):
-    """K-Medoids clustering using MPI to parallelze the computation
-    across multiple computers over a network in a SIMD fashion.
-
-    Parameters
-    ----------
-    X : array-like, shape=(n_observations, n_features, *)
-        Data to cluster. The user is responsible for pre-partitioning
-        this data across nodes.
-    distance_method : callable
-        Function that takes a parameter like `X` and a single frame
-        of `X` (_i.e._ X.shape[1:]).
-    cluster_center_inds : list, [(owner_rank, world_index), ...]
-        A list of the locations of center indices in terms of the rank
-        of the node that owns them and the index within that world.
-    assignments : ndarray, shape=(X.shape[0],)
-        Array indicating the assignment of each frame in `X` to a
-        cluster center.
-    distances : ndarray, shape=(X.shape[0],)
-        Array giving the distance between this observation/frame and the
-        relevant cluster center.
-    acceptance_criterion : callable
-        Function returning a number that should be lower to accept a set
-        of proposed centers (i.e. the criterion minimized by the
-        algorithm).
-    random_state : numpy.RandomState
-        RandomState object used to indentify new centers.
-
-    Returns
-    -------
-    updated_cluster_center_inds : list, [(owner_rank, world_index), ...]
-        A list of the locations of center indices in terms of the rank
-        of the node that owns them and the index within that world.
-    updated_assignments : ndarray, shape=(traj.shape[0],)
-        Array indicating the assignment of each frame in `traj` to a
-        cluster center.
-    updated_distances : ndarray, shape=(traj.shape[0],)
-        Array giving the distance between this observation/frame and the
-        relevant cluster center.
-    """
-
-    assert np.issubdtype(type(assignments[0]), np.integer)
-    assert len(assignments) == len(X)
-    assert len(distances) == len(X)
-    random_state = check_random_state(random_state)
-
-    proposed_center_inds = []
-
-    with log.timed("Proposing new centers took %.2f sec",
-                    log_func=logger.debug):
-        for i in range(len(cluster_center_inds)):
-            world_state_inds = np.where(assignments == i)[0]
-            r, i = mpi.ops.np_choice(world_state_inds, random_state)
-            proposed_center_inds.append((r, i))
-
-    assert len(proposed_center_inds) == len(cluster_center_inds)
-
-    proposed_cluster_centers = [None] * len(proposed_center_inds)
-
-    with log.timed("Distributing proposed cluster centers took %.2f sec",
-                    log_func=logger.debug):
-        for center_idx, (rank, frame_idx) in enumerate(proposed_center_inds):
-            new_center = mpi.ops.distribute_frame(
-                data=X, owner_rank=rank, world_index=frame_idx)
-            proposed_cluster_centers[center_idx] = new_center
-
-    with log.timed("Computing distances to new cluster centers took %.2f sec",
-                    log_func=logger.debug):
-        tu = util.assign_to_nearest_center(
-            X, proposed_cluster_centers, distance_method)
-        proposed_assignments, proposed_distances = tu
-
-    with log.timed("Computed quality of new clustering in %.3f.",
-                    log_func=logger.debug):
-        mean_proposed_dist_to_center = mpi.ops.mean(np.square(
-            proposed_distances))
-        mean_orig_dist_to_center = mpi.ops.mean(np.square(distances))
-
-    if mean_proposed_dist_to_center <= mean_orig_dist_to_center:
-        logger.info(
-            "Accepted centers proposal with avg. dist %.4f (was %.4f).",
-            mean_proposed_dist_to_center, mean_orig_dist_to_center)
-        return proposed_center_inds, proposed_assignments, proposed_distances
-    else:
-        logger.info(
-            "Rejected centers proposal with avg. dist %.4f (orig. %.4f).",
-            mean_proposed_dist_to_center, mean_orig_dist_to_center)
-        return cluster_center_inds, assignments, distances
+    return mpi.ops.mean(np.square(x))
 
 
 def _kmedoids_pam_update(
-        X, metric, cluster_center_inds, assignments,
+        X, metric, medoid_inds, assignments,
         distances, cost=_msq, random_state=None):
     """Compute a kmedoids update using Partitioning Around Medoids (PAM)
 
@@ -201,7 +109,7 @@ def _kmedoids_pam_update(
     metric : callable
         Function that takes a parameter like `X` and a single frame
         of `X` (_i.e._ X.shape[1:]).
-    cluster_center_inds : list, [(rank, index), ...] if MPI or [index, ...]
+    medoid_inds : list, [(rank, index), ...] if MPI or [index, ...]
         A list of the locations of center indices in terms of the rank
         of the node that owns them and the index within that world.
     assignments : ndarray, shape=(X.shape[0],)
@@ -240,17 +148,19 @@ def _kmedoids_pam_update(
     # to limit the amount of communication that happens when we're running
     # MPI mode.
     medoid_coords = []
-    if hasattr(cluster_center_inds[0], '__len__'):
-        assert len(cluster_center_inds[0]) == 2
-        for center_idx, (rank, frame_idx) in enumerate(cluster_center_inds):
+    if hasattr(medoid_inds[0], '__len__'):
+        assert len(medoid_inds[0]) == 2
+        for center_idx, (rank, frame_idx) in enumerate(medoid_inds):
             assert rank < mpi.MPI_SIZE
             new_center = mpi.ops.distribute_frame(
                 data=X, owner_rank=rank, world_index=frame_idx)
             medoid_coords.append(new_center)
     else:
-        medoid_coords = [X[i] for i in cluster_center_inds]
+        medoid_coords = [X[i] for i in medoid_inds]
 
-    assert len(cluster_center_inds) == len(np.unique(assignments))
+    assert len(medoid_inds) == len(np.unique(assignments))
+
+    acceptances = 0
     for cid in np.unique(assignments):
         state_inds = np.where(assignments == cid)[0]
 
@@ -259,15 +169,19 @@ def _kmedoids_pam_update(
         # that uniformly distributed across any node.
 
         # TODO: make it impossible to choose the current center
-        if hasattr(cluster_center_inds[0], '__len__'):
-            assert len(cluster_center_inds[0]) == 2
+        if hasattr(medoid_inds[0], '__len__'):
+            assert len(medoid_inds[0]) == 2
             r, i = mpi.ops.np_choice(state_inds, random_state)
             proposed_center = mpi.ops.distribute_frame(
                 data=X, owner_rank=r, world_index=i)
             proposed_center_ind = (r, i)
         else:
             proposed_center_ind = random_state.choice(state_inds)
+            print(len(state_inds))
             proposed_center = X[proposed_center_ind]
+
+        logger.debug("Proposed new medoid (%s -> %s) for k=%s",
+                     medoid_inds[cid], proposed_center_ind, cid)
 
         # In the PAM method, once we have a new center, we recompute
         # the distance from this center to every point. Depending on if
@@ -298,10 +212,12 @@ def _kmedoids_pam_update(
 
         new_medoids = medoid_coords.copy()
         new_medoids[cid] = proposed_center
-        logger.debug("Reassigning %s distances...",
-                     np.count_nonzero(dst_up_assig_this))
-        ambig_assigs, ambig_dists = util.assign_to_nearest_center(
-            X[dst_up_assig_this], new_medoids, metric)
+
+        with timed("Recomputed nearest medoid for {n} points in %.2f sec.".\
+                   format(n=np.count_nonzero(dst_up_assig_this)),
+                   logger.debug):
+            ambig_assigs, ambig_dists = util.assign_to_nearest_center(
+                X[dst_up_assig_this], new_medoids, metric)
 
         new_assig[dst_up_assig_this] = ambig_assigs
         new_dist[dst_up_assig_this] = ambig_dists
@@ -315,18 +231,18 @@ def _kmedoids_pam_update(
 
         if new_cost < old_cost:
             logger.debug(
-                "Accepted proposed center for k=%s, %s -> %s (cost %s -> %s).",
-                cid, cluster_center_inds[cid], proposed_center_ind, old_cost,
-                new_cost)
+                "Accepted proposed center for k=%s: cost %.5f -> %.5f).",
+                cid, old_cost, new_cost)
             distances, assignments = new_dist, new_assig
             medoid_coords = new_medoids
-            cluster_center_inds[cid] = proposed_center_ind
+            medoid_inds[cid] = proposed_center_ind
+            acceptances += 1
         else:
             logger.debug(
-                "Rejected proposed center for k=%s, %s -> %s (cost %s -> %s).",
-                cid, cluster_center_inds[cid], proposed_center_ind, old_cost,
-                new_cost)
+                "Rejected proposed center for k=%s: cost %.5f -> %.5f).",
+                cid, old_cost, new_cost)
 
-    logger.info("Kmedoid sweep reduced cost to %.4f", min(old_cost, new_cost))
+    logger.info("Kmedoid sweep reduced cost to %.7f (%.2f%% acceptance)",
+                min(old_cost, new_cost), acceptances/len(medoid_inds)*100)
 
-    return cluster_center_inds, distances, assignments
+    return medoid_inds, distances, assignments

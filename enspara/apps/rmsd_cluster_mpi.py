@@ -31,7 +31,7 @@ logging.basicConfig(
 
 from enspara.cluster.util import load_frames, partition_indices
 from enspara.cluster.kcenters import kcenters_mpi
-from enspara.cluster.kmedoids import _kmedoids_update_mpi
+from enspara.cluster.kmedoids import _kmedoids_pam_update
 
 from enspara.apps.util import readable_dir
 
@@ -162,8 +162,11 @@ def main(argv=None):
     for i in range(args.kmedoids_iters):
         with timed("KMedoids iteration {i} took %.2f sec".format(i=i),
                    logging.info):
-            local_ctr_inds, local_assigs, local_dists = _kmedoids_update_mpi(
-                trjs, md.rmsd, local_ctr_inds, local_assigs, local_dists,
+            local_ctr_inds, local_dists, local_assigs = _kmedoids_pam_update(
+                X=trjs, metric=md.rmsd,
+                medoid_inds=local_ctr_inds,
+                assignments=local_assigs,
+                distances=local_dists,
                 random_state=args.random_state)
 
     with timed("Reassembled dist and assign arrays in %.2f sec", logging.info):

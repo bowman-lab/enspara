@@ -184,7 +184,7 @@ def test_rmsd_cluster_mpi_subsample():
     if MPI_SIZE == 1:
         expected_i = [[ 1,  3], [ 0, 45], [ 0, 24], [ 0, 66]]
     elif MPI_SIZE == 2:
-        expected_i = [[ 2,  3], [ 0, 45], [ 0, 24], [ 1, 12]]
+        expected_i = [[  0,   0], [  1,  21], [  0, 105], [  0,  60]]
     else:
         raise NotImplementedError(
             "We dont know what the right answer to this test is with "

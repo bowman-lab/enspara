@@ -83,12 +83,13 @@ class TestTrajClustering(unittest.TestCase):
         N_CLUSTERS = 5
 
         with assert_raises(ImproperlyConfigured):
-            KHybrid(metric=md.rmsd, kmedoids_updates=1000)
+            KHybrid(metric=md.rmsd, kmedoids_updates=10)
 
         clustering = KHybrid(
             metric=md.rmsd,
             n_clusters=N_CLUSTERS,
-            kmedoids_updates=1000)
+            kmedoids_updates=10,
+            random_state=99)
 
         clustering.fit(self.trj)
 
@@ -290,14 +291,19 @@ def test_kmedoids_update_mpi_mdtraj():
     r = kcenters.kcenters_mpi(data, DIST_FUNC, n_clusters=10)
     local_distances, local_assignments, local_ctr_inds = r
 
-    r = kmedoids._kmedoids_update_mpi(
-        data, DIST_FUNC, local_ctr_inds, local_assignments, local_distances,
-        random_state=0)
-    local_ctr_inds, local_assignments, local_distances = r
+    r = kmedoids._kmedoids_pam_update(
+        X=data, metric=DIST_FUNC,
+        medoid_inds=local_ctr_inds,
+        assignments=local_assignments,
+        distances=local_distances,
+        random_state=0,
+        )
+
+    local_ctr_inds, local_distances, local_assignments = r
 
     mpi_ctr_inds = [(i*MPI_SIZE)+r for r, i in local_ctr_inds]
 
-    expected_inds = [  0,  44, 400, 105, 372, 327, 242, 346,  54, 295]
+    expected_inds = [  0,   7, 400,   3,  27, 327, 242, 346,  21,  50]
     assert_array_equal(mpi_ctr_inds, expected_inds)
 
     true_assigs, true_dists = util.assign_to_nearest_center(
@@ -314,31 +320,34 @@ def test_kmedoids_update_mpi_numpy():
     MPI_RANK = MPI.COMM_WORLD.Get_rank()
     MPI_SIZE = MPI.COMM_WORLD.Get_size()
 
-    trj = md.load(get_fn('frame0.h5')).xyz[:, :, 0].copy()
+    means = [(0, 0), (0, 10), (10, 0)]
+    X, y = make_blobs(centers=means, random_state=1)
 
-    data = trj[MPI_RANK::MPI_SIZE]
+    data = X[MPI_RANK::MPI_SIZE]
 
     def DIST_FUNC(X, x):
-        return np.square(X -x).sum(axis=1)
+        return np.square(X - x).sum(axis=1)
 
-    r = kcenters.kcenters_mpi(data, DIST_FUNC, n_clusters=10)
+    r = kcenters.kcenters_mpi(data, DIST_FUNC, n_clusters=3)
     local_distances, local_assignments, local_ctr_inds = r
 
-    r = kmedoids._kmedoids_update_mpi(
-        data, DIST_FUNC, local_ctr_inds, local_assignments, local_distances,
-        random_state=0
+    r = kmedoids._kmedoids_pam_update(
+        X=data, metric=DIST_FUNC,
+        medoid_inds=local_ctr_inds,
+        assignments=local_assignments,
+        distances=local_distances,
+        random_state=0,
         )
 
-    local_ctr_inds, local_assignments, local_distances = r
-
+    local_ctr_inds, local_distances, local_assignments = r
     mpi_ctr_inds = [(i*MPI_SIZE)+r for r, i in local_ctr_inds]
 
     assert_array_equal(
         mpi_ctr_inds,
-        [  0, 230, 262, 354,  55, 432, 211, 142, 325, 366])
+        [ 0,  3, 64])
 
     true_assigs, true_dists = util.assign_to_nearest_center(
-        trj, trj[mpi_ctr_inds], DIST_FUNC)
+        X, X[mpi_ctr_inds], DIST_FUNC)
 
     assert_allclose(local_assignments, true_assigs[MPI_RANK::MPI_SIZE])
     assert_allclose(local_distances, true_dists[MPI_RANK::MPI_SIZE],

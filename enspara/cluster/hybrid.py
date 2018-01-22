@@ -128,9 +128,12 @@ class KHybridMPI(Clusterer):
             X, self.metric, dist_cutoff=self.cluster_radius)
 
         for i in range(self.kmedoids_updates):
-            ctr_inds, assigs, dists = kmedoids._kmedoids_update_mpi(
-                X, self.metric,
-                ctr_inds, assigs, dists,
+            ctr_inds, assigs, dists = kmedoids._kmedoids_pam_update(
+                X=X, metric=self.metric,
+                medoid_inds=ctr_inds,
+                assignments=assigs,
+                distances=dists,
+                cost=np.max,
                 random_state=self.random_state)
 
         self.runtime_ = time.perf_counter() - t0
