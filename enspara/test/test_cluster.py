@@ -143,30 +143,21 @@ class TestTrajClustering(unittest.TestCase):
         '''
         N_CLUSTERS = 5
 
-        results = [hybrid(
+        result = hybrid(
             self.trj,
             distance_method='rmsd',
             init_centers=None,
             n_clusters=N_CLUSTERS,
             random_first_center=False,
-            n_iters=10,
-            random_state=0,
-            ) for i in range(10)]
-
-        result = results[0]
+            n_iters=5,
+            random_state=0)
 
         # kcenters will always produce the same number of clusters on
         # this input data (unchanged by kmedoids updates)
-        assert len(np.unique(result.assignments)) == N_CLUSTERS
+        assert_equal(len(np.unique(result.assignments)), N_CLUSTERS)
 
-        # we do this here because hybrid seems to be more unstable than the
-        # other two testing methods for some reason.
-        all_dists = np.concatenate([r.distances for r in results])
-
-        assert_equal(round(np.average(all_dists), 7), 0.0992478)
-        assert_less(
-            abs(np.std(result.distances) - 0.0187),
-            0.005)
+        assert_less(round(result.distances.mean(), 7), 0.094)
+        assert_less(np.std(result.distances), 0.019)
 
     def test_kcenters_maxdist(self):
         result = kcenters.kcenters(

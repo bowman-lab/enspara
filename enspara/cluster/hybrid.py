@@ -150,11 +150,11 @@ def hybrid(
         init_centers=init_centers, random_first_center=random_first_center)
 
     for i in range(n_iters):
-        cluster_center_inds, assignments, distances = \
-            kmedoids._kmedoids_update(
+        cluster_center_inds, distances, assignments = \
+            kmedoids._kmedoids_pam_update(
                 X, distance_method,
                 result.center_indices, result.assignments, result.distances,
-                acceptance_criterion=np.max,
+                cost=np.max,
                 random_state=random_state)
 
         logger.info("KMedoids update %s of %s", i, n_iters)

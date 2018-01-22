@@ -73,7 +73,7 @@ def kmedoids(X, distance_method, n_clusters, n_iters=5):
     cluster_center_inds = util.find_cluster_centers(assignments, distances)
 
     for i in range(n_iters):
-        cluster_center_inds, assignments, distances = _kmedoids_update(
+        cluster_center_inds, distances, assignments = _kmedoids_pam_update(
             X, distance_method, cluster_center_inds, assignments,
             distances)
         logger.info("KMedoids update %s", i)
@@ -330,32 +330,3 @@ def _kmedoids_pam_update(
     logger.info("Kmedoid sweep reduced cost to %.4f", min(old_cost, new_cost))
 
     return cluster_center_inds, distances, assignments
-
-
-def _kmedoids_update(
-        X, distance_method, cluster_center_inds, assignments,
-        distances, acceptance_criterion=_msq, random_state=None):
-
-    assert np.issubdtype(type(assignments[0]), np.integer)
-    assert len(assignments) == len(X)
-    assert len(distances) == len(X)
-    random_state = check_random_state(random_state)
-
-    proposed_center_inds = np.zeros(len(cluster_center_inds), dtype=int)
-    for i in range(len(cluster_center_inds)):
-        state_inds = np.where(assignments == i)[0]
-        proposed_center_inds[i] = random_state.choice(state_inds)
-    proposed_cluster_centers = X[proposed_center_inds]
-
-    proposed_assignments, proposed_distances = util.assign_to_nearest_center(
-        X, proposed_cluster_centers, distance_method)
-    proposed_center_inds = util.find_cluster_centers(
-        proposed_assignments, proposed_distances)
-
-    mean_orig_dist_to_center = acceptance_criterion(distances)
-    mean_proposed_dist_to_center = acceptance_criterion(proposed_distances)
-
-    if mean_proposed_dist_to_center <= mean_orig_dist_to_center:
-        return proposed_center_inds, proposed_assignments, proposed_distances
-    else:
-        return cluster_center_inds, assignments, distances
