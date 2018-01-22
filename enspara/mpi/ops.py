@@ -154,11 +154,10 @@ def distribute_frame(data, world_index, owner_rank):
         A single slice of `data`, of shape `data.shape[1:]`.
     """
 
-    mpi_size = MPI.COMM_WORLD.Get_size()
-    if owner_rank >= mpi_size:
+    if owner_rank >= MPI_SIZE:
         raise ImproperlyConfigured(
             'In MPI swarm of size %s, recieved owner rank == %s.',
-            mpi_size, owner_rank)
+            MPI_SIZE, owner_rank)
 
     if hasattr(data, 'xyz'):
         if MPI_RANK == owner_rank:

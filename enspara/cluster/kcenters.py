@@ -219,7 +219,8 @@ def _kcenters_helper(
     return cluster_center_inds, assignments, distances
 
 
-def kcenters_mpi(traj, distance_method, n_clusters=np.inf, dist_cutoff=0):
+def kcenters_mpi(traj, distance_method, n_clusters=np.inf, dist_cutoff=0,
+                 indexing='auto'):
     """KCenters implementation for MPI.
 
     In this function, `traj` is assumed to be only a subset of the data
@@ -259,9 +260,6 @@ def kcenters_mpi(traj, distance_method, n_clusters=np.inf, dist_cutoff=0):
             (owner_rank, world_index).
     """
 
-    from ..mpi import MPI
-    COMM = MPI.COMM_WORLD
-
     if (n_clusters is np.inf) and (dist_cutoff is 0):
             raise ImproperlyConfigured("Either n_clusters or cluster_radius "
                                        "is required for KHybrid clustering")
@@ -288,12 +286,12 @@ def kcenters_mpi(traj, distance_method, n_clusters=np.inf, dist_cutoff=0):
             _kcenters_iteration_mpi(traj, distance_method, distances,
                                     assignments, ctr_inds)
 
-        if COMM.Get_rank() == 0:
+        if mpi.MPI_RANK == 0:
             logger.info(
                 "Center %s gives max dist of %.6f (stopping @ %.6f).",
                 len(center_inds), min_max_dist, dist_cutoff)
 
-    if COMM.Get_rank() == 0:
+    if mpi.MPI_RANK == 0:
         logger.info(
             "Found %s clusters @ %s",
             len(ctr_inds), ctr_inds)
@@ -302,14 +300,11 @@ def kcenters_mpi(traj, distance_method, n_clusters=np.inf, dist_cutoff=0):
 
 
 def _kcenters_iteration_mpi(traj, distance_method, distances, assignments,
-                            center_inds=None):
+                        center_inds=None, center_inds_mode='auto'):
     """The core inner loop of the kcenters iteration protocol. This can
     be used to start and stop doing kcenters (for example to save
     frequently or do checkpointing).
     """
-
-    from ..mpi import MPI
-    COMM = MPI.COMM_WORLD
 
     assert len(traj) == len(distances)
     assert len(traj) == len(assignments)
@@ -321,26 +316,14 @@ def _kcenters_iteration_mpi(traj, distance_method, distances, assignments,
     if len(center_inds) == 0:
         new_cluster_center_index = 0
         new_cluster_center_owner = 0
-
         min_max_dist = np.inf
     else:
-
-        dist_locs = np.zeros((COMM.Get_size(),), dtype=int) - 1
-        dist_vals = np.zeros((COMM.Get_size(),), dtype=float) - 1
-
-        dist_locs[COMM.Get_rank()] = np.argmax(distances)
-        dist_vals[COMM.Get_rank()] = np.max(distances)
-
         with log.timed("Gathered distances in %.2f sec", logger.debug):
-            COMM.Allgather(
-                [dist_locs[COMM.Get_rank()], MPI.DOUBLE],
-                [dist_locs, MPI.DOUBLE])
-            COMM.Allgather(
-                [dist_vals[COMM.Get_rank()], MPI.FLOAT],
-                [dist_vals, MPI.FLOAT])
-
-        assert np.all(dist_locs >= 0)
-        assert np.all(dist_vals >= 0)
+            # this could likely be accomplished with mpi.reduce instead...
+            dist_locs = np.array(
+                mpi.MPI.COMM_WORLD.allgather(np.argmax(distances)))
+            dist_vals = np.array(
+                mpi.MPI.COMM_WORLD.allgather(np.max(distances)))
 
         new_cluster_center_owner = np.argmax(dist_vals)
         new_cluster_center_index = dist_locs[new_cluster_center_owner]
