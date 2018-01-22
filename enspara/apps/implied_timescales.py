@@ -6,6 +6,8 @@ from multiprocessing import cpu_count
 import numpy as np
 import mdtraj as md
 
+from tables.exceptions import NoSuchNodeError
+
 from enspara import exception
 from enspara.msm import implied_timescales, builders
 from enspara.util import array as ra
@@ -133,7 +135,7 @@ def main(argv=None):
 
     try:
         assignments = ra.load(args.assignments)
-    except KeyError:
+    except NoSuchNodeError:
         assignments = ra.load(args.assignments, keys=...)
     if args.trj_ids is not None:
         assignments = assignments[args.trj_ids]

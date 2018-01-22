@@ -434,12 +434,15 @@ class RaggedArray(object):
 
     def __init__(self, array, lengths=None, error_checking=True):
         # Check that input is proper (array of arrays)
-        if error_checking is True:
+        if error_checking:
             array = np.array(list(array))
             if len(array) > 20000:
-                logger.warning(
-                    "error checking is turned off for ragged arrays "
-                    "with first dimension greater than 20000")
+                # lenghts is None => we are not inferring lengths from
+                # e.g. nested lists
+                if lengths is None:
+                    logger.warning(
+                        "error checking is turned off for ragged arrays "
+                        "with first dimension greater than 20000")
             else:
                 _ensure_ragged_data(array)
         # concatenate data if list of lists
