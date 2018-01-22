@@ -201,18 +201,11 @@ def np_choice(local_array, random_state=None):
 
     random_state = check_random_state(random_state)
 
-    # First, we'll determine which of the world the newly proposed
-    # center will come from by choosing it according to a biased die
-    # roll.
-    n_states = np.zeros((MPI_SIZE,), dtype=int) - 1
-    n_states[MPI_RANK] = len(local_array)
-
-    COMM.Allgather(
-        [n_states[MPI_RANK], MPI.DOUBLE],
-        [n_states, MPI.DOUBLE])
-
+    # First thing, we need to find out how long all the local arrays are.
+    n_states = np.array(COMM.allgather(len(local_array)))
     assert np.all(n_states >= 0)
 
+    # Then, we select a random index from amongst the total lengths
     if MPI_RANK == 0:
         # this is modeled after numpy.random.choice, but for some reason
         # our formulation here gives the samer results.
@@ -222,6 +215,7 @@ def np_choice(local_array, random_state=None):
 
     global_index = MPI.COMM_WORLD.bcast(global_index, root=0)
 
+    # this only has numerical identity when frames are striped.
     owner_rank = global_index % MPI_SIZE
     local_index = global_index // MPI_SIZE
 
