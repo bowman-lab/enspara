@@ -11,6 +11,22 @@ from .. import mpi
 
 
 @attr('mpi')
+def test_mpi_mean():
+
+    a = np.zeros((10,))
+    assert_equal(a.mean(), mpi.ops.mean(a))
+
+    a = np.ones((10,))
+    assert_equal(a.mean(), mpi.ops.mean(a))
+
+    a = np.arange(10)
+    assert_equal(a.mean(), mpi.ops.mean(a))
+
+    a = np.square(np.arange(10)) - 25
+    assert_equal(a.mean(), mpi.ops.mean(a))
+
+
+@attr('mpi')
 def test_mpi_distribute_frame_ndarray():
 
     data = np.arange(10*100*3).reshape(10, 100, 3)
@@ -61,31 +77,22 @@ def test_mpi_np_choice():
 
 
 @attr('mpi')
-def test_mpi_np_choice_fixed_rng():
+def test_mpi_np_choice_same_as_np():
 
     a = np.arange(17)
 
-    r, o = mpi.ops.np_choice(
-        a[mpi.MPI_RANK::mpi.MPI_SIZE],
-        random_state=0)
-    global_ind = mpi.ops.convert_local_indices(
-        [(r, o)],
-        [len(a[r::mpi.MPI_SIZE]) for r in range(mpi.MPI_SIZE)])[0]
+    for seed in range(100):
+        r, o = mpi.ops.np_choice(
+            a[mpi.MPI_RANK::mpi.MPI_SIZE],
+            random_state=seed)
 
-    assert_equal(global_ind, 12)
-
-    r, o = mpi.ops.np_choice(
-        a[mpi.MPI_RANK::mpi.MPI_SIZE],
-        random_state=1)
-    global_ind = mpi.ops.convert_local_indices(
-        [(r, o)],
-        [len(a[r::mpi.MPI_SIZE]) for r in range(mpi.MPI_SIZE)])[0]
-
-    assert_equal(global_ind, 5)
+        assert_equal(
+            np.random.RandomState(seed).choice(a),
+            a[r::mpi.MPI_SIZE][o])
 
 
 @attr('mpi')
-def test_mpi_np_choice_multiple_fixed_rng():
+def test_mpi_np_choice_uniform():
 
     a = np.arange(17)
 

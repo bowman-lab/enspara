@@ -132,7 +132,7 @@ def mean(local_array):
     assert global_len >= 0
     assert global_sum >= local_sum
 
-    return global_sum / local_len
+    return global_sum / global_len
 
 
 def distribute_frame(data, world_index, owner_rank):
@@ -214,17 +214,16 @@ def np_choice(local_array, random_state=None):
     assert np.all(n_states >= 0)
 
     if MPI_RANK == 0:
+        # this is modeled after numpy.random.choice, but for some reason
+        # our formulation here gives the samer results.
         global_index = random_state.randint(sum(n_states))
     else:
         global_index = None
 
     global_index = MPI.COMM_WORLD.bcast(global_index, root=0)
 
-    starts = np.zeros(len(n_states), dtype=int)
-    starts[1:] = np.cumsum(n_states)[0:-1]
-
-    owner_rank = np.searchsorted(np.cumsum(n_states)-1, global_index)
-    local_index = global_index - starts[owner_rank]
+    owner_rank = global_index % MPI_SIZE
+    local_index = global_index // MPI_SIZE
 
     assert local_index >= 0
 
