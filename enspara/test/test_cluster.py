@@ -380,6 +380,31 @@ def test_kmedoids_pam_update_numpy():
     assert_array_equal(dists, expect_dists)
 
 
+def test_kmedoids_pam_update_mdtraj():
+
+    DIST_FUNC = md.rmsd
+
+    means = [(0, 0), (0, 10), (10, 0)]
+    X = md.load(get_fn('frame0.h5'))
+
+    r = kcenters.kcenters(X, DIST_FUNC, n_clusters=3)
+    ind = r.center_indices
+    assig = r.assignments
+    dists = r.distances
+
+    ind, dists, assig = kmedoids._kmedoids_pam_update(
+        X, DIST_FUNC, ind, assig, dists, random_state=0)
+
+    assert_array_equal(ind, [0, 7, 17])
+
+    expect_assig, expect_dists = util.assign_to_nearest_center(
+        X, X[ind], DIST_FUNC)
+
+    assert_array_equal(np.unique(assig), np.arange(len(means)))
+    assert_array_equal(assig, expect_assig)
+    assert_array_equal(dists, expect_dists)
+
+
 class TestNumpyClustering(unittest.TestCase):
 
     generators = [(1, 1), (10, 10), (0, 20)]
