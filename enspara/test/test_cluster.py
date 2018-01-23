@@ -219,12 +219,12 @@ def test_kcenters_mpi_traj():
         np.save('assig%s.npy' % MPI_RANK, world_assignments)
         np.save('dists%s.npy' % MPI_RANK, world_distances)
         MPI.COMM_WORLD.Barrier()
-        time.sleep(2)
 
         for i in range(MPI_SIZE):
             mpi_assigs[i::MPI_SIZE] = np.load('assig%s.npy' % i)
             mpi_dists[i::MPI_SIZE] = np.load('dists%s.npy' % i)
     finally:
+        MPI.COMM_WORLD.Barrier()
         os.remove('assig%s.npy' % MPI_RANK)
         os.remove('dists%s.npy' % MPI_RANK)
 

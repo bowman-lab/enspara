@@ -158,10 +158,8 @@ def _kmedoids_pam_update(
     else:
         medoid_coords = [X[i] for i in medoid_inds]
 
-    assert len(medoid_inds) == len(np.unique(assignments))
-
     acceptances = 0
-    for cid in np.unique(assignments):
+    for cid in range(len(medoid_inds)):
         state_inds = np.where(assignments == cid)[0]
 
         # first, we propose a new center. This works a bit differently
