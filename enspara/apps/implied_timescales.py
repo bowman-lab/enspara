@@ -145,7 +145,7 @@ def main(argv=None):
         sliding_window=True, trim=args.trim,
         method=args.symmetrization, n_procs=args.processes)
 
-    unit_factor, unit_str = process_units(args)
+    unit_factor, unit_str = process_units(args.timestep, args.infer_timestep)
 
     # scale x and y axes to nanoseconds
     lag_times = np.array(args.lag_times) / unit_factor
