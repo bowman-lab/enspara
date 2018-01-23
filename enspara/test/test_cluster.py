@@ -316,9 +316,7 @@ def test_kmedoids_update_mpi_mdtraj():
 
 @attr('mpi')
 def test_kmedoids_update_mpi_numpy():
-    from ..mpi import MPI
-    MPI_RANK = MPI.COMM_WORLD.Get_rank()
-    MPI_SIZE = MPI.COMM_WORLD.Get_size()
+    from ..mpi import MPI_RANK, MPI_SIZE
 
     means = [(0, 0), (0, 10), (10, 0)]
     X, y = make_blobs(centers=means, random_state=1)
@@ -352,6 +350,42 @@ def test_kmedoids_update_mpi_numpy():
     assert_allclose(local_assignments, true_assigs[MPI_RANK::MPI_SIZE])
     assert_allclose(local_distances, true_dists[MPI_RANK::MPI_SIZE],
                     rtol=1e-06, atol=1e-03)
+
+
+@attr('mpi')
+def test_kmedoids_update_mpi_numpy_separated_blobs():
+    from ..mpi import MPI, MPI_RANK, MPI_SIZE
+
+    # build blobs such that each node owns only one blob.
+    X, y = make_blobs(centers=[(10*MPI_RANK, 10*MPI_RANK)],
+                      cluster_std=0.5,
+                      random_state=0)
+
+    def DIST_FUNC(X, x):
+        return np.square(X - x).sum(axis=1)
+
+    r = kcenters.kcenters_mpi(X, DIST_FUNC, n_clusters=MPI_SIZE)
+    local_distances, local_assignments, local_ctr_inds = r
+
+    r = kmedoids._kmedoids_pam_update(
+        X=X, metric=DIST_FUNC,
+        medoid_inds=local_ctr_inds,
+        assignments=local_assignments,
+        distances=local_distances,
+        random_state=0,
+        )
+
+    local_ctr_inds, local_distances, local_assignments = r
+    # mpi_ctr_inds = [len(X)*r + i for r, i in local_ctr_inds]
+
+    assignments = np.concatenate(MPI.COMM_WORLD.allgather(local_assignments))
+    distances = np.concatenate(MPI.COMM_WORLD.allgather(local_distances))
+
+    for i in range(MPI_SIZE):
+        assert_array_equal(assignments[i*len(X):(i*len(X))+len(X)], [i]*len(X))
+
+    print(distances)
+    assert np.all(distances < 5), np.where(distances >= 5)
 
 
 def test_kmedoids_pam_update_numpy():
