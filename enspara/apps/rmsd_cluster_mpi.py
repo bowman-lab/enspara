@@ -15,19 +15,17 @@ import mdtraj as md
 
 from sklearn.utils import check_random_state
 
-from enspara.mpi import MPI_RANK, MPI_SIZE, MPI
-from enspara import mpi
-
-MPI = MPI
-COMM = MPI.COMM_WORLD
-
-RANKSTR = "[Rank %s]" % MPI_RANK
+from mpi4py.MPI import COMM_WORLD as COMM
+RANKSTR = "[Rank %s]" % COMM.Get_rank()
 
 logging.basicConfig(
-    level=logging.DEBUG if MPI_RANK == 0 else logging.INFO,
+    level=logging.DEBUG if COMM.Get_rank() == 0 else logging.INFO,
     format=('%(asctime)s ' + RANKSTR +
-            ' %(name)-8s %(levelname)-7s %(message)s'),
+            ' %(name)-26s %(levelname)-7s %(message)s'),
     datefmt='%m-%d-%Y %H:%M:%S')
+
+from enspara.mpi import MPI_RANK, MPI_SIZE
+from enspara import mpi
 
 from enspara.cluster.util import load_frames, partition_indices
 from enspara.cluster.kcenters import kcenters_mpi
