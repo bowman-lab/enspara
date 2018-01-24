@@ -1,5 +1,9 @@
-from sklearn.base import BaseEstimator, TransformerMixin
+import warnings
 
+from sklearn.base import BaseEstimator, TransformerMixin
+from sklearn.preprocessing.data import _handle_zeros_in_scale
+
+from enspara import exception
 
 class ResidueTypeScaler(BaseEstimator, TransformerMixin):
     """Similar to StandardScaler(with_mean=False) but
@@ -34,12 +38,16 @@ class ResidueTypeScaler(BaseEstimator, TransformerMixin):
         y : Passthrough for Pipeline compatibility.
         """
 
-        assert X.shape[1] == self.top.n_residues
+        if X.shape[1] != self.top.n_residues:
+            raise exception.InvalidData("Given data had shape {s} and top had n_residues {n}".format(s=X.shape, n=self.top.n_residues))
 
         self.scale_factors_ = {}
         for code, residues in self.code2rindex.items():
+            if code is None:
+                warnings.warn(exception.SuspiciousDataWarning("ResidueTypeScaler Topology had 'None' values as residue codes. These will be scaled as though they are the same residue type."))
+
             target_data = X[:, residues]
-            scale_factor = self.scale_func(target_data)
+            scale_factor = _handle_zeros_in_scale(self.scale_func(target_data), copy=False)
 
             self.scale_factors_[code] = scale_factor
 
@@ -63,8 +71,7 @@ class ResidueTypeScaler(BaseEstimator, TransformerMixin):
 
         for code, residues in self.code2rindex.items():
             scale_factor = self.scale_factors_[code]
-            if scale_factor != 0:
-                x[:, residues] /= scale_factor
+            x[:, residues] /= scale_factor
 
         return x
 

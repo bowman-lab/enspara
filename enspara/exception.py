@@ -16,3 +16,9 @@ class InsufficientResourceError(Exception):
     resources were availiable to complete the operation or request.
     """
     pass
+
+class SuspiciousDataWarning(UserWarning):
+    """The data is usable, but is has a structure or type that is
+    suspicious, and may cause bad behavior down the road.
+    """
+    pass
