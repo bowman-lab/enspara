@@ -204,7 +204,7 @@ def np_choice(local_array, random_state=None):
     n_states = np.array(COMM.allgather(len(local_array)))
     assert np.all(n_states >= 0)
 
-    if n_states < 1:
+    if sum(n_states) < 1:
         raise DataInvalid(
             "Random choice requires a non-emtpy array. Got shapes: %s" %
             n_states)
