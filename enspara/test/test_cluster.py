@@ -359,7 +359,8 @@ def test_kmedoids_update_mpi_numpy_separated_blobs():
     # build blobs such that each node owns only one blob.
     X, y = make_blobs(centers=[(10*MPI_RANK, 10*MPI_RANK)],
                       cluster_std=0.5,
-                      random_state=0)
+                      random_state=0,
+                      n_samples=20)
 
     def DIST_FUNC(X, x):
         return np.square(X - x).sum(axis=1)
@@ -382,10 +383,17 @@ def test_kmedoids_update_mpi_numpy_separated_blobs():
     distances = np.concatenate(MPI.COMM_WORLD.allgather(local_distances))
 
     for i in range(MPI_SIZE):
-        assert_array_equal(assignments[i*len(X):(i*len(X))+len(X)], [i]*len(X))
+        if i == 0:
+            cid_for_rank = 0
+        else:
+            cid_for_rank = assignments[i*len(X)]
+        assert_array_equal(assignments[i*len(X):(i*len(X))+len(X)],
+                           [cid_for_rank]*len(X))
+
+    assert_array_equal(np.bincount(assignments), [len(X)]*MPI_SIZE)
 
     print(distances)
-    assert np.all(distances < 5), np.where(distances >= 5)
+    assert np.all(distances < 6), np.where(distances >= 6)
 
 
 def test_kmedoids_pam_update_numpy():
