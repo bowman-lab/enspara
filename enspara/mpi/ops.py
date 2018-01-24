@@ -3,7 +3,7 @@ import numpy as np
 
 from sklearn.utils import check_random_state
 
-from ..exception import ImproperlyConfigured
+from ..exception import ImproperlyConfigured, DataInvalid
 from ..util import array as ra
 
 from . import MPI, MPI_RANK, MPI_SIZE
@@ -203,6 +203,11 @@ def np_choice(local_array, random_state=None):
     # First thing, we need to find out how long all the local arrays are.
     n_states = np.array(COMM.allgather(len(local_array)))
     assert np.all(n_states >= 0)
+
+    if n_states < 1:
+        raise DataInvalid(
+            "Random choice requires a non-emtpy array. Got shapes: %s" %
+            n_states)
 
     # Then, we select a random index from amongst the total lengths
     if MPI_RANK == 0:

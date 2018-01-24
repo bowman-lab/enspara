@@ -4,9 +4,11 @@ from numpy.testing import assert_array_equal
 import mdtraj as md
 from mdtraj.testing import get_fn
 
-from nose.tools import assert_is, assert_almost_equal, assert_equal
+from nose.tools import (
+    assert_is, assert_almost_equal, assert_equal, assert_raises)
 from nose.plugins.attrib import attr
 
+from .. import exception
 from .. import mpi
 
 
@@ -74,6 +76,35 @@ def test_mpi_np_choice():
 
     distro = np.bincount(hits)
     assert_almost_equal(distro.mean(), (i+1)/len(a))
+
+
+@attr('mpi')
+def test_mpi_np_choice_few_options():
+
+    # test an array that is only on rank 0
+    a = np.array([7])
+
+    r, o = mpi.ops.np_choice(a[mpi.MPI_RANK::mpi.MPI_SIZE])
+
+    assert_equal(r, 0)
+    assert_equal(o, 0)
+
+    # test an array that is only on rank 1
+    if mpi.MPI_SIZE > 1:
+        if mpi.MPI_RANK == 1:
+            r, o = mpi.ops.np_choice(a)
+        else:
+            r, o = mpi.ops.np_choice(np.array([]))
+
+        assert_equal(r, 1)
+        assert_equal(o, 0)
+
+    with assert_raises(exception.DataInvalid):
+        # test on an empty array
+        a = np.array([])
+
+        r, o = mpi.ops.np_choice(a)
+
 
 
 @attr('mpi')
