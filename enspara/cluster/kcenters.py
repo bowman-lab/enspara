@@ -291,11 +291,6 @@ def kcenters_mpi(traj, distance_method, n_clusters=np.inf, dist_cutoff=0,
                 "Center %s gives max dist of %.6f (stopping @ %.6f).",
                 len(center_inds), min_max_dist, dist_cutoff)
 
-    if mpi.MPI_RANK == 0:
-        logger.info(
-            "Found %s clusters @ %s",
-            len(ctr_inds), ctr_inds)
-
     return distances, assignments, ctr_inds
 
 
