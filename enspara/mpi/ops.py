@@ -206,7 +206,7 @@ def np_choice(local_array, random_state=None):
 
     if sum(n_states) < 1:
         raise DataInvalid(
-            "Random choice requires a non-emtpy array. Got shapes: %s" %
+            "Random choice requires a non-empty array. Got shapes: %s" %
             n_states)
 
     # Then, we select a random index from amongst the total lengths
@@ -219,9 +219,19 @@ def np_choice(local_array, random_state=None):
 
     global_index = MPI.COMM_WORLD.bcast(global_index, root=0)
 
-    # this only has numerical identity when frames are striped.
-    owner_rank = global_index % MPI_SIZE
-    local_index = global_index // MPI_SIZE
+
+    # this computation is the same as finding global_index % MPI_SIZE and
+    # global_index // MPI_SIZE iff our data are 'packed' on nodes, but not
+    # otherwise.
+
+    a = ra.RaggedArray(
+        np.concatenate([
+            np.arange(sum(n_states))[r::MPI_SIZE]
+            for r in range(MPI_SIZE)]),
+        lengths=n_states)
+
+    owner_rank, local_index = ra.where(a == global_index)
+    owner_rank, local_index = owner_rank[0], local_index[0]
 
     assert local_index >= 0
 
