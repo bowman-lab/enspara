@@ -89,9 +89,48 @@ def _msq(x):
     return mpi.ops.mean(np.square(x))
 
 
+def _propose_new_center_amongst(X, state_inds, mpi_mode, random_state):
+    """Propose a new center amongst a list of indices.
+
+    Parameters
+    ----------
+    X : array-like, shape=(n_observations, n_features, *)
+        Data from which to propose the new center.
+    state_inds : array-like
+        The indices (in X) from which to propose new centers.
+    mpi_mode : boolean
+        Propose a center in the form (rank, local index) rather than in
+        the form of a single index.
+    random_state : numpy.RandomState
+        The state of the RNG to use when drawing new random values.
+    """
+
+    random_state = check_random_state(random_state)
+
+    # TODO: make it impossible to choose the current center
+    if mpi_mode:
+        r, idx = mpi.ops.randind(state_inds, random_state)
+        if mpi.MPI_RANK == r:
+            i = mpi.MPI.COMM_WORLD.bcast(state_inds[idx], root=r)
+        else:
+            i = mpi.MPI.COMM_WORLD.bcast(None, root=r)
+        proposed_center = mpi.ops.distribute_frame(
+            data=X, owner_rank=r, world_index=i)
+        proposed_center_ind = (r, i)
+
+        logger.debug(
+            "Proposing new center %s, at %s.",
+            proposed_center_ind, (r, idx))
+    else:
+        proposed_center_ind = random_state.choice(state_inds)
+        proposed_center = X[proposed_center_ind]
+
+    return proposed_center, proposed_center_ind
+
+
 def _kmedoids_pam_update(
-        X, metric, medoid_inds, assignments,
-        distances, cost=_msq, random_state=None):
+        X, metric, medoid_inds, assignments, distances, proposals=None,
+        cost=_msq, random_state=None):
     """Compute a kmedoids update using Partitioning Around Medoids (PAM)
 
     PAM iteratively proposes a new cluster center from among the points
@@ -118,6 +157,9 @@ def _kmedoids_pam_update(
     distances : ndarray, shape=(X.shape[0],)
         Array giving the distance between this observation/frame and the
         relevant cluster center.
+    proposals : array-like, default=None
+        If specified, this list is a list of indices to propose as a
+        center (rather than choosing randomly).
     cost : callable, default='meansquare'
         Function computing the cost of a particular clustering. Should
         take a vector of distances and returning a number. This value is
@@ -143,6 +185,12 @@ def _kmedoids_pam_update(
     assert len(distances) == len(X)
     random_state = check_random_state(random_state)
 
+    if proposals is not None:
+        logger.debug("Got proposals, won't randomly propose.")
+        assert len(proposals) == len(medoid_inds)
+        assert hasattr(proposals[0], '__len__') == \
+               hasattr(medoid_inds[0], '__len__')
+
     # first we build a list of the actual coordinates of the cluster centers
     # this list will be updated as we go; this is primarily because we want
     # to limit the amount of communication that happens when we're running
@@ -165,18 +213,19 @@ def _kmedoids_pam_update(
         # first, we propose a new center. This works a bit differently
         # if we're running with MPI, because we want to make a choice
         # that uniformly distributed across any node.
-
-        # TODO: make it impossible to choose the current center
-        if hasattr(medoid_inds[0], '__len__'):
-            assert len(medoid_inds[0]) == 2
-            r, i = mpi.ops.np_choice(state_inds, random_state)
-            proposed_center = mpi.ops.distribute_frame(
-                data=X, owner_rank=r, world_index=i)
-            proposed_center_ind = (r, i)
+        if proposals is None:
+            proposed_center, proposed_center_ind = _propose_new_center_amongst(
+                X, state_inds,
+                mpi_mode=hasattr(medoid_inds[0], '__len__'),
+                random_state=random_state)
         else:
-            proposed_center_ind = random_state.choice(state_inds)
-            print(len(state_inds))
-            proposed_center = X[proposed_center_ind]
+            proposed_center_ind = proposals[cid]
+            if hasattr(proposed_center_ind, '__len__'):
+                proposed_center = mpi.ops.distribute_frame(
+                    data=X, owner_rank=proposed_center_ind[0],
+                    world_index=proposed_center_ind[1])
+            else:
+                proposed_center = X[proposed_center_ind]
 
         logger.debug("Proposed new medoid (%s -> %s) for k=%s",
                      medoid_inds[cid], proposed_center_ind, cid)

@@ -164,7 +164,7 @@ def test_rmsd_cluster_mpi_subsample():
 
         with warnings.catch_warnings():
             warnings.filterwarnings('ignore')
-            a, d, i, s = runhelper([
+            a, d, inds, s = runhelper([
                 '--trajectories', os.path.join(tdname, 'frame?.xtc'),
                 '--topology', TOPFILE,
                 '--cluster-radii', '0.1',
@@ -181,25 +181,14 @@ def test_rmsd_cluster_mpi_subsample():
     trj = md.load(TRJFILE, top=TOPFILE)
     trj_sele = trj.atom_slice(trj.top.select(SELECTION))
 
-    if MPI_SIZE == 1:
-        expected_i = [[ 1,  3], [ 0, 45], [ 0, 24], [ 0, 66]]
-    elif MPI_SIZE == 2:
-        expected_i = [[  0,   0], [  1,  21], [  0, 105], [  0,  60]]
-    else:
-        raise NotImplementedError(
-            "We dont know what the right answer to this test is with "
-            "MPI size %s" % MPI_SIZE)
-
-    assert_array_equal(i, expected_i)
-
-    expected_s = md.join([trj[i[1]] for i in expected_i])
+    expected_s = md.join([trj[i[1]] for i in inds])
     assert_array_equal(
         expected_s.xyz,
         md.join(s).xyz)
 
     expect_a, expect_d = assign_to_nearest_center(
         md.join([trj_sele]*expected_size[0]),
-        md.join([trj_sele[i[1]] for i in expected_i]), md.rmsd)
+        md.join([trj_sele[i[1]] for i in inds]), md.rmsd)
 
     assert_array_equal(expect_a[::SUBSAMPLE_FACTOR], a)
     assert_allclose(expect_d[::SUBSAMPLE_FACTOR], d, atol=1e-4)

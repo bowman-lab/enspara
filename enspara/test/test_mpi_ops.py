@@ -61,14 +61,14 @@ def test_mpi_assemble_striped_array():
 
 
 @attr('mpi')
-def test_mpi_np_choice():
+def test_mpi_randind():
 
     a = np.arange(17)
 
     hits = []
 
     for i in range(100):
-        r, o = mpi.ops.np_choice(a[mpi.MPI_RANK::mpi.MPI_SIZE])
+        r, o = mpi.ops.randind(a[mpi.MPI_RANK::mpi.MPI_SIZE])
 
         hits.append(mpi.ops.convert_local_indices(
             [(r, o)],
@@ -79,12 +79,12 @@ def test_mpi_np_choice():
 
 
 @attr('mpi')
-def test_mpi_np_choice_few_options():
+def test_mpi_randind_few_options():
 
     # test an array that is only on rank 0
     a = np.array([7])
 
-    r, o = mpi.ops.np_choice(a[mpi.MPI_RANK::mpi.MPI_SIZE])
+    r, o = mpi.ops.randind(a[mpi.MPI_RANK::mpi.MPI_SIZE])
 
     assert_equal(r, 0)
     assert_equal(o, 0)
@@ -92,9 +92,9 @@ def test_mpi_np_choice_few_options():
     # test an array that is only on rank 1
     if mpi.MPI_SIZE > 1:
         if mpi.MPI_RANK == 1:
-            r, o = mpi.ops.np_choice(a)
+            r, o = mpi.ops.randind(a)
         else:
-            r, o = mpi.ops.np_choice(np.array([]))
+            r, o = mpi.ops.randind(np.array([]))
 
         assert_equal(r, 1)
         assert_equal(o, 0)
@@ -103,17 +103,17 @@ def test_mpi_np_choice_few_options():
         # test on an empty array
         a = np.array([])
 
-        r, o = mpi.ops.np_choice(a)
+        r, o = mpi.ops.randind(a)
 
 
 
 @attr('mpi')
-def test_mpi_np_choice_same_as_np():
+def test_mpi_randind_same_as_np():
 
     a = np.arange(17)
 
     for seed in range(100):
-        r, o = mpi.ops.np_choice(
+        r, o = mpi.ops.randind(
             a[mpi.MPI_RANK::mpi.MPI_SIZE],
             random_state=seed)
 
@@ -123,14 +123,14 @@ def test_mpi_np_choice_same_as_np():
 
 
 @attr('mpi')
-def test_mpi_np_choice_uniform():
+def test_mpi_randind_uniform():
 
     a = np.arange(17)
 
     hits = []
 
     for i in range(100):
-        r, o = mpi.ops.np_choice(
+        r, o = mpi.ops.randind(
             a[mpi.MPI_RANK::mpi.MPI_SIZE],
             random_state=0)
 

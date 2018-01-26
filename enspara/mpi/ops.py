@@ -180,8 +180,10 @@ def distribute_frame(data, world_index, owner_rank):
         return frame
 
 
-def np_choice(local_array, random_state=None):
-    """As `numpy.random.choice` but parallel across nodes.
+def randind(local_array, random_state=None):
+    """Given the local fragment of an assumed-larger array, give the
+    location of a randomly chosen element of the array (uniformly
+    distributed).
 
     Parameters
     ----------
@@ -193,7 +195,7 @@ def np_choice(local_array, random_state=None):
     Returns
     -------
     owner_rank : int
-        Rank of the node that owns the slice that's chosen.
+        Rank of the node that owns the element that's chosen.
     local_index : int
         Index within the owner node's local array.
     """

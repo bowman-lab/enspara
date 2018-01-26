@@ -260,12 +260,12 @@ def test_kcenters_mpi_numpy():
         np.save('assig%s.npy' % MPI_RANK, world_assignments)
         np.save('dists%s.npy' % MPI_RANK, world_distances)
         MPI.COMM_WORLD.Barrier()
-        time.sleep(2)
 
         for i in range(MPI_SIZE):
             mpi_assigs[i::MPI_SIZE] = np.load('assig%s.npy' % i)
             mpi_dists[i::MPI_SIZE] = np.load('dists%s.npy' % i)
     finally:
+        MPI.COMM_WORLD.Barrier()
         os.remove('assig%s.npy' % MPI_RANK)
         os.remove('dists%s.npy' % MPI_RANK)
 
@@ -291,19 +291,26 @@ def test_kmedoids_update_mpi_mdtraj():
     r = kcenters.kcenters_mpi(data, DIST_FUNC, n_clusters=10)
     local_distances, local_assignments, local_ctr_inds = r
 
+    proposals = []
+    r = kcenters.kcenters(trj, DIST_FUNC, n_clusters=len(local_ctr_inds))
+    global_assignments = r.assignments
+    for cid in range(len(r.center_indices)):
+        first_point = np.where(global_assignments == cid)[0][0]
+        proposals.append((first_point % MPI_SIZE, first_point // MPI_SIZE))
+
     r = kmedoids._kmedoids_pam_update(
         X=data, metric=DIST_FUNC,
         medoid_inds=local_ctr_inds,
         assignments=local_assignments,
         distances=local_distances,
-        random_state=0,
+        proposals=proposals,
         )
 
     local_ctr_inds, local_distances, local_assignments = r
 
     mpi_ctr_inds = [(i*MPI_SIZE)+r for r, i in local_ctr_inds]
 
-    expected_inds = [  0,   7, 400,   3,  27, 327, 242, 346,  21,  50]
+    expected_inds = [  0,  37, 400, 105,  12, 327, 242, 346,  42,   3]
     assert_array_equal(mpi_ctr_inds, expected_inds)
 
     true_assigs, true_dists = util.assign_to_nearest_center(
@@ -319,7 +326,7 @@ def test_kmedoids_update_mpi_numpy():
     from ..mpi import MPI_RANK, MPI_SIZE
 
     means = [(0, 0), (0, 10), (10, 0)]
-    X, y = make_blobs(centers=means, random_state=1)
+    X, y = make_blobs(centers=means, random_state=1, n_samples=20)
 
     data = X[MPI_RANK::MPI_SIZE]
 
@@ -329,20 +336,24 @@ def test_kmedoids_update_mpi_numpy():
     r = kcenters.kcenters_mpi(data, DIST_FUNC, n_clusters=3)
     local_distances, local_assignments, local_ctr_inds = r
 
+    proposals = []
+    for cid in range(len(means)):
+        first_point = np.where(y == cid)[0][0]
+        proposals.append((first_point % MPI_SIZE, first_point // MPI_SIZE))
+
     r = kmedoids._kmedoids_pam_update(
         X=data, metric=DIST_FUNC,
         medoid_inds=local_ctr_inds,
         assignments=local_assignments,
         distances=local_distances,
-        random_state=0,
-        )
+        proposals=proposals)
 
     local_ctr_inds, local_distances, local_assignments = r
     mpi_ctr_inds = [(i*MPI_SIZE)+r for r, i in local_ctr_inds]
 
     assert_array_equal(
         mpi_ctr_inds,
-        [ 0,  3, 64])
+        [ 0,  3, 19])
 
     true_assigs, true_dists = util.assign_to_nearest_center(
         X, X[mpi_ctr_inds], DIST_FUNC)
@@ -611,6 +622,51 @@ class TestNumpyClustering(unittest.TestCase):
             scatter(x_centers, y_centers, s=40, c='y')
             show()
             raise
+
+@attr('mpi')
+def test_kmedoids_propose_center_amongst():
+
+    from ..mpi import MPI
+    MPI_RANK = MPI.COMM_WORLD.Get_rank()
+    MPI_SIZE = MPI.COMM_WORLD.Get_size()
+
+    a = np.arange(17)
+    X = a[MPI_RANK::MPI_SIZE]
+    assignments = (X % 3 == 0).astype('int')
+
+    state_inds = np.where(assignments == 1)[0]
+
+    prop_c, (rank, local_ind) = kmedoids._propose_new_center_amongst(
+        X, state_inds, mpi_mode=True, random_state=0)
+
+    assert_equal(prop_c % 3, 0)
+    assert_equal(a[rank::MPI_SIZE][local_ind], prop_c)
+
+
+@attr('mpi')
+def test_kmedoids_propose_center_amongst_hits_all():
+
+    from ..mpi import MPI
+    MPI_RANK = MPI.COMM_WORLD.Get_rank()
+    MPI_SIZE = MPI.COMM_WORLD.Get_size()
+
+    a = np.arange(17)
+    X = a[MPI_RANK::MPI_SIZE]
+    assignments = (X % 3 == 0).astype('int')
+
+    state_inds = np.where(assignments == 1)[0]
+
+    hits = set()
+    for i in range(100):
+        prop_c, (rank, local_ind) = kmedoids._propose_new_center_amongst(
+            X, state_inds, mpi_mode=True, random_state=i)
+
+        assert_equal(prop_c % 3, 0)
+        assert_equal(a[rank::MPI_SIZE][local_ind], prop_c)
+        hits.add(int(prop_c))
+
+    assert_equal(hits, set([0, 3, 6, 9, 12, 15]))
+
 
 if __name__ == '__main__':
     unittest.main()
