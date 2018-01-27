@@ -12,6 +12,11 @@ from multiprocessing import cpu_count
 
 import mdtraj as md
 
+logging.basicConfig(
+    level=logging.INFO,
+    format=('%(asctime)s %(name)-8s %(levelname)-7s %(message)s'),
+    datefmt='%m-%d-%Y %H:%M:%S')
+
 from enspara.apps.reassign import reassign
 from enspara.apps.util import readable_dir
 
@@ -118,7 +123,7 @@ def process_command_line(argv):
         args.subsample = 1
 
     if args.no_reassign and args.subsample == 1:
-        warnings.warn("When subsampling is 1, --no-reassign has no effect.")
+        warnings.warn("When subsampling is 1 (or unspecified), --no-reassign has no effect.")
 
     return args
 
