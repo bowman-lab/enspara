@@ -61,8 +61,12 @@ def process_command_line(argv):
              "once for each different topology (i.e. the number of "
              "times --trajectories and --topology was specified.)")
     parser.add_argument(
-        '--rmsd-cutoff', required=True, type=float,
-        help="The RMSD cutoff to determine cluster size. Units: nm.")
+        '--rmsd-cutoff', default=None, type=float,
+        help="Produce clusters with a maximum distance to cluster "
+             "center of this value.. Units: nm.")
+    parser.add_argument(
+        '--n-clusters', default=None, type=int,
+        help="Produce at least this number of clusters.")
     parser.add_argument(
         '--processes', default=cpu_count(), type=int,
         help="Number processes to use for loading and clustering.")
@@ -87,6 +91,11 @@ def process_command_line(argv):
         help="The location to write the cluster center structures.")
 
     args = parser.parse_args(argv[1:])
+
+    if args.rmsd_cutoff is None and args.n_clusters is None:
+        raise exception.ImproperlyConfigured(
+            "At least one of --rmsd-cutoff and --n-clusters is "
+            "required to cluster.")
 
     if len(args.atoms) == 1:
         args.atoms = args.atoms * len(args.trajectories)
@@ -207,6 +216,7 @@ def main(argv=None):
 
     clustering = args.Clusterer(
         metric=md.rmsd,
+        n_clusters=args.n_clusters,
         cluster_radius=args.rmsd_cutoff)
 
     # md.rmsd requires an md.Trajectory object, so wrap `xyz` in
