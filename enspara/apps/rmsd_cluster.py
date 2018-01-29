@@ -22,8 +22,9 @@ from enspara.apps.util import readable_dir
 
 from enspara.cluster import KHybrid, KCenters
 from enspara.util import array as ra
-from enspara.cluster.util import load_frames
 from enspara.util import load_as_concatenated
+from enspara.util.log import timed
+from enspara.cluster.util import load_frames
 from enspara import exception
 
 
@@ -165,8 +166,14 @@ def load(topologies, trajectories, selections, stride, processes):
         len(flat_trjs), len(top.select(selection)), processes, stride)
     assert len(top.select(selection)) > 0, "No atoms selected for clustering"
 
-    lengths, xyz = load_as_concatenated(
-        flat_trjs, args=configs, processes=processes)
+    with timed("Loading to %.1f sec", logger.info):
+        lengths, xyz = load_as_concatenated(
+            flat_trjs, args=configs, processes=processes)
+
+    with timed("Turned over array in %.2f min", logging.info):
+        tmp_xyz = xyz.copy()
+        del xyz
+        xyz = tmp_xyz
 
     logger.info(
         "Loaded %s frames.", len(xyz))
