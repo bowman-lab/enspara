@@ -166,7 +166,7 @@ def load(topologies, trajectories, selections, stride, processes):
         len(flat_trjs), len(top.select(selection)), processes, stride)
     assert len(top.select(selection)) > 0, "No atoms selected for clustering"
 
-    with timed("Loading to %.1f sec", logger.info):
+    with timed("Loading took %.1f sec", logger.info):
         lengths, xyz = load_as_concatenated(
             flat_trjs, args=configs, processes=processes)
 
@@ -223,7 +223,7 @@ def main(argv=None):
         stride=args.subsample, processes=args.processes)
 
     logger.info(
-        "Loading finished in (%s s). Clustering using atoms %s matching '%s'.",
+        "Loading finished in %.1f s. Clustering using %s atoms matching '%s'.",
         round(time.perf_counter() - tick, 2), xyz.shape[1], args.atoms)
 
     clustering = args.Clusterer(
