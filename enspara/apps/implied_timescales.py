@@ -6,6 +6,8 @@ from multiprocessing import cpu_count
 import numpy as np
 import mdtraj as md
 
+from tables.exceptions import NoSuchNodeError
+
 from enspara import exception
 from enspara.msm import implied_timescales, builders
 from enspara.util import array as ra
@@ -133,7 +135,7 @@ def main(argv=None):
 
     try:
         assignments = ra.load(args.assignments)
-    except KeyError:
+    except NoSuchNodeError:
         assignments = ra.load(args.assignments, keys=...)
     if args.trj_ids is not None:
         assignments = assignments[args.trj_ids]
@@ -143,7 +145,7 @@ def main(argv=None):
         sliding_window=True, trim=args.trim,
         method=args.symmetrization, n_procs=args.processes)
 
-    unit_factor, unit_str = process_units(args)
+    unit_factor, unit_str = process_units(args.timestep, args.infer_timestep)
 
     # scale x and y axes to nanoseconds
     lag_times = np.array(args.lag_times) / unit_factor
