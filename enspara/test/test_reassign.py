@@ -18,7 +18,10 @@ from numpy.testing import assert_array_equal, assert_allclose
 from .. import cards
 from ..util import array as ra
 
-from . import reassign
+from ..apps import reassign
+
+
+TEST_DIR = os.path.dirname(__file__)
 
 
 def runhelper(args):
@@ -27,20 +30,19 @@ def runhelper(args):
     tf = hashlib.md5(str(datetime.now().timestamp())
                      .encode('utf-8')).hexdigest()[0:8]
 
+    assignfile = os.path.join(td, '-'.join([tf] + ['assignments.h5']))
+    distfile = os.path.join(td, '-'.join([tf] + ['distances.h5']))
+
     try:
         reassign.main([
             '',  # req'd because arg[0] is expected to be program name
-            '--output-path', td,
-            '--output-tag', tf] + args)
+            '--assignments', assignfile,
+            '--distances', distfile] + args)
 
-        assignfile = os.path.join(
-            td, '-'.join([tf] + ['assignments.h5']))
         assert os.path.isfile(assignfile), \
             "Couldn't find %s. Dir contained: %s" % (
             assignfile, os.listdir(os.path.dirname(assignfile)))
 
-        distfile = os.path.join(
-            td, '-'.join([tf] + ['distances.h5']))
         assert os.path.isfile(distfile), \
             "Couldn't find %s. Dir contained: %s" % (
             distfile, os.listdir(os.path.dirname(distfile)))
@@ -63,15 +65,15 @@ def test_reassign_script():
 
         runhelper(
             ['--centers', ctrs_f.name,
-             '--trajectories', trajectories,
+             '--trajectories', trajectories[0], trajectories[1],
              '--atoms', '(name N or name C or name CA or name H or name O)',
              '--topology', topologies])
 
 
 def test_reassign_script_multitop():
 
-    xtc2 = os.path.join(cards.__path__[0], 'test_data', 'trj0.xtc')
-    top2 = os.path.join(cards.__path__[0], 'test_data', 'PROT_only.pdb')
+    xtc2 = os.path.join(TEST_DIR, 'cards_data', 'trj0.xtc')
+    top2 = os.path.join(TEST_DIR, 'cards_data', 'PROT_only.pdb')
 
     topologies = [get_fn('native.pdb'), top2]
     trajectories = [
@@ -85,12 +87,14 @@ def test_reassign_script_multitop():
         pickle.dump(centers, ctrs_f)
         ctrs_f.flush()
 
+        print(trajectories)
+
         runhelper(
             ['--centers', ctrs_f.name,
-             '--trajectories', trajectories[0],
+             '--trajectories', trajectories[0][0], trajectories[0][1],
              '--topology', topologies[0],
              '--atoms', '(name N or name C or name CA or name H or name O)',
-             '--trajectories', trajectories[1],
+             '--trajectories', trajectories[1][0], trajectories[1][1],
              '--topology', topologies[1],
              '--atoms', atoms])
 
@@ -125,8 +129,8 @@ def test_reassignment_function_memory():
 
 def test_reassignment_function_heterogenous():
 
-    xtc2 = os.path.join(cards.__path__[0], 'test_data', 'trj0.xtc')
-    top2 = os.path.join(cards.__path__[0], 'test_data', 'PROT_only.pdb')
+    xtc2 = os.path.join(TEST_DIR, 'cards_data', 'trj0.xtc')
+    top2 = os.path.join(TEST_DIR, 'cards_data', 'PROT_only.pdb')
 
     topologies = [get_fn('native.pdb'), top2]
     trajectories = [

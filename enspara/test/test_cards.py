@@ -14,10 +14,11 @@ import mdtraj as md
 from scipy.stats import pearsonr
 
 from .. import cards
-from .. import geometry
-from . import disorder
+from ..cards import disorder
 
-TEST_DATA_DIR = os.path.join(os.path.dirname(__file__), 'test_data')
+from .. import geometry
+
+TEST_DATA_DIR = os.path.join(os.path.dirname(__file__), 'cards_data')
 
 TOP = md.load(os.path.join(TEST_DATA_DIR, "PROT_only.pdb")).top
 TRJ = md.load(os.path.join(TEST_DATA_DIR, "trj0.xtc"), top=TOP)
@@ -43,6 +44,14 @@ def test_cards():
 
     with open(os.path.join(TEST_DATA_DIR, 'cards_ss_mi.dat'), 'r') as f:
         m = np.loadtxt(f)
+
+        # historically, MI matrices didn't have anything on the diagonal
+        # so our old integration test data has a zero diagonal.
+        ss_mi[np.diag_indices_from(ss_mi)] = 0
+        dis_mi[np.diag_indices_from(dis_mi)] = 0
+        s_d_mi[np.diag_indices_from(s_d_mi)] = 0
+        d_s_mi[np.diag_indices_from(d_s_mi)] = 0
+
         assert_allclose(ss_mi, m)
         assert_correlates(ss_mi, m)
     with open(os.path.join(TEST_DATA_DIR, 'cards_dis_mi.dat'), 'r') as f:

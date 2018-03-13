@@ -1,16 +1,19 @@
 import tempfile
+import warnings
 
-from nose.tools import assert_equal, assert_is
+from nose.tools import assert_equal, assert_is, raises
 from numpy.testing import assert_array_equal, assert_allclose
 
 import numpy as np
 import scipy.sparse
 
-from . import builders
-from .transition_matrices import assigns_to_counts, eigenspectrum, \
+from .. import exception
+
+from ..msm import builders
+from ..msm.transition_matrices import assigns_to_counts, eigenspectrum, \
    trim_disconnected, TrimMapping
-from .timescales import implied_timescales
-from .test_data import TRIMMABLE
+from ..msm.timescales import implied_timescales
+from .msm_data import TRIMMABLE
 
 # array types we want to guarantee support for
 ARR_TYPES = [
@@ -81,9 +84,11 @@ def test_implied_timescales():
 
     assert_allclose(tscales, expected, rtol=1e-03)
 
-    tscales = implied_timescales(
-        in_assigns, lag_times=range(1, 5), method=builders.transpose,
-        trim=False, n_times=3)
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        tscales = implied_timescales(
+            in_assigns, lag_times=range(1, 5), method=builders.transpose,
+            trim=False, n_times=3)
 
     assert_equal(tscales.shape, (4, 3))
 
@@ -126,6 +131,25 @@ def test_assigns_to_counts_negnums():
     expected = np.array([[1, 1, 1],
                          [1, 0, 1],
                          [1, 0, 0]])
+
+    assert_array_equal(counts.toarray(), expected)
+
+
+@raises(exception.DataInvalid)
+def test_assigns_to_counts_1d():
+    """assigns_to_counts handles 1d arrays gracefully
+    """
+
+    in_m = np.array(
+            [[0, 2,  0, -1],
+             [1, 2, -1, -1],
+             [1, 0,  0, 1]]).flatten()
+
+    counts = assigns_to_counts(in_m)
+
+    expected = np.array([[1, 2, 1],
+                         [1, 0, 1],
+                         [1, 1, 0]])
 
     assert_array_equal(counts.toarray(), expected)
 
@@ -212,7 +236,10 @@ def test_mle_types():
                 [[0, 2, 8],
                  [4, 2, 4],
                  [7, 3, 0]])
-            _, out_probs, _ = builders.mle(in_cts, **kwargs)
+
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                _, out_probs, _ = builders.mle(in_cts, **kwargs)
 
             assert_equal(
                 type(in_cts), type(out_probs),
@@ -288,3 +315,32 @@ def test_trim_disconnected():
 
         expected_mapping = TrimMapping([(0, 0), (1, 1)])
         assert_equal(mapping, expected_mapping)
+
+def test_prior_counts():
+
+    given = np.array(
+        [
+            [1, 2, 0, 0],
+            [2, 1, 0, 1],
+            [0, 0, 1, 0],
+            [0, 1, 0, 2]])
+
+    prior = 1
+    expected_counts = given + prior
+
+    calculated_counts, _, _ = builders.normalize(
+        given, prior_counts=prior, calculate_eq_probs=False)
+    assert_array_equal(calculated_counts, expected_counts)
+
+    calculated_counts, _, _ = builders.transpose(
+        given, prior_counts=prior, calculate_eq_probs=False)
+    assert_array_equal(calculated_counts, expected_counts)
+
+    rows,cols = np.nonzero(given)
+    data = given[rows,cols]
+    sparse_counts = scipy.sparse.coo_matrix(
+        (data, (rows, cols)), shape=given.shape)
+    calculated_counts, _, _ = builders.normalize(
+        sparse_counts, prior_counts=prior, calculate_eq_probs=False)
+    assert_array_equal(calculated_counts, expected_counts)
+

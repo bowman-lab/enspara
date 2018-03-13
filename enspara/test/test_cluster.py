@@ -1,23 +1,22 @@
 from __future__ import print_function, division, absolute_import
 
 import unittest
+import warnings
 
 import numpy as np
 import mdtraj as md
 from mdtraj.testing import get_fn
 
-from nose.tools import assert_raises, assert_less, assert_true, assert_is
+from nose.tools import (assert_raises, assert_less, assert_true, assert_is,
+                        assert_equal)
 from numpy.testing import assert_array_equal
 
-from .hybrid import KHybrid, hybrid
-from .kcenters import KCenters, kcenters
-from .kmedoids import kmedoids
-from .util import find_cluster_centers
+from ..cluster.hybrid import KHybrid, hybrid
+from ..cluster.kcenters import KCenters, kcenters
+from ..cluster.kmedoids import kmedoids
+from ..cluster.util import find_cluster_centers
 
 from ..exception import DataInvalid, ImproperlyConfigured
-
-import matplotlib
-matplotlib.use('TkAgg')  # req'd for some environments (esp. macOS).
 
 
 class TestTrajClustering(unittest.TestCase):
@@ -145,7 +144,7 @@ class TestTrajClustering(unittest.TestCase):
         results = [hybrid(
             self.trj,
             distance_method='rmsd',
-            init_cluster_centers=None,
+            init_centers=None,
             n_clusters=N_CLUSTERS,
             random_first_center=False,
             n_iters=100
@@ -162,7 +161,7 @@ class TestTrajClustering(unittest.TestCase):
         all_dists = np.concatenate([r.distances for r in results])
         assert_less(
             abs(np.average(all_dists) - 0.085),
-            0.011)
+            0.012)
 
         assert_less(
             abs(np.std(result.distances) - 0.0187),
@@ -172,7 +171,7 @@ class TestTrajClustering(unittest.TestCase):
         result = kcenters(
             self.trj,
             distance_method='rmsd',
-            init_cluster_centers=None,
+            init_centers=None,
             dist_cutoff=0.1,
             random_first_center=False
             )
@@ -193,7 +192,7 @@ class TestTrajClustering(unittest.TestCase):
             self.trj,
             distance_method='rmsd',
             n_clusters=N_CLUSTERS,
-            init_cluster_centers=None,
+            init_centers=None,
             random_first_center=False
             )
 
@@ -243,7 +242,7 @@ class TestNumpyClustering(unittest.TestCase):
 
     def test_predict(self):
 
-        from .util import ClusterResult
+        from ..cluster.util import ClusterResult
 
         centers = np.array(self.generators, dtype='float64')
 
@@ -271,7 +270,25 @@ class TestNumpyClustering(unittest.TestCase):
 
         assert_is(predict_result.centers, centers)
 
-    def test_hybrid(self):
+    def test_kcenters_hot_start(self):
+
+        clust = KCenters('euclidean', cluster_radius=6)
+
+        clust.fit(
+            X=np.concatenate(self.traj_lst),
+            init_centers=np.array(self.generators[0:2], dtype=float))
+
+        print(clust.result_.center_indices, len(clust.result_.center_indices))
+
+        assert_equal(len(clust.result_.center_indices), 3)
+        assert_equal(len(np.unique(clust.result_.center_indices)),
+                     np.max(clust.result_.assignments)+1)
+
+        # because two centers were generators, only one center
+        # should actually be a frame
+        assert_equal(len(np.where(clust.result_.distances == 0)), 1)
+
+    def test_numpy_hybrid(self):
         N_CLUSTERS = 3
 
         result = hybrid(
@@ -284,43 +301,46 @@ class TestNumpyClustering(unittest.TestCase):
 
         assert len(result.center_indices) == N_CLUSTERS
 
-        centers = np.concatenate(find_cluster_centers(
-            np.concatenate(self.traj_lst), result.distances))
+        centers = find_cluster_centers(result.assignments, result.distances)
+        self.check_generators(
+            np.concatenate(self.traj_lst)[centers], distance=4.0)
 
-        self.check_generators(centers, distance=4.0)
-
-    def test_kcenters(self):
+    def test_numpy_kcenters(self):
         result = kcenters(
             np.concatenate(self.traj_lst),
             distance_method='euclidean',
             n_clusters=3,
             dist_cutoff=2,
-            init_cluster_centers=None,
+            init_centers=None,
             random_first_center=False)
 
-        centers = np.concatenate(find_cluster_centers(
-            np.concatenate(self.traj_lst), result.distances))
+        centers = find_cluster_centers(result.assignments, result.distances)
+        self.check_generators(
+            np.concatenate(self.traj_lst)[centers], distance=4.0)
 
-        self.check_generators(centers, distance=4.0)
-
-    def test_kmedoids(self):
+    def test_numpy_kmedoids(self):
         N_CLUSTERS = 3
 
         result = kmedoids(
             np.concatenate(self.traj_lst),
             distance_method='euclidean',
             n_clusters=N_CLUSTERS,
-            n_iters=10000)
+            n_iters=1000)
 
         assert len(np.unique(result.assignments)) == N_CLUSTERS
         assert len(result.center_indices) == N_CLUSTERS
 
-        centers = np.concatenate(find_cluster_centers(
-            np.concatenate(self.traj_lst), result.distances))
-
-        self.check_generators(centers, distance=2.0)
+        centers = find_cluster_centers(result.assignments, result.distances)
+        self.check_generators(
+            np.concatenate(self.traj_lst)[centers], distance=4.0)
 
     def check_generators(self, centers, distance):
+
+        import matplotlib
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            # req'd for some environments (esp. macOS).
+            matplotlib.use('TkAgg')
 
         try:
             for c in centers:

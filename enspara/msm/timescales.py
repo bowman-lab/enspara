@@ -21,13 +21,14 @@ logger.setLevel(logging.INFO)
 
 def calc_imp_times(assigns, lag_time, n_states, n_times, method,
                    sliding_window, trim):
-    '''Helper function to implied_timescales--this is the embarassingly
-    parallel part. This function computes an individual eigenspectrum
+    """Embarassingly parallel part of the implied timescales plotting
+    system. This function function computes an individual eigenspectrum
     for a specific lag time.
-    '''
+    """
+
     C = assigns_to_counts(
         assigns,
-        n_states=n_states,
+        max_n_states=n_states,
         lag_time=lag_time,
         sliding_window=sliding_window)
 

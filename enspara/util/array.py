@@ -1,11 +1,25 @@
+import time
 import logging
 import collections
 import itertools
 import numpy as np
 import copy
+import tables
+import resource
 
 from mdtraj import io
 from ..exception import DataInvalid, ImproperlyConfigured
+
+logger = logging.getLogger(__name__)
+
+
+def zeros_like(array, *args, **kwargs):
+
+    if hasattr(array, '_data'):
+        flat_arr = np.zeros_like(array._data)
+        return RaggedArray(array=flat_arr, lengths=array.lengths)
+    else:
+        return np.zeros_like(array)
 
 
 def where(mask):
@@ -27,6 +41,19 @@ def where(mask):
 
 
 def save(output_name, ragged_array):
+    """Save a RaggedArray or numpy ndarray to disk as an HDF5 file.
+
+    Parameters
+    ----------
+    output_name : str
+        Path of file to write out.
+    ragged_array : np.ndarray, RaggedArray
+        Array to write to disk.
+
+    See Also
+    --------
+    mdtraj.io.saveh
+    """
 
     try:
         io.saveh(
@@ -50,51 +77,83 @@ def load(input_name, keys=None):
         If this option is specified, the ragged array is built from this
         list of keys, each of which are assumed to be a row of the final
         ragged array. An ellipsis can be provided to indicate all keys.
+
+    Returns
+    -------
+    ra : RaggedArray
+        A ragged array from disk.
     """
 
-    ragged_load = io.loadh(input_name)
+    with tables.open_file(input_name) as handle:
+        if keys is None:
+            if '/lengths' in handle:
+                return RaggedArray(
+                    handle.get_node('/array')[:],
+                    lengths=handle.get_node('/lengths'))
+            else:
+                return handle.get_node('/arr_0')[:]
+        else:
+            if keys is Ellipsis:
+                keys = [k.name for k in handle.list_nodes('/')]
 
-    if keys is None:
-        try:
-            return RaggedArray(
-                ragged_load['array'], lengths=ragged_load['lengths'])
-        except KeyError:
-            return ragged_load['arr_0']
-    else:
-        if keys is Ellipsis:
-            keys = ragged_load.keys()
+            logger.debug('Loading keys %s into RA', keys)
 
-        shapes = [ragged_load._handle.get_node(where='/', name=k).shape
-                  for k in ragged_load.keys()]
+            shapes = [handle.get_node(where='/', name=k).shape
+                      for k in keys]
 
-        if not all(len(shapes[0]) == len(shape) for shape in shapes):
-            raise DataInvalid(
-                "Loading a RaggedArray using HDF5 file keys requires that all "
-                "input arrays have the same dimension. Got shapes: %s"
-                % shapes)
-        for dim in range(1, len(shapes[0])):
-            if not all(shapes[0][dim] == shape[dim] for shape in shapes):
+            if not all(len(shapes[0]) == len(shape) for shape in shapes):
                 raise DataInvalid(
-                    "Loading a RaggedArray using HDF5 file keys requires that "
-                    "all input arrays share nonragged dimensions. Dimension "
-                    "%s didnt' match. Got shapes: %s" % (dim, shapes))
+                    "Loading a RaggedArray using HDF5 file keys requires "
+                    "that all  input arrays have the same dimension. Got "
+                    "shapes: %s" % shapes)
+            for dim in range(1, len(shapes[0])):
+                if not all(shapes[0][dim] == shape[dim] for shape in shapes):
+                    raise DataInvalid(
+                        "Loading a RaggedArray using HDF5 file keys requires "
+                        "that all input arrays share nonragged dimensions. "
+                        " Dimension  %s didn't match. Got shapes: %s"
+                        % (dim, shapes))
 
-        lengths = [shape[0] for shape in shapes]
-        first_shape = ragged_load[ragged_load.keys()[0]].shape
+            lengths = [shape[0] for shape in shapes]
+            first_shape = shapes[0]
 
-        concat_shape = list(first_shape)
-        concat_shape[0] = sum(lengths)
+            concat_shape = list(first_shape)
+            concat_shape[0] = sum(lengths)
+            dtype = handle.get_node(where='/', name=keys[0]).dtype
+            if not all([dtype == handle.get_node(where='/', name=k).dtype
+                        for k in keys]):
+                raise DataInvalid(
+                    "Can't load keys in %s because the keys didn't have all "
+                    "the same dtype. Keys were: %s" % (dtype, keys))
 
-        concat = np.zeros(concat_shape)
+            logger.debug('Allocating array of shape %s.', concat_shape)
+            tick = time.perf_counter()
+            concat = np.zeros(concat_shape, dtype=dtype)
+            tock = time.perf_counter()
+            logger.debug('Allocated %.3f MB in %.2f min.',
+                         concat.data.nbytes / 1024**2, tock-tick)
 
-        start = 0
-        for key in ragged_load.keys():
-            arr = ragged_load[key]
-            end = start + len(arr)
-            concat[start:end] = arr
-            start = end
+            logger.debug(
+                'Filling array with %s blocks with memory overhead of %.3f GB',
+                len(keys),
+                resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024**2)
+            tick = time.perf_counter()
+            start = 0
+            for key in keys:
+                node = handle.get_node(where='/', name=key)
+                end = start + len(node)
+                node.read(out=concat[start:end])
+                start = end
 
-        return RaggedArray(array=concat, lengths=lengths)
+            tock = time.perf_counter()
+            logger.debug(
+                'Filled RaggedArray in %.3f min with %.3f GB memory overhead.',
+                tock-tick,
+                resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024**2)
+            tick = time.perf_counter()
+
+            handle.close()
+            return RaggedArray(array=concat, lengths=lengths)
 
 
 def partition_indices(indices, traj_lengths):
@@ -378,7 +437,7 @@ class RaggedArray(object):
         if error_checking is True:
             array = np.array(list(array))
             if len(array) > 20000:
-                logging.warning(
+                logger.warning(
                     "error checking is turned off for ragged arrays "
                     "with first dimension greater than 20000")
             else:
@@ -638,8 +697,12 @@ class RaggedArray(object):
         if type(other) is type(self):
             other = other._data
         new_data = getattr(self._data, operator)(other)
-        return RaggedArray(
-            array=new_data, lengths=self.lengths, error_checking=False)
+
+        if new_data is NotImplemented:
+            return NotImplemented
+        else:
+            return RaggedArray(array=new_data, lengths=self.lengths,
+                               error_checking=False)
 
     # Non-built in functions
     def all(self):
@@ -653,6 +716,10 @@ class RaggedArray(object):
 
     def min(self):
         return self._data.min()
+
+    @property
+    def size(self):
+        return self._data.size
 
     def append(self, values):
         # if the incoming values is a RaggedArray, pull just the array
@@ -681,4 +748,3 @@ class RaggedArray(object):
 
     def flatten(self):
         return self._data.flatten()
-
