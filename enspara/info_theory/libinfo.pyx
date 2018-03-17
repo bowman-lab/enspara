@@ -48,11 +48,14 @@ def bincount2d(
 @cython.wraparound(False) 
 def matrix_bincount2d_symmetrical(INTEGRAL_2D_ARRAY a, int n):
 
-    # this guy is holding our joint counts, so max out the capacity of the cells
-    cdef np.ndarray[np.int64_t, ndim=4] jc = np.zeros((a.shape[1], a.shape[1], n, n),
-                                                      dtype=np.int64)
+    # this guy is holding our joint counts, so this will top out at
+    # ~4 billion timepoints
+    assert a.shape[1] < 2**32
+    
+    cdef np.ndarray[np.uint32_t, ndim=4] jc = np.zeros(
+        (a.shape[1], a.shape[1], n, n), dtype=np.uint32)
 
-    cdef long a_row, b_row, i, j, t, k
+    cdef long a_row, b_row, i, j, t, k = 0
     cdef long n_features = a.shape[1]
     cdef long n_coords = int(((n_features)*(n_features+1))/2)
 
