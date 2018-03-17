@@ -1,5 +1,10 @@
+import platform
+import os
+
 from distutils.core import setup
+from distutils.extension import Extension
 from Cython.Build import cythonize
+
 
 import numpy as np
 
@@ -19,11 +24,23 @@ CLASSIFIERS = [
     "Operating System :: MacOS",
 ]
 
+# this probably won't work for everyone. Works for me, though!
+# they'll need gcc 7 installed. Unfortunately, I don't have any idea how
+# to detect local c compilers. :/
+if 'darwin' in platform.system().lower():
+    os.environ["CC"] = "gcc-7"
+    os.environ["CXX"] = "gcc-7"
+
 # build cython with `python setup.py build_ext --inplace`
 
 cython_extensions = [
-    "enspara/info_theory/libinfo.pyx"
-]
+    Extension(
+        "enspara.info_theory.libinfo",
+        ["enspara/info_theory/libinfo.pyx"],
+        extra_compile_args=['-fopenmp'],
+        extra_link_args=['-fopenmp'],
+        )
+    ]
 
 setup(
     name='enspara',
