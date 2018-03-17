@@ -49,14 +49,16 @@ def bincount2d(
 def matrix_bincount2d_symmetrical(INTEGRAL_2D_ARRAY a, int n):
 
     # this guy is holding our joint counts, so max out the capacity of the cells
-    cdef np.ndarray[np.int64_t, ndim=4] jc = np.zeros((a.shape[1], a.shape[1], n, n))
+    cdef np.ndarray[np.int64_t, ndim=4] jc = np.zeros((a.shape[1], a.shape[1], n, n),
+                                                      dtype=np.int64)
 
     cdef long a_row, b_row, i, j, t, k
     cdef long n_features = a.shape[1]
     cdef long n_coords = int(((n_features)*(n_features+1))/2)
 
     # assemble an array of half-matrix coordinates
-    cdef np.ndarray[np.int32_t, ndim=2] coords = np.zeros((n_coords, 2))
+    cdef np.ndarray[np.int32_t, ndim=2] coords = np.empty((n_coords, 2),
+                                                          dtype=np.int32)
 
     k = 0
     for i in range(n_features):
