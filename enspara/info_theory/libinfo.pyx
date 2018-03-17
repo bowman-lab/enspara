@@ -4,15 +4,35 @@ from cython.parallel import prange
 cimport numpy as np
 cimport cython
 
-DTYPE = np.int
-ctypedef np.int_t DTYPE_t
+
+ctypedef fused INTEGRAL_2D_ARRAY:
+    np.ndarray[np.int8_t, ndim=2]
+    np.ndarray[np.int16_t, ndim=2]
+    np.ndarray[np.int32_t, ndim=2]
+    np.ndarray[np.int64_t, ndim=2]
+    np.ndarray[np.uint8_t, ndim=2]
+    np.ndarray[np.uint16_t, ndim=2]
+    np.ndarray[np.uint32_t, ndim=2]
+    np.ndarray[np.uint64_t, ndim=2]
+
+ctypedef fused INTEGRAL_1D_ARRAY:
+    np.ndarray[np.int8_t, ndim=1]
+    np.ndarray[np.int16_t, ndim=1]
+    np.ndarray[np.int32_t, ndim=1]
+    np.ndarray[np.int64_t, ndim=1]
+    np.ndarray[np.uint8_t, ndim=1]
+    np.ndarray[np.uint16_t, ndim=1]
+    np.ndarray[np.uint32_t, ndim=1]
+    np.ndarray[np.uint64_t, ndim=1]
+
+
 
 @cython.boundscheck(False)
 def bincount2d(
-        np.ndarray[DTYPE_t, ndim=1] a, np.ndarray[DTYPE_t, ndim=1] b,
+        INTEGRAL_1D_ARRAY a, INTEGRAL_1D_ARRAY b,
         int n_a, int n_b):
 
-    cdef np.ndarray[DTYPE_t, ndim=2] H = np.zeros((n_a, n_b), dtype=DTYPE)
+    cdef np.ndarray[np.int64_t, ndim=2] H = np.zeros((n_a, n_b))
     cdef unsigned int i, j, t
     assert a.shape[0] == b.shape[0]
     
@@ -25,15 +45,18 @@ def bincount2d(
 
 
 @cython.boundscheck(False)
-def matrix_bincount2d_symmetrical(np.ndarray[DTYPE_t, ndim=2] a, int n):
-   
-    cdef np.ndarray[DTYPE_t, ndim=4] jc = np.zeros((a.shape[1], a.shape[1], n, n), dtype=DTYPE)
+@cython.wraparound(False) 
+def matrix_bincount2d_symmetrical(INTEGRAL_2D_ARRAY a, int n):
+
+    # this guy is holding our joint counts, so max out the capacity of the cells
+    cdef np.ndarray[np.int64_t, ndim=4] jc = np.zeros((a.shape[1], a.shape[1], n, n))
+
     cdef long a_row, b_row, i, j, t, k
-    cdef unsigned int n_features = a.shape[1]
-    cdef unsigned int n_coords = int(((n_features)*(n_features+1))/2)
+    cdef long n_features = a.shape[1]
+    cdef long n_coords = int(((n_features)*(n_features+1))/2)
 
     # assemble an array of half-matrix coordinates
-    cdef np.ndarray[DTYPE_t, ndim=2] coords = np.zeros((n_coords, 2), dtype=DTYPE)
+    cdef np.ndarray[np.int32_t, ndim=2] coords = np.zeros((n_coords, 2))
 
     k = 0
     for i in range(n_features):
@@ -43,8 +66,6 @@ def matrix_bincount2d_symmetrical(np.ndarray[DTYPE_t, ndim=2] a, int n):
             k += 1
         
     k = 0
-
-    assert a.shape[0] == a.shape[0]
 
     for k in prange(n_coords, nogil=True):
         a_row = coords[k, 0]
