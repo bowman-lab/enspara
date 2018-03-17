@@ -400,7 +400,15 @@ def _make_shared_array(in_arr, dtype):
             "Mutual information calculations require discretized state "
             "trajectories." % in_arr.dtype)
 
-    arr = mp.Array(dtype, in_arr.size, lock=False)
+    try:
+        arr = mp.Array(dtype, in_arr.size, lock=False)
+    except:
+        logger.error(
+            "Multiprocessing's Array failed to allocate an array of size "
+            "%s of dtype %s. Typically this means /dev/shm or similar "
+            "is full or too small.", in_arr.size, dtype)
+        raise
+
     arr[:] = in_arr.flatten()
 
     return arr
