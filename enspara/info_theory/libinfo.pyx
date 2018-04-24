@@ -26,14 +26,14 @@ ctypedef fused INTEGRAL_1D_ARRAY:
     np.ndarray[np.uint64_t, ndim=1]
 
 
-
 @cython.boundscheck(False)
 def bincount2d(
         INTEGRAL_1D_ARRAY a, INTEGRAL_1D_ARRAY b,
         int n_a, int n_b):
 
-    cdef np.ndarray[np.int64_t, ndim=2] H = np.zeros((n_a, n_b))
+    cdef np.ndarray[np.uint32_t, ndim=2] H = np.zeros((n_a, n_b), dtype=np.uint32)
     cdef unsigned int i, j, t
+
     assert a.shape[0] == b.shape[0]
     
     for t in range(a.shape[0]):

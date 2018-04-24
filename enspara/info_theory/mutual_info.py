@@ -460,7 +460,7 @@ def joint_counts(state_traj_1, state_traj_2,
         n_states_2 = state_traj_2.max()+1
 
     H = libinfo.bincount2d(
-        state_traj_1.astype('int'), state_traj_2.astype('int'),
+        state_traj_1, state_traj_2,
         n_states_1, n_states_2)
 
     return H
