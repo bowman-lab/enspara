@@ -6,6 +6,7 @@ import numpy as np
 import copy
 import tables
 import resource
+import warnings
 
 from mdtraj import io
 from ..exception import DataInvalid, ImproperlyConfigured
@@ -104,7 +105,7 @@ def load(input_name, keys=None):
             if not all(len(shapes[0]) == len(shape) for shape in shapes):
                 raise DataInvalid(
                     "Loading a RaggedArray using HDF5 file keys requires "
-                    "that all  input arrays have the same dimension. Got "
+                    "that all input arrays have the same dimension. Got "
                     "shapes: %s" % shapes)
             for dim in range(1, len(shapes[0])):
                 if not all(shapes[0][dim] == shape[dim] for shape in shapes):
@@ -134,7 +135,8 @@ def load(input_name, keys=None):
                          concat.data.nbytes / 1024**2, tock-tick)
 
             logger.debug(
-                'Filling array with %s blocks with memory overhead of %.3f GB',
+                'Filling array with %s blocks with initial memory '
+                'footprint of %.3f GB',
                 len(keys),
                 resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024**2)
             tick = time.perf_counter()
@@ -148,7 +150,7 @@ def load(input_name, keys=None):
             tock = time.perf_counter()
             logger.debug(
                 'Filled RaggedArray in %.3f min with %.3f GB memory overhead.',
-                tock-tick,
+                (tock-tick) / 60,
                 resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024**2)
             tick = time.perf_counter()
 
