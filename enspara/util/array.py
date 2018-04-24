@@ -153,7 +153,7 @@ def load(input_name, keys=None):
             tick = time.perf_counter()
 
             handle.close()
-            return RaggedArray(array=concat, lengths=lengths)
+            return RaggedArray(array=concat, lengths=lengths, copy=False)
 
 
 def partition_indices(indices, traj_lengths):
