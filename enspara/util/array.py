@@ -432,7 +432,7 @@ class RaggedArray(object):
 
     __slots__ = ('_data', '_array', 'lengths')
 
-    def __init__(self, array, lengths=None, error_checking=True):
+    def __init__(self, array, lengths=None, error_checking=True, copy=True):
         # Check that input is proper (array of arrays)
         if error_checking is True:
             array = np.array(list(array))
@@ -442,14 +442,23 @@ class RaggedArray(object):
                     "with first dimension greater than 20000")
             else:
                 _ensure_ragged_data(array)
-        # concatenate data if list of lists
+
+        # prepare self._data
         if (len(array) > 0) and (lengths is None):
+            logger.debug("Interpreting array as list/array of lists/arrays.")
             if _is_iterable(array[0]):
+                if not copy:
+                    warnings.warn(
+                        "Can't create a view into %s, copying anyway." %
+                        type(array), RuntimeWarning)
                 self._data = np.concatenate(array)
             else:
-                self._data = np.array(array)
+                self._data = np.array(array, copy=copy)
         elif len(array) > 0:
-            self._data = np.array(array)
+            logger.debug("Interpreting array as concatenated array.")
+            self._data = np.array(array, copy=copy)
+
+        # Prepare with _array
         # new array greater with >0 elements
         if (lengths is None) and (len(array) > 0):
             # array of arrays
