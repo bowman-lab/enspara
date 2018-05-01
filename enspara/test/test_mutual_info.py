@@ -201,11 +201,9 @@ def test_joint_count_binning():
                             [0, 6, 0]])
 
     jc = mutual_info.joint_counts(trj1, trj2)
-    assert_equal(jc.dtype, 'int')
     assert_array_equal(jc, expected_jc)
 
     jc = mutual_info.joint_counts(trj1, trj2, 3, 3)
-    assert_equal(jc.dtype, 'int')
     assert_array_equal(jc, expected_jc)
 
 
