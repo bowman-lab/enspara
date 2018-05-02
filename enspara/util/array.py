@@ -6,6 +6,7 @@ import numpy as np
 import copy
 import tables
 import resource
+import warnings
 
 from mdtraj import io
 from ..exception import DataInvalid, ImproperlyConfigured
@@ -104,7 +105,7 @@ def load(input_name, keys=None):
             if not all(len(shapes[0]) == len(shape) for shape in shapes):
                 raise DataInvalid(
                     "Loading a RaggedArray using HDF5 file keys requires "
-                    "that all  input arrays have the same dimension. Got "
+                    "that all input arrays have the same dimension. Got "
                     "shapes: %s" % shapes)
             for dim in range(1, len(shapes[0])):
                 if not all(shapes[0][dim] == shape[dim] for shape in shapes):
@@ -134,7 +135,8 @@ def load(input_name, keys=None):
                          concat.data.nbytes / 1024**2, tock-tick)
 
             logger.debug(
-                'Filling array with %s blocks with memory overhead of %.3f GB',
+                'Filling array with %s blocks with initial memory '
+                'footprint of %.3f GB',
                 len(keys),
                 resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024**2)
             tick = time.perf_counter()
@@ -148,12 +150,12 @@ def load(input_name, keys=None):
             tock = time.perf_counter()
             logger.debug(
                 'Filled RaggedArray in %.3f min with %.3f GB memory overhead.',
-                tock-tick,
+                (tock-tick) / 60,
                 resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024**2)
             tick = time.perf_counter()
 
             handle.close()
-            return RaggedArray(array=concat, lengths=lengths)
+            return RaggedArray(array=concat, lengths=lengths, copy=False)
 
 
 def partition_indices(indices, traj_lengths):
@@ -432,7 +434,7 @@ class RaggedArray(object):
 
     __slots__ = ('_data', '_array', 'lengths')
 
-    def __init__(self, array, lengths=None, error_checking=True):
+    def __init__(self, array, lengths=None, error_checking=True, copy=True):
         # Check that input is proper (array of arrays)
         if error_checking:
             array = np.array(list(array))
@@ -445,14 +447,23 @@ class RaggedArray(object):
                         "with first dimension greater than 20000")
             else:
                 _ensure_ragged_data(array)
-        # concatenate data if list of lists
+
+        # prepare self._data
         if (len(array) > 0) and (lengths is None):
+            logger.debug("Interpreting array as list/array of lists/arrays.")
             if _is_iterable(array[0]):
+                if not copy:
+                    warnings.warn(
+                        "Can't create a view into %s, copying anyway." %
+                        type(array), RuntimeWarning)
                 self._data = np.concatenate(array)
             else:
-                self._data = np.array(array)
+                self._data = np.array(array, copy=copy)
         elif len(array) > 0:
-            self._data = np.array(array)
+            logger.debug("Interpreting array as concatenated array.")
+            self._data = np.array(array, copy=copy)
+
+        # Prepare with _array
         # new array greater with >0 elements
         if (lengths is None) and (len(array) > 0):
             # array of arrays
