@@ -219,8 +219,7 @@ def _kcenters_helper(
     return cluster_center_inds, assignments, distances
 
 
-def kcenters_mpi(traj, distance_method, n_clusters=np.inf, dist_cutoff=0,
-                 indexing='auto'):
+def kcenters_mpi(traj, distance_method, n_clusters=np.inf, dist_cutoff=0):
     """KCenters implementation for MPI.
 
     In this function, `traj` is assumed to be only a subset of the data
