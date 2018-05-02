@@ -15,12 +15,18 @@ import mdtraj as md
 
 from sklearn.externals.joblib import Parallel, delayed
 
+logging.basicConfig(
+    level=logging.INFO,
+    format=('%(asctime)s %(name)-8s %(levelname)-7s %(message)s'),
+    datefmt='%m-%d-%Y %H:%M:%S')
+
 from enspara import exception
 
 from enspara.cluster.util import assign_to_nearest_center, partition_list
 from enspara.util.load import (concatenate_trjs, sound_trajectory,
                                load_as_concatenated)
 from enspara.util import array as ra
+from enspara.util.log import timed
 
 
 logger = logging.getLogger(__name__)
@@ -36,7 +42,7 @@ def process_command_line(argv):
 
     parser.add_argument(
         '--centers', required=True,
-        help="The centers to use for reassignment.")
+        help="Center structures (as a pickle) to use for reassignment.")
     parser.add_argument(
         '--trajectories', required=True, nargs="+", action='append',
         help="The aligned xtc files to cluster.")
@@ -146,15 +152,16 @@ def batch_reassign(targets, centers, lengths, frac_mem, n_procs=None):
 
     for i, batch_indices in enumerate(batches):
         tick = time.perf_counter()
-        logger.info("Starting batch %s of %s", i, len(batches))
+        logger.info("Starting batch %s of %s", i+1, len(batches))
         batch_targets = [targets[i] for i in batch_indices]
 
-        batch_lengths, xyz = load_as_concatenated(
-            [tfile for tfile, top, aids in batch_targets],
-            lengths=[lengths[i] for i in batch_indices],
-            args=[{'top': top, 'atom_indices': aids}
-                  for t, top, aids in batch_targets],
-            processes=n_procs)
+        with timed("Loaded frames for batch in %.1f seconds", logger.info):
+            batch_lengths, xyz = load_as_concatenated(
+                [tfile for tfile, top, aids in batch_targets],
+                lengths=[lengths[i] for i in batch_indices],
+                args=[{'top': top, 'atom_indices': aids}
+                      for t, top, aids in batch_targets],
+                processes=n_procs)
 
         # mdtraj loads as float32, and load_as_concatenated should thus
         # also load as float32. This should _never_ be hit, but there might be
@@ -163,21 +170,18 @@ def batch_reassign(targets, centers, lengths, frac_mem, n_procs=None):
 
         trj = md.Trajectory(xyz, topology=example_center.top)
 
-        t_center_0 = time.perf_counter()
-        trj.center_coordinates()
-        logger.debug("Precentered trajectories in %.1f seconds",
-                     time.perf_counter() - t_center_0)
+        with timed("Precentered trajectories in %.1f seconds", logger.debug):
+            trj.center_coordinates()
 
-        t_assign_0 = time.perf_counter()
-        batch_assignments, batch_distances = assign_to_nearest_center(
-                trj, centers, partial(md.rmsd, precentered=True))
-        logger.debug("Assigned trajectories in %.1f seconds",
-                     time.perf_counter() - t_assign_0)
+        with timed("Assigned trajectories in %.1f seconds", logger.debug):
+            batch_assignments, batch_distances = assign_to_nearest_center(
+                    trj, centers, partial(md.rmsd, precentered=True))
 
         # clear memory of xyz and trj to allow cleanup to deallocate
         # these large arrays; may help with memory high-water mark
-        xyz_size = xyz.size
-        del trj, xyz
+        with timed("Cleared array from memory in %.1f seconds", logger.debug):
+            xyz_size = xyz.size
+            del trj, xyz
 
         assignments.extend(partition_list(batch_assignments, batch_lengths))
         distances.extend(partition_list(batch_distances, batch_lengths))
@@ -221,35 +225,31 @@ def reassign(topologies, trajectories, atoms, centers, frac_mem=0.9,
     for c in centers:
         c.center_coordinates()
 
-    tick = time.perf_counter()
+    with timed("Reassignment took %.1f seconds.", logger.info):
+        # build flat list of targets
+        targets = []
+        for topfile, trjfiles, atoms in zip(topologies, trajectories, atoms):
+            t = md.load(topfile).top
+            atom_ids = t.select(atoms)
+            for trjfile in trjfiles:
+                assert os.path.exists(trjfile)
+                targets.append((trjfile, t, atom_ids))
 
-    # build flat list of targets
-    targets = []
-    for topfile, trjfiles, atoms in zip(topologies, trajectories, atoms):
-        t = md.load(topfile).top
-        atom_ids = t.select(atoms)
-        for trjfile in trjfiles:
-            assert os.path.exists(trjfile)
-            targets.append((trjfile, t, atom_ids))
+        # determine trajectory length
+        tick_sounding = time.perf_counter()
+        logger.info("Sounding dataset of %s trajectories and %s topologies.",
+                    sum(len(t) for t in trajectories), len(topologies))
 
-    # determine trajectory length
-    tick_sounding = time.perf_counter()
-    logger.info("Sounding dataset of %s trajectories and %s topologies.",
-                sum(len(t) for t in trajectories), len(topologies))
+        lengths = Parallel(n_jobs=n_procs)(
+            delayed(sound_trajectory)(f) for f, _, _ in targets)
 
-    lengths = Parallel(n_jobs=n_procs)(
-        delayed(sound_trajectory)(f) for f, _, _ in targets)
+        logger.info("Sounded %s trajectories with %s frames (median length "
+                    "%i frames) in %.1f seconds.",
+                    len(lengths), sum(lengths), np.median(lengths),
+                    time.perf_counter() - tick_sounding)
 
-    logger.info("Sounded %s trajectories with %s frames (median length "
-                "%i frames) in %.1f seconds.",
-                len(lengths), sum(lengths), np.median(lengths),
-                time.perf_counter() - tick_sounding)
-
-    assignments, distances = batch_reassign(
-        targets, centers, lengths, frac_mem=frac_mem, n_procs=n_procs)
-
-    tock = time.perf_counter()
-    logger.info("Reassignment took %.1f seconds.", tock - tick)
+        assignments, distances = batch_reassign(
+            targets, centers, lengths, frac_mem=frac_mem, n_procs=n_procs)
 
     if all([len(assignments[0]) == len(a) for a in assignments]):
         logger.info("Trajectory lengths are homogenous. Output will "

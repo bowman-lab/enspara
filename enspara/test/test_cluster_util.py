@@ -1,14 +1,16 @@
 import numpy as np
 import mdtraj as md
 
-from nose.tools import timed, assert_equal, assert_is, assert_is_not
+from nose.tools import assert_is, assert_is_not, assert_equal
+from nose.plugins.attrib import attr
+
 from mdtraj.testing import get_fn
 from numpy.testing import assert_array_equal, assert_allclose
 
-from enspara.cluster.util import (find_cluster_centers, ClusterResult,
-                                  assign_to_nearest_center)
+from enspara.cluster import util
 from enspara.util import array as ra
 
+from .. import mpi
 from ..cluster import save_states
 
 
@@ -19,7 +21,7 @@ def test_ClusterResult_partition_np():
     concat_dists = [0.2]*20 + [0.3]*20 + [0.4]*20
     concat_ctr_inds = [3, 23, 43]
 
-    concat_rslt = ClusterResult(
+    concat_rslt = util.ClusterResult(
         assignments=concat_assigs,
         distances=concat_dists,
         center_indices=concat_ctr_inds,
@@ -48,7 +50,7 @@ def test_ClusterResult_partition_ra():
     concat_dists = [0.2]*10 + [0.3]*20 + [0.4]*100
     concat_ctr_inds = [3, 23, 103]
 
-    concat_rslt = ClusterResult(
+    concat_rslt = util.ClusterResult(
         assignments=concat_assigs,
         distances=concat_dists,
         center_indices=concat_ctr_inds,
@@ -94,7 +96,7 @@ def test_assign_to_nearest_center_few_centers():
     trj = md.load(get_fn('frame0.xtc'), top=get_fn('native.pdb'))
     center_frames = [0, int(len(trj)/3), int(len(trj)/2)]
 
-    assigns, distances = assign_to_nearest_center(
+    assigns, distances = util.assign_to_nearest_center(
         trj, trj[center_frames], md.rmsd)
 
     alldists = np.zeros((len(center_frames), len(trj)))
@@ -113,7 +115,7 @@ def test_assign_to_nearest_center_many_centers():
     trj = md.load(get_fn('frame0.xtc'), top=get_fn('native.pdb'))
     center_frames = list(range(len(trj)))*2
 
-    assigns, distances = assign_to_nearest_center(
+    assigns, distances = util.assign_to_nearest_center(
         trj, trj[center_frames], md.rmsd)
 
     alldists = np.zeros((len(center_frames), len(trj)))
@@ -129,6 +131,6 @@ def test_find_cluster_centers_ndarray():
     d = np.array([0.2, 0.1, 0.1, 0.2])
     a = np.array([1, 1, 7, 7])
 
-    ctrs = find_cluster_centers(assignments=a, distances=d)
+    ctrs = util.find_cluster_centers(assignments=a, distances=d)
 
     assert_array_equal(ctrs, [1, 2])

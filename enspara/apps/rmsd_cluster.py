@@ -12,13 +12,19 @@ from multiprocessing import cpu_count
 
 import mdtraj as md
 
+logging.basicConfig(
+    level=logging.INFO,
+    format=('%(asctime)s %(name)-8s %(levelname)-7s %(message)s'),
+    datefmt='%m-%d-%Y %H:%M:%S')
+
 from enspara.apps.reassign import reassign
 from enspara.apps.util import readable_dir
 
 from enspara.cluster import KHybrid, KCenters
 from enspara.util import array as ra
-from enspara.cluster.util import load_frames
 from enspara.util import load_as_concatenated
+from enspara.util.log import timed
+from enspara.cluster.util import load_frames
 from enspara import exception
 
 
@@ -61,8 +67,12 @@ def process_command_line(argv):
              "once for each different topology (i.e. the number of "
              "times --trajectories and --topology was specified.)")
     parser.add_argument(
-        '--rmsd-cutoff', required=True, type=float,
-        help="The RMSD cutoff to determine cluster size. Units: nm.")
+        '--rmsd-cutoff', default=None, type=float,
+        help="Produce clusters with a maximum distance to cluster "
+             "center of this value.. Units: nm.")
+    parser.add_argument(
+        '--n-clusters', default=None, type=int,
+        help="Produce at least this number of clusters.")
     parser.add_argument(
         '--processes', default=cpu_count(), type=int,
         help="Number processes to use for loading and clustering.")
@@ -88,6 +98,11 @@ def process_command_line(argv):
 
     args = parser.parse_args(argv[1:])
 
+    if args.rmsd_cutoff is None and args.n_clusters is None:
+        raise exception.ImproperlyConfigured(
+            "At least one of --rmsd-cutoff and --n-clusters is "
+            "required to cluster.")
+
     if len(args.atoms) == 1:
         args.atoms = args.atoms * len(args.trajectories)
     elif len(args.atoms) != len(args.trajectories):
@@ -109,7 +124,7 @@ def process_command_line(argv):
         args.subsample = 1
 
     if args.no_reassign and args.subsample == 1:
-        warnings.warn("When subsampling is 1, --no-reassign has no effect.")
+        warnings.warn("When subsampling is 1 (or unspecified), --no-reassign has no effect.")
 
     return args
 
@@ -151,8 +166,14 @@ def load(topologies, trajectories, selections, stride, processes):
         len(flat_trjs), len(top.select(selection)), processes, stride)
     assert len(top.select(selection)) > 0, "No atoms selected for clustering"
 
-    lengths, xyz = load_as_concatenated(
-        flat_trjs, args=configs, processes=processes)
+    with timed("Loading took %.1f sec", logger.info):
+        lengths, xyz = load_as_concatenated(
+            flat_trjs, args=configs, processes=processes)
+
+    with timed("Turned over array in %.2f min", logging.info):
+        tmp_xyz = xyz.copy()
+        del xyz
+        xyz = tmp_xyz
 
     logger.info(
         "Loaded %s frames.", len(xyz))
@@ -202,11 +223,12 @@ def main(argv=None):
         stride=args.subsample, processes=args.processes)
 
     logger.info(
-        "Loading finished in (%s s). Clustering using atoms %s matching '%s'.",
+        "Loading finished in %.1f s. Clustering using %s atoms matching '%s'.",
         round(time.perf_counter() - tick, 2), xyz.shape[1], args.atoms)
 
     clustering = args.Clusterer(
         metric=md.rmsd,
+        n_clusters=args.n_clusters,
         cluster_radius=args.rmsd_cutoff)
 
     # md.rmsd requires an md.Trajectory object, so wrap `xyz` in

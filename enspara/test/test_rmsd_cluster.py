@@ -20,7 +20,7 @@ from ..apps import rmsd_cluster
 TEST_DIR = os.path.dirname(__file__)
 
 
-def runhelper(args, expected_size, algorithm='khybrid',
+def runhelper(args, expected_size, algorithm='khybrid', expected_k=None,
               expect_reassignment=True):
 
     td = tempfile.mkdtemp(dir=os.getcwd())
@@ -52,9 +52,17 @@ def runhelper(args, expected_size, algorithm='khybrid',
                 assert_equal(len(assigns), expected_size[0])
                 assert_equal(assigns._data.dtype, np.int)
                 assert_array_equal(assigns.lengths, expected_size[1])
+                if expected_k is not None:
+                    assert_array_equal(
+                        np.unique(assigns._data),
+                        np.arange(expected_k))
             else:
                 assert_equal(assigns.shape, expected_size)
                 assert_equal(assigns.dtype, np.int)
+                if expected_k is not None:
+                    assert_array_equal(
+                        np.unique(assigns),
+                        np.arange(expected_k))
 
             distfile = fnames['distances']
             assert os.path.isfile(distfile), \
@@ -99,6 +107,23 @@ def test_rmsd_cluster_basic_kcenters():
         '--algorithm', 'kcenters'],
         expected_size=expected_size,
         algorithm='kcenters')
+
+
+def test_rmsd_cluster_fixed_k_kcenters():
+
+    expected_size = (2, 501)
+
+    expected_k = 10
+
+    runhelper([
+        '--trajectories', get_fn('frame0.xtc'), get_fn('frame0.xtc'),
+        '--topology', get_fn('native.pdb'),
+        '--n-clusters', str(expected_k),
+        '--atoms', '(name N or name C or name CA or name H or name O)',
+        '--algorithm', 'kcenters'],
+        expected_size=expected_size,
+        algorithm='kcenters',
+        expected_k=expected_k)
 
 
 def test_rmsd_cluster_broken_atoms():
