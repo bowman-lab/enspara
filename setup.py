@@ -39,6 +39,12 @@ cython_extensions = [
         ["enspara/info_theory/libinfo.pyx"],
         extra_compile_args=['-fopenmp'],
         extra_link_args=['-fopenmp'],
+        ),
+    Extension(
+        "enspara.geometry.libdist",
+        ["enspara/geometry/libdist.pyx"],
+        extra_compile_args=['-fopenmp'],
+        extra_link_args=['-fopenmp'],
         )
     ]
 
