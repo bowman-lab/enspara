@@ -590,38 +590,21 @@ class TestNumpyClustering(unittest.TestCase):
 
     def check_generators(self, centers, distance):
 
-        import matplotlib
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore")
-            # req'd for some environments (esp. macOS).
-            matplotlib.use('TkAgg')
+        for c in centers:
+            mindist = min([np.linalg.norm(c-g) for g in self.generators])
+            self.assertLess(
+                mindist, distance,
+                "Expected center {c} to be less than 2 away frome one of"
+                "{g} (was {d}).".
+                format(c=c, g=self.generators, d=mindist))
 
-        try:
-            for c in centers:
-                mindist = min([np.linalg.norm(c-g) for g in self.generators])
-                self.assertLess(
-                    mindist, distance,
-                    "Expected center {c} to be less than 2 away frome one of"
-                    "{g} (was {d}).".
-                    format(c=c, g=self.generators, d=mindist))
-
-            for g in self.generators:
-                mindist = min([np.linalg.norm(c-g) for c in centers])
-                self.assertLess(
-                    mindist, distance,
-                    "Expected generator {g} to be less than 2 away frome one"
-                    "of {c} (was {d}).".
-                    format(c=c, g=self.generators, d=mindist))
-        except AssertionError:
-            x_centers = [c[0] for c in centers]
-            y_centers = [c[1] for c in centers]
-
-            from pylab import scatter, show
-
-            scatter(self.all_x_coords, self.all_y_coords, s=40, c='k')
-            scatter(x_centers, y_centers, s=40, c='y')
-            show()
-            raise
+        for g in self.generators:
+            mindist = min([np.linalg.norm(c-g) for c in centers])
+            self.assertLess(
+                mindist, distance,
+                "Expected generator {g} to be less than 2 away frome one"
+                "of {c} (was {d}).".
+                format(c=c, g=self.generators, d=mindist))
 
 @attr('mpi')
 def test_kmedoids_propose_center_amongst():

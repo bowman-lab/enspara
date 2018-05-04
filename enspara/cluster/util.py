@@ -19,6 +19,8 @@ from sklearn.base import BaseEstimator, ClusterMixin
 from sklearn.utils import check_random_state
 
 from .. import mpi
+from ..geometry.libdist import euclidean
+
 from ..exception import ImproperlyConfigured, DataInvalid
 from ..util import partition_list, partition_indices
 from ..util import array as ra
@@ -275,6 +277,8 @@ def load_frames(filenames, indices, **kwargs):
 def _get_distance_method(metric):
     if metric == 'rmsd':
         return md.rmsd
+    if metric == 'euclidean':
+        return euclidean
     elif isinstance(metric, str):
         try:
             import msmbuilder.libdistance as libdistance

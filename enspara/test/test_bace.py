@@ -164,7 +164,6 @@ def test_absorb_island():
          [  0,   0,  5]])
 
     for array_type in [np.array, sparse.csr_matrix]:
-        print(array_type)
         with assert_raises(exception.DataInvalid):
             absorbed_counts, labels = bace.absorb(array_type(tcounts), [2])
 
