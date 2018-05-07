@@ -1,3 +1,10 @@
+"""The RMSD Cluster App allows you to cluster your trajectories based on root 
+mean square deviation. The entire protein or specific residue locations can be 
+used for the clustering. Parameters such as the clustering algorithm and 
+cluster radius can be specified. The app will return information about cluster 
+centers and frame assignments. See the apps tab for more information.
+"""
+
 import sys
 import argparse
 import os
