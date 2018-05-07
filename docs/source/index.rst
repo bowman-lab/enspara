@@ -18,6 +18,7 @@ Contents:
    :maxdepth: 2
 
    installation
+   apps
    cookbook
    _modules/enspara
 
