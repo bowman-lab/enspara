@@ -288,7 +288,9 @@ def main(argv=None):
     tick = time.perf_counter()
 
     with open(args.centers, 'rb') as f:
-        centers = concatenate_trjs(pickle.load(f), args.atoms, args.n_procs)
+        centers = concatenate_trjs(
+            pickle.load(f), args.atoms,
+            enspara.util.parallel.auto_nprocs())
     logger.info('Loaded %s centers with %s atoms using selection "%s" '
                 'in %.1f seconds.',
                 len(centers), centers.n_atoms, args.atoms,
