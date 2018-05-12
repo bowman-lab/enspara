@@ -1,7 +1,7 @@
 import sys
 import argparse
 
-from multiprocessing import cpu_count
+from functools import partial
 
 import numpy as np
 import mdtraj as md
@@ -11,6 +11,7 @@ from tables.exceptions import NoSuchNodeError
 from enspara import exception
 from enspara.msm import implied_timescales, builders
 from enspara.util import array as ra
+from enspara.util.parallel import auto_nprocs
 
 import matplotlib as mpl
 mpl.use('Agg')
@@ -37,15 +38,16 @@ def process_command_line(argv):
              "Format is min:max:step.")
     parser.add_argument(
         "--symmetrization", default="transpose",
-        help="The method to use to enforce detailed balance in the"
-             "counts matrix.")
+        choices=['transpose', 'row_normalize', 'prior_counts'],
+        help="The method to use to fit transition probabilities from "
+             "the transition counts matrix.")
     parser.add_argument(
         "--trj-ids", default=None,
         help="Computed the implied timescales for only the given "
              "trajectory ids. This is useful for handling assignments "
              "for shared state space clusterings.")
     parser.add_argument(
-        "--processes", default=max(1, cpu_count()/4), type=int,
+        "--processes", default=max(1, auto_nprocs()/4), type=int,
         help="Number of processes to use. Because eigenvector "
              "decompositions are thread-parallelized, this should "
              "usually be several times smaller than the number of "
@@ -78,9 +80,16 @@ def process_command_line(argv):
     if args.trj_ids is not None:
         args.trj_ids = slice(*map(int, args.trj_ids.split(':')))
 
-    args.symmetrization = getattr(builders, args.symmetrization)
+    if args.symmetrization == 'prior_counts':
+        args.symmetrization = prior_counts
+    else:
+        args.symmetrization = getattr(builders, args.symmetrization)
 
     return args
+
+
+def prior_counts(C):
+    return builders.normalize(C, prior_counts=1/len(C))
 
 
 def process_units(timestep=None, infer_timestep=None):
