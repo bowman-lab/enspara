@@ -523,6 +523,48 @@ class TestParallelLoad(unittest.TestCase):
                 top=self.top,
                 lengths=[len(t) for t in [t1, t2[::2], t3]])
 
+    def test_load_as_concatenated_frame_kwarg(self):
+        '''`frame` should work in the `args` param of load_as_concatenated
+        '''
+        frames = [8, 13]
+
+        t1 = md.load(self.trj_fname, top=self.top)[frames[0]]
+        t2 = md.load(self.trj_fname, top=self.top)[frames[1]]
+
+        args = [
+            {'top': self.top, 'frame': frames[0]},
+            {'top': self.top, 'frame': frames[1]}
+            ]
+
+        lengths, xyz = load_as_concatenated(
+            [self.trj_fname]*2,
+            processes=2,
+            args=args)  # called kwargs, it's actually applied as an arg vector
+
+        expected = np.concatenate([t1.xyz, t2.xyz])
+
+        self.assertEqual(expected.shape, xyz.shape)
+        self.assertTrue(np.all(expected == xyz))
+
+        # NOW TEST IF ONLY ONE HAS 'frames'
+        t2 = md.load(self.trj_fname, top=self.top)
+
+        args = [
+            {'top': self.top, 'frame': frames[0]},
+            {'top': self.top}
+            ]
+
+        lengths, xyz = load_as_concatenated(
+            [self.trj_fname]*2,
+            processes=2,
+            args=args)  # called kwargs, it's actually applied as an arg vector
+
+        expected = np.concatenate([t1.xyz, t2.xyz])
+
+        self.assertEqual(expected.shape, xyz.shape)
+        self.assertTrue(np.all(expected == xyz))
+
+
     def test_hdf5(self):
 
         hdf5_fn = get_fn('frame0.h5')
