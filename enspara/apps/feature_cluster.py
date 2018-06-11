@@ -2,13 +2,20 @@ import sys
 import argparse
 import pickle
 import os
+import logging
 
-from msmbuilder.libdistance import cdist
+import numpy as np
+
+logging.basicConfig(
+    level=logging.INFO,
+    format=('%(asctime)s %(name)-8s %(levelname)-7s %(message)s'),
+    datefmt='%m-%d-%Y %H:%M:%S')
 
 from enspara import exception
 from enspara.apps.util import readable_dir
 from enspara.cluster import KHybrid
 from enspara.util import array as ra
+from enspara.geometry.libdist import euclidean
 
 
 def process_command_line(argv):
@@ -16,7 +23,7 @@ def process_command_line(argv):
                                      ArgumentDefaultsHelpFormatter)
 
     parser.add_argument(
-        "--features", required=True,
+        "--features", required=True, nargs="+",
         help="The h5 file containin observations and features.")
 
     parser.add_argument(
@@ -57,7 +64,7 @@ def process_command_line(argv):
     args = parser.parse_args(argv[1:])
 
     if args.cluster_distance.lower() == 'euclidean':
-        args.cluster_distance = diff_euclidean
+        args.cluster_distance = euclidean
     elif args.cluster_distance.lower() == 'manhattan':
         args.cluster_distance = diff_manhattan
 
@@ -72,12 +79,8 @@ def process_command_line(argv):
     return args
 
 
-def diff_euclidean(trj, ref):
-    return cdist(ref.reshape(1, -1), trj, 'euclidean')[0]
-
-
 def diff_manhattan(trj, ref):
-    return trj - ref
+    return np.abs(trj - ref)
 
 
 def main(argv=None):
@@ -97,6 +100,7 @@ def main(argv=None):
     clustering.fit(features._data)
 
     result = clustering.result_.partition(features.lengths)
+    del features
 
     ra.save(args.distances, result.distances)
     ra.save(args.assignments, result.assignments)
