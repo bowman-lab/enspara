@@ -522,36 +522,36 @@ class RaggedArray(object):
 
     def __getitem__(self, iis):
         # ints are handled by numpy
-        if type(iis) is int:
+        if isinstance(iis, int):
             return self._array[iis]
         # slices and lists are handled by numpy, but return a RaggedArray
-        elif (type(iis) is slice) or (type(iis) is list) \
-                or (type(iis) is np.ndarray):
+        elif isinstance(iis, slice) or isinstance(iis, list) \
+                or isinstance(iis, np.ndarray):
             return RaggedArray(self._array[iis])
         # tuples get index conversion from 2d to 1d
-        elif type(iis) is tuple:
+        elif isinstance(iis, tuple):
             first_dimension, second_dimension = iis
             # if the first dimension is a slice, converts both sets of indices
-            if type(first_dimension) is slice:
+            if isinstance(first_dimension, slice):
                 first_dimension_iis = _slice_to_list(
                     first_dimension, length=len(self.lengths))
                 # if the second dimension is a slice, determines the 2d indices
                 # from the lengths in the ragged dimension
-                if type(second_dimension) is slice:
+                if isinstance(second_dimension, slice):
                     iis, new_lengths  = _get_iis_from_slices(
                         first_dimension_iis, second_dimension, self.lengths)
                 # if second dimension is an int, make it look like a list
                 # and get iis
-                elif type(second_dimension) is int:
+                elif isinstance(second_dimension, int):
                     iis, new_lengths = _get_iis_from_list(
                         first_dimension_iis, [second_dimension])
                 else:
                     iis, new_lengths = _get_iis_from_list(
                         first_dimension_iis, second_dimension)
-            elif type(second_dimension) is slice:
+            elif isinstance(second_dimension, slice):
                 # if the first dimension is an int, but the second is
                 # a slice, numpy can handle it.
-                if type(first_dimension) is int:
+                if isinstance(first_dimension, int):
                     return self._array[first_dimension][second_dimension]
                 # if the second dimension is a slice, determines the 2d indices
                 # from the lengths in the ragged dimension
@@ -582,34 +582,34 @@ class RaggedArray(object):
         if type(value) is type(self):
             value = value._array
         # ints, slices, lists, and numpy objects are handled by numpy
-        if (type(iis) is int) or (type(iis) is slice) or \
-                (type(iis) is list) or (type(iis) is np.ndarray):
+        if isinstance(iis, int) or isinstance(iis, slice) or \
+                isinstance(iis, list) or isinstance(iis, np.ndarray):
             self._array[iis] = value
             self.__init__(self._array)
         # tuples get index conversion from 2d to 1d
-        elif type(iis) == tuple:
+        elif isinstance(iis, tuple):
             first_dimension, second_dimension = iis
             # if the first dimension is a slice, converts both sets of indices
-            if type(first_dimension) is slice:
+            if isinstance(first_dimension, slice):
                 first_dimension_iis = _slice_to_list(
                     first_dimension, length=len(self.lengths))
                 # if second dimension is a slice, determines the 2d indices
                 # from the lengths in the ragged dimension
-                if type(second_dimension) is slice:
+                if isinstance(second_dimension, slice):
                     iis, new_lengths = _get_iis_from_slices(
                         first_dimension_iis, second_dimension, self.lengths)
                 # if the second dimension is an int, make it look like a list
                 # and get iis
-                elif type(second_dimension) is int:
+                elif isinstance(second_dimension, int):
                     iis, new_lengths = _get_iis_from_list(
                         first_dimension_iis, [second_dimension])
                 else:
                     iis, new_lengths = _get_iis_from_list(
                         first_dimension_iis, second_dimension)
-            elif type(second_dimension) is slice:
+            elif isinstance(second_dimension, slice):
                 # if the first dimension is an int, but the second is
                 # a slice, numpy can handle it.
-                if type(first_dimension) is int:
+                if isinstance(first_dimension, int):
                     self._array[first_dimension][second_dimension] = value
                     self.__init__(self._array)
                     return
