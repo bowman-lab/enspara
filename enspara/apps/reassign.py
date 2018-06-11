@@ -20,7 +20,7 @@ logging.basicConfig(
     format=('%(asctime)s %(name)-8s %(levelname)-7s %(message)s'),
     datefmt='%m-%d-%Y %H:%M:%S')
 
-from enspara import exception
+import enspara
 
 from enspara.cluster.util import assign_to_nearest_center, partition_list
 from enspara.util.load import (concatenate_trjs, sound_trajectory,
@@ -58,9 +58,6 @@ def process_command_line(argv):
         help="Output path for results (distances, assignments). "
              "Default is in the same directory as the input centers.")
     parser.add_argument(
-        '-j', '--n_procs', default=psutil.cpu_count(), type=int,
-        help="The number of cores to use while reassigning.")
-    parser.add_argument(
         '-m', '--mem-fraction', default=0.5, type=float,
         help="The fraction of total RAM to use in deciding the batch size. "
              "Genrally, this number shouldn't be much higher than 0.5.")
@@ -78,12 +75,12 @@ def process_command_line(argv):
     args = parser.parse_args(argv[1:])
 
     if args.mem_fraction >= 1 or args.mem_fraction <= 0:
-        raise exception.ImproperlyConfigured(
+        raise enspara.exception.ImproperlyConfigured(
             "Flag --mem-fraction must be in range (0, 1). Got %s"
             % args.mem_fraction)
 
     if len(args.topologies) != len(args.trajectories):
-        raise exception.ImproperlyConfigured(
+        raise enspara.exception.ImproperlyConfigured(
             "The number of --topology and --trajectory flags must agree.")
 
     if args.output_path is None:
@@ -141,7 +138,7 @@ def batch_reassign(targets, centers, lengths, frac_mem, n_procs=None):
         (batch_size, batch_gb, frac_mem*100))
 
     if batch_size < max(lengths):
-        raise exception.ImproperlyConfigured(
+        raise enspara.exception.ImproperlyConfigured(
             'Batch size of %s was smaller than largest file (size %s).' %
             (batch_size, max(lengths)))
 
@@ -198,16 +195,37 @@ def batch_reassign(targets, centers, lengths, frac_mem, n_procs=None):
     return assignments, distances
 
 
-def reassign(topologies, trajectories, atoms, centers, frac_mem=0.9,
-             n_procs=None):
+def reassign(topologies, trajectories, atoms, centers, frac_mem=0.5):
+    """Reassign a set of trajectories based on a subset of atoms and centers.
+
+    Parameters
+    ----------
+    topologies : list
+        List of topologies corresponding to the trajectories to be
+        reassigned.
+    trajectories : list of lists
+        List of lists of tajectories to be loaded in batches and
+        reassigned.
+    atoms : list
+        List of MDTraj atom query strings. Each string is applied to the
+        corresponding topology to choose which atoms will be used for
+        the reassignment.
+    centers : md.Trajectory or list of trajectories
+        The atoms representing the centers to reassign to.
+    frac_mem : float, default=0.5
+        The fraction of main RAM to use for trajectories. A lower number
+        will mean more batches.
+    """
+
+    n_procs = enspara.util.parallel.auto_nprocs()
 
     # check input validity
     if len(topologies) != len(trajectories):
-        raise exception.ImproperlyConfigured(
+        raise enspara.exception.ImproperlyConfigured(
             "Number of topologies (%s) didn't match number of sets of "
             "trajectories (%s)." % (len(topologies), len(trajectories)))
     if len(topologies) != len(atoms):
-        raise exception.ImproperlyConfigured(
+        raise enspara.exception.ImproperlyConfigured(
             "Number of topologies (%s) didn't match number of atom selection "
             "strings (%s)." % (len(topologies), len(atoms)))
 
@@ -270,7 +288,9 @@ def main(argv=None):
     tick = time.perf_counter()
 
     with open(args.centers, 'rb') as f:
-        centers = concatenate_trjs(pickle.load(f), args.atoms, args.n_procs)
+        centers = concatenate_trjs(
+            pickle.load(f), args.atoms,
+            enspara.util.parallel.auto_nprocs())
     logger.info('Loaded %s centers with %s atoms using selection "%s" '
                 'in %.1f seconds.',
                 len(centers), centers.n_atoms, args.atoms,
@@ -278,7 +298,7 @@ def main(argv=None):
 
     assig, dist = reassign(
         args.topologies, args.trajectories, [args.atoms]*len(args.topologies),
-        centers=centers, n_procs=args.n_procs, frac_mem=args.mem_fraction)
+        centers=centers, frac_mem=args.mem_fraction)
 
     mem_highwater = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
     logger.info(
