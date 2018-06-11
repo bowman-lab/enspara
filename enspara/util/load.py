@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 
-def sound_trajectory(trj, stride=1):
+def sound_trajectory(trj, stride=1, frame=None):
     """Determine the length of a trajectory on disk.
 
     For H5 file formats, this is a trivial lookup of the shape parameter
@@ -117,7 +117,13 @@ def load_as_concatenated(filenames, lengths=None, processes=None,
                      len(filenames), processes)
         lengths = Parallel(n_jobs=processes)(
             delayed(sound_trajectory)(f, kw.get('stride', 1))
-            for f, kw in zip(filenames, args))
+            for f, kw in zip(filenames, args)
+            if 'frame' not in kw) # don't sound trjs with 'frame' kw
+
+        # trjs with frame are always length 1, add that to lengths now
+        for i, kw in enumerate(args):
+            if 'frame' in kw:
+                lengths.insert(i, 1)
     else:
         logger.debug("Using given lengths")
         if len(lengths) != len(filenames):
@@ -125,8 +131,10 @@ def load_as_concatenated(filenames, lengths=None, processes=None,
                 "Lengths list (len %s) didn't match length of filenames"
                 " list (len %s)", len(lengths), len(filenames))
 
+    tmp_args = dict(args[0])
+    if 'frame' in tmp_args: del tmp_args['frame']
     full_shape, shared_array = shared_array_like_trj(
-        lengths, example_trj=md.load(filenames[0], frame=0, **args[0]))
+        lengths, example_trj=md.load(filenames[0], frame=0, **tmp_args))
 
     logger.debug("Allocated array of shape %s", full_shape)
 
