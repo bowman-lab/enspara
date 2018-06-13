@@ -177,6 +177,16 @@ class Test_RaggedArray(unittest.TestCase):
             a[i] = new_rag[i]
             assert_array_equal(a[i], new_rag[i])
 
+        src = [range(4), range(5), range(6)]
+        a = ra.RaggedArray(array=src)
+
+        assert_array_equal(a[:,1], [[1],[1],[1]])
+        assert_array_equal(a[:,np.arange(3)[1]], [[1],[1],[1]])
+
+        a[:,np.arange(3)[1]] = [[90],[90],[70]] 
+        assert_array_equal(a[:,1], [[90], [90], [70]])
+        assert_array_equal(a[:,np.arange(3)[1]], [[90], [90], [70]])
+
     def test_RaggedArray_negative_slicing(self):
         src = np.array(range(20))
         a = ra.RaggedArray(array=src, lengths=[10, 5, 5])
