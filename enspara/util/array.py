@@ -1,11 +1,12 @@
-import time
-import logging
 import collections
-import itertools
-import numpy as np
 import copy
-import tables
+import itertools
+import logging
+import numbers
+import numpy as np
 import resource
+import tables
+import time
 import warnings
 
 from mdtraj import io
@@ -522,11 +523,10 @@ class RaggedArray(object):
 
     def __getitem__(self, iis):
         # ints are handled by numpy
-        if isinstance(iis, int) or isinstance(iis, np.integer):
+        if isinstance(iis, numbers.Integral):
             return self._array[iis]
         # slices and lists are handled by numpy, but return a RaggedArray
-        elif isinstance(iis, slice) or isinstance(iis, list) \
-                or isinstance(iis, np.ndarray):
+        elif isinstance(iis, (slice, list, np.ndarray)):
             return RaggedArray(self._array[iis])
         # tuples get index conversion from 2d to 1d
         elif isinstance(iis, tuple):
@@ -542,8 +542,7 @@ class RaggedArray(object):
                         first_dimension_iis, second_dimension, self.lengths)
                 # if second dimension is an int, make it look like a list
                 # and get iis
-                elif isinstance(second_dimension, int) or \
-                        isinstance(second_dimension, np.integer):
+                elif isinstance(second_dimension, numbers.Integral):
                     iis, new_lengths = _get_iis_from_list(
                         first_dimension_iis, [second_dimension])
                 else:
@@ -552,8 +551,7 @@ class RaggedArray(object):
             elif isinstance(second_dimension, slice):
                 # if the first dimension is an int, but the second is
                 # a slice, numpy can handle it.
-                if isinstance(first_dimension, int) or \
-                        isinstance(first_dimension, np.integer):
+                if isinstance(first_dimension, numbers.Integral):
                     return self._array[first_dimension][second_dimension]
                 # if the second dimension is a slice, determines the 2d indices
                 # from the lengths in the ragged dimension
@@ -584,9 +582,7 @@ class RaggedArray(object):
         if type(value) is type(self):
             value = value._array
         # ints, slices, lists, and numpy objects are handled by numpy
-        if isinstance(iis, int) or isinstance(iis, slice) or \
-                isinstance(iis, list) or isinstance(iis, np.ndarray) or \
-                isinstance(iis, np.integer):
+        if isinstance(iis, (numbers.Integral, slice, list, np.ndarray)):
             self._array[iis] = value
             self.__init__(self._array)
         # tuples get index conversion from 2d to 1d
@@ -603,8 +599,7 @@ class RaggedArray(object):
                         first_dimension_iis, second_dimension, self.lengths)
                 # if the second dimension is an int, make it look like a list
                 # and get iis
-                elif isinstance(second_dimension, int) or \
-                        isinstance(second_dimension, np.integer):
+                elif isinstance(second_dimension, numbers.Integral):
                     iis, new_lengths = _get_iis_from_list(
                         first_dimension_iis, [second_dimension])
                 else:
@@ -613,8 +608,7 @@ class RaggedArray(object):
             elif isinstance(second_dimension, slice):
                 # if the first dimension is an int, but the second is
                 # a slice, numpy can handle it.
-                if isinstance(first_dimension, int) or \
-                        isinstance(first_dimension, np.integer):
+                if isinstance(first_dimension, numbers.Integral):
                     self._array[first_dimension][second_dimension] = value
                     self.__init__(self._array)
                     return
