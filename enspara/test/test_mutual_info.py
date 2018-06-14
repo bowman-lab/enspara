@@ -1,6 +1,6 @@
 import warnings
 
-from nose.tools import assert_equal, assert_raises
+from nose.tools import assert_raises
 from numpy.testing import (assert_array_equal, assert_allclose,
                            assert_almost_equal)
 
@@ -205,6 +205,20 @@ def test_joint_count_binning():
 
     jc = mutual_info.joint_counts(trj1, trj2, 3, 3)
     assert_array_equal(jc, expected_jc)
+
+
+def test_weighted_mi():
+
+    a = np.array([[0, 0, 0],
+                  [1, 1, 0]]).T
+    b = np.array([[0, 0, 0, 0],
+                  [1, 1, 0, 0]]).T
+
+    wmi = mutual_info.weighted_mi(a, [0.25, 0.25, 0.5])
+    mi = mutual_info.mi_matrix_serial([b], [b], [2, 2], [2, 2])
+
+    assert_allclose(wmi, mi)
+
 
 
 def test_nmi_apc_zeros():

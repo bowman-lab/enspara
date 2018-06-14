@@ -347,6 +347,78 @@ def mi_matrix(assignments_a, assignments_b, n_states_a,
     return mi
 
 
+def weighted_mi(features, weights):
+    """Compute a mutual information matrix using weighted observations.
+
+    This function computes the mutual information of weighted samples by
+    actually computing the marginal probability distributions P(x),
+    P(y), and P(x, y) for each variable using the weights, rather than
+    by computing a joint counts matrix.
+
+    Parameters
+    ----------
+    features : np.ndarray, shape=(n_observations, n_features)
+        Array of observations of multiple variables (features) between
+        which to compute the pairwise mutual information. Note that at
+        present, each features
+    weights : np.ndarray, shape=(n_observations)
+        Array containing a probability distribution across observations
+        by which to weight each observation.
+
+    Returns
+    -------
+    mi : np.ndarray, shape=(n_features, n_features)
+        Array where cell i, j is the mutual information between the ith
+        feature of assignments_a and the jth feature of assignments_b of
+        the mutual information between trajectories a and b for each
+        feature.
+
+    """
+    weights = np.array(weights, copy=True)
+
+    assert len(features.shape) == 2
+    assert len(weights.shape) == 1
+    assert weights.shape[0] == features.shape[0]
+    assert np.all(weights >= 0)
+    assert np.sum(weights), 1
+
+    if np.all(np.unique(features) != np.array([0, 1])):
+        raise NotImplementedError("Computing the weighted mutual information of non-binary variables is not yet supported.")
+
+    mi_mtx = np.zeros((features.shape[1], features.shape[1]), dtype=np.float)
+
+    for i in range(len(mi_mtx)):
+        P_x = [weights[features[:, i] == 0].sum(),
+               weights[features[:, i] == 1].sum()]
+        for j in range(i, len(mi_mtx)):
+            P_y = [weights[features[:, j] == 0].sum(),
+                   weights[features[:, j] == 1].sum()]
+
+            P_x_y = np.zeros((2, 2))
+            for u in range(2):
+                for v in range(2):
+                    P_x_y[u, v] = weights[(features[:, i] == u) &
+                                          (features[:, j] == v)].sum()
+
+            mi = 0
+            for u in range(len(P_x_y)):
+                for v in range(len(P_x_y)):
+                    if (P_x_y[u, v] != 0) and (P_x[u] == 0) and (P_y[v] == 0):
+                        val = P_x_y[u, v] * np.log(P_x_y[u, v]/(P_x[u]*P_y[v]))
+                        mi += val
+
+            if np.isnan(mi):
+                mi = 0
+
+            mi_mtx[i, j] = mi
+
+    mi_mtx += mi_mtx.T
+    # the diagonal gets doubled by adding the transpose, reverse here
+    mi_mtx[np.diag_indices_from(mi_mtx)] /= 2
+
+    return mi_mtx
+
+
 def mi_matrix_serial(states_a_list, states_b_list, n_a_states, n_b_states):
     n_traj = len(states_a_list)
     n_features = states_a_list[0].shape[1]
