@@ -1,7 +1,7 @@
-"""The RMSD Cluster App allows you to cluster your trajectories based on root 
-mean square deviation. The entire protein or specific residue locations can be 
-used for the clustering. Parameters such as the clustering algorithm and 
-cluster radius can be specified. The app will return information about cluster 
+"""The RMSD Cluster App allows you to cluster your trajectories based on root
+mean square deviation. The entire protein or specific residue locations can be
+used for the clustering. Parameters such as the clustering algorithm and
+cluster radius can be specified. The app will return information about cluster
 centers and frame assignments. See the apps tab for more information.
 """
 
@@ -101,7 +101,7 @@ def process_command_line(argv):
         help="The location to write the cluster center structures.")
     parser.add_argument(
         '--assignments', required=True, action=readable_dir,
-        help="The location to write the cluster center structures.")
+        help="The location to write assignments of frames to clusters.")
 
     args = parser.parse_args(argv[1:])
 
@@ -132,6 +132,11 @@ def process_command_line(argv):
 
     if args.no_reassign and args.subsample == 1:
         warnings.warn("When subsampling is 1 (or unspecified), --no-reassign has no effect.")
+
+    if args.centers[args.centers.rfind('.'):] == '.h5':
+        warnings.warn(
+            "You provided a centers file that looks like it's an h5... "
+            "centers are saved as pickle. Are you sure this is what you want?")
 
     return args
 

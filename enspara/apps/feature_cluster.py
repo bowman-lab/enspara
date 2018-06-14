@@ -23,7 +23,7 @@ def process_command_line(argv):
                                      ArgumentDefaultsHelpFormatter)
 
     parser.add_argument(
-        "--features", required=True, nargs="+",
+        "--features", required=True,
         help="The h5 file containin observations and features.")
 
     parser.add_argument(
