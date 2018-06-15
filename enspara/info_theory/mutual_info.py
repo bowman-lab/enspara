@@ -359,8 +359,8 @@ def weighted_mi(features, weights):
     ----------
     features : np.ndarray, shape=(n_observations, n_features)
         Array of observations of multiple variables (features) between
-        which to compute the pairwise mutual information. Note that at
-        present, each features
+        which to compute the pairwise mutual information.
+
     weights : np.ndarray, shape=(n_observations)
         Array containing a probability distribution across observations
         by which to weight each observation.
@@ -368,11 +368,8 @@ def weighted_mi(features, weights):
     Returns
     -------
     mi : np.ndarray, shape=(n_features, n_features)
-        Array where cell i, j is the mutual information between the ith
-        feature of assignments_a and the jth feature of assignments_b of
-        the mutual information between trajectories a and b for each
-        feature.
-
+        Array where cell i, j is the mutual information between feature
+        i and feature j. This array is symmmetic (i.e. mi.T == mi).
     """
     weights = np.array(weights, copy=True)
 
