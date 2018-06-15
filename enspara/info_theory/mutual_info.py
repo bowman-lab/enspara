@@ -380,7 +380,9 @@ def weighted_mi(features, weights):
     assert np.sum(weights), 1
 
     if np.all(np.unique(features) != np.array([0, 1])):
-        raise NotImplementedError("Computing the weighted mutual information of non-binary variables is not yet supported.")
+        raise NotImplementedError(
+            "Computing the weighted mutual information of non-binary "
+            "variables is not yet supported.")
 
     mi_mtx = np.zeros((features.shape[1], features.shape[1]), dtype=np.float)
 
