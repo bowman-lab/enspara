@@ -224,11 +224,20 @@ def joint_counts(X, Y=None, n_x=None, n_y=None):
     if Y is None:
         if n_y is not None:
             warnings.warn("n_y unused if Y is None.")
-
         jc = libinfo.matrix_bincount2d(X, X, n_x, n_x)
     else:
         if n_y is None:
             n_y = Y.max()+1
+
+        if X.dtype != Y.dtype:
+            warnings.warn(
+                "Feature trajs (types %s and %s) being uptyped to match." %
+                (X.dtype, Y.dtype), exception.PerformanceWarning)
+
+            if X.dtype.itemsize > Y.dtype.itemsize:
+                Y = Y.astype(X.dtype)
+            else:
+                X = X.astype(Y.dtype)
 
         jc = libinfo.matrix_bincount2d(X, Y, n_x, n_y)
 

@@ -110,7 +110,7 @@ def test_symmetrical_mi_zero():
     for a, n_states in (f() for f in zero_mi_funcs):
         mi = mutual_info.mi_matrix(a, a, n_states, n_states)
 
-        assert_allclose(np.diag(mi), 1.723, atol=0.1)
+        assert_allclose(np.diag(mi), 0.86114, atol=0.1)
         mi[np.diag_indices_from(mi)] = 0
 
         assert_allclose(mi, 0, atol=1e-3)
@@ -143,7 +143,7 @@ def test_symmetrical_mi_nonzero():
         assert_almost_equal(mi[-1, -2], 0.86114, decimal=3)
         mi[-1, -2] = mi[-2, -1] = 0
 
-        assert_almost_equal(np.diag(mi), 1.722, decimal=2)
+        assert_almost_equal(np.diag(mi), 0.86114, decimal=2)
         mi[np.diag_indices_from(mi)] = 0
 
         assert_allclose(mi, 0, atol=1e-3)
@@ -162,7 +162,7 @@ def test_symmetrical_mi_nonzero_int_shape_spec():
         assert_almost_equal(mi[-1, -2], 0.86114, decimal=3)
         mi[-1, -2] = mi[-2, -1] = 0
 
-        assert_almost_equal(np.diag(mi), 1.722, decimal=2)
+        assert_almost_equal(np.diag(mi), 0.86114, decimal=2)
         mi[np.diag_indices_from(mi)] = 0
 
         assert_allclose(mi, 0, atol=1e-3)
