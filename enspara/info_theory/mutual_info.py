@@ -433,7 +433,7 @@ def mi_matrix_serial(states_a_list, states_b_list, n_a_states, n_b_states):
                 jc += joint_counts(
                     states_a_list[k][:, i], states_b_list[k][:, j],
                     n_a_states[i], n_b_states[j])
-            mi[i, j] = mutual_information(jc)
+            mi[i, j] = mutual_information(jc[None, None, ...])
             min_num_states = np.min([n_a_states[i], n_b_states[j]])
             mi[i, j] /= np.log(min_num_states)
             mi[j, i] = mi[i, j]
@@ -501,7 +501,7 @@ def _mi_parallel_cell(feature_id_a, feature_id_b, n_states_a, n_states_b,
 
     assert not np.any(np.isnan(jc))
 
-    mi = mutual_information(jc) / np.log(min([n_a, n_b]))
+    mi = mutual_information(jc[None, None, ...])[0, 0] / np.log(min([n_a, n_b]))
 
     return mi
 
@@ -537,33 +537,55 @@ def joint_counts(state_traj_1, state_traj_2,
     return H
 
 
-def mutual_information(joint_counts):
-    """Compute the mutual information of a joint counts matrix.
+def mutual_information(jc):
+    """Compute the mutual information of a joint counts matrix or matrix
+    of joint counts matrices.
 
     Parameters
     ----------
-    joint_counts : ndarray, dtype=int, shape=(n_states, n_states)
-        Matrix where the cell (i, j) represents the number of times the
-        combination of state i and state j were observed concurrently.
+    jc : ndarray, dtype=int, shape=(n_feat, n_feat, n_states, n_states)
+        Array where the cell (i, j, u, v) represents the number of times
+        feature i was seen in state u and feature j was seein in state v.
 
     Returns
     -------
-    mutual_information : float
+    mutual_information : np.ndarray, shape=(n_feat, n_feat)
         The mutual information of the joint counts matrix
     """
 
-    counts_axis_1 = joint_counts.sum(axis=1)
-    counts_axis_2 = joint_counts.sum(axis=0)
+    if len(jc.shape) != 4:
+        raise exception.DataInvalid(
+            "Expected an array of joint counts matrices. If your dataset "
+            "is a single joint counts matrix, try `jc[None, None, ...]` "
+            "to expand its dimensions.")
 
-    p1 = counts_axis_1/counts_axis_1.sum()
-    p2 = counts_axis_2/counts_axis_2.sum()
-    joint_p = joint_counts.flatten()/joint_counts.sum()
+    # sum across all possibilities
+    n_obs_a_i = jc.sum(axis=-1)
+    n_obs_b_i = jc.sum(axis=-2)
 
-    h1 = entropy.shannon_entropy(p1)
-    h2 = entropy.shannon_entropy(p2)
-    joint_h = entropy.shannon_entropy(joint_p)
+    P_a = n_obs_a_i / n_obs_a_i.sum(axis=-1)[..., None]
+    P_b = n_obs_b_i / n_obs_b_i.sum(axis=-1)[..., None]
 
-    return h1+h2-joint_h
+    n_obs = n_obs_a_i.sum(axis=-1)
+    P_a_b = jc / n_obs[..., None, None]
+
+    mi = np.zeros(shape=jc.shape[0:2])
+    for i in range(jc.shape[0]):
+        for j in range(jc.shape[1]):
+            P_x_y = P_a_b[i, j]
+            P_x = P_a[i, j]
+            P_y = P_b[i, j]
+
+            for u in range(P_x_y.shape[0]):
+                for v in range(P_x_y.shape[1]):
+                    unddef = ((P_x_y[u, v] == 0) or
+                              (P_x[u] == 0) or
+                              (P_y[v] == 0))
+                    if not unddef:
+                        mi[i, j] += (P_x_y[u, v] *
+                                     np.log(P_x_y[u, v]/(P_x[u]*P_y[v])))
+
+    return mi
 
 
 def _validate_mutual_information_matrix(mi):
