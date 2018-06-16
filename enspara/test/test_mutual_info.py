@@ -209,13 +209,15 @@ def test_joint_count_binning():
 
 def test_weighted_mi():
 
-    a = np.array([[0, 0, 0],
+    a = np.array([[0, 0, 1],
                   [1, 1, 0]]).T
-    b = np.array([[0, 0, 0, 0],
+    b = np.array([[0, 0, 1, 1],
                   [1, 1, 0, 0]]).T
 
     wmi = mutual_info.weighted_mi(a, [0.25, 0.25, 0.5])
-    mi = mutual_info.mi_matrix_serial([b], [b], [2, 2], [2, 2])
+    mi = mutual_info.mi_matrix_serial(
+        [b], [b], [2, 2], [2, 2],
+        compute_diagonal=True)
 
     assert_allclose(wmi, mi)
 

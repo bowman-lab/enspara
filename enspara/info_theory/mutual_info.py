@@ -386,6 +386,7 @@ def weighted_mi(features, weights):
 
     mi_mtx = np.zeros((features.shape[1], features.shape[1]), dtype=np.float)
 
+    print('X', 'Y', ' ', 'x', 'y', ' ', 'Pxy', 'P_x', 'P_y')
     for i in range(len(mi_mtx)):
         P_x = [weights[features[:, i] == 0].sum(),
                weights[features[:, i] == 1].sum()]
@@ -402,30 +403,36 @@ def weighted_mi(features, weights):
             mi = 0
             for u in range(len(P_x_y)):
                 for v in range(len(P_x_y)):
-                    if (P_x_y[u, v] != 0) and (P_x[u] == 0) and (P_y[v] == 0):
+                    if (P_x_y[u, v] != 0) and (P_x[u] != 0) and (P_y[v] != 0):
                         val = P_x_y[u, v] * np.log(P_x_y[u, v]/(P_x[u]*P_y[v]))
                         mi += val
+                    print(i, j, '|', u, v, '|', P_x_y[u, v], P_x[u], P_y[v], mi)
 
             if np.isnan(mi):
                 mi = 0
 
             mi_mtx[i, j] = mi
+            print(i, j, mi)
 
     mi_mtx += mi_mtx.T
     # the diagonal gets doubled by adding the transpose, reverse here
     mi_mtx[np.diag_indices_from(mi_mtx)] /= 2
 
+    # we assume two states only, scale by channel capacity
+    mi_mtx /= np.log(2)
+
     return mi_mtx
 
 
-def mi_matrix_serial(states_a_list, states_b_list, n_a_states, n_b_states):
+def mi_matrix_serial(states_a_list, states_b_list, n_a_states, n_b_states,
+                     compute_diagonal=False):
     n_traj = len(states_a_list)
     n_features = states_a_list[0].shape[1]
     mi = np.zeros((n_features, n_features))
 
     for i in range(n_features):
         logger.debug(i, "/", n_features)
-        for j in range(i+1, n_features):
+        for j in range(i+int(not compute_diagonal), n_features):
             jc = joint_counts(
                 states_a_list[0][:, i], states_b_list[0][:, j],
                 n_a_states[i], n_b_states[j])
