@@ -191,6 +191,25 @@ def test_asymmetrical_mi_nonzero():
         assert_allclose(mi, 0, atol=1e-2)
 
 
+# def test_mi_bespoke():
+
+#     a = np.array([[0, 1, 1, 1, 0, 0, 1, 0],
+#                   [0, 1, 1, 1, 0, 0, 0, 0]]).T
+
+#     jc = mutual_info.joint_counts(a)
+#     print(jc)
+
+#     mi = mutual_info.mi_matrix([a], [a], 2, 2, channel_cap_scale=False)
+#     print(mi)
+
+#     mi = mutual_info.mi_matrix([a], [a], 2, 2, channel_cap_scale=True)
+#     print(mi)
+
+#     mi = mutual_info.mi_matrix_serial([a], [a], [2]*8, [2]*8)
+#     print(mi)
+#     assert False
+
+
 def test_joint_count_binning():
 
     trj1 = np.array([1]*3 + [2]*6 + [1]*6)
@@ -198,7 +217,7 @@ def test_joint_count_binning():
 
     expected_jc = np.array([[0, 0, 0],
                             [3, 3, 3],
-                            [0, 6, 0]])
+                            [0, 6, 0]])[None, None, ...]
 
     jc = mutual_info.joint_counts(trj1, trj2)
     assert_array_equal(jc, expected_jc)
@@ -209,13 +228,13 @@ def test_joint_count_binning():
 
 def test_weighted_mi():
 
-    a = np.array([[0, 0, 0],
-                  [1, 1, 0]]).T
-    b = np.array([[0, 0, 0, 0],
-                  [1, 1, 0, 0]]).T
+    a = np.array([[0, 1, 1, 1, 0, 0, 1, 0],
+                  [0, 1, 1, 1, 0, 0, 0, 0]]).T
+    b = np.array([[0, 1, 1],
+                  [0, 1, 0]]).T
 
-    wmi = mutual_info.weighted_mi(a, [0.25, 0.25, 0.5])
-    mi = mutual_info.mi_matrix_serial([b], [b], [2, 2], [2, 2])
+    mi = mutual_info.mi_matrix_serial([a], [a], [2, 2], [2, 2])
+    wmi = mutual_info.weighted_mi(b, [4/8, 3/8, 1/8])
 
     assert_allclose(wmi, mi)
 
