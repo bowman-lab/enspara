@@ -7,7 +7,6 @@
 
 import logging
 
-from .. import exception
 from .. import info_theory
 
 from . import disorder
@@ -102,22 +101,22 @@ def cards_matrices(feature_trajs, n_feature_states, n_procs=None):
     logger.debug("Calculating structural mutual information")
     structural_mi = info_theory.mi_matrix(
         feature_trajs, feature_trajs,
-        n_feature_states, n_feature_states, n_procs=n_procs)
+        n_feature_states, n_feature_states)
 
     logger.debug("Calculating disorder mutual information")
     disorder_mi = info_theory.mi_matrix(
         disordered_trajs, disordered_trajs,
-        disorder_n_states, disorder_n_states, n_procs=n_procs)
+        disorder_n_states, disorder_n_states)
 
     logger.debug("Calculating structure-disorder mutual information")
     struct_to_disorder_mi = info_theory.mi_matrix(
         feature_trajs, disordered_trajs,
-        n_feature_states, disorder_n_states, n_procs=n_procs)
+        n_feature_states, disorder_n_states)
 
     logger.debug("Calculating disorder-structure mutual information")
     disorder_to_struct_mi = info_theory.mi_matrix(
         disordered_trajs, feature_trajs,
-        disorder_n_states, n_feature_states, n_procs=n_procs)
+        disorder_n_states, n_feature_states)
 
     return structural_mi, disorder_mi, struct_to_disorder_mi, \
         disorder_to_struct_mi

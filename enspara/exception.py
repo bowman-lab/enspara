@@ -22,3 +22,10 @@ class SuspiciousDataWarning(UserWarning):
     suspicious, and may cause bad behavior down the road.
     """
     pass
+
+
+class PerformanceWarning(UserWarning):
+    """Something has happened that may have substantial performance
+    implications and may be easy to avoid.
+    """
+    pass
