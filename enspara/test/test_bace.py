@@ -1,7 +1,9 @@
 import numpy as np
 from scipy import sparse
 
+import unittest
 from nose.tools import assert_equal, assert_raises
+from nose.plugins.skip import Skip
 from numpy.testing import assert_array_equal, assert_allclose
 
 from enspara.msm import bace
@@ -46,6 +48,7 @@ EXP_LABELS = {
      8: [0, 1, 1, 2, 3, 4, 5, 6, 7]}
 
 
+@unittest.skip
 def test_bace_integration_dense():
 
     bayes_factors, labels = bace.bace(
@@ -63,7 +66,10 @@ def test_bace_integration_dense():
     assert_equal(labels.keys(), EXP_LABELS.keys())
 
 
+@unittest.skip
 def test_bace_integration_sparse():
+
+    raise Skip
 
     bayes_factors, labels = bace.bace(
         sparse.lil_matrix(TCOUNTS), n_macrostates=2, n_procs=4)

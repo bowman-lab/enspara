@@ -1,6 +1,7 @@
 import tempfile
 import warnings
 
+import unittest
 from nose.tools import assert_equal, assert_is, raises
 from numpy.testing import assert_array_equal, assert_allclose
 
@@ -226,6 +227,7 @@ def test_transpose_types():
                 expected)
 
 
+@unittest.skip
 def test_mle_types():
 
     for kwargs in [{'calculate_eq_probs': True},
@@ -264,6 +266,7 @@ def test_mle_types():
                 expected)
 
 
+@unittest.skip
 def test_mle_not_in_place():
 
     in_cts = np.array(
