@@ -125,6 +125,34 @@ def chi_rotamers(traj, buffer_width=15):
 
 
 def all_rotamers(traj, buffer_width=15):
+    """Compute the rotameric states of a trajectory over time.
+
+    Parameters
+    ----------
+    traj : md.Trajectory
+        Trajectory from which to compute a rotamer trajectory.
+    buffer_width: int, default=15
+        Width of the "no-man's land" between rotameric bins in which no
+        assignment is made.
+
+    Returns
+    -------
+    all_rotamers : np.ndarray, shape=(n_frames, n_dihedrals)
+        Assignment of each dihedral to a rotameric state as an int in
+        the range 0-2.
+    all_atom_inds : np.ndarray, shape=(n_dihedrals, 4)
+        Array of the four atom indices that define each dihedral angle.
+    all_n_states : np.ndarray, shape=(n_dihedrals,)
+        Array indicating the maximum number of states a dihedral angle
+        is expected to take (as a consequence of its topology); this
+        value differs for backbone and sidechain dihedrals.
+
+    References
+    ----------
+    [1] Singh, S., & Bowman, G. R. (2017). Quantifying Allosteric
+        Communication via Correlations in Structure and Disorder.
+        Biophysical Journal, 112(3), 498a.
+    """
     phi_rotameric_states, phi_atom_inds, n_phi_states = phi_rotamers(
         traj, buffer_width=buffer_width)
     all_rotamers, all_atom_inds, all_n_states = phi_rotameric_states, \
