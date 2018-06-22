@@ -8,38 +8,6 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 
-class DisorderFeaturizer(object):
-    """Featurizer to convert state assignments into assignments of order
-    and disorder.
-    """
-
-    __slots__ = ['feature_trajectories_', 'n_feature_states_']
-
-    def fit(self, trajectories):
-        """Assign ordered or disordered states of discrete state assignments
-        through a set of trajectories. Makes availiable parameters
-        feature_trajectories_, n_feature_states_.
-
-        Parameters
-        ----------
-        trajectories: iterable, shape = n_trjs * (n_frames, n_features)
-            Trajectories to consider for the calculation. Generators are
-            accepted and can be used to mitigate memory usage.
-
-        References
-        ----------
-        [1] Singh, S., & Bowman, G. R. (2017). Quantifying Allosteric
-            Communication via Correlations in Structure and Disorder.
-            Biophysical Journal, 112(3), 498a.
-        """
-
-        disordered_trajs, disorder_n_states = disorder.assign_order_disorder(
-            trajectories)
-
-        self.feature_trajectories_, self.n_feature_states_ = \
-            disordered_trajs, disorder_n_states
-
-
 class RotamerFeaturizer(object):
     """Featurizer to convert atomic position trajectories into rotamer
     trajectories.

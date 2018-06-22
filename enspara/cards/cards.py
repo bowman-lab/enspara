@@ -7,7 +7,6 @@
 
 import logging
 
-from .. import exception
 from .. import info_theory
 
 from . import disorder

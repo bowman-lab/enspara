@@ -39,8 +39,12 @@ def assert_correlates(m1, m2):
 # This is really an integration test for the entire cards package.
 def test_cards():
 
-    ss_mi, dis_mi, s_d_mi, d_s_mi, inds = cards.cards(
-        [TRJ, TRJ], buffer_width=15., n_procs=1)
+    import warnings
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+
+        ss_mi, dis_mi, s_d_mi, d_s_mi, inds = cards.cards(
+            [TRJ, TRJ], buffer_width=15., n_procs=1)
 
     with open(os.path.join(TEST_DATA_DIR, 'cards_ss_mi.dat'), 'r') as f:
         m = np.loadtxt(f)
