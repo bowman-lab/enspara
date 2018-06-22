@@ -530,7 +530,6 @@ def channel_capacity_normalization(mi, n_x, n_y):
         n_x = [n_x]*mi.shape[0]
     if not hasattr(n_y, '__len__'):
         n_y = [n_y]*mi.shape[1]
-
     for i in range(mi.shape[0]):
         for j in range(mi.shape[1]):
             min_num_states = np.min([n_x[i], n_y[j]])
