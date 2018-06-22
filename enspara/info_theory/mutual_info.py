@@ -7,17 +7,10 @@ normalized MI.
 
 import logging
 import warnings
-import ctypes
-
-import multiprocessing as mp
-from functools import partial
 
 import numpy as np
 
 from .. import exception
-from ..util import array as ra
-
-from . import entropy
 from . import libinfo
 
 

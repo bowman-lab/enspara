@@ -52,8 +52,13 @@ def test_cards():
         s_d_mi[np.diag_indices_from(s_d_mi)] = 0
         d_s_mi[np.diag_indices_from(d_s_mi)] = 0
 
+        assert_allclose(s_d_mi, d_s_mi.T)
+        assert_allclose(ss_mi, ss_mi.T)
+        assert_allclose(dis_mi, dis_mi.T)
+
         assert_allclose(ss_mi, m)
         assert_correlates(ss_mi, m)
+
     with open(os.path.join(TEST_DATA_DIR, 'cards_dis_mi.dat'), 'r') as f:
         assert_allclose(dis_mi, np.loadtxt(f))
     with open(os.path.join(TEST_DATA_DIR, 'cards_s_d_mi.dat'), 'r') as f:
