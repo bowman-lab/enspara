@@ -1,7 +1,7 @@
-"""The RMSD Cluster App allows you to cluster your trajectories based on root 
-mean square deviation. The entire protein or specific residue locations can be 
-used for the clustering. Parameters such as the clustering algorithm and 
-cluster radius can be specified. The app will return information about cluster 
+"""The RMSD Cluster App allows you to cluster your trajectories based on root
+mean square deviation. The entire protein or specific residue locations can be
+used for the clustering. Parameters such as the clustering algorithm and
+cluster radius can be specified. The app will return information about cluster
 centers and frame assignments. See the apps tab for more information.
 """
 
@@ -101,7 +101,7 @@ def process_command_line(argv):
         help="The location to write the cluster center structures.")
     parser.add_argument(
         '--assignments', required=True, action=readable_dir,
-        help="The location to write the cluster center structures.")
+        help="The location to write assignments of frames to clusters.")
 
     args = parser.parse_args(argv[1:])
 
@@ -133,6 +133,11 @@ def process_command_line(argv):
     if args.no_reassign and args.subsample == 1:
         warnings.warn("When subsampling is 1 (or unspecified), --no-reassign has no effect.")
 
+    if args.centers[args.centers.rfind('.'):] == '.h5':
+        warnings.warn(
+            "You provided a centers file that looks like it's an h5... "
+            "centers are saved as pickle. Are you sure this is what you want?")
+
     return args
 
 
@@ -150,22 +155,28 @@ def load(topologies, trajectories, selections, stride, processes):
 
     flat_trjs = []
     configs = []
+    n_inds = None
+
     for topfile, trjset, selection in zip(topologies, trajectories,
                                           selections):
         top = md.load(topfile).top
+        indices = top.select(selection)
+
+        if n_inds is not None:
+            if n_inds != len(indices):
+                raise exception.ImproperlyConfigured(
+                    ("Selection on topology %s selected %s atoms, but "
+                     "other selections selected %s atoms.") %
+                    (topfile, len(indices), n_inds))
+        n_inds = len(indices)
+
         for trj in trjset:
             flat_trjs.append(trj)
             configs.append({
                 'top': top,
                 'stride': stride,
-                'atom_indices': top.select(selection),
+                'atom_indices': indices,
                 })
-
-    assert all([len(c['atom_indices']) == len(configs[0]['atom_indices'])
-                for c in configs]), \
-        "Number of atoms across different input topologies differed: %s" % \
-        [(t, c['atom_indices'], c['selection'])
-         for t, c in zip(topologies, configs)]
 
     logger.info(
         "Loading %s trajectories with %s atoms using %s processes "

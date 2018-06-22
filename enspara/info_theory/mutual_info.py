@@ -1,23 +1,16 @@
-# Author: Gregory R. Bowman <gregoryrbowman@gmail.com>
-# Contributors:
-# Copyright (c) 2016, Washington University in St. Louis
-# All rights reserved.
-# Unauthorized copying of this file, via any medium is strictly prohibited
-# Proprietary and confidential
+"""Module for high-level computations involving mutual information.
+
+Includes such goodies as mutual information matrix calculation, wrappers
+for array of joint count matrices calculations, MI with weights, and
+normalized MI.
+"""
 
 import logging
 import warnings
-import ctypes
-
-import multiprocessing as mp
-from functools import partial
 
 import numpy as np
 
 from .. import exception
-from ..util import array as ra
-
-from . import entropy
 from . import libinfo
 
 
@@ -25,20 +18,270 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 
-def check_features_states(states, n_states):
-    n_features = len(n_states)
+def mi_matrix(Xs, Ys, n_x, n_y, normalize=True):
+    """Compute the all-to-all matrix of mutual information across
+    trajectories of assigned states.
 
-    if len(states[0][0]) != n_features:
-        raise exception.DataInvalid(
-            ("The number-of-states vector's length ({s}) didn't match the "
-             "width of state assignments array with shape {a}.")
-            .format(s=len(n_states), a=len(states[0][0])))
+    Parameters
+    ----------
+    assignments_a : array-like, shape=(n_trajectories, n_frames, n_features)
+        Array of assigned/binned features
+    assignments_b : array-like, shape=(n_trajectories, n_frames, n_features)
+        Array of assigned/binned features
+    n_states_a : int or array, shape(n_features_a,)
+        Number of possible states for each feature in `states_a`. If an
+        integer is given, it is assumed to apply to all features.
+    n_states_b : int or array, shape=(n_features_b,)
+        As `n_x`, but for `X`
+    normalize : bool, default=True
+        Normalize by channel capacity
 
-    if not all(len(t[0]) == len(states[0][0]) for t in states):
-        raise exception.DataInvalid(
-            ("The number of features differs between trajectories. "
-             "Numbers of features were: {l}.").
-            format(l=[len(t[0]) for t in states]))
+    Returns
+    -------
+    mi : np.ndarray, shape=(n_features, n_features)
+        Array where cell i, j is the mutual information between the ith
+        feature of assignments_a and the jth feature of assignments_b of
+        the mutual information between trajectories a and b for each
+        feature.
+
+    See Also
+    --------
+    channel_capacity_normalization, weighted_mi, joint_counts,
+    mutual_information
+    """
+
+    jc = None
+    for i, (X, Y) in enumerate(zip(Xs, Ys)):
+        logger.debug("Starting joint-counts %s", i)
+        jc_i = joint_counts(X, Y, np.max(n_x), np.max(n_y))
+
+        if not hasattr(jc, 'shape'):
+            jc = jc_i
+        else:
+            if jc.shape != jc_i.shape:
+                raise exception.DataInvalid(("Trajectory %s gave a joint "
+                    "counts matrix of shape %s where %s was expected. "
+                    "Are you sure all your trajectories have the same "
+                    "number of features?") % (i, jc_i.shape, jc.shape))
+            jc += jc_i
+
+    mi = mutual_information(jc)
+
+    if normalize:
+        mi = channel_capacity_normalization(mi, n_x, n_y)
+
+    return mi
+
+
+def weighted_mi(features, weights, normalize=True):
+    """Compute a mutual information matrix using weighted observations.
+
+    This function computes the mutual information of weighted samples by
+    actually computing the marginal probability distributions P(x),
+    P(y), and P(x, y) for each variable using the weights, rather than
+    by computing a joint counts matrix.
+
+    Parameters
+    ----------
+    features : np.ndarray, shape=(n_observations, n_features)
+        Array of observations of multiple variables (features) between
+        which to compute the pairwise mutual information.
+    weights : np.ndarray, shape=(n_observations)
+        Array containing a probability distribution across observations
+        by which to weight each observation.
+    normalize : bool, default=True
+        Normalize by channel capacity (two in this case.)
+
+    Returns
+    -------
+    mi : np.ndarray, shape=(n_features, n_features)
+        Array where cell i, j is the mutual information between feature
+        i and feature j. This array is symmmetic (i.e. mi.T == mi).
+    """
+    weights = np.array(weights, copy=True)
+
+    assert len(features.shape) == 2
+    assert len(weights.shape) == 1
+    assert weights.shape[0] == features.shape[0]
+    assert np.all(weights >= 0)
+    assert np.sum(weights), 1
+
+    if np.all(np.unique(features) != np.array([0, 1])):
+        raise NotImplementedError(
+            "Computing the weighted mutual information of non-binary "
+            "variables is not yet supported.")
+
+    mi_mtx = np.zeros((features.shape[1], features.shape[1]), dtype=np.float)
+
+    for i in range(len(mi_mtx)):
+        P_x = [weights[features[:, i] == 0].sum(),
+               weights[features[:, i] == 1].sum()]
+        for j in range(i, len(mi_mtx)):
+            P_y = [weights[features[:, j] == 0].sum(),
+                   weights[features[:, j] == 1].sum()]
+
+            P_x_y = np.zeros((2, 2))
+            for u in range(2):
+                for v in range(2):
+                    P_x_y[u, v] = weights[(features[:, i] == u) &
+                                          (features[:, j] == v)].sum()
+
+            mi = 0
+            for u in range(len(P_x_y)):
+                for v in range(len(P_x_y)):
+                    if (P_x_y[u, v] != 0) and (P_x[u] != 0) and (P_y[v] != 0):
+                        val = P_x_y[u, v] * np.log(P_x_y[u, v]/(P_x[u]*P_y[v]))
+                        mi += val
+
+            if np.isnan(mi):
+                mi = 0
+
+            mi_mtx[i, j] = mi
+
+    mi_mtx += mi_mtx.T
+    # the diagonal gets doubled by adding the transpose, reverse here
+    mi_mtx[np.diag_indices_from(mi_mtx)] /= 2
+
+    if normalize:
+        mi_mtx = channel_capacity_normalization(mi_mtx, 2, 2)
+
+    return mi_mtx
+
+
+def mi_matrix_serial(states_a_list, states_b_list, n_a_states, n_b_states, normalize=True):
+    """Compute the mutual information matrix in a serial fashion.
+
+    Used mostly for testing.
+    """
+    n_traj = len(states_a_list)
+    n_features = states_a_list[0].shape[1]
+    mi = np.zeros((n_features, n_features))
+
+    for i in range(n_features):
+        logger.debug(i, "/", n_features)
+        for j in range(i, n_features):
+            jc = joint_counts(
+                states_a_list[0][:, i], states_b_list[0][:, j],
+                n_a_states[i], n_b_states[j])
+            for k in range(1, n_traj):
+                jc += joint_counts(
+                    states_a_list[k][:, i], states_b_list[k][:, j],
+                    n_a_states[i], n_b_states[j])
+
+            mi[i, j] = mutual_information(jc)
+            mi[j, i] = mi[i, j]
+
+    if normalize:
+        mi = channel_capacity_normalization(mi, n_a_states, n_b_states)
+
+    return mi
+
+
+def joint_counts(X, Y=None, n_x=None, n_y=None):
+    """Compute the array of joint counts matrices between X and Y (or itself.)
+
+    This function is thread-parallelized using OpenMP. The degree of
+    parallelization can be controlled by the OMP_NUM_THREADS evironment
+    variable.
+
+    Parameters
+    ----------
+    X : np.ndarray, shape=(n_observations, n_features)
+        List of assignments to discrete states for trajectory 1.
+    Y : np.ndarray, shape=(n_observations, n_features), default=None
+        As X, but can be left as None to indicate that joint counts are
+        to be computed between X and itself.
+    n_x : int, default=None
+        Number of total possible states in X. If unspecified, taken to
+        be max(X)+1.
+    n_y : int, default=None
+        Number of total possible states in Y. If unspecified, taken to be
+        max(Y)+1.
+
+    Returns
+    -------
+    jc : np.ndarray, shape=(n_features, n_features, n_x, n_y)
+        Array of joint counts matrices, where the cell [x, y, i, j]
+        holds the number of times features X and Y were found
+        simultaneously in states i and j.
+    """
+
+    if len(X.shape) == 1:
+        X = X[..., None]
+    if Y is not None and len(Y.shape) == 1:
+            Y = Y[..., None]
+
+    if n_x is None:
+        n_x = X.max()+1
+
+    if Y is None:
+        if n_y is not None:
+            warnings.warn("n_y unused if Y is None.")
+        jc = libinfo.matrix_bincount2d(X, X, n_x, n_x)
+    else:
+        if n_y is None:
+            n_y = Y.max()+1
+
+        if X.dtype != Y.dtype:
+            warnings.warn(
+                "Feature trajs (types %s and %s) being uptyped to match." %
+                (X.dtype, Y.dtype), exception.PerformanceWarning)
+
+            if X.dtype.itemsize > Y.dtype.itemsize:
+                Y = Y.astype(X.dtype)
+            else:
+                X = X.astype(Y.dtype)
+
+        jc = libinfo.matrix_bincount2d(X, Y, n_x, n_y)
+
+    return jc
+
+
+def mutual_information(jc):
+    """Compute the mutual information of a joint counts matrix or matrix
+    of joint counts matrices.
+
+    Parameters
+    ----------
+    jc : ndarray, dtype=int, shape=(n_feat, n_feat, n_states, n_states)
+        Array where the cell (i, j, u, v) represents the number of times
+        feature i was seen in state u and feature j was seein in state v.
+
+    Returns
+    -------
+    mutual_information : np.ndarray, shape=(n_feat, n_feat)
+        The mutual information of the joint counts matrix
+    """
+
+    jc = _validate_joint_counts_matrix(jc)
+
+    # sum across all possibilities
+    n_obs_a_i = jc.sum(axis=-1)
+    n_obs_b_i = jc.sum(axis=-2)
+
+    P_a = n_obs_a_i / n_obs_a_i.sum(axis=-1)[..., None]
+    P_b = n_obs_b_i / n_obs_b_i.sum(axis=-1)[..., None]
+
+    n_obs = n_obs_a_i.sum(axis=-1)
+    P_a_b = jc / n_obs[..., None, None]
+
+    mi = np.zeros(shape=jc.shape[0:2])
+    for i in range(jc.shape[0]):
+        for j in range(jc.shape[1]):
+            P_x_y = P_a_b[i, j]
+            P_x = P_a[i, j]
+            P_y = P_b[i, j]
+
+            for u in range(P_x_y.shape[0]):
+                for v in range(P_x_y.shape[1]):
+                    unddef = ((P_x_y[u, v] == 0) or
+                              (P_x[u] == 0) or
+                              (P_y[v] == 0))
+                    if not unddef:
+                        mi[i, j] += (P_x_y[u, v] *
+                                     np.log(P_x_y[u, v]/(P_x[u]*P_y[v])))
+
+    return mi
 
 
 def mi_to_nmi_apc(mutual_information, H_marginal=None):
@@ -261,316 +504,69 @@ def mi_to_apc(mi_arr):
     return np.matmul(mi_arr, mi_arr) / (len(mi_arr) * len(mi_arr))
 
 
-def mi_matrix(assignments_a, assignments_b, n_states_a,
-              n_states_b, compute_diagonal=True, n_procs=None):
-    """Compute the all-to-all matrix of mutual information across
-    trajectories of assigned states.
+def channel_capacity_normalization(mi, n_x, n_y):
+    """Normalize an MI matrix by the channel capacity of each feature pair.
+
+    The channel capacity is a information-theoretic quantity that measures the maximum amount of information that can be reliably transmitted along a channel. In our simple case, this is the log of the number of states.
 
     Parameters
     ----------
-    assignments_a : array-like, shape=(n_trajectories, n_frames, n_features)
-        Array of assigned/binned features
-    assignments_b : array-like, shape=(n_trajectories, n_frames, n_features)
-        Array of assigned/binned features
-    n_states_a : int or array, shape(n_features_a,)
-        Number of possible states for each feature in `states_a`. If an
-        integer is given, it is assumed to apply to all features.
-    n_states_b : int or array, shape=(n_features_b,)
-        As `n_states_a`, but for `assignments_b`
-    compute_diagonal: bool, default=True
-        Compute the diagonal of the MI matrix, which is the Shannon
-        entropy of the univariate distribution (i.e. the feature
-        itself).
-    n_procs : int, default=None
-        Number of cores to parallelize this computation across
-
+    mi : np.ndarray, shape=(n_features_a, n_features_b)
+        Mutual information matrix
+    n_x : np.ndarray or int, shape(n_features_a)
+        Vector with element i representing the number of states
+        feature_a i takes.
+    n_y : np.ndarray or int, shape(n_features_b)
+        Vector with element i representing the number of states
+        feature_b i takes.
     Returns
     -------
-    mi : np.ndarray, shape=(n_features, n_features)
-        Array where cell i, j is the mutual information between the ith
-        feature of assignments_a and the jth feature of assignments_b of
-        the mutual information between trajectories a and b for each
-        feature.
+    cc_mi : np.ndarray, shape=(n_features_a, n_features_b)
+        Mutual information matrix scaled by channel capacity.
     """
+    mi = mi.copy()
 
-    n_features = assignments_a[0].shape[1]
-
-    c_dtype = ctypes.c_int
-    np_dtype = np.int32
-
-    assignments_a = _end_to_end_concat(assignments_a)
-    sa_a = _make_shared_array(assignments_a, c_dtype)
-    logger.debug("Allocated shared-memory array of size %s", len(sa_a))
-
-    if not hasattr(n_states_a, '__len__'):
-        n_states_a = [n_states_a] * n_features
-    if not hasattr(n_states_b, '__len__'):
-        n_states_b = [n_states_b] * n_features
-
-    if assignments_a is not assignments_b:
-        assignments_b = _end_to_end_concat(assignments_b)
-        sa_b = _make_shared_array(assignments_b, c_dtype)
-        logger.debug(
-            "Detected that assignments_a is not assignments_b, creating "
-            "second shared-memory array of size %s", len(sa_a))
-    else:
-        logger.debug(
-            "Detected that assignments_a is the same as assignments_a; "
-            "not allocating a second shared-memory array")
-        sa_b = sa_a
-
-    mi = np.zeros((n_features, n_features))
-    mi_calc_indices = np.triu_indices_from(
-        mi, k=(0 if compute_diagonal else 1))
-
-    # initializer function shares shared data with everybody.
-    def _init(arr_a_, arr_b_):
-        global arr_a, arr_b
-        arr_a, arr_b = arr_a_, arr_b_
-
-    with mp.Pool(processes=n_procs, initializer=_init,
-                 initargs=(sa_a, sa_b)) as p:
-
-        # partial function to repeat the number of states and shape info
-        mi_func_repeated_part = partial(
-            _mi_parallel_cell,
-            n_states_a=n_states_a, n_states_b=n_states_b,
-            shape_a=assignments_a.shape,
-            shape_b=assignments_b.shape,
-            np_dtype=np_dtype)
-
-        mi_list = p.starmap(mi_func_repeated_part, zip(*mi_calc_indices))
-
-    mi[mi_calc_indices] = mi_list
-    mi += mi.T
-
-    return mi
-
-
-def weighted_mi(features, weights):
-    """Compute a mutual information matrix using weighted observations.
-
-    This function computes the mutual information of weighted samples by
-    actually computing the marginal probability distributions P(x),
-    P(y), and P(x, y) for each variable using the weights, rather than
-    by computing a joint counts matrix.
-
-    Parameters
-    ----------
-    features : np.ndarray, shape=(n_observations, n_features)
-        Array of observations of multiple variables (features) between
-        which to compute the pairwise mutual information.
-
-    weights : np.ndarray, shape=(n_observations)
-        Array containing a probability distribution across observations
-        by which to weight each observation.
-
-    Returns
-    -------
-    mi : np.ndarray, shape=(n_features, n_features)
-        Array where cell i, j is the mutual information between feature
-        i and feature j. This array is symmmetic (i.e. mi.T == mi).
-    """
-    weights = np.array(weights, copy=True)
-
-    assert len(features.shape) == 2
-    assert len(weights.shape) == 1
-    assert weights.shape[0] == features.shape[0]
-    assert np.all(weights >= 0)
-    assert np.sum(weights), 1
-
-    if np.all(np.unique(features) != np.array([0, 1])):
-        raise NotImplementedError(
-            "Computing the weighted mutual information of non-binary "
-            "variables is not yet supported.")
-
-    mi_mtx = np.zeros((features.shape[1], features.shape[1]), dtype=np.float)
-
-    print('X', 'Y', ' ', 'x', 'y', ' ', 'Pxy', 'P_x', 'P_y')
-    for i in range(len(mi_mtx)):
-        P_x = [weights[features[:, i] == 0].sum(),
-               weights[features[:, i] == 1].sum()]
-        for j in range(i, len(mi_mtx)):
-            P_y = [weights[features[:, j] == 0].sum(),
-                   weights[features[:, j] == 1].sum()]
-
-            P_x_y = np.zeros((2, 2))
-            for u in range(2):
-                for v in range(2):
-                    P_x_y[u, v] = weights[(features[:, i] == u) &
-                                          (features[:, j] == v)].sum()
-
-            mi = 0
-            for u in range(len(P_x_y)):
-                for v in range(len(P_x_y)):
-                    if (P_x_y[u, v] != 0) and (P_x[u] != 0) and (P_y[v] != 0):
-                        val = P_x_y[u, v] * np.log(P_x_y[u, v]/(P_x[u]*P_y[v]))
-                        mi += val
-                    print(i, j, '|', u, v, '|', P_x_y[u, v], P_x[u], P_y[v], mi)
-
-            if np.isnan(mi):
-                mi = 0
-
-            mi_mtx[i, j] = mi
-            print(i, j, mi)
-
-    mi_mtx += mi_mtx.T
-    # the diagonal gets doubled by adding the transpose, reverse here
-    mi_mtx[np.diag_indices_from(mi_mtx)] /= 2
-
-    # we assume two states only, scale by channel capacity
-    mi_mtx /= np.log(2)
-
-    return mi_mtx
-
-
-def mi_matrix_serial(states_a_list, states_b_list, n_a_states, n_b_states,
-                     compute_diagonal=False):
-    n_traj = len(states_a_list)
-    n_features = states_a_list[0].shape[1]
-    mi = np.zeros((n_features, n_features))
-
-    for i in range(n_features):
-        logger.debug(i, "/", n_features)
-        for j in range(i+int(not compute_diagonal), n_features):
-            jc = joint_counts(
-                states_a_list[0][:, i], states_b_list[0][:, j],
-                n_a_states[i], n_b_states[j])
-            for k in range(1, n_traj):
-                jc += joint_counts(
-                    states_a_list[k][:, i], states_b_list[k][:, j],
-                    n_a_states[i], n_b_states[j])
-            mi[i, j] = mutual_information(jc)
-            min_num_states = np.min([n_a_states[i], n_b_states[j]])
+    if not hasattr(n_x, '__len__'):
+        n_x = [n_x]*mi.shape[0]
+    if not hasattr(n_y, '__len__'):
+        n_y = [n_y]*mi.shape[1]
+    for i in range(mi.shape[0]):
+        for j in range(mi.shape[1]):
+            min_num_states = np.min([n_x[i], n_y[j]])
             mi[i, j] /= np.log(min_num_states)
-            mi[j, i] = mi[i, j]
 
     return mi
 
 
-def _end_to_end_concat(trjlist):
-    """Concatenate all trajectories in an end-to-end way, to create rows
-    that are a single feature across all timepoints.
-    """
+def check_features_states(states, n_states):
+    n_features = len(n_states)
 
-    if hasattr(trjlist, '_data'):
-        return trjlist._data
-
-    elif hasattr(trjlist, 'dtype'):
-        return trjlist.reshape(-1, trjlist.shape[-1])
-
-    else:
-        warnings.warn(
-            "Computing mutual information is coercing list of arrays "
-            "into a ragged array, doubling memory usage.",
-            ResourceWarning)
-
-        rag = ra.RaggedArray(trjlist)
-
-        return rag._data
-
-
-def _make_shared_array(in_arr, dtype):
-
-    if not np.issubdtype(in_arr.dtype, np.integer):
+    if len(states[0][0]) != n_features:
         raise exception.DataInvalid(
-            "Given array (type '%s') is an integral type (e.g. int32). "
-            "Mutual information calculations require discretized state "
-            "trajectories." % in_arr.dtype)
+            ("The number-of-states vector's length ({s}) didn't match the "
+             "width of state assignments array with shape {a}.")
+            .format(s=len(n_states), a=len(states[0][0])))
 
-    try:
-        arr = mp.Array(dtype, in_arr.size, lock=False)
-    except:
-        logger.error(
-            "Multiprocessing's Array failed to allocate an array of size "
-            "%s of dtype %s. Typically this means /dev/shm or similar "
-            "is full or too small.", in_arr.size, dtype)
-        raise
-
-    arr[:] = in_arr.flatten()
-
-    return arr
+    if not all(len(t[0]) == len(states[0][0]) for t in states):
+        raise exception.DataInvalid(
+            ("The number of features differs between trajectories. "
+             "Numbers of features were: {l}.").
+            format(l=[len(t[0]) for t in states]))
 
 
-def _mi_parallel_cell(feature_id_a, feature_id_b, n_states_a, n_states_b,
-                      shape_a, shape_b, np_dtype):
+def _validate_joint_counts_matrix(jc):
 
-    assigs_a = np.frombuffer(arr_a, dtype=np_dtype).reshape(shape_a)
-    assigs_b = np.frombuffer(arr_b, dtype=np_dtype).reshape(shape_b)
+    if len(jc.shape) == 2:
+        raise exception.DataInvalid(
+            ("Expected a 4D array of joint counts matrices, but got a 2D "
+             " array. If your dataset is a single joint counts matrix, "
+             "try `jc[None, None, ...]` to expand its dimensions."))
+    if len(jc.shape) != 4:
+        raise exception.DataInvalid(
+            ("Expected a 4D array of joint counts matrices, but an array "
+             "with shape %s.") % (jc.shape,))
 
-    trj_a = assigs_a[:, feature_id_a]
-    trj_b = assigs_b[:, feature_id_b]
-
-    n_a = n_states_a[feature_id_a]
-    n_b = n_states_b[feature_id_b]
-
-    jc = joint_counts(trj_a, trj_b, n_a, n_b)
-
-    assert not np.any(np.isnan(jc))
-
-    mi = mutual_information(jc) / np.log(min([n_a, n_b]))
-
-    return mi
-
-
-def joint_counts(state_traj_1, state_traj_2,
-                 n_states_1=None, n_states_2=None):
-    """Compute the matrix H, where H[i, j] is the number of times t
-    where trajectory_1[t] == i and trajectory[t] == j.
-
-    Parameters
-    ----------
-    state_traj_1 : array-like, dtype=int, shape=(n_observations,)
-        List of assignments to discrete states for trajectory 1.
-    state_traj_2 : array-like, dtype=int, shape=(n_observations,)
-        List of assignments to discrete states for trajectory 2.
-    n_states_1 : int, optional
-        Number of total possible states in state_traj_1. If unspecified,
-        taken to be max(state_traj_1)+1.
-    n_states_2 : int, optional
-        Number of total possible states in state_traj_2 If unspecified,
-        taken to be max(state_traj_2)+1.
-    """
-
-    if n_states_1 is None:
-        n_states_1 = state_traj_1.max()+1
-    if n_states_2 is None:
-        n_states_2 = state_traj_2.max()+1
-
-    H = libinfo.bincount2d(
-        state_traj_1, state_traj_2,
-        n_states_1, n_states_2)
-
-    return H
-
-
-def mutual_information(joint_counts):
-    """Compute the mutual information of a joint counts matrix.
-
-    Parameters
-    ----------
-    joint_counts : ndarray, dtype=int, shape=(n_states, n_states)
-        Matrix where the cell (i, j) represents the number of times the
-        combination of state i and state j were observed concurrently.
-
-    Returns
-    -------
-    mutual_information : float
-        The mutual information of the joint counts matrix
-    """
-
-    counts_axis_1 = joint_counts.sum(axis=1)
-    counts_axis_2 = joint_counts.sum(axis=0)
-
-    p1 = counts_axis_1/counts_axis_1.sum()
-    p2 = counts_axis_2/counts_axis_2.sum()
-    joint_p = joint_counts.flatten()/joint_counts.sum()
-
-    h1 = entropy.shannon_entropy(p1)
-    h2 = entropy.shannon_entropy(p2)
-    joint_h = entropy.shannon_entropy(joint_p)
-
-    return h1+h2-joint_h
+    return jc
 
 
 def _validate_mutual_information_matrix(mi):

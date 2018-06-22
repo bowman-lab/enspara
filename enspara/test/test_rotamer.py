@@ -1,12 +1,11 @@
 import os
 
-from nose.tools import assert_equal, assert_raises, assert_is
-from numpy.testing import assert_array_equal, assert_allclose
+from nose.tools import assert_equal
+from numpy.testing import assert_array_equal
 
 import numpy as np
 import mdtraj as md
 
-from .. import cards
 from .. import geometry
 
 TEST_DATA_DIR = os.path.join(os.path.dirname(__file__), 'geometry_data')
@@ -20,21 +19,20 @@ TEST_TRJS = [TRJ, TRJ]
 def test_rotamer_dtype():
 
     rots, inds, n = geometry.phi_rotamers(TRJ)
-    assert_equal(rots.dtype, 'int')
-    assert_equal(n.dtype, 'int')
+    assert issubclass(rots.dtype.type, np.integer)
+    assert issubclass(n.dtype.type, np.integer)
 
     rots, inds, n = geometry.psi_rotamers(TRJ)
-    assert_equal(rots.dtype, 'int')
-    assert_equal(n.dtype, 'int')
+    assert issubclass(rots.dtype.type, np.integer)
+    assert issubclass(n.dtype.type, np.integer)
 
     rots, inds, n = geometry.chi_rotamers(TRJ)
-    assert_equal(rots.dtype, 'int')
-    assert_equal(n.dtype, 'int')
+    assert issubclass(rots.dtype.type, np.integer)
+    assert issubclass(n.dtype.type, np.integer)
 
     rots, inds, n = geometry.all_rotamers(TRJ)
-
-    assert_equal(rots.dtype, 'int')
-    assert_equal(n.dtype, 'int')
+    assert issubclass(rots.dtype.type, np.integer)
+    assert issubclass(n.dtype.type, np.integer)
 
 
 def test_rotamer_assignment():
