@@ -152,11 +152,14 @@ def hybrid(
         X, distance_method, n_clusters=n_clusters, dist_cutoff=dist_cutoff,
         init_centers=init_centers, random_first_center=random_first_center)
 
+    cluster_center_inds, assignments, distances = (
+        result.center_indices, result.assignments, result.distances)
+
     for i in range(n_iters):
         cluster_center_inds, distances, assignments = \
             kmedoids._kmedoids_pam_update(
                 X, distance_method,
-                result.center_indices, result.assignments, result.distances,
+                cluster_center_inds, assignments, distances,
                 cost=np.max,
                 random_state=random_state)
 

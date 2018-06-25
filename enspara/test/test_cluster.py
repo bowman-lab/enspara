@@ -98,9 +98,12 @@ class TestTrajClustering(unittest.TestCase):
             clustering.labels_
 
         self.assertAlmostEqual(
-            np.average(clustering.distances_), 0.1, delta=0.02)
+            np.average(clustering.distances_), 0.09, delta=0.005)
         self.assertAlmostEqual(
-            np.std(clustering.distances_), 0.01875, delta=0.005)
+            np.std(clustering.distances_), 0.0185, delta=0.005)
+
+        # print(np.average(clustering.distances_), '+/-', np.std(clustering.distances_))
+        # assert False
 
         with self.assertRaises(DataInvalid):
             clustering.result_.partition([5, 10])
