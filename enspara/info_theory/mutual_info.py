@@ -119,11 +119,9 @@ def weighted_mi(features, weights, normalize=True):
     mi_mtx = np.zeros((features.shape[1], features.shape[1]), dtype=np.float)
 
     for i in range(len(mi_mtx)):
-        P_x = [weights[features[:, i] == 0].sum(),
-               weights[features[:, i] == 1].sum()]
+        P_x = np.bincount(features[:, i], weights=weights)
         for j in range(i, len(mi_mtx)):
-            P_y = [weights[features[:, j] == 0].sum(),
-                   weights[features[:, j] == 1].sum()]
+            P_y = np.bincount(features[:, j], weights=weights)
 
             P_x_y = np.zeros((2, 2))
             for u in range(2):
