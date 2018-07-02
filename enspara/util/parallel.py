@@ -18,7 +18,7 @@ import scipy.sparse.linalg
 
 
 def auto_nprocs():
-    return os.getenv('OMP_NUM_THREADS', mp.cpu_count())
+    return int(os.getenv('OMP_NUM_THREADS', mp.cpu_count()))
 
 
 def pool_dense2d(arr, processes=None):
