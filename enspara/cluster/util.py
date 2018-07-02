@@ -7,8 +7,7 @@
 # Unauthorized copying of this file, via any medium is strictly prohibited
 # Proprietary and confidential
 
-from __future__ import print_function, division, absolute_import
-
+import logging
 from collections import namedtuple
 
 import mdtraj as md
@@ -18,12 +17,13 @@ from sklearn.base import BaseEstimator, ClusterMixin
 
 from sklearn.utils import check_random_state
 
-from .. import mpi
 from ..geometry.libdist import euclidean
 
 from ..exception import ImproperlyConfigured, DataInvalid
 from ..util import partition_list, partition_indices
 from ..util import array as ra
+
+logger = logging.getLogger(__name__)
 
 
 class Clusterer(BaseEstimator, ClusterMixin):
@@ -131,12 +131,19 @@ class ClusterResult(namedtuple('ClusterResult',
         square = all(lengths[0] == l for l in lengths)
 
         if square:
+            logger.debug(
+                'Trajecotry lengths are equal (%s), using numpy arrays '
+                'as output to partitioning.', lengths[0])
             return ClusterResult(
                 assignments=np.array(partition_list(self.assignments, lengths)),
                 distances=np.array(partition_list(self.distances, lengths)),
                 center_indices=partition_indices(self.center_indices, lengths),
                 centers=self.centers)
         else:
+            logger.debug(
+                'Trajecotry lengths are equal (mean=%s, min=%s, max=%s),'
+                ' using RaggedArray as output to partitioning.',
+                np.mean(lengths), np.min(lengths), np.max(lengths))
             return ClusterResult(
                 assignments=ra.RaggedArray(self.assignments, lengths=lengths),
                 distances=ra.RaggedArray(self.distances, lengths=lengths),
