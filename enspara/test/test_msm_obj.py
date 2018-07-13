@@ -1,3 +1,4 @@
+import functools
 import tempfile
 import shutil
 import os
@@ -122,3 +123,34 @@ def test_msm_roundtrip_pickle():
         m2 = pickle.load(open(tmp_f.name, 'rb'))
 
     assert_equal(m, m2)
+
+
+def test_msm_normalize_with_prior():
+
+    assigs = TRIMMABLE['assigns']
+
+    m_transpose = MSM(lag_time=1, method=builders.transpose)
+    m_transpose.fit(assigs)
+
+    prior = np.array(m_transpose.tprobs_\
+                        .astype('bool').astype('float32')\
+                        .todense())
+    prior /= prior.sum(axis=1)[..., None]
+
+    m = MSM(
+        lag_time=1,
+        method=functools.partial(
+            builders.normalize,
+            prior_counts=prior),
+        max_n_states=4)
+
+    m.fit(assigs)
+
+    assert_allclose(m.eq_probs_,
+                    [0.04179409, 0.64220183, 0.3058104, 0.01019368])
+    assert_allclose(m.tprobs_,
+        [[0.93902439, 0.06097561, 0.        , 0.        ],
+         [0.00396825, 0.98015873, 0.01587302, 0.        ],
+         [0.        , 0.03333333, 0.93333333, 0.03333333],
+         [0.        , 0.        , 1.        , 0.        ]],
+         rtol=1e-5)

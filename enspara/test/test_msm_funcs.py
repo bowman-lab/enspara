@@ -346,4 +346,3 @@ def test_prior_counts():
     calculated_counts, _, _ = builders.normalize(
         sparse_counts, prior_counts=prior, calculate_eq_probs=False)
     assert_array_equal(calculated_counts, expected_counts)
-
