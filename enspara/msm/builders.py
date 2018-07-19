@@ -207,6 +207,7 @@ def _row_normalize(C):
         T = inv_weights.dot(C_csr)
         T = type(C)(T)  # recast T to the input type
     else:
+        C = np.array(C)
         weights = np.asarray(C.sum(axis=1)).flatten()
         inv_weights = np.zeros(n_states)
         inv_weights[weights > 0] = 1.0 / weights[weights > 0]
