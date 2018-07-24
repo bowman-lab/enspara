@@ -9,6 +9,7 @@ from __future__ import print_function, division, absolute_import
 
 import logging
 import csv
+import numbers
 
 import numpy as np
 import scipy
@@ -110,7 +111,7 @@ class TrimMapping:
 
 
 def assigns_to_counts(
-        assigns, max_n_states=None, lag_time=1, sliding_window=True):
+        assigns, lag_time, max_n_states=None, sliding_window=True):
     """Count transitions between states in a single trajectory.
 
     Parameters
@@ -118,13 +119,13 @@ def assigns_to_counts(
     assigns : array, shape=(traj_len, )
         A 2-D array where each row is a trajectory consisting of a
         sequence of state indices.
+    lag_time : int
+        The lag time (i.e. observation interval) for counting
+        transitions.
     max_n_states : int, default=None
         The number of states. This is useful for controlling the
         dimensions of the transition count matrix in cases where the
         input trajectory does not necessarily visit every state.
-    lag_time : int, default=1
-        The lag time (i.e. observation interval) for counting
-        transitions.
     sliding_window : bool, default=True
         Whether to use a sliding window for counting transitions or to
         take every lag_time'th state.
@@ -134,6 +135,15 @@ def assigns_to_counts(
     C :  array, shape=(n_states, n_states)
         A transition count matrix.
     """
+
+    if not isinstance(lag_time, numbers.Integral):
+        raise exception.DataInvalid(
+            "The lag time must be an integer. Got %s type %s." %
+            lag_time, type(lag_time))
+    if lag_time < 1:
+        raise exception.DataInvalid(
+            "Lag times must be be strictly greater than 0. Got '%s'." %
+            lag_time)
 
     # if it's 1d, later stuff will fail
     if len(assigns.shape) == 1:
