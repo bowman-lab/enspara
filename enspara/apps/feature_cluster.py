@@ -15,7 +15,7 @@ from enspara import exception
 from enspara.apps.util import readable_dir
 from enspara.cluster import KHybrid
 from enspara.util import array as ra
-from enspara.geometry.libdist import euclidean
+from enspara.geometry import libdist
 
 
 def process_command_line(argv):
@@ -63,10 +63,7 @@ def process_command_line(argv):
 
     args = parser.parse_args(argv[1:])
 
-    if args.cluster_distance.lower() == 'euclidean':
-        args.cluster_distance = euclidean
-    elif args.cluster_distance.lower() == 'manhattan':
-        args.cluster_distance = diff_manhattan
+    args.cluster_distance = getattr(libdist, args.cluster_distance.lower())
 
     a_file_exists = any(
         os.path.isfile(getattr(args, o)) for o in
@@ -77,10 +74,6 @@ def process_command_line(argv):
     assert args.cluster_algorithm.lower() == 'khybrid'
 
     return args
-
-
-def diff_manhattan(trj, ref):
-    return np.abs(trj - ref)
 
 
 def main(argv=None):
