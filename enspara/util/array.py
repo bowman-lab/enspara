@@ -437,8 +437,8 @@ class RaggedArray(np.ndarray):
 
     def __new__(cls, array, lengths=None, dtype=None):
 
-        _data = None
-        # prepare self._data
+        data = None
+        # prepare flattened backing array
         if (len(array) > 0) and (lengths is None):
             logger.debug("Interpreting array as list/array of lists/arrays.")
             if _is_iterable(array[0]):
@@ -446,13 +446,14 @@ class RaggedArray(np.ndarray):
                     warnings.warn(
                         "Can't create a view into %s, copying anyway." %
                         type(array), RuntimeWarning)
-                _data = np.concatenate(array)
+                data = np.concatenate(array)
             else:
-                _data = np.array(array, copy=copy)
+                data = np.array(array, copy=copy)
         elif len(array) > 0:
             logger.debug("Interpreting array as concatenated array.")
-            _data = np.array(array, copy=copy)
+            data = np.array(array, copy=copy)
 
+        obj = np.asarray(data, dtype=dtype).view(cls)
 
         # Prepare with array
         # new array greater with >0 elements
@@ -461,11 +462,11 @@ class RaggedArray(np.ndarray):
             if _is_iterable(array[0]):
                 lengths = np.array([len(i) for i in array], dtype=int)
                 array = np.array(
-                    partition_list(_data, lengths), dtype='O')
+                    partition_list(data, lengths), dtype='O', copy=False)
             # array of single values
             else:
                 lengths = np.array([len(array)], dtype=int)
-                array = _data.reshape((1, lengths[0]))
+                array = data.reshape((1, lengths[0]))
         # null array
         elif lengths is None:
             lengths = np.array([], dtype=int)
@@ -473,10 +474,9 @@ class RaggedArray(np.ndarray):
         # rebuild array from 1d and lengths
         else:
             array = np.array(
-                partition_list(_data, lengths), dtype='O')
+                partition_list(data, lengths), dtype='O', copy=False)
             lengths = np.array(lengths)
 
-        obj = np.asarray(_data, dtype=dtype).view(cls)
         obj.lengths = lengths
         obj._array = array
 
@@ -485,6 +485,7 @@ class RaggedArray(np.ndarray):
     def __array_finalize__(self, obj):
         if obj is None: return
         self.lengths = getattr(obj, 'lengths', None)
+        self._array = getattr(obj, '_array', None)
 
     # def __init__(self, array, lengths=None, error_checking=True, copy=True):
     #     # Check that input is proper (array of arrays)
@@ -596,7 +597,10 @@ class RaggedArray(np.ndarray):
                 # if the first dimension is an int, but the second is
                 # a slice, numpy can handle it.
                 if isinstance(first_dimension, numbers.Integral):
-                    return super(RaggedArray, self).__getitem__(first_dimension)[second_dimension]
+                    first_dim_slice = slice(
+                        self.starts[first_dimension],
+                        self.starts[first_dimension]+self.lengths[first_dimension])
+                    return self.view(np.ndarray)[first_dim_slice][second_dimension]
                 # if the second dimension is a slice, determines the 2d indices
                 # from the lengths in the ragged dimension
                 else:
@@ -606,8 +610,10 @@ class RaggedArray(np.ndarray):
             # If the indices are a tuple, but does not contain a slice,
             # does regular conversion.
             else:
-                return super(RaggedArray, self).__getitem__(_convert_from_2d(
-                    iis, lengths=self.lengths, starts=self.starts))
+                iis = _convert_from_2d(
+                    iis, lengths=self.lengths, starts=self.starts)
+                print([super(RaggedArray, self).__getitem__(i) for i in range(sum(self.lengths))])
+                return super(RaggedArray, self).__getitem__(iis)
             # Takes 2D indices generated from slicing in first or second
             # dimension and returns data formatted with new_lengths
             sliced_data = super(RaggedArray, self).__getitem__(
@@ -626,8 +632,8 @@ class RaggedArray(np.ndarray):
             value = value._array
         # ints, slices, lists, and numpy objects are handled by numpy
         if isinstance(iis, (numbers.Integral, slice, list, np.ndarray)):
-            self._array[iis] = value
-            self.__init__(self._array)
+            np.copyto(self._array[iis], value)
+            assert np.all(np.hstack(self._array) == self)
         # tuples get index conversion from 2d to 1d
         elif isinstance(iis, tuple):
             first_dimension, second_dimension = iis
@@ -652,8 +658,9 @@ class RaggedArray(np.ndarray):
                 # if the first dimension is an int, but the second is
                 # a slice, numpy can handle it.
                 if isinstance(first_dimension, numbers.Integral):
-                    self._array[first_dimension][second_dimension] = value
-                    self.__init__(self._array)
+                    np.copyto(
+                        self._array[first_dimension][second_dimension],
+                        value)
                     return
                 # if the second dimension is a slice, pick the maximum length
                 # of all arrays for conversion of slice to list. Indices that
@@ -675,9 +682,11 @@ class RaggedArray(np.ndarray):
                         value_1d = value
                 else:
                     value_1d = value
-                self._data[iis_1d] = value_1d
+                self.view(np.ndarray)[iis_1d] = value_1d
                 self._array = np.array(
-                    partition_list(self._data, self.lengths), dtype='O')
+                    partition_list(self.view(np.ndarray), self.lengths),
+                    dtype='O', copy=False)
+                assert np.may_share_memory(self._array[0], self)
                 return
             # Takes 2D indices generated from slicing in the first or second
             # dimension and sets data values to input values
@@ -690,9 +699,10 @@ class RaggedArray(np.ndarray):
                     value_1d = value
             else:
                 value_1d = value
-            self._data[iis_1d] = value_1d
+            self.view(np.ndarray)[iis_1d] = value_1d
             self._array = np.array(
-                partition_list(self._data, self.lengths), dtype='O')
+                    partition_list(self.view(np.ndarray), self.lengths),
+                    dtype='O', copy=False)
         # if the indices are of self, assumes a boolean matrix. Converts
         # bool to indices and recalls __getitem__
         elif type(iis) is type(self):
