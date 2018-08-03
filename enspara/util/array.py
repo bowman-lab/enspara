@@ -413,7 +413,7 @@ def _get_iis_from_list(first_dimension, second_dimension):
     return iis, new_lengths
 
 
-class RaggedArray(object):
+class RaggedArray(np.ndarray):
     """RaggedArray class
 
     The RaggedArray class takes an array of arrays with various lengths and
@@ -435,20 +435,9 @@ class RaggedArray(object):
 
     __slots__ = ('_data', '_array', 'lengths')
 
-    def __init__(self, array, lengths=None, error_checking=True, copy=True):
-        # Check that input is proper (array of arrays)
-        if error_checking:
-            array = np.array(list(array))
-            if len(array) > 20000:
-                # lenghts is None => we are not inferring lengths from
-                # e.g. nested lists
-                if lengths is None:
-                    logger.warning(
-                        "error checking is turned off for ragged arrays "
-                        "with first dimension greater than 20000")
-            else:
-                _ensure_ragged_data(array)
+    def __new__(cls, array, lengths=None, dtype=None):
 
+        _data = None
         # prepare self._data
         if (len(array) > 0) and (lengths is None):
             logger.debug("Interpreting array as list/array of lists/arrays.")
@@ -457,38 +446,96 @@ class RaggedArray(object):
                     warnings.warn(
                         "Can't create a view into %s, copying anyway." %
                         type(array), RuntimeWarning)
-                self._data = np.concatenate(array)
+                _data = np.concatenate(array)
             else:
-                self._data = np.array(array, copy=copy)
+                _data = np.array(array, copy=copy)
         elif len(array) > 0:
             logger.debug("Interpreting array as concatenated array.")
-            self._data = np.array(array, copy=copy)
+            _data = np.array(array, copy=copy)
 
-        # Prepare with _array
+
+        # Prepare with array
         # new array greater with >0 elements
         if (lengths is None) and (len(array) > 0):
             # array of arrays
             if _is_iterable(array[0]):
-                self.lengths = np.array([len(i) for i in array], dtype=int)
-                self._array = np.array(
-                    partition_list(self._data, self.lengths), dtype='O')
+                lengths = np.array([len(i) for i in array], dtype=int)
+                array = np.array(
+                    partition_list(_data, lengths), dtype='O')
             # array of single values
             else:
-                self.lengths = np.array([len(array)], dtype=int)
-                self._array = self._data.reshape((1, self.lengths[0]))
+                lengths = np.array([len(array)], dtype=int)
+                array = _data.reshape((1, lengths[0]))
         # null array
         elif lengths is None:
-            self.lengths = np.array([], dtype=int)
-            self._array = []
+            lengths = np.array([], dtype=int)
+            array = []
         # rebuild array from 1d and lengths
         else:
-            self._array = np.array(
-                partition_list(self._data, lengths), dtype='O')
-            self.lengths = np.array(lengths)
+            array = np.array(
+                partition_list(_data, lengths), dtype='O')
+            lengths = np.array(lengths)
 
-    @property
-    def dtype(self):
-        return self._data.dtype
+        obj = np.asarray(_data, dtype=dtype).view(cls)
+        obj.lengths = lengths
+        obj._array = array
+
+        return obj
+
+    def __array_finalize__(self, obj):
+        if obj is None: return
+        self.lengths = getattr(obj, 'lengths', None)
+
+    # def __init__(self, array, lengths=None, error_checking=True, copy=True):
+    #     # Check that input is proper (array of arrays)
+    #     if error_checking:
+    #         array = np.array(list(array))
+    #         if len(array) > 20000:
+    #             # lenghts is None => we are not inferring lengths from
+    #             # e.g. nested lists
+    #             if lengths is None:
+    #                 logger.warning(
+    #                     "error checking is turned off for ragged arrays "
+    #                     "with first dimension greater than 20000")
+    #         else:
+    #             _ensure_ragged_data(array)
+
+    #     # prepare self._data
+    #     if (len(array) > 0) and (lengths is None):
+    #         logger.debug("Interpreting array as list/array of lists/arrays.")
+    #         if _is_iterable(array[0]):
+    #             if not copy:
+    #                 warnings.warn(
+    #                     "Can't create a view into %s, copying anyway." %
+    #                     type(array), RuntimeWarning)
+    #             self._data = np.concatenate(array)
+    #         else:
+    #             self._data = np.array(array, copy=copy)
+    #     elif len(array) > 0:
+    #         logger.debug("Interpreting array as concatenated array.")
+    #         self._data = np.array(array, copy=copy)
+
+    #     # Prepare with _array
+    #     # new array greater with >0 elements
+    #     if (lengths is None) and (len(array) > 0):
+    #         # array of arrays
+    #         if _is_iterable(array[0]):
+    #             self.lengths = np.array([len(i) for i in array], dtype=int)
+    #             self._array = np.array(
+    #                 partition_list(self._data, self.lengths), dtype='O')
+    #         # array of single values
+    #         else:
+    #             self.lengths = np.array([len(array)], dtype=int)
+    #             self._array = self._data.reshape((1, self.lengths[0]))
+    #     # null array
+    #     elif lengths is None:
+    #         self.lengths = np.array([], dtype=int)
+    #         self._array = []
+    #     # rebuild array from 1d and lengths
+    #     else:
+    #         self._array = np.array(
+    #             partition_list(self._data, lengths), dtype='O')
+    #         self.lengths = np.array(lengths)
 
     @property
     def shape(self):
@@ -496,25 +543,22 @@ class RaggedArray(object):
             rag_second_dim = None
         else:
             rag_second_dim = self.lengths[0]
-        if _is_iterable(self._data[0]):
-            data_dim = self._data.shape
+        if _is_iterable(super(RaggedArray, self).__getitem__(0)):
+            data_dim = super(RaggedArray, self).shape
             if len(data_dim) == 1:
                 return (len(self.lengths), rag_second_dim, None)
             else:
-                return (len(self.lengths), rag_second_dim, self._data.shape[1])
+                return (len(self.lengths), rag_second_dim,
+                        super(RaggedArray, self).shape[1])
         return (len(self.lengths), rag_second_dim)
 
     @property
     def size(self):
-        return len(self._data)
+        return len(self)
 
     @property
     def starts(self):
         return np.append([0], np.cumsum(self.lengths)[:-1])
-
-    # Built in functions
-    def __len__(self):
-        return len(self._array)
 
     def __repr__(self):
         return _format_array(self._array, '__repr__')
@@ -527,7 +571,7 @@ class RaggedArray(object):
             return self._array[iis]
         # slices and lists are handled by numpy, but return a RaggedArray
         elif isinstance(iis, (slice, list, np.ndarray)):
-            return RaggedArray(self._array[iis])
+            return RaggedArray(array=super(RaggedArray, self).__getitem__(iis))
         # tuples get index conversion from 2d to 1d
         elif isinstance(iis, tuple):
             first_dimension, second_dimension = iis
@@ -552,7 +596,7 @@ class RaggedArray(object):
                 # if the first dimension is an int, but the second is
                 # a slice, numpy can handle it.
                 if isinstance(first_dimension, numbers.Integral):
-                    return self._array[first_dimension][second_dimension]
+                    return super(RaggedArray, self).__getitem__(first_dimension)[second_dimension]
                 # if the second dimension is a slice, determines the 2d indices
                 # from the lengths in the ragged dimension
                 else:
@@ -562,14 +606,13 @@ class RaggedArray(object):
             # If the indices are a tuple, but does not contain a slice,
             # does regular conversion.
             else:
-                return self._data[
-                        _convert_from_2d(
-                            iis, lengths=self.lengths, starts=self.starts)]
+                return super(RaggedArray, self).__getitem__(_convert_from_2d(
+                    iis, lengths=self.lengths, starts=self.starts))
             # Takes 2D indices generated from slicing in first or second
-            #dimension and returns data formatted with new_lengths
-            sliced_data = self._data[
+            # dimension and returns data formatted with new_lengths
+            sliced_data = super(RaggedArray, self).__getitem__(
                 _convert_from_2d(
-                    iis, lengths=self.lengths, starts=self.starts)]
+                    iis, lengths=self.lengths, starts=self.starts))
             return RaggedArray(sliced_data, lengths=new_lengths)
 
         # if the indices are of self, assumes a boolean matrix. Converts
@@ -660,8 +703,8 @@ class RaggedArray(object):
         new_data = self._data.__invert__()
         return RaggedArray(new_data, lengths=self.lengths)
 
-    def __eq__(self, other):
-        return self.map_operator('__eq__', other)
+    # def __eq__(self, other):
+    #     return self.map_operator('__eq__', other)
     def __lt__(self, other):
         return self.map_operator('__lt__', other)
     def __le__(self, other):
@@ -714,25 +757,47 @@ class RaggedArray(object):
         if new_data is NotImplemented:
             return NotImplemented
         else:
-            return RaggedArray(array=new_data, lengths=self.lengths,
-                               error_checking=False)
+            return RaggedArray(array=new_data, lengths=self.lengths)
 
     # Non-built in functions
-    def all(self):
-        return np.all(self._data)
+    def all(self, axis=None, *args, **kwargs):
+        #TODO implement in __array_ufunc__ and __array_wrap__
+        assert len(self.shape) <= 2
+        if axis is None:
+            return super(RaggedArray, self).all(*args, **kwargs)
 
-    def any(self):
-        return np.any(self._data)
+        axis = np.numeric.normalize_axis_tuple(axis, ndim=len(self.shape))
+        if axis == (0,):
+            return np.array([self[:, i].all() for i in range(len(self))])
+        if axis == (1,):
+            return np.array([self[i].all() for i in range(len(self.lengths))])
+        else:
+            raise NotImplementedError()
 
-    def max(self):
-        return self._data.max()
+    def any(self, axis=None, *args, **kwargs):
+        #TODO implement in __array_ufunc__ and __array_wrap__
+        assert len(self.shape) <= 2
 
-    def min(self):
-        return self._data.min()
+        if axis is None:
+            return super(RaggedArray, self).any(*args, **kwargs)
 
-    @property
-    def size(self):
-        return self._data.size
+        axis = np.numeric.normalize_axis_tuple(axis, ndim=len(self.shape))
+        if axis == (0,):
+            raise NotImplementedError()
+        if axis == (1,):
+            return np.array([self[i].any() for i in range(len(self.lengths))])
+        else:
+            raise NotImplementedError()
+
+    # def max(self):
+    #     return self._data.max()
+
+    # def min(self):
+    #     return self._data.min()
+
+    # @property
+    # def size(self):
+    #     return self._data.size
 
     def append(self, values):
         # if the incoming values is a RaggedArray, pull just the array

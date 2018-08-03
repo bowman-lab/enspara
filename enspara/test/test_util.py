@@ -156,7 +156,7 @@ class Test_RaggedArray(unittest.TestCase):
             a[-3]
 
         b = ra.RaggedArray([[23, 24],[48, 49, 50]])
-        assert_equals(a[:, 23:26], b)
+        assert_array_equal(a[:, 23:26], b)
 
     def test_RaggedArray_iterator(self):
         src = [range(10), range(20), range(30)]
@@ -183,7 +183,7 @@ class Test_RaggedArray(unittest.TestCase):
         assert_array_equal(a[:,1], [[1],[1],[1]])
         assert_array_equal(a[:,np.arange(3)[1]], [[1],[1],[1]])
 
-        a[:,np.arange(3)[1]] = [[90],[90],[70]] 
+        a[:,np.arange(3)[1]] = [[90],[90],[70]]
         assert_array_equal(a[:,1], [[90], [90], [70]])
         assert_array_equal(a[:,np.arange(3)[1]], [[90], [90], [70]])
 
