@@ -557,10 +557,6 @@ class RaggedArray(np.ndarray):
         return len(self._array)
 
     @property
-    def size(self):
-        return len(self)
-
-    @property
     def starts(self):
         return np.append([0], np.cumsum(self.lengths)[:-1])
 
@@ -573,6 +569,14 @@ class RaggedArray(np.ndarray):
         # ints are handled by numpy
         if isinstance(iis, numbers.Integral):
             return self._array[iis]
+        # if the indices are of self, assumes a boolean matrix. Converts
+        # bool to indices and recalls __getitem__
+        elif type(iis) is type(self):
+            _check_ra_dims_match(self, iis)
+            new_lengths = [np.count_nonzero(iis[i]) for i in range(len(iis))]
+            return RaggedArray(
+                self.view(np.ndarray)[iis.view(np.ndarray).astype(bool)],
+                lengths=new_lengths)
         # slices and lists are handled by numpy, but return a RaggedArray
         elif isinstance(iis, (slice, list, np.ndarray)):
             return RaggedArray(array=self._array[iis])
@@ -622,12 +626,6 @@ class RaggedArray(np.ndarray):
                 _convert_from_2d(
                     iis, lengths=self.lengths, starts=self.starts))
             return RaggedArray(sliced_data, lengths=new_lengths)
-
-        # if the indices are of self, assumes a boolean matrix. Converts
-        # bool to indices and recalls __getitem__
-        elif type(iis) is type(self):
-            iis = where(iis)
-            return self.__getitem__(iis)
 
     def __setitem__(self, iis, value):
         if type(value) is type(self):
@@ -715,10 +713,45 @@ class RaggedArray(np.ndarray):
         new_data = self._data.__invert__()
         return RaggedArray(new_data, lengths=self.lengths)
 
+    def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
+        # if output value is provided and a RaggedArray, grab a flat view.
+        out = kwargs.get('out', ())
+        if out and type(out) is type(self):
+            if np.any(out.lengths != self.lengths):
+                raise ValueError(
+                    f"In {method}, input and output array lengths must match, "
+                    f"got {self.lengths} and {out.lengths}.")
+
+        # if inputs are RaggedArrays, grab flattened views
+        for x in inputs:
+            if type(x) is type(self) and np.any(x.lengths != self.lengths):
+                raise ValueError(f"Array lengths for {method} must match, "
+                                 f"got {self.lengths} and {x.lengths}.")
+        inputs = tuple(x.view(np.ndarray) if type(x) is type(self) else x
+                       for x in inputs)
+
+        if out:
+            kwargs['out'] = tuple(
+                x.view(np.ndarray) if type(x) is type(self) else x
+                for x in out)
+
+        result = super(RaggedArray, self).__array_ufunc__(
+            ufunc, method, *inputs, **kwargs)
+
+        if type(result) is tuple:
+            # multiple return values
+            return tuple(type(self)(x) for x in result)
+        elif method == 'at':
+            # no return value
+            return None
+        else:
+            # one return value
+            return type(self)(result, lengths=self.lengths)
+
     # def __eq__(self, other):
     #     return self.map_operator('__eq__', other)
-    def __lt__(self, other):
-        return self.map_operator('__lt__', other)
+    # def __lt__(self, other):
+    #     return self.map_operator('__lt__', other)
     def __le__(self, other):
         return self.map_operator('__le__', other)
     def __gt__(self, other):
@@ -838,3 +871,15 @@ class RaggedArray(np.ndarray):
 
     def flatten(self):
         return self._data.flatten()
+
+def _check_ra_dims_match(a, b):
+    if a.shape != b.shape:
+        raise ValueError(
+            "RaggedArray boolean indexes must have equal shape as "
+            "the arrays they index. Shapes were %s and %s." %
+            (a.shape, b.shape))
+    if np.any(a.lengths != b.lengths):
+        raise ValueError(
+            "RaggedArray boolean indexes must have equal lengths as "
+            " the arrays they index. Lengths were %s and %s." %
+            (a.lengths, b.lengths))
