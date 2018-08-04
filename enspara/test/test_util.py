@@ -33,7 +33,9 @@ class Test_RaggedArray(unittest.TestCase):
         assert_equals(a.dtype, np.int)
         assert_array_equal(a.lengths, [10, 20])
         assert_array_equal(a.starts, [0, 10])
-        assert_array_equal(a._data, np.concatenate([range(10), range(20)]))
+        assert_array_equal(
+            a.view(np.ndarray),
+            np.concatenate([range(10), range(20)]))
 
     def test_RaggedArray_floats(self):
         a = ra.RaggedArray([[0.8, 1.0, 1.2],

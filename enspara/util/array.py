@@ -553,6 +553,9 @@ class RaggedArray(np.ndarray):
                         super(RaggedArray, self).shape[1])
         return (len(self.lengths), rag_second_dim)
 
+    def __len__(self):
+        return len(self._array)
+
     @property
     def size(self):
         return len(self)
