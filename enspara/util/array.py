@@ -572,7 +572,7 @@ class RaggedArray(np.ndarray):
             return self._array[iis]
         # slices and lists are handled by numpy, but return a RaggedArray
         elif isinstance(iis, (slice, list, np.ndarray)):
-            return RaggedArray(array=super(RaggedArray, self).__getitem__(iis))
+            return RaggedArray(array=self._array[iis])
         # tuples get index conversion from 2d to 1d
         elif isinstance(iis, tuple):
             first_dimension, second_dimension = iis
@@ -612,8 +612,7 @@ class RaggedArray(np.ndarray):
             else:
                 iis = _convert_from_2d(
                     iis, lengths=self.lengths, starts=self.starts)
-                print([super(RaggedArray, self).__getitem__(i) for i in range(sum(self.lengths))])
-                return super(RaggedArray, self).__getitem__(iis)
+                return self.view(np.ndarray)[iis]
             # Takes 2D indices generated from slicing in first or second
             # dimension and returns data formatted with new_lengths
             sliced_data = super(RaggedArray, self).__getitem__(

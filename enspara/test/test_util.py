@@ -233,13 +233,13 @@ class Test_RaggedArray(unittest.TestCase):
         a = ra.RaggedArray(array=src, lengths=[10, 20, 30])
 
         a_sub = a[np.array([0, 2, -1])]
+
         assert_array_equal(a_sub[0], src[0:10])
         assert_array_equal(a_sub[1], src[30:60])
         assert_array_equal(a_sub[2], src[30:60])
 
         # (0, 0), (1, 1) == (0, 10)
-        assert_array_equal(a[(np.array([0, 1]),
-                              np.array([0, 1]))],
+        assert_array_equal(a[(np.array([0, 1]), np.array([0, 1]))],
                            src[(np.array([0, 11]))])
 
         assert_array_equal(
