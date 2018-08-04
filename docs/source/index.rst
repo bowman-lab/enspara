@@ -20,6 +20,7 @@ Contents:
    installation
    apps
    cookbook
+   raggedarray
    _modules/enspara
 
 
