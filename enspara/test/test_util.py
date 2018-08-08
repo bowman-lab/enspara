@@ -1,6 +1,7 @@
 import unittest
 import logging
 import tempfile
+import itertools
 
 import numpy as np
 import mdtraj as md
@@ -17,7 +18,7 @@ from ..exception import DataInvalid, ImproperlyConfigured
 
 
 def assert_ra_equal(a, b, **kwargs):
-        assert_array_equal(a._data, b._data, **kwargs)
+        assert_array_equal(a.view(np.ndarray), b.view(np.ndarray), **kwargs)
         assert_array_equal(a.lengths, b.lengths)
 
 
@@ -46,7 +47,7 @@ class Test_RaggedArray(unittest.TestCase):
         assert_array_equal(a.lengths, [3, 4])
         assert_array_equal(a.starts, [0, 3])
         assert_array_equal(
-            a._data, [0.8, 1.0, 1.2] + [1.1, 1.0, 0.9, 0.8])
+            a.view(np.ndarray), [0.8, 1.0, 1.2] + [1.1, 1.0, 0.9, 0.8])
 
     def test_RaggedArray_shape_size(self):
 
@@ -167,6 +168,10 @@ class Test_RaggedArray(unittest.TestCase):
         assert_array_equal(np.concatenate([i for i in a]),
                            np.concatenate([np.array(i) for i in src]))
 
+        print('nditer')
+        for x, y in zip(src, np.nditer(a, flags=['external_loop'])):
+            assert_array_equal(x, y)
+
     def test_RaggedArray_numpy_compatability(self):
         src = [range(4), range(5), range(6)]
         a = ra.RaggedArray(array=src)
@@ -198,11 +203,11 @@ class Test_RaggedArray(unittest.TestCase):
         assert_array_equal(a[:,:-2][1], np.array([10,11,12]))
 
         assert_array_equal(
-            (a[:,:-2]+2)._data,
+            (a[:,:-2]+2).view(np.ndarray),
             np.array([2, 3, 4, 5, 6, 7, 8, 9, 12, 13, 14, 17, 18, 19]))
         a[:,:-2] += 2
         assert_array_equal(
-            a._data,
+            a.view(np.ndarray),
             np.array(
                 [
                     2, 3, 4, 5, 6, 7, 8, 9, 8, 9, 12, 13, 14, 13, 14, 17,
@@ -326,17 +331,73 @@ class Test_RaggedArray(unittest.TestCase):
 
         assert (a[0] == range(10)).all()
 
+    def test_ra_sum_axes_2d(self):
+        src = [range(10), range(20), range(30)]
+        a = ra.RaggedArray(array=src)
+
+        assert_array_equal(
+            a.sum(axis=0),
+            np.hstack([np.arange( 0, 10) * 3,
+                       np.arange(10, 20) * 2,
+                       np.arange(20, 30) * 1]))
+
+        assert_array_equal(
+            a.sum(axis=1),
+            [sum(s) for s in src])
+
+        assert_array_equal(
+            a.sum(axis=-2),
+            a.sum(axis=0))
+
+        assert_array_equal(
+            a.sum(axis=-1),
+            a.sum(axis=1))
+
+
+    def test_ra_sum_axes_3d(self):
+        src = [np.arange(0, 16).reshape(4, 4),
+               np.arange(0, 20).reshape(5, 4),
+               np.arange(0, 24).reshape(6, 4)]
+        a = ra.RaggedArray(array=src)
+
+        assert_array_equal(
+            a.sum(axis=0),
+            np.vstack([src[2][0:4] + src[1][0:4] + src[0],
+                       src[2][4:5] + src[1][4:5],
+                       src[2][5:6]]))
+
+        assert_array_equal(
+            a.sum(axis=1),
+            [sum(s) for s in src])
+
+        print(ra.RaggedArray([s.sum(axis=-1) for s in src]))
+        assert_array_equal(
+            a.sum(axis=2),
+            ra.RaggedArray([s.sum(axis=-1) for s in src]))
+
+        assert_array_equal(
+            a.sum(axis=-3),
+            a.sum(axis=0))
+
+        assert_array_equal(
+            a.sum(axis=-2),
+            a.sum(axis=1))
+
+        assert_array_equal(
+            a.sum(axis=-1),
+            a.sum(axis=2))
+
     def test_ra_where(self):
         src = [range(10), range(20), range(30)]
         a = ra.RaggedArray(array=src)
 
         assert_array_equal(
-            ra.where(a < 5),
+            np.where(a < 5),
             (np.array([0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2]),
              np.array([0, 1, 2, 3, 4, 0, 1, 2, 3, 4, 0, 1, 2, 3, 4])))
 
         assert_array_equal(
-            ra.where(a < 0),
+            np.where(a < 0),
             np.array([[], []],))
 
     def test_ra_where_ndarray(self):
@@ -362,7 +423,11 @@ class Test_RaggedArray(unittest.TestCase):
                             [True, False, True]])
 
         c = a | b
-        assert_ra_equal(
+
+        print(repr(c))
+        print(repr(ra.RaggedArray([[True, False, True, True],
+                            [True, True, True]])))
+        assert_array_equal(
             c,
             ra.RaggedArray([[True, False, True, True],
                             [True, True, True]]))

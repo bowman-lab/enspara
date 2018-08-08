@@ -433,8 +433,6 @@ class RaggedArray(np.ndarray):
         _array.
     """
 
-    __slots__ = ('_data', '_array', 'lengths')
-
     def __new__(cls, array, lengths=None, dtype=None):
 
         data = None
@@ -482,61 +480,17 @@ class RaggedArray(np.ndarray):
 
         return obj
 
+    def __array__(self):
+        return self._array
+
     def __array_finalize__(self, obj):
         if obj is None: return
         self.lengths = getattr(obj, 'lengths', None)
         self._array = getattr(obj, '_array', None)
 
-    # def __init__(self, array, lengths=None, error_checking=True, copy=True):
-    #     # Check that input is proper (array of arrays)
-    #     if error_checking:
-    #         array = np.array(list(array))
-    #         if len(array) > 20000:
-    #             # lenghts is None => we are not inferring lengths from
-    #             # e.g. nested lists
-    #             if lengths is None:
-    #                 logger.warning(
-    #                     "error checking is turned off for ragged arrays "
-    #                     "with first dimension greater than 20000")
-    #         else:
-    #             _ensure_ragged_data(array)
-
-    #     # prepare self._data
-    #     if (len(array) > 0) and (lengths is None):
-    #         logger.debug("Interpreting array as list/array of lists/arrays.")
-    #         if _is_iterable(array[0]):
-    #             if not copy:
-    #                 warnings.warn(
-    #                     "Can't create a view into %s, copying anyway." %
-    #                     type(array), RuntimeWarning)
-    #             self._data = np.concatenate(array)
-    #         else:
-    #             self._data = np.array(array, copy=copy)
-    #     elif len(array) > 0:
-    #         logger.debug("Interpreting array as concatenated array.")
-    #         self._data = np.array(array, copy=copy)
-
-    #     # Prepare with _array
-    #     # new array greater with >0 elements
-    #     if (lengths is None) and (len(array) > 0):
-    #         # array of arrays
-    #         if _is_iterable(array[0]):
-    #             self.lengths = np.array([len(i) for i in array], dtype=int)
-    #             self._array = np.array(
-    #                 partition_list(self._data, self.lengths), dtype='O')
-    #         # array of single values
-    #         else:
-    #             self.lengths = np.array([len(array)], dtype=int)
-    #             self._array = self._data.reshape((1, self.lengths[0]))
-    #     # null array
-    #     elif lengths is None:
-    #         self.lengths = np.array([], dtype=int)
-    #         self._array = []
-    #     # rebuild array from 1d and lengths
-    #     else:
-    #         self._array = np.array(
-    #             partition_list(self._data, lengths), dtype='O')
-    #         self.lengths = np.array(lengths)
+    def __iter__(self):
+        print('iter')
+        return itertools.chain([a for a in self._array])
 
     @property
     def shape(self):
@@ -709,24 +663,20 @@ class RaggedArray(np.ndarray):
             iis = where(iis)
             self.__setitem__(iis, value)
 
-    def __invert__(self):
-        new_data = self._data.__invert__()
-        return RaggedArray(new_data, lengths=self.lengths)
-
     def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
         # if output value is provided and a RaggedArray, grab a flat view.
         out = kwargs.get('out', ())
         if out and type(out) is type(self):
             if np.any(out.lengths != self.lengths):
                 raise ValueError(
-                    f"In {method}, input and output array lengths must match, "
-                    f"got {self.lengths} and {out.lengths}.")
+                    f"In {ufunc}.{method}, input and output array lengths must"
+                    f" match, got {self.lengths} and {out.lengths}.")
 
         # if inputs are RaggedArrays, grab flattened views
         for x in inputs:
             if type(x) is type(self) and np.any(x.lengths != self.lengths):
-                raise ValueError(f"Array lengths for {method} must match, "
-                                 f"got {self.lengths} and {x.lengths}.")
+                raise ValueError(f"Array lengths for {ufunc}.{method} must "
+                                 f"match, got {self.lengths} and {x.lengths}.")
         inputs = tuple(x.view(np.ndarray) if type(x) is type(self) else x
                        for x in inputs)
 
@@ -735,8 +685,45 @@ class RaggedArray(np.ndarray):
                 x.view(np.ndarray) if type(x) is type(self) else x
                 for x in out)
 
-        result = super(RaggedArray, self).__array_ufunc__(
-            ufunc, method, *inputs, **kwargs)
+        axis = kwargs.get('axis', None)
+        if method == 'reduceat':
+            raise NotImplementedError
+        if method == 'reduce' and axis is not None:
+            axis = np.core.numeric.normalize_axis_tuple(
+                axis, ndim=len(self.shape))[0]
+            del kwargs['axis']
+            if axis == 0:
+                # TODO use ufunc.types to correctly and generally infer
+                # output array type
+                reductions = np.zeros(
+                    (max(self.lengths),) + self.shape[2:],
+                    dtype=self.dtype)
+                for i in range(reductions.shape[0]):
+                    red_elems = self.starts + i
+                    red_elems = red_elems[red_elems < self.starts + self.lengths]
+                    reductions[i] = ufunc.reduce(
+                        self.view(np.ndarray)[red_elems],
+                        **kwargs)
+                return reductions
+            elif axis == 1:
+                keepdims = kwargs.pop('keepdims')
+                reductions = ufunc.reduceat(
+                    self.view(np.ndarray),
+                    self.starts,
+                    **kwargs)
+
+                if keepdims:
+                    return reductions[reductions.shape[1], np.newaxis, ...]
+                else:
+                    return reductions
+            else:
+                reduction = [ufunc.reduce(subarr, axis=axis-1, **kwargs)
+                             for subarr in self._array]
+                return RaggedArray(reduction)
+
+        else:
+            result = super(RaggedArray, self).__array_ufunc__(
+                ufunc, method, *inputs, **kwargs)
 
         if type(result) is tuple:
             # multiple return values
@@ -744,105 +731,10 @@ class RaggedArray(np.ndarray):
         elif method == 'at':
             # no return value
             return None
-        else:
-            # one return value
+        elif hasattr(result, '__len__'):
             return type(self)(result, lengths=self.lengths)
-
-    # def __eq__(self, other):
-    #     return self.map_operator('__eq__', other)
-    # def __lt__(self, other):
-    #     return self.map_operator('__lt__', other)
-    def __le__(self, other):
-        return self.map_operator('__le__', other)
-    def __gt__(self, other):
-        return self.map_operator('__gt__', other)
-    def __ge__(self, other):
-        return self.map_operator('__ge__', other)
-    def __ne__(self, other):
-        return self.map_operator('__ne__', other)
-    def __add__(self, other):
-        return self.map_operator('__add__', other)
-    def __radd__(self, other):
-        return self.map_operator('__radd__', other)
-    def __sub__(self, other):
-        return self.map_operator('__sub__', other)
-    def __rsub__(self, other):
-        return self.map_operator('__rsub__', other)
-    def __mul__(self, other):
-        return self.map_operator('__mul__', other)
-    def __rmul__(self, other):
-        return self.map_operator('__rmul__', other)
-    def __truediv__(self, other):
-        return self.map_operator('__truediv__', other)
-    def __rtruediv__(self, other):
-        return self.map_operator('__rtruediv__', other)
-    def __floordiv__(self, other):
-        return self.map_operator('__floordiv__', other)
-    def __rfloordiv__(self, other):
-        return self.map_operator('__rfloordiv__', other)
-    def __pow__(self, other):
-        return self.map_operator('__pow__', other)
-    def __rpow__(self, other):
-        return self.map_operator('__rpow__', other)
-    def __mod__(self, other):
-        return self.map_operator('__mod__', other)
-    def __rmod__(self, other):
-        return self.map_operator('__rmod__', other)
-    def __or__(self, other):
-        return self.map_operator('__or__', other)
-    def __xor__(self, other):
-        return self.map_operator('__xor__', other)
-    def __and__(self, other):
-        return self.map_operator('__and__', other)
-    def map_operator(self, operator, other):
-        if type(other) is type(self):
-            other = other._data
-        new_data = getattr(self._data, operator)(other)
-
-        if new_data is NotImplemented:
-            return NotImplemented
         else:
-            return RaggedArray(array=new_data, lengths=self.lengths)
-
-    # Non-built in functions
-    def all(self, axis=None, *args, **kwargs):
-        #TODO implement in __array_ufunc__ and __array_wrap__
-        assert len(self.shape) <= 2
-        if axis is None:
-            return super(RaggedArray, self).all(*args, **kwargs)
-
-        axis = np.numeric.normalize_axis_tuple(axis, ndim=len(self.shape))
-        if axis == (0,):
-            return np.array([self[:, i].all() for i in range(len(self))])
-        if axis == (1,):
-            return np.array([self[i].all() for i in range(len(self.lengths))])
-        else:
-            raise NotImplementedError()
-
-    def any(self, axis=None, *args, **kwargs):
-        #TODO implement in __array_ufunc__ and __array_wrap__
-        assert len(self.shape) <= 2
-
-        if axis is None:
-            return super(RaggedArray, self).any(*args, **kwargs)
-
-        axis = np.numeric.normalize_axis_tuple(axis, ndim=len(self.shape))
-        if axis == (0,):
-            raise NotImplementedError()
-        if axis == (1,):
-            return np.array([self[i].any() for i in range(len(self.lengths))])
-        else:
-            raise NotImplementedError()
-
-    # def max(self):
-    #     return self._data.max()
-
-    # def min(self):
-    #     return self._data.min()
-
-    # @property
-    # def size(self):
-    #     return self._data.size
+            return result
 
     def append(self, values):
         # if the incoming values is a RaggedArray, pull just the array
@@ -870,7 +762,7 @@ class RaggedArray(np.ndarray):
                 partition_list(self._data, self.lengths), dtype='O')
 
     def flatten(self):
-        return self._data.flatten()
+        return self.view(np.ndarray).copy()
 
 def _check_ra_dims_match(a, b):
     if a.shape != b.shape:
