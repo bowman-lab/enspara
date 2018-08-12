@@ -28,6 +28,7 @@ from enspara.cluster import KHybrid, KCenters
 from enspara.util import array as ra
 from enspara.util import load_as_concatenated
 from enspara.util.log import timed
+from enspara.util.parallel import auto_nprocs
 from enspara.cluster.util import load_frames
 
 from enspara.geometry import libdist
@@ -104,21 +105,21 @@ def process_command_line(argv):
 
     # OUTPUT
     output_args = parser.add_argument_group("Output Settings")
-    parser.add_argument(
+    output_args.add_argument(
         '--no-reassign', default=False, action='store_true',
         help="Do not do a reassigment step. Ignored if --subsample is "
              "not supplied or 1.")
 
-    parser.add_argument(
+    output_args.add_argument(
         '--distances', required=True, action=readable_dir,
         help="The location to write the distances file.")
-    parser.add_argument(
+    output_args.add_argument(
         '--centers', required=True, action=readable_dir,
         help="The location to write the cluster center structures.")
-    parser.add_argument(
+    output_args.add_argument(
         '--assignments', required=True, action=readable_dir,
         help="The location to write assignments of frames to clusters.")
-    parser.add_argument(
+    output_args.add_argument(
         "--center-indices", required=False, action=readable_dir,
         help="Location for cluster center indices output (pickle).")
 
@@ -249,9 +250,9 @@ def load_trajectories(topologies, trajectories, selections, stride, processes):
 
     with timed("Loading took %.1f sec", logger.info):
         lengths, xyz = load_as_concatenated(
-            flat_trjs, args=configs, processes=processes)
+            flat_trjs, args=configs, processes=auto_nprocs())
 
-    with timed("Turned over array in %.2f min", logging.info):
+    with timed("Turned over array in %.2f min", logger.info):
         tmp_xyz = xyz.copy()
         del xyz
         xyz = tmp_xyz
@@ -294,7 +295,7 @@ def main(argv=None):
     args = process_command_line(argv)
 
     if args.features:
-        with timed("Loading features took %.1f s."):
+        with timed("Loading features took %.1f s.", logger.info):
             try:
                 data = ra.load(args.features, keys=...)
             except exception.DataInvalid:
@@ -305,10 +306,10 @@ def main(argv=None):
         logger.info("Beginning clustering; targets:\n%s",
                     json.dumps(targets, indent=4))
 
-        with timed("Loading trajectories took %.1f s."):
+        with timed("Loading trajectories took %.1f s.", logger.info):
             lengths, xyz, select_top = load_trajectories(
                 args.topologies, args.trajectories, selections=args.atoms,
-                stride=args.subsample, processes=args.processes)
+                stride=args.subsample, processes=auto_nprocs())
 
         logger.info("Clustering using %s atoms matching '%s'.",  xyz.shape[1], args.atoms)
 
@@ -330,8 +331,12 @@ def main(argv=None):
     result = clustering.result_.partition(lengths)
 
     # WRITE CENTER INDS
-    with open(args.center_indices, 'wb') as f:
-        pickle.dump(result.center_indices, f)
+    if args.center_indices:
+        with open(args.center_indices, 'wb') as f:
+            pickle.dump(result.center_indices, f)
+    else:
+        logger.info("--center-indices not provided, not writing center "
+                    "indices to file.")
 
     # WRITE CENTERS
     if args.features:

@@ -35,11 +35,13 @@ def runhelper(args, expected_size, algorithm='khybrid', expected_k=None,
     }
 
     try:
-        rmsd_cluster.main([
+        argv = [
             '',  # req'd because arg[0] is expected to be program name
             '--distances', fnames['distances'],
             '--centers', fnames['centers'],
-            '--assignments', fnames['assignments']] + args)
+            '--assignments', fnames['assignments']] + args
+        print(argv)
+        rmsd_cluster.main(argv)
 
         if expect_reassignment:
             assert os.path.isfile(fnames['assignments']), \
@@ -89,7 +91,7 @@ def test_rmsd_cluster_basic():
     runhelper([
         '--trajectories', get_fn('frame0.xtc'), get_fn('frame0.xtc'),
         '--topology', get_fn('native.pdb'),
-        '--rmsd-cutoff', '0.1',
+        '--cluster-radius', '0.1',
         '--atoms', '(name N or name C or name CA or name H or name O)',
         '--algorithm', 'khybrid'],
         expected_size=expected_size)
@@ -102,7 +104,7 @@ def test_rmsd_cluster_basic_kcenters():
     runhelper([
         '--trajectories', get_fn('frame0.xtc'), get_fn('frame0.xtc'),
         '--topology', get_fn('native.pdb'),
-        '--rmsd-cutoff', '0.1',
+        '--cluster-radius', '0.1',
         '--atoms', '(name N or name C or name CA or name H or name O)',
         '--algorithm', 'kcenters'],
         expected_size=expected_size,
@@ -118,7 +120,7 @@ def test_rmsd_cluster_fixed_k_kcenters():
     runhelper([
         '--trajectories', get_fn('frame0.xtc'), get_fn('frame0.xtc'),
         '--topology', get_fn('native.pdb'),
-        '--n-clusters', str(expected_k),
+        '--cluster-number', str(expected_k),
         '--atoms', '(name N or name C or name CA or name H or name O)',
         '--algorithm', 'kcenters'],
         expected_size=expected_size,
@@ -134,7 +136,7 @@ def test_rmsd_cluster_broken_atoms():
         runhelper([
             '--trajectories', get_fn('frame0.xtc'), get_fn('frame0.xtc'),
             '--topology', get_fn('native.pdb'),
-            '--rmsd-cutoff', '0.1',
+            '--cluster-radius', '0.1',
             '--atoms', 'residue -1',
             '--algorithm', 'khybrid'],
             expected_size=expected_size)
@@ -147,7 +149,7 @@ def test_rmsd_cluster_selection():
     runhelper([
         '--trajectories', get_fn('frame0.xtc'), get_fn('frame0.xtc'),
         '--topology', get_fn('native.pdb'),
-        '--rmsd-cutoff', '0.1',
+        '--cluster-radius', '0.1',
         '--atoms', '(name N or name C or name CA)',
         '--algorithm', 'khybrid'],
         expected_size=expected_size)
@@ -160,7 +162,7 @@ def test_rmsd_cluster_subsample():
     runhelper([
         '--trajectories', get_fn('frame0.xtc'), get_fn('frame0.xtc'),
         '--topology', get_fn('native.pdb'),
-        '--rmsd-cutoff', '0.1',
+        '--cluster-radius', '0.1',
         '--subsample', '4',
         '--atoms', '(name N or name C or name CA or name H or name O)',
         '--algorithm', 'khybrid'],
@@ -174,8 +176,7 @@ def test_rmsd_cluster_multiprocess():
     runhelper([
         '--trajectories', get_fn('frame0.xtc'), get_fn('frame0.xtc'),
         '--topology', get_fn('native.pdb'),
-        '--rmsd-cutoff', '0.1',
-        '--processes', '4',
+        '--cluster-radius', '0.1',
         '--atoms', '(name N or name C or name CA or name H or name O)',
         '--algorithm', 'khybrid'],
         expected_size=expected_size)
@@ -189,9 +190,8 @@ def test_rmsd_cluster_subsample_and_noreassign():
         '--trajectories', get_fn('frame0.xtc'), get_fn('frame0.xtc'),
         '--topology', get_fn('native.pdb'),
         '--atoms', '(name N or name C or name CA or name H or name O)',
-        '--rmsd-cutoff', '0.1',
+        '--cluster-radius', '0.1',
         '--algorithm', 'khybrid',
-        '--processes', '4',
         '--subsample', '4',
         '--no-reassign'],
         expect_reassignment=False,
@@ -213,7 +213,7 @@ def test_rmsd_cluster_multitop():
         '--topology', top2,
         '--atoms', '(name N or name C or name CA or name H or name O) '
                    'and (residue 2)',
-        '--rmsd-cutoff', '0.1',
+        '--cluster-radius', '0.1',
         '--algorithm', 'khybrid'],
         expected_size=expected_size)
 
@@ -232,7 +232,7 @@ def test_rmsd_cluster_multitop_multiselection():
         '--trajectories', xtc2,
         '--topology', top2,
         '--atoms', '(name CA) and (residue 3 or residue 4)',
-        '--rmsd-cutoff', '0.1',
+        '--cluster-radius', '0.1',
         '--algorithm', 'khybrid',
         '--subsample', '4'],
         expected_size=expected_size)
@@ -246,7 +246,7 @@ def test_rmsd_cluster_multitop_multiselection():
         '--trajectories', get_fn('frame0.xtc'), get_fn('frame0.xtc'),
         '--topology', get_fn('native.pdb'),
         '--atoms', '(name N or name O) and (residue 2)',
-        '--rmsd-cutoff', '0.1',
+        '--cluster-radius', '0.1',
         '--algorithm', 'khybrid',
         '--subsample', '4'],
         expected_size=(expected_size[0], expected_size[1][::-1]))
@@ -266,7 +266,7 @@ def test_rmsd_cluster_multitop_multiselection_noreassign():
         '--trajectories', xtc2,
         '--topology', top2,
         '--atoms', '(name CA) and (residue 3 or residue 4)',
-        '--rmsd-cutoff', '0.1',
+        '--cluster-radius', '0.1',
         '--algorithm', 'khybrid',
         '--subsample', '4',
         '--no-reassign'],
@@ -282,7 +282,7 @@ def test_rmsd_cluster_multitop_multiselection_noreassign():
         '--trajectories', get_fn('frame0.xtc'), get_fn('frame0.xtc'),
         '--topology', get_fn('native.pdb'),
         '--atoms', '(name N or name O) and (residue 2)',
-        '--rmsd-cutoff', '0.1',
+        '--cluster-radius', '0.1',
         '--algorithm', 'khybrid',
         '--subsample', '4',
         '--no-reassign'],
