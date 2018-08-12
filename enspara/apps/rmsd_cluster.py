@@ -13,9 +13,6 @@ import itertools
 import pickle
 import json
 import warnings
-import time
-
-from multiprocessing import cpu_count
 
 import mdtraj as md
 
@@ -32,6 +29,9 @@ from enspara.util import array as ra
 from enspara.util import load_as_concatenated
 from enspara.util.log import timed
 from enspara.cluster.util import load_frames
+
+from enspara.geometry import libdist
+
 from enspara import exception
 
 
@@ -43,56 +43,72 @@ def process_command_line(argv):
     '''Parse the command line and do a first-pass on processing them into a
     format appropriate for the rest of the script.'''
 
+    FEATURE_DISTANCES = ['euclidean', 'manhattan']
+    TRAJECTORY_DISTANCES = ['rmsd']
+
     parser = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
         description="Cluster a set (or several sets) of trajectories "
                     "into a single state space based upon RMSD.")
 
     # INPUTS
-    parser.add_argument(
-        '--trajectories', required=True, nargs="+", action='append',
+    input_args = parser.add_argument_group("Input Settings")
+    input_data_group = parser.add_mutually_exclusive_group(required=True)
+    input_data_group.add_argument(
+        "--features",
+        help="The h5 file containin observations and features.")
+    input_data_group.add_argument(
+        '--trajectories', nargs="+", action='append',
         help="List of paths to aligned trajectory files to cluster. "
              "All file types that MDTraj supports are supported here.")
-    parser.add_argument(
-        '--topology', required=True, action='append', dest='topologies',
+    input_args.add_argument(
+        '--topology', action='append', dest='topologies',
         help="The topology file for the trajectories. This flag must be"
              " specified once for each instance of the --trajectories "
              "flag. The first --topology flag is taken to be the "
              "topology to use for the first instance of the "
              "--trajectories flag, and so forth.")
 
+
     # PARAMETERS
-    parser.add_argument(
+    cluster_args = parser.add_argument_group("Clustering Settings")
+    cluster_args.add_argument(
         '--algorithm', required=True, choices=["khybrid", "kcenters"],
         help="The clustering algorithm to use.")
-    parser.add_argument(
+    cluster_args.add_argument(
         '--atoms', action="append", required=True,
-        help="The atoms from the trajectories (using MDTraj "
-             "atom-selection syntax) to cluster based upon. Specify "
-             "once to apply this selection to every set of "
-             "trajectories specified by the --trajectories flag, or "
+        help="When clustering trajectories, specifies which atoms from the "
+             "trajectories (using MDTraj atom-selection syntax) to cluster "
+             "based upon. Specify once to apply this selection to every set "
+             "of trajectories specified by the --trajectories flag, or "
              "once for each different topology (i.e. the number of "
              "times --trajectories and --topology was specified.)")
-    parser.add_argument(
-        '--rmsd-cutoff', default=None, type=float,
+    cluster_args.add_argument(
+        '--cluster-radius', default=None, type=float,
         help="Produce clusters with a maximum distance to cluster "
-             "center of this value.. Units: nm.")
-    parser.add_argument(
-        '--n-clusters', default=None, type=int,
+             "center of this value.")
+    cluster_args.add_argument(
+        '--cluster-number', default=None, type=int,
         help="Produce at least this number of clusters.")
-    parser.add_argument(
-        '--processes', default=cpu_count(), type=int,
-        help="Number processes to use for loading and clustering.")
-    parser.add_argument(
-        '--subsample', default=None, type=int,
+
+    cluster_args.add_argument(
+        "--cluster-distance", default=None,
+        choices=FEATURE_DISTANCES + TRAJECTORY_DISTANCES,
+        help="The metric for measuring distances. Some metrics (e.g. rmsd) "
+             "only apply to trajectories, and others only to features.")
+
+    cluster_args.add_argument(
+        '--subsample', default=1, type=int,
         help="Take only every nth frame when loading trajectories. "
              "1 implies no subsampling.")
+
+    # OUTPUT
+    output_args = parser.add_argument_group("Output Settings")
     parser.add_argument(
         '--no-reassign', default=False, action='store_true',
         help="Do not do a reassigment step. Ignored if --subsample is "
              "not supplied or 1.")
 
-    # OUTPUT
     parser.add_argument(
         '--distances', required=True, action=readable_dir,
         help="The location to write the distances file.")
@@ -102,36 +118,83 @@ def process_command_line(argv):
     parser.add_argument(
         '--assignments', required=True, action=readable_dir,
         help="The location to write assignments of frames to clusters.")
+    parser.add_argument(
+        "--center-indices", required=False, action=readable_dir,
+        help="Location for cluster center indices output (pickle).")
 
     args = parser.parse_args(argv[1:])
 
-    if args.rmsd_cutoff is None and args.n_clusters is None:
+    if args.features:
+        # CLUSTERING FEATURES
+
+        if args.cluster_distance in FEATURE_DISTANCES:
+            args.cluster_distance = getattr(libdist, args.cluster_distance)
+        else:
+            raise exception.ImproperlyConfigured(
+                "The given distance (%s) is not compatible with features." %
+                args.cluster_distance)
+
+        if args.subsample != 1 and not args.no_reassign:
+            raise exception.ImproperlyConfigured(
+                "Subsampling/reassigning for features is not supported yet.")
+
+        # TODO: not necessary if mutually exclusvie above works
+        if args.trajectories:
+            raise exception.ImproperlyConfigured(
+                "--features and --trajectories are mutually exclusive. "
+                "Either trajectories or features, not both, are clustered.")
+        if args.topology:
+            raise exception.ImproperlyConfigured(
+                "When --features is specified, --topology is unneccessary.")
+        if args.atoms:
+            raise exception.ImproperlyConfigured(
+                "Option --atoms is only meaningful when clustering "
+                "trajectories.")
+        if not args.cluster_distance:
+            raise exception.ImproperlyConfigured(
+                "Option --cluster-distance is required when clustering "
+                "features.")
+
+    elif args.trajectories and args.topologies:
+        # CLUSTERING TRAJECTORIES
+        if not args.cluster_distance or args.cluster_distance == 'rmsd':
+            args.cluster_distance = md.rmsd
+        else:
+            raise exception.ImproperlyConfigured(
+                "Option --cluster-distance must be rmsd when clustering "
+                "trajectories.")
+
+        if len(args.atoms) == 1:
+            args.atoms = args.atoms * len(args.trajectories)
+        elif len(args.atoms) != len(args.trajectories):
+            raise exception.ImproperlyConfigured(
+                "Flag --atoms must be provided either once (selection is "
+                "applied to all trajectories) or the same number of times "
+                "--trajectories is supplied.")
+
+        if len(args.topologies) != len(args.trajectories):
+            raise exception.ImproperlyConfigured(
+                "The number of --topology and --trajectory flags must agree.")
+
+    else:
+        # CANNOT CLUSTER
         raise exception.ImproperlyConfigured(
-            "At least one of --rmsd-cutoff and --n-clusters is "
+            "Either --features or both of --trajectories and --topologies "
+            "are required.")
+
+    if args.cluster_radius is None and args.cluster_number is None:
+        raise exception.ImproperlyConfigured(
+            "At least one of --cluster-radius and --cluster-number is "
             "required to cluster.")
-
-    if len(args.atoms) == 1:
-        args.atoms = args.atoms * len(args.trajectories)
-    elif len(args.atoms) != len(args.trajectories):
-        raise exception.ImproperlyConfigured(
-            "Flag --atoms must be provided either once (selection is "
-            "applied to all trajectories) or the same number of times "
-            "--trajectories is supplied.")
-
-    if len(args.topologies) != len(args.trajectories):
-        raise exception.ImproperlyConfigured(
-            "The number of --topology and --trajectory flags must agree.")
 
     if args.algorithm == 'kcenters':
         args.Clusterer = KCenters
     elif args.algorithm == 'khybrid':
         args.Clusterer = KHybrid
 
-    if args.subsample is None:
-        args.subsample = 1
-
     if args.no_reassign and args.subsample == 1:
-        warnings.warn("When subsampling is 1 (or unspecified), --no-reassign has no effect.")
+        warnings.warn("When subsampling is 1 (or unspecified), "
+                      "--no-reassign has no effect.")
 
     if args.centers[args.centers.rfind('.'):] == '.h5':
         warnings.warn(
@@ -141,7 +204,7 @@ def process_command_line(argv):
     return args
 
 
-def load(topologies, trajectories, selections, stride, processes):
+def load_trajectories(topologies, trajectories, selections, stride, processes):
 
     for top, selection in zip(topologies, selections):
         sentinel_trj = md.load(top)
@@ -230,28 +293,35 @@ def main(argv=None):
     being run as a script. Otherwise, it's silent and just exposes methods.'''
     args = process_command_line(argv)
 
-    targets = {os.path.basename(topf): "%s xtcs" % len(trjfs) for topf, trjfs
-               in zip(args.topologies, args.trajectories)}
-    logger.info("Beginning RMSD Clustering app. Operating on targets:\n%s",
-                json.dumps(targets, indent=4))
+    if args.features:
+        with timed("Loading features took %.1f s."):
+            try:
+                data = ra.load(args.features, keys=...)
+            except exception.DataInvalid:
+                data = ra.load(args.features)
+    else:
+        targets = {os.path.basename(topf): "%s files" % len(trjfs) for topf, trjfs
+                   in zip(args.topologies, args.trajectories)}
+        logger.info("Beginning clustering; targets:\n%s",
+                    json.dumps(targets, indent=4))
 
-    tick = time.perf_counter()
-    lengths, xyz, select_top = load(
-        args.topologies, args.trajectories, selections=args.atoms,
-        stride=args.subsample, processes=args.processes)
+        with timed("Loading trajectories took %.1f s."):
+            lengths, xyz, select_top = load_trajectories(
+                args.topologies, args.trajectories, selections=args.atoms,
+                stride=args.subsample, processes=args.processes)
 
-    logger.info(
-        "Loading finished in %.1f s. Clustering using %s atoms matching '%s'.",
-        round(time.perf_counter() - tick, 2), xyz.shape[1], args.atoms)
+        logger.info("Clustering using %s atoms matching '%s'.",  xyz.shape[1], args.atoms)
+
+        # md.rmsd requires an md.Trajectory object, so wrap `xyz` in
+        # the topology.
+        data = md.Trajectory(xyz=xyz, topology=select_top)
 
     clustering = args.Clusterer(
-        metric=md.rmsd,
-        n_clusters=args.n_clusters,
-        cluster_radius=args.rmsd_cutoff)
+        metric=args.cluster_distance,
+        n_clusters=args.cluster_number,
+        cluster_radius=args.cluster_radius)
 
-    # md.rmsd requires an md.Trajectory object, so wrap `xyz` in
-    # the topology.
-    clustering.fit(md.Trajectory(xyz=xyz, topology=select_top))
+    clustering.fit(data)
 
     logger.info(
         "Clustered %s frames into %s clusters in %s seconds.",
@@ -259,26 +329,34 @@ def main(argv=None):
 
     result = clustering.result_.partition(lengths)
 
-    outdir = os.path.dirname(args.centers)
-    logger.info("Saving cluster centers at %s", outdir)
+    # WRITE CENTER INDS
+    with open(args.center_indices, 'wb') as f:
+        pickle.dump(result.center_indices, f)
 
-    try:
-        os.makedirs(outdir)
-    except FileExistsError:
-        pass
+    # WRITE CENTERS
+    if args.features:
+        ra.save(args.cluster_centers, result.centers)
+    else:
+        outdir = os.path.dirname(args.centers)
+        logger.info("Saving cluster centers at %s", outdir)
 
-    centers = load_asymm_frames(result.center_indices, args.trajectories,
-                                args.topologies, args.subsample)
-    with open(args.centers, 'wb') as f:
-        pickle.dump(centers, f)
+        try:
+            os.makedirs(outdir)
+        except FileExistsError:
+            pass
 
+        centers = load_asymm_frames(result.center_indices, args.trajectories,
+                                    args.topologies, args.subsample)
+        with open(args.centers, 'wb') as f:
+            pickle.dump(centers, f)
+
+    # WRITE DISTANCES, ASSIGNMENTS
     if args.subsample == 1:
         logger.debug("Subsampling was 1, not reassigning.")
         ra.save(args.distances, result.distances)
         ra.save(args.assignments, result.assignments)
     if not args.no_reassign:
         logger.debug("Reassigning data from subsampling of %s", args.subsample)
-        # overwrite temporary output with actual results
         assig, dist = reassign(
             args.topologies, args.trajectories, args.atoms,
             centers=result.centers)
