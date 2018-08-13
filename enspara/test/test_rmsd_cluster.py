@@ -359,3 +359,27 @@ def test_feature_cluster_manhattan():
         iis = ra.where(y_ra == cid)
         i = (iis[0][0], iis[1][0])
         assert np.all(assignments[i] == assignments[iis])
+
+
+def test_feature_cluster_radius_based():
+
+    expected_size = (3, (50, 30, 20))
+
+    X, y = make_blobs(
+        n_samples=100, n_features=3, centers=3, center_box=(0, 100),
+        random_state=3)
+
+    with tempfile.NamedTemporaryFile(suffix='.h5') as f:
+
+        a = ra.RaggedArray(array=X, lengths=[50, 30, 20])
+        ra.save(f.name, a)
+
+        distances, assignments = runhelper([
+            '--features', f.name,
+            '--cluster-radius', '3',
+            '--algorithm', 'kcenters',
+            '--cluster-distance', 'euclidean'],
+            expected_size=expected_size,
+            centers_format='npy')
+
+        assert_equal(len(np.unique(assignments.flatten())), 11)
