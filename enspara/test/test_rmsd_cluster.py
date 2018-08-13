@@ -12,6 +12,8 @@ from nose.tools import assert_equal, assert_raises
 import numpy as np
 from numpy.testing import assert_array_equal
 
+from sklearn.datasets import make_blobs
+
 from .. import exception
 from ..util import array as ra
 
@@ -288,3 +290,23 @@ def test_rmsd_cluster_multitop_multiselection_noreassign():
         '--no-reassign'],
         expect_reassignment=False,
         expected_size=(expected_size[0], expected_size[1][::-1]))
+
+
+def test_feature_cluster_basic():
+
+    expected_size = (3, None)
+
+    X, y = make_blobs(
+        n_samples=1000, n_features=3, centers=3, center_box=(0, 100))
+
+    with tempfile.NamedTemporaryFile(suffix='.h5') as f:
+
+        a = ra.RaggedArray(array=X, lengths=[500, 300, 200])
+
+        ra.save(f.name, a)
+
+        runhelper([
+            '--features', f.name,
+            '--cluster-radius', '0.1',
+            '--algorithm', 'khybrid'],
+            expected_size=expected_size)
