@@ -14,6 +14,7 @@ import pickle
 import json
 import warnings
 
+import numpy as np
 import mdtraj as md
 
 logging.basicConfig(
@@ -77,7 +78,7 @@ def process_command_line(argv):
         '--algorithm', required=True, choices=["khybrid", "kcenters"],
         help="The clustering algorithm to use.")
     cluster_args.add_argument(
-        '--atoms', action="append", required=True,
+        '--atoms', action="append",
         help="When clustering trajectories, specifies which atoms from the "
              "trajectories (using MDTraj atom-selection syntax) to cluster "
              "based upon. Specify once to apply this selection to every set "
@@ -114,7 +115,7 @@ def process_command_line(argv):
         '--distances', required=True, action=readable_dir,
         help="The location to write the distances file.")
     output_args.add_argument(
-        '--centers', required=True, action=readable_dir,
+        '--center-features', required=True, action=readable_dir,
         help="The location to write the cluster center structures.")
     output_args.add_argument(
         '--assignments', required=True, action=readable_dir,
@@ -144,7 +145,7 @@ def process_command_line(argv):
             raise exception.ImproperlyConfigured(
                 "--features and --trajectories are mutually exclusive. "
                 "Either trajectories or features, not both, are clustered.")
-        if args.topology:
+        if args.topologies:
             raise exception.ImproperlyConfigured(
                 "When --features is specified, --topology is unneccessary.")
         if args.atoms:
@@ -165,7 +166,10 @@ def process_command_line(argv):
                 "Option --cluster-distance must be rmsd when clustering "
                 "trajectories.")
 
-        if len(args.atoms) == 1:
+        if not args.atoms:
+            raise exception.ImproperlyConfigured(
+                "Option --atoms is required when clustering trajectories.")
+        elif len(args.atoms) == 1:
             args.atoms = args.atoms * len(args.trajectories)
         elif len(args.atoms) != len(args.trajectories):
             raise exception.ImproperlyConfigured(
@@ -197,7 +201,7 @@ def process_command_line(argv):
         warnings.warn("When subsampling is 1 (or unspecified), "
                       "--no-reassign has no effect.")
 
-    if args.centers[args.centers.rfind('.'):] == '.h5':
+    if args.center_features[args.center_features.rfind('.'):] == '.h5':
         warnings.warn(
             "You provided a centers file that looks like it's an h5... "
             "centers are saved as pickle. Are you sure this is what you want?")
@@ -289,17 +293,17 @@ def load_asymm_frames(center_indices, trajectories, topology, subsample):
     return frames
 
 
-def main(argv=None):
-    '''Run the driver script for this module. This code only runs if we're
-    being run as a script. Otherwise, it's silent and just exposes methods.'''
-    args = process_command_line(argv)
+def load_trjs_or_features(args):
 
     if args.features:
         with timed("Loading features took %.1f s.", logger.info):
             try:
-                data = ra.load(args.features, keys=...)
-            except exception.DataInvalid:
                 data = ra.load(args.features)
+            except exception.DataInvalid:
+                data = ra.load(args.features, keys=...)
+
+        lengths = data.lengths
+        data = data._data
     else:
         targets = {os.path.basename(topf): "%s files" % len(trjfs) for topf, trjfs
                    in zip(args.topologies, args.trajectories)}
@@ -317,6 +321,16 @@ def main(argv=None):
         # the topology.
         data = md.Trajectory(xyz=xyz, topology=select_top)
 
+    return lengths, data
+
+
+def main(argv=None):
+    '''Run the driver script for this module. This code only runs if we're
+    being run as a script. Otherwise, it's silent and just exposes methods.'''
+    args = process_command_line(argv)
+
+    lengths, data = load_trjs_or_features(args)
+
     clustering = args.Clusterer(
         metric=args.cluster_distance,
         n_clusters=args.cluster_number,
@@ -333,16 +347,16 @@ def main(argv=None):
     # WRITE CENTER INDS
     if args.center_indices:
         with open(args.center_indices, 'wb') as f:
-            pickle.dump(result.center_indices, f)
+            np.save(f, result.center_indices)
     else:
         logger.info("--center-indices not provided, not writing center "
                     "indices to file.")
 
     # WRITE CENTERS
     if args.features:
-        ra.save(args.cluster_centers, result.centers)
+        np.save(args.center_features, result.centers)
     else:
-        outdir = os.path.dirname(args.centers)
+        outdir = os.path.dirname(args.center_features)
         logger.info("Saving cluster centers at %s", outdir)
 
         try:
@@ -352,7 +366,7 @@ def main(argv=None):
 
         centers = load_asymm_frames(result.center_indices, args.trajectories,
                                     args.topologies, args.subsample)
-        with open(args.centers, 'wb') as f:
+        with open(args.cluster_centers, 'wb') as f:
             pickle.dump(centers, f)
 
     # WRITE DISTANCES, ASSIGNMENTS
@@ -360,7 +374,7 @@ def main(argv=None):
         logger.debug("Subsampling was 1, not reassigning.")
         ra.save(args.distances, result.distances)
         ra.save(args.assignments, result.assignments)
-    if not args.no_reassign:
+    elif not args.no_reassign:
         logger.debug("Reassigning data from subsampling of %s", args.subsample)
         assig, dist = reassign(
             args.topologies, args.trajectories, args.atoms,

@@ -23,7 +23,7 @@ TEST_DIR = os.path.dirname(__file__)
 
 
 def runhelper(args, expected_size, algorithm='khybrid', expected_k=None,
-              expect_reassignment=True):
+              expect_reassignment=True, centers_format='pkl'):
 
     td = tempfile.mkdtemp(dir=os.getcwd())
     tf = hashlib.md5(str(datetime.now().timestamp())
@@ -33,16 +33,16 @@ def runhelper(args, expected_size, algorithm='khybrid', expected_k=None,
     fnames = {
         'distances': base+'distances.h5',
         'assignments': base+'assignments.h5',
-        'centers': base+'centers.pkl',
+        'center-features': base+'center-features.%s' % centers_format,
     }
 
     try:
-        argv = [
-            '',  # req'd because arg[0] is expected to be program name
-            '--distances', fnames['distances'],
-            '--centers', fnames['centers'],
-            '--assignments', fnames['assignments']] + args
-        print(argv)
+        argv = ['']
+        for argname in ['distances', 'center-features', 'assignments']:
+            if '--%s' % argname not in args:
+                argv.extend(['--%s' % argname, fnames[argname]])
+
+        argv.extend(args)
         rmsd_cluster.main(argv)
 
         if expect_reassignment:
@@ -72,11 +72,12 @@ def runhelper(args, expected_size, algorithm='khybrid', expected_k=None,
             assert os.path.isfile(distfile), \
                 "Couldn't find %s. Dir contained: %s" % (
                 distfile, os.listdir(os.path.dirname(distfile)))
+            dists = ra.load(fnames['distances'])
         else:
             assert not os.path.isfile(fnames['assignments'])
             assert not os.path.isfile(fnames['distances'])
 
-        ctrsfile = fnames['centers']
+        ctrsfile = fnames['center-features']
         assert os.path.isfile(ctrsfile), \
             "Couldn't find %s. Dir contained: %s" % (
             ctrsfile, os.listdir(os.path.dirname(ctrsfile)))
@@ -84,6 +85,8 @@ def runhelper(args, expected_size, algorithm='khybrid', expected_k=None,
     finally:
         shutil.rmtree(td)
         pass
+
+    return dists, assigns
 
 
 def test_rmsd_cluster_basic():
@@ -294,19 +297,65 @@ def test_rmsd_cluster_multitop_multiselection_noreassign():
 
 def test_feature_cluster_basic():
 
-    expected_size = (3, None)
+    expected_size = (3, (50, 30, 20))
 
     X, y = make_blobs(
-        n_samples=1000, n_features=3, centers=3, center_box=(0, 100))
+        n_samples=100, n_features=3, centers=3, center_box=(0, 100),
+        random_state=0)
 
     with tempfile.NamedTemporaryFile(suffix='.h5') as f:
 
-        a = ra.RaggedArray(array=X, lengths=[500, 300, 200])
-
+        a = ra.RaggedArray(array=X, lengths=[50, 30, 20])
         ra.save(f.name, a)
 
-        runhelper([
-            '--features', f.name,
-            '--cluster-radius', '0.1',
-            '--algorithm', 'khybrid'],
-            expected_size=expected_size)
+        with tempfile.NamedTemporaryFile(suffix='.npy') as ind_f:
+            distances, assignments = runhelper([
+                '--features', f.name,
+                '--cluster-number', '3',
+                '--algorithm', 'khybrid',
+                '--cluster-distance', 'euclidean',
+                '--center-indices', ind_f.name],
+                expected_size=expected_size,
+                centers_format='npy')
+
+            center_indices = np.load(ind_f)
+            assert_equal(len(center_indices), 3)
+
+    y_ra = ra.RaggedArray(y, assignments.lengths)
+    for cid in range(len(center_indices)):
+        iis = ra.where(y_ra == cid)
+        i = (iis[0][0], iis[1][0])
+        assert np.all(assignments[i] == assignments[iis])
+
+
+def test_feature_cluster_manhattan():
+
+    expected_size = (3, (50, 30, 20))
+
+    X, y = make_blobs(
+        n_samples=100, n_features=3, centers=3, center_box=(0, 100),
+        random_state=0)
+
+    with tempfile.NamedTemporaryFile(suffix='.h5') as f:
+
+        a = ra.RaggedArray(array=X, lengths=[50, 30, 20])
+        ra.save(f.name, a)
+
+        with tempfile.NamedTemporaryFile(suffix='.npy') as ind_f:
+            distances, assignments = runhelper([
+                '--features', f.name,
+                '--cluster-number', '3',
+                '--algorithm', 'khybrid',
+                '--cluster-distance', 'manhattan',
+                '--center-indices', ind_f.name],
+                expected_size=expected_size,
+                centers_format='npy')
+
+            center_indices = np.load(ind_f)
+            assert_equal(len(center_indices), 3)
+
+    y_ra = ra.RaggedArray(y, assignments.lengths)
+    for cid in range(len(center_indices)):
+        iis = ra.where(y_ra == cid)
+        i = (iis[0][0], iis[1][0])
+        assert np.all(assignments[i] == assignments[iis])
