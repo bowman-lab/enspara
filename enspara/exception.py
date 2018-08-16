@@ -29,3 +29,8 @@ class PerformanceWarning(UserWarning):
     implications and may be easy to avoid.
     """
     pass
+
+class ConvergenceWarning(UserWarning):
+    """An iterative procedure has failed to converge after the maximum
+    allowed number of iterations."""
+    pass
