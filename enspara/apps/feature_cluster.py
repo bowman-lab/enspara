@@ -13,10 +13,12 @@ logging.basicConfig(
 
 from enspara import exception
 from enspara.apps.util import readable_dir
-from enspara.cluster import KHybrid
+from enspara.cluster import KHybrid, KCenters
 from enspara.util import array as ra
 from enspara.geometry.libdist import euclidean
 
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 def process_command_line(argv):
     parser = argparse.ArgumentParser(formatter_class=argparse.
@@ -27,7 +29,7 @@ def process_command_line(argv):
         help="The h5 file containin observations and features.")
 
     parser.add_argument(
-        "--cluster-algorithm", required=True, choices=['khybrid'],
+        "--cluster-algorithm", required=True, choices=['khybrid', 'kcenters'],
         help="The algorithm to use for clustering.")
     parser.add_argument(
         "--cluster-radius", required=True, type=float,
@@ -36,6 +38,7 @@ def process_command_line(argv):
         "--cluster-distance", default='euclidean',
         choices=['euclidean', 'manhattan'],
         help="The metric for measuring distances")
+
     parser.add_argument(
         "--kmedoids-updates", default=5, type=int,
         help="Number of iterations of kemedoids to perform when "
@@ -68,13 +71,14 @@ def process_command_line(argv):
     elif args.cluster_distance.lower() == 'manhattan':
         args.cluster_distance = diff_manhattan
 
-    a_file_exists = any(
-        os.path.isfile(getattr(args, o)) for o in
-        ['assignments', 'distances', 'center_indices', 'cluster_centers'])
-    if a_file_exists and not args.overwrite:
-        raise FileExistsError
-
-    assert args.cluster_algorithm.lower() == 'khybrid'
+    if not args.overwrite:
+        for outf in ['assignments', 'distances', 'center_indices',
+                     'cluster_centers']:
+            fname = getattr(args, outf)
+            if os.path.isfile(fname):
+                raise FileExistsError(
+                    ("The file '%s' already exists. To overwrite, pass "
+                     "--overwrite.") % fname)
 
     return args
 
@@ -92,10 +96,21 @@ def main(argv=None):
     except exception.DataInvalid:
         features = ra.load(args.features)
 
-    clustering = KHybrid(
-        metric=args.cluster_distance,
-        cluster_radius=args.cluster_radius,
-        kmedoids_updates=args.kmedoids_updates)
+    logger.info(
+        "Loaded data from %s with shape %s",
+        args.features, features.shape)
+
+    if args.cluster_algorithm == 'khybrid':
+        clustering = KHybrid(
+            metric=args.cluster_distance,
+            cluster_radius=args.cluster_radius,
+            kmedoids_updates=args.kmedoids_updates)
+    elif args.cluster_algorithm == 'kcenters':
+        clustering = KCenters(
+            cluster_radius=args.cluster_radius,
+            metric=args.cluster_distance)
+
+    logger.info("Clustering with %s", clustering)
 
     clustering.fit(features._data)
 
@@ -103,9 +118,20 @@ def main(argv=None):
     del features
 
     ra.save(args.distances, result.distances)
+    logger.info("Wrote distances with shape %s to %s",
+                result.distances.shape, args.distances)
+
     ra.save(args.assignments, result.assignments)
+    logger.info("Wrote assignments with shape %s to %s",
+                result.assignments.shape, args.cluster_centers)
+
     ra.save(args.cluster_centers, result.centers)
+    logger.info("Wrote cluster_centers with shape %s to %s",
+                result.centers.shape, args.cluster_centers)
+
     pickle.dump(result.center_indices, open(args.center_indices, 'wb'))
+    logger.info("Wrote %s center_indices with shape to %s",
+                len(result.center_indices), args.center_indices)
 
     return 0
 
