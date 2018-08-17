@@ -13,7 +13,9 @@ import scipy.sparse
 import scipy.sparse.linalg
 
 from enspara import exception
+
 from .transition_matrices import eq_probs
+from .libmsm import _mle_prinz_dense
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -68,9 +70,9 @@ def mle(C, prior_counts=None, calculate_eq_probs=True):
         warnings.warn('MLE method cannot suppress calculation of '
                       'equilibrium probabilities, since they are calculated '
                       'together.', category=RuntimeWarning)
-        T, _ = _prinz_mle_fit(C)
+        T, _ = _prinz_mle_py(C)
     else:
-        T, equilibrium = _prinz_mle_fit(C)
+        T, equilibrium = _prinz_mle_py(C)
 
     C = sparsetype(C)
     T = sparsetype(T)
@@ -201,11 +203,20 @@ def _row_normalize(C):
 
     return T
 
-def _prinz_mle_fit(C, tol=1e-10, max_iter=10**5):
+
+def _prinz_mle(C, *args, **kwargs):
+
+    if scipy.sparse.issparse(C):
+        assert False
+    else:
+        return _mle_prinz_dense(C, *args, **kwargs)
+
+
+def _prinz_mle_py(C, tol=1e-10, max_iter=10**5):
     """Fit a transition probability using the detailed balance-enforced
     maximum-liklihood estimation (Prinz) method.
 
-    This method is not numpy vectorized or written in C and may be very
+    This method is not numpy vectorized or written in C and is very
     slow for large counts matrices.
 
     Parameters
@@ -297,10 +308,6 @@ def _prinz_mle_fit(C, tol=1e-10, max_iter=10**5):
         warnings.warn(
             exception.ConvergenceWarning,
             "Prinz MLE did not converge after %s iterations." % n_iter)
-
-    print(type(X))
-    print(X.shape)
-    print(X.sum(axis=1).shape)
 
     T = X / X.sum(axis=-1).reshape(len(X), 1)
     pi = X_rs / X_rs.sum()[..., None]
