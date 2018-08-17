@@ -102,9 +102,14 @@ def weighted_mi(features, weights, normalize=True):
 
     assert len(features.shape) == 2
     assert len(weights.shape) == 1
-    assert weights.shape[0] == features.shape[0]
     assert np.all(weights >= 0)
     assert np.sum(weights), 1
+
+    if weights.shape[0] != features.shape[0]:
+        raise exception.DataInvalid(
+            "The number of features (%s in array with shape %s) didn't match "
+            "the number of weights (%s)" %
+            (features.shape[0], features.shape, weights.shape[0]))
 
     if np.all(np.unique(features) != np.array([0, 1])):
         raise NotImplementedError(
@@ -114,11 +119,9 @@ def weighted_mi(features, weights, normalize=True):
     mi_mtx = np.zeros((features.shape[1], features.shape[1]), dtype=np.float)
 
     for i in range(len(mi_mtx)):
-        P_x = [weights[features[:, i] == 0].sum(),
-               weights[features[:, i] == 1].sum()]
+        P_x = np.bincount(features[:, i], weights=weights)
         for j in range(i, len(mi_mtx)):
-            P_y = [weights[features[:, j] == 0].sum(),
-                   weights[features[:, j] == 1].sum()]
+            P_y = np.bincount(features[:, j], weights=weights)
 
             P_x_y = np.zeros((2, 2))
             for u in range(2):
