@@ -15,7 +15,7 @@ from enspara import exception
 from enspara.apps.util import readable_dir
 from enspara.cluster import KHybrid, KCenters
 from enspara.util import array as ra
-from enspara.geometry.libdist import euclidean
+from enspara.geometry import libdist
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -66,10 +66,7 @@ def process_command_line(argv):
 
     args = parser.parse_args(argv[1:])
 
-    if args.cluster_distance.lower() == 'euclidean':
-        args.cluster_distance = euclidean
-    elif args.cluster_distance.lower() == 'manhattan':
-        args.cluster_distance = diff_manhattan
+    args.cluster_distance = getattr(libdist, args.cluster_distance.lower())
 
     if not args.overwrite:
         for outf in ['assignments', 'distances', 'center_indices',
@@ -81,10 +78,6 @@ def process_command_line(argv):
                      "--overwrite.") % fname)
 
     return args
-
-
-def diff_manhattan(trj, ref):
-    return np.abs(trj - ref)
 
 
 def main(argv=None):
