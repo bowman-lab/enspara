@@ -23,7 +23,7 @@ jobs:
       # Download and cache dependencies
       - restore_cache:
           keys:
-          - v1-dependencies-{{ checksum "requirements.txt" }}
+          - v1-dependencies-{{ checksum "requirements-dev.txt" }}
           # fallback to using the latest cache if no exact match is found
           - v1-dependencies-
 
@@ -48,7 +48,7 @@ jobs:
           name: run tests
           command: |
             . venv/bin/activate
-            python manage.py test
+            nosetests
 
       - store_artifacts:
           path: test-reports
