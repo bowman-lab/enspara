@@ -52,7 +52,7 @@ jobs:
           name: run main tests
           command: |
             . venv/bin/activate
-            nosetests --processes 1 --process-timeout 30 -a '!mpi' enspara
+            nosetests --processes 1 --process-timeout 60 -a '!mpi' enspara
 
       - run:
           name: run MPI tests
