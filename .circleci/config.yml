@@ -49,10 +49,17 @@ jobs:
           key: v1-dependencies-{{ checksum "setup.py" }}
         
       - run:
-          name: run tests
+          name: run main tests
           command: |
             . venv/bin/activate
-            nosetests
+            nosetests -a '!mpi' enspara
+
+      - run:
+          name: run MPI tests
+          command: |
+            . venv/bin/activate
+            mpiexec -n 2 nosetests -a mpi enspara && mpiexec -n 3 nosetests -a mpi enspara
+
 
       - store_artifacts:
           path: test-reports
