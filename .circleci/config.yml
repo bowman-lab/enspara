@@ -25,9 +25,9 @@ jobs:
           command: apt-get update && apt-get install -y libopenmpi-dev      
 
       # Download and cache dependencies
-      - restore_cache:
-          keys:
-          - v1-dependencies-{{ checksum "setup.py" }}
+      # - restore_cache:
+      #     keys:
+      #     - v1-dependencies-{{ checksum "setup.py" }}
 
       - run:
           name: install dependencies
@@ -36,10 +36,10 @@ jobs:
             . venv/bin/activate
             pip install -e .
 
-      - save_cache:
-          paths:
-            - ./venv
-          key: v1-dependencies-{{ checksum "setup.py" }}
+      # - save_cache:
+      #     paths:
+      #       - ./venv
+      #     key: v1-dependencies-{{ checksum "setup.py" }}
         
       # run tests!
       # this example uses Django's built-in test-runner
