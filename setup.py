@@ -21,9 +21,6 @@ CLASSIFIERS = [
     "Operating System :: MacOS",
 ]
 
-try:
-    mpi = os.system('mpiexec --version')
-
 # protect agaist absent cython/numpy
 try:
     import numpy
