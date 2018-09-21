@@ -52,8 +52,8 @@ extra_compile_args = ['-Wno-unreachable-code']
 extra_link_args = []
 
 if use_openmp:
-    extra_compile_args += '-fopenmp'
-    extra_link_args = '-fopenmp'
+    extra_compile_args += ['-fopenmp']
+    extra_link_args = ['-fopenmp']
 
 # build cython with `python setup.py build_ext --inplace`
 
