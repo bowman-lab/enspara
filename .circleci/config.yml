@@ -22,7 +22,7 @@ jobs:
 
       - run:
           name: Install System Dependencies
-          command: sudo apt-get update && sudo apt-get install -y libopenmpi-dev      
+          command: sudo apt-get update && sudo apt-get install -y libopenmpi-dev cython
 
       # Download and cache dependencies
       # - restore_cache:
@@ -34,7 +34,7 @@ jobs:
           command: |
             python3 -m venv venv
             . venv/bin/activate
-            pip install numpy cython
+            pip install numpy
 
       - run:
           name: install dependencies
