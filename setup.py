@@ -79,12 +79,14 @@ setup(
     classifiers=CLASSIFIERS,
     include_dirs=[np.get_include()],
     ext_modules=cythonize(cython_extensions),
-    python_requires='>=3.5,<3.7',
+    python_requires='>=3.5,<3.7', # cython is broken for 3.7
     install_requires=[
         'Cython>=0.24',
         'tables>=3.2',
+        'matplotlib>=1.5.1',
         'mdtraj>=1.7,<1.9',
         'mpi4py',
+        'psutil',
         'scikit-learn>=0.17.1',
         'scipy>=0.17'
     ],
