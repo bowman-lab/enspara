@@ -22,7 +22,7 @@ jobs:
 
       - run:
           name: Install System Dependencies
-          command: sudo apt-get update && sudo apt-get install -y libopenmpi-dev build-essentials cython
+          command: sudo apt-get update && sudo apt-get install -y libopenmpi-dev build-essential cython
 
       # Download and cache dependencies
       # - restore_cache:
