@@ -34,6 +34,13 @@ jobs:
           command: |
             python3 -m venv venv
             . venv/bin/activate
+            pip install numpy cython
+
+      - run:
+          name: install dependencies
+          command: |
+            python3 -m venv venv
+            . venv/bin/activate
             pip install -e .
 
       # - save_cache:
