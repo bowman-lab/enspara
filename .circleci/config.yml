@@ -82,7 +82,7 @@ jobs:
           name: run MPI tests
           command: |
             . venv/bin/activate
-            mpiexec -n 2 nosetests -a mpi enspara && mpiexec -n 3 nosetests -a mpi enspara
+            mpiexec -n 2 nosetests -a mpi enspara
 
 
       - store_artifacts:
