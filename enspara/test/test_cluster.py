@@ -127,7 +127,7 @@ class TestTrajClustering(unittest.TestCase):
             self.trj,
             distance_method='rmsd',
             n_clusters=N_CLUSTERS,
-            n_iters=1000)
+            n_iters=100)
 
         # kcenters will always produce the same number of clusters on
         # this input data (unchanged by kmedoids updates)
@@ -547,7 +547,7 @@ class TestNumpyClustering(unittest.TestCase):
             distance_method='euclidean',
             n_clusters=N_CLUSTERS,
             dist_cutoff=None,
-            n_iters=100,
+            n_iters=10,
             random_first_center=False)
 
         assert len(result.center_indices) == N_CLUSTERS
