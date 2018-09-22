@@ -49,30 +49,6 @@ jobs:
           key: v1-dependencies-{{ checksum "setup.py" }}
 
       - run:
-          name: run bace tests
-          command: |
-            . venv/bin/activate
-            nosetests -a '!mpi' enspara/test/test_bace.py
-
-      - run:
-          name: run cards tests
-          command: |
-            . venv/bin/activate
-            nosetests -a '!mpi' enspara/test/test_cards.py
-
-      - run:
-          name: run cluster tests
-          command: |
-            . venv/bin/activate
-            nosetests -a '!mpi' enspara/test/test_cluster.py
-        
-      - run:
-          name: run cluster util tests
-          command: |
-            . venv/bin/activate
-            nosetests -a '!mpi' enspara/test/test_cluster_util.py
-
-      - run:
           name: run main tests
           command: |
             . venv/bin/activate
@@ -83,7 +59,6 @@ jobs:
           command: |
             . venv/bin/activate
             mpiexec -n 2 nosetests -a mpi enspara
-
 
       - store_artifacts:
           path: test-reports
