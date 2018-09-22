@@ -64,7 +64,7 @@ jobs:
           name: run cluster tests
           command: |
             . venv/bin/activate
-            nosetests -a '!mpi' enspara/test/test_cluster.py:TestTrajClustering
+            nosetests -a '!mpi' enspara/test/test_cluster.py
         
       - run:
           name: run cluster util tests
@@ -76,7 +76,7 @@ jobs:
           name: run main tests
           command: |
             . venv/bin/activate
-            nosetests --processes 1 --process-timeout 60 -a '!mpi' enspara
+            nosetests -a '!mpi' enspara
 
       - run:
           name: run MPI tests
