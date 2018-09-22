@@ -47,6 +47,24 @@ jobs:
           paths:
             - ./venv
           key: v1-dependencies-{{ checksum "setup.py" }}
+
+      - run:
+          name: run bace tests
+          command: |
+            . venv/bin/activate
+            nosetests -a '!mpi' enspara/test/test_bace.py
+
+      - run:
+          name: run bace tests
+          command: |
+            . venv/bin/activate
+            nosetests -a '!mpi' enspara/test/test_cards.py
+
+      - run:
+          name: run cluster tests
+          command: |
+            . venv/bin/activate
+            nosetests -a '!mpi' enspara/test/test_cluster.py
         
       - run:
           name: run main tests
