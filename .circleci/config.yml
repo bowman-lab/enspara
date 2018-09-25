@@ -8,13 +8,16 @@ workflows:
   version: 2
   test:
     jobs:
-      - test-3.6
-      - test-3.5
+      - py3.6-np1.15
+      - py3.5-np1.15
 
 jobs:
-  test-3.6: &test-template
+  py3.6-np1.15: &test-template
     docker:
       - image: circleci/python:3.6.1
+    environment:
+      NUMPY_VERSION: 1.15.2
+      CYTHON_VERSION: 0.28.5
 
     working_directory: ~/repo
 
@@ -28,21 +31,21 @@ jobs:
       # Download and cache dependencies
       - restore_cache:
           keys:
-            - v1-dependencies-{{ checksum "setup.py" }}-{{ .Environment.CIRCLE_JOB }}
+            - v1-dependencies-{{ .Environment.CIRCLE_JOB }}-{{ checksum "setup.py" }}
 
       - run:
-          name: install dependencies
+          name: Install numpy and cython
           command: |
             python3 -m venv venv
             . venv/bin/activate
-            pip install numpy cython
+            pip install -q numpy=={{ .Environment.NUMPY_VERSION }} cython=={{ .Environment.CYTHON_VERSION }}
 
       - run:
-          name: install enspara
+          name: Install and build enspara
           command: |
             python3 -m venv venv
             . venv/bin/activate
-            pip install -e .[dev]
+            pip install -qe .[dev]
 
       - save_cache:
           paths:
@@ -50,29 +53,22 @@ jobs:
           key: v1-dependencies-{{ checksum "setup.py" }}
 
       - run:
-          name: run main tests
+          name: Run non-MPI tests
           command: |
             . venv/bin/activate
             nosetests -a '!mpi' enspara
 
       - run:
-          name: run MPI tests
+          name: Run MPI tests
           command: |
             . venv/bin/activate
             mpiexec -n 2 nosetests -a mpi enspara
-
-      - run:
-          name: Build docs
-          working_directory: docs
-          command: |
-            . ../venv/bin/activate
-            make html
 
       - store_artifacts:
           path: test-reports
           destination: test-reports
 
-  test-3.5:
+  py3.5-np1.15:
     <<: *test-template
     docker:
       - image: circleci/python:3.5    
