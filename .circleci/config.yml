@@ -5,7 +5,7 @@
 version: 2.1
 
 workflows:
-  version: 2.1
+  version: 2
   test:
     jobs:
       - py3.6-np1.15
