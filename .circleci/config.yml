@@ -13,13 +13,36 @@ workflows:
       - py3.6-np1.14
       - py3.5-np1.14
 
-jobs:
-  py3.6-np1.15: &test-template
+executors:
+  py3.6-np1.15:
     docker:
       - image: circleci/python:3.6.1
     environment:
       NUMPY_VERSION: 1.15.2
       CYTHON_VERSION: 0.28.5
+  py3.5-np1.15:
+    docker:
+      - image: circleci/python:3.5
+    environment:
+      NUMPY_VERSION: 1.15.2
+      CYTHON_VERSION: 0.28.5
+  py3.6-np1.14:
+    docker:
+      - image: circleci/python:3.6.1
+    environment:
+      NUMPY_VERSION: 1.14.2
+      CYTHON_VERSION: 0.28.5
+  py3.5-np1.14:
+    docker:
+      - image: circleci/python:3.5
+    environment:
+      NUMPY_VERSION: 1.14.2
+      CYTHON_VERSION: 0.28.5
+
+
+jobs:
+  py3.6-np1.15: &test-template
+    executor: py3.6-np1.15
 
     working_directory: ~/repo
 
@@ -72,20 +95,14 @@ jobs:
 
   py3.5-np1.15:
     <<: *test-template
-    docker:
-      - image: circleci/python:3.5
+    executor: py3.5-np1.15
 
   py3.6-np1.14:
     <<: *test-template
-    environment:
-      NUMPY_VERSION: 1.14.2
-      CYTHON_VERSION: 0.28.5
+    executor: py3.6-np1.14
 
   py3.5-np1.14:
     <<: *test-template
-    docker:
-      - image: circleci/python:3.5    
-    environment:
-      NUMPY_VERSION: 1.14.2
-      CYTHON_VERSION: 0.28.5
+    executor: py3.5-np1.14
+
 
