@@ -28,7 +28,7 @@ jobs:
       # Download and cache dependencies
       - restore_cache:
           keys:
-          - v1-dependencies-{{ checksum "setup.py" }}
+            - v1-dependencies-{{ checksum "setup.py" }}-{{ .Environment-.CIRCLE_JOB }}
 
       - run:
           name: install dependencies
