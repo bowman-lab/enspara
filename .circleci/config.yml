@@ -60,6 +60,13 @@ jobs:
             . venv/bin/activate
             mpiexec -n 2 nosetests -a mpi enspara
 
+      - run:
+          name: Build docs
+          working_directory: docs
+          command: |
+            . venv/bin/activate
+            make html
+
       - store_artifacts:
           path: test-reports
           destination: test-reports
