@@ -35,14 +35,14 @@ jobs:
           command: |
             python3 -m venv venv
             . venv/bin/activate
-            pip install numpy cython
+            pip install -q numpy cython
 
       - run:
           name: install enspara
           command: |
             python3 -m venv venv
             . venv/bin/activate
-            pip install -e .[dev]
+            pip install -qe .[dev]
 
       - save_cache:
           paths:
@@ -58,14 +58,14 @@ jobs:
       - run:
           name: run MPI tests
           command: |
-            . ../venv/bin/activate
+            . venv/bin/activate
             mpiexec -n 2 nosetests -a mpi enspara
 
       - run:
           name: Build docs
           working_directory: docs
           command: |
-            . venv/bin/activate
+            . ../venv/bin/activate
             make html
 
       - store_artifacts:
