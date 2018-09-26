@@ -127,7 +127,7 @@ def test_assigns_to_counts_negnums():
              [1, 2, -1, -1],
              [1, 0,  0, 1]])
 
-    counts = assigns_to_counts(in_m)
+    counts = assigns_to_counts(in_m, lag_time=1)
 
     expected = np.array([[1, 1, 1],
                          [1, 0, 1],
@@ -146,7 +146,7 @@ def test_assigns_to_counts_1d():
              [1, 2, -1, -1],
              [1, 0,  0, 1]]).flatten()
 
-    counts = assigns_to_counts(in_m)
+    counts = assigns_to_counts(in_m, lag_time=1)
 
     expected = np.array([[1, 2, 1],
                          [1, 0, 1],
