@@ -2,55 +2,90 @@
 #
 # Check https://circleci.com/docs/2.0/language-python/ for more details
 #
-version: 2
+version: 2.1
+
+workflows:
+  version: 2
+  test:
+    jobs:
+      - py3.6-np1.15
+      - py3.5-np1.15
+      - py3.6-np1.14
+      - py3.5-np1.14
+
 jobs:
-  build:
+  py3.6-np1.15: &test-template
     docker:
-      # specify the version you desire here
-      # use `-browsers` prefix for selenium tests, e.g. `3.6.1-browsers`
       - image: circleci/python:3.6.1
-      
-      # Specify service dependencies here if necessary
-      # CircleCI maintains a library of pre-built images
-      # documented at https://circleci.com/docs/2.0/circleci-images/
-      # - image: circleci/postgres:9.4
+    environment:
+      NUMPY_VERSION: 1.15.2
+      CYTHON_VERSION: 0.28.5
 
     working_directory: ~/repo
 
     steps:
       - checkout
 
+      - run:
+          name: Install System Dependencies
+          command: sudo apt-get update && sudo apt-get install -y openmpi-bin libopenmpi-dev build-essential cython
+
       # Download and cache dependencies
       - restore_cache:
           keys:
-          - v1-dependencies-{{ checksum "requirements-dev.txt" }}
-          # fallback to using the latest cache if no exact match is found
-          - v1-dependencies-
+            - v1-dependencies-{{ .Environment.CIRCLE_JOB }}-{{ checksum "setup.py" }}
 
       - run:
-          name: install dependencies
+          name: Install numpy and cython
           command: |
             python3 -m venv venv
             . venv/bin/activate
-            pip install -r requirements-dev.txt
+            pip install -q numpy==$NUMPY_VERSION cython==$CYTHON_VERSION
+
+      - run:
+          name: Install and build enspara
+          command: |
+            python3 -m venv venv
+            . venv/bin/activate
+            pip install -qe .[dev]
 
       - save_cache:
           paths:
             - ./venv
-          key: v1-dependencies-{{ checksum "requirements-dev.txt" }}
-        
-      # run tests!
-      # this example uses Django's built-in test-runner
-      # other common Python testing frameworks include pytest and nose
-      # https://pytest.org
-      # https://nose.readthedocs.io
+          key: v1-dependencies-{{ checksum "setup.py" }}
+
       - run:
-          name: run tests
+          name: Run non-MPI tests
           command: |
             . venv/bin/activate
-            nosetests
+            nosetests -a '!mpi' enspara
+
+      - run:
+          name: Run MPI tests
+          command: |
+            . venv/bin/activate
+            mpiexec -n 2 nosetests -a mpi enspara
 
       - store_artifacts:
           path: test-reports
           destination: test-reports
-          
+
+  py3.5-np1.15:
+    <<: *test-template
+    docker:
+      - image: circleci/python:3.5
+
+  py3.6-np1.14:
+    <<: *test-template
+    environment:
+      NUMPY_VERSION: 1.14.2
+      CYTHON_VERSION: 0.28.5
+
+  py3.5-np1.14:
+    <<: *test-template
+    docker:
+      - image: circleci/python:3.5    
+    environment:
+      NUMPY_VERSION: 1.14.2
+      CYTHON_VERSION: 0.28.5
+

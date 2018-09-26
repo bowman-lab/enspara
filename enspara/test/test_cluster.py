@@ -127,7 +127,7 @@ class TestTrajClustering(unittest.TestCase):
             self.trj,
             distance_method='rmsd',
             n_clusters=N_CLUSTERS,
-            n_iters=1000)
+            n_iters=50)
 
         # kcenters will always produce the same number of clusters on
         # this input data (unchanged by kmedoids updates)
@@ -385,7 +385,7 @@ def test_kmedoids_update_mpi_numpy_separated_blobs():
         assignments=local_assignments,
         distances=local_distances,
         random_state=0,
-        )
+    )
 
     local_ctr_inds, local_distances, local_assignments = r
     # mpi_ctr_inds = [len(X)*r + i for r, i in local_ctr_inds]
@@ -447,7 +447,7 @@ def test_kmedoids_pam_update_mdtraj():
     ind, dists, assig = kmedoids._kmedoids_pam_update(
         X, DIST_FUNC, ind, assig, dists, random_state=0)
 
-    assert_array_equal(ind, [298,  44, 341])
+    assert_array_equal(ind, [298, 44, 341])
 
     expect_assig, expect_dists = util.assign_to_nearest_center(
         X, X[ind], DIST_FUNC)
@@ -463,23 +463,25 @@ class TestNumpyClustering(unittest.TestCase):
 
     def setUp(self):
 
+        rg = np.random.RandomState(seed=41)
+
         g1 = self.generators[0]
-        s1_x_coords = np.random.normal(loc=g1[0], scale=1, size=20)
-        s1_y_coords = np.random.normal(loc=g1[1], scale=1, size=20)
+        s1_x_coords = rg.normal(loc=g1[0], scale=1, size=20)
+        s1_y_coords = rg.normal(loc=g1[1], scale=1, size=20)
         s1_xy_coords = np.zeros((20, 2))
         s1_xy_coords[:, 0] = s1_x_coords
         s1_xy_coords[:, 1] = s1_y_coords
 
         g2 = self.generators[1]
-        s2_x_coords = np.random.normal(loc=g2[0], scale=1, size=20)
-        s2_y_coords = np.random.normal(loc=g2[1], scale=1, size=20)
+        s2_x_coords = rg.normal(loc=g2[0], scale=1, size=20)
+        s2_y_coords = rg.normal(loc=g2[1], scale=1, size=20)
         s2_xy_coords = np.zeros((20, 2))
         s2_xy_coords[:, 0] = s2_x_coords
         s2_xy_coords[:, 1] = s2_y_coords
 
         g3 = self.generators[2]
-        s3_x_coords = np.random.normal(loc=g3[0], scale=1, size=20)
-        s3_y_coords = np.random.normal(loc=g3[1], scale=1, size=20)
+        s3_x_coords = rg.normal(loc=g3[0], scale=1, size=20)
+        s3_y_coords = rg.normal(loc=g3[1], scale=1, size=20)
         s3_xy_coords = np.zeros((20, 2))
         s3_xy_coords[:, 0] = s3_x_coords
         s3_xy_coords[:, 1] = s3_y_coords
@@ -533,7 +535,7 @@ class TestNumpyClustering(unittest.TestCase):
 
         assert_equal(len(clust.result_.center_indices), 3)
         assert_equal(len(np.unique(clust.result_.center_indices)),
-                     np.max(clust.result_.assignments)+1)
+                     np.max(clust.result_.assignments) + 1)
 
         # because two centers were generators, only one center
         # should actually be a frame
@@ -547,7 +549,7 @@ class TestNumpyClustering(unittest.TestCase):
             distance_method='euclidean',
             n_clusters=N_CLUSTERS,
             dist_cutoff=None,
-            n_iters=100,
+            n_iters=10,
             random_first_center=False)
 
         assert len(result.center_indices) == N_CLUSTERS
@@ -578,7 +580,7 @@ class TestNumpyClustering(unittest.TestCase):
             np.concatenate(self.traj_lst),
             distance_method='euclidean',
             n_clusters=N_CLUSTERS,
-            n_iters=1000)
+            n_iters=75)
 
         assert len(np.unique(result.assignments)) == N_CLUSTERS
         assert len(result.center_indices) == N_CLUSTERS
@@ -591,7 +593,7 @@ class TestNumpyClustering(unittest.TestCase):
     def check_generators(self, centers, distance):
 
         for c in centers:
-            mindist = min([np.linalg.norm(c-g) for g in self.generators])
+            mindist = min([np.linalg.norm(c - g) for g in self.generators])
             self.assertLess(
                 mindist, distance,
                 "Expected center {c} to be less than 2 away frome one of"
@@ -599,7 +601,7 @@ class TestNumpyClustering(unittest.TestCase):
                 format(c=c, g=self.generators, d=mindist))
 
         for g in self.generators:
-            mindist = min([np.linalg.norm(c-g) for c in centers])
+            mindist = min([np.linalg.norm(c - g) for c in centers])
             self.assertLess(
                 mindist, distance,
                 "Expected generator {g} to be less than 2 away frome one"
