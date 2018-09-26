@@ -147,6 +147,8 @@ def distribute_frame(data, world_index, owner_rank):
         Position of the target frame in `data` on the node that owns it
     owner_rank : int
         Rank of the node that owns the datum that we'll broadcast.
+    out : array-like or md.Trajectory
+        An array or trajectory to place the new data into.
 
     Returns
     -------
@@ -173,12 +175,10 @@ def distribute_frame(data, world_index, owner_rank):
     MPI.COMM_WORLD.Bcast(frame, root=owner_rank)
 
     if hasattr(data, 'xyz'):
-        wrapped_data = data[0]
-        wrapped_data.xyz = frame
+        wrapped_data = type(data)(xyz=frame, topology=data.top)
         return wrapped_data
     else:
         return frame
-
 
 def randind(local_array, random_state=None):
     """Given the local fragment of an assumed-larger array, give the
@@ -226,11 +226,12 @@ def randind(local_array, random_state=None):
     # global_index // MPI_SIZE iff our data are 'packed' on nodes, but not
     # otherwise.
 
+    concat = np.concatenate([np.arange(sum(n_states))[r::MPI_SIZE]
+                             for r in range(MPI_SIZE)])
     a = ra.RaggedArray(
-        np.concatenate([
-            np.arange(sum(n_states))[r::MPI_SIZE]
-            for r in range(MPI_SIZE)]),
-        lengths=n_states)
+        concat,
+        lengths=n_states,
+        error_checking=False)
 
     owner_rank, local_index = ra.where(a == global_index)
     owner_rank, local_index = owner_rank[0], local_index[0]
