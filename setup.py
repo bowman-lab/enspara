@@ -1,6 +1,4 @@
 import platform
-import os
-import subprocess
 import sys
 
 from distutils.core import setup
@@ -29,8 +27,8 @@ try:
         raise ImportError
     from Cython.Build import cythonize
 except ImportError:
-    print('-' * 80, file=sys.stderr)
-    print('\n'.join([
+    sys.stderr.write('-' * 80)
+    sys.stderr.write('\n'.join([
         'Error: building mdtraj requires numpy and cython>=0.19',
         'Try running the command ``pip install numpy cython`` or'
         '``conda install numpy cython``.',
@@ -98,6 +96,12 @@ setup(
     extras_require={
         'dev': [
             'nose',
+        ],
+        'docs': [
+            'Sphinx>=1.6.4',
+            'sphinx-rtd-theme>=0.2.4',
+            'sphinxcontrib-websupport>=1.0.1',
+            'numpydoc>=0.7.0',
         ]
     },
     zip_safe=False
