@@ -115,13 +115,13 @@ def test_prinz_mle_pyx_py_agreement():
     for i in range(100):
         n_states = np.random.randint(2, 20)
 
-        C = (np.random.poisson(lam=0.3, size=(n_states,n_states)) +
+        C = (np.random.poisson(lam=0.3, size=(n_states, n_states)) +
              np.diag(np.random.poisson(lam=10, size=(n_states,))))
         C = C.astype(float)
-        C += float(1/n_states)
+        C += float(1 / n_states)
 
         T_old, pi_old = prinz_mle_py(C)
         T_new, pi_new = _mle_prinz_dense(C)
 
-        assert_allclose(T_old, T_new, atol=1e-05)
-        assert_allclose(pi_old, pi_new)
+        assert_allclose(T_old, T_new, atol=1e-5)
+        assert_allclose(pi_old, pi_new, atol=1e-5)
