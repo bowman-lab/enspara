@@ -23,7 +23,7 @@ CLASSIFIERS = [
 
 # protect agaist absent cython/numpy
 try:
-    import numpy
+    import numpy as np
     import Cython
     if Cython.__version__ < '0.19':
         raise ImportError
@@ -38,7 +38,6 @@ except ImportError:
         'or see http://docs.scipy.org/doc/numpy/user/install.html and'
         'http://cython.org/ for more information.']))
 
-import numpy as np
 
 # this probably won't work for everyone. Works for me, though!
 # they'll need gcc 7 installed. Unfortunately, I don't have any idea how
@@ -66,6 +65,11 @@ cython_extensions = [
     ), Extension(
         "enspara.geometry.libdist",
         ["enspara/geometry/libdist.pyx"],
+        extra_compile_args=extra_compile_args,
+        extra_link_args=extra_link_args,
+    ), Extension(
+        "enspara.msm.libmsm",
+        ["enspara/msm/libmsm.pyx"],
         extra_compile_args=extra_compile_args,
         extra_link_args=extra_link_args,
     )]
