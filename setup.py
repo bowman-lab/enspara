@@ -88,8 +88,8 @@ setup(
         'tables>=3.2',
         'matplotlib>=1.5.1',
         'mdtraj>=1.7,<1.9',
-        'mpi4py',
-        'psutil',
+        'mpi4py>=2.0.0',
+        'psutil>=5.2.2',
         'scikit-learn>=0.17.1',
         'scipy>=0.17'
     ],
