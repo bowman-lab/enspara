@@ -463,23 +463,25 @@ class TestNumpyClustering(unittest.TestCase):
 
     def setUp(self):
 
+        rg = np.random.RandomState(seed=41)
+
         g1 = self.generators[0]
-        s1_x_coords = np.random.normal(loc=g1[0], scale=1, size=20)
-        s1_y_coords = np.random.normal(loc=g1[1], scale=1, size=20)
+        s1_x_coords = rg.normal(loc=g1[0], scale=1, size=20)
+        s1_y_coords = rg.normal(loc=g1[1], scale=1, size=20)
         s1_xy_coords = np.zeros((20, 2))
         s1_xy_coords[:, 0] = s1_x_coords
         s1_xy_coords[:, 1] = s1_y_coords
 
         g2 = self.generators[1]
-        s2_x_coords = np.random.normal(loc=g2[0], scale=1, size=20)
-        s2_y_coords = np.random.normal(loc=g2[1], scale=1, size=20)
+        s2_x_coords = rg.normal(loc=g2[0], scale=1, size=20)
+        s2_y_coords = rg.normal(loc=g2[1], scale=1, size=20)
         s2_xy_coords = np.zeros((20, 2))
         s2_xy_coords[:, 0] = s2_x_coords
         s2_xy_coords[:, 1] = s2_y_coords
 
         g3 = self.generators[2]
-        s3_x_coords = np.random.normal(loc=g3[0], scale=1, size=20)
-        s3_y_coords = np.random.normal(loc=g3[1], scale=1, size=20)
+        s3_x_coords = rg.normal(loc=g3[0], scale=1, size=20)
+        s3_y_coords = rg.normal(loc=g3[1], scale=1, size=20)
         s3_xy_coords = np.zeros((20, 2))
         s3_xy_coords[:, 0] = s3_x_coords
         s3_xy_coords[:, 1] = s3_y_coords
@@ -578,7 +580,7 @@ class TestNumpyClustering(unittest.TestCase):
             np.concatenate(self.traj_lst),
             distance_method='euclidean',
             n_clusters=N_CLUSTERS,
-            n_iters=50)
+            n_iters=75)
 
         assert len(np.unique(result.assignments)) == N_CLUSTERS
         assert len(result.center_indices) == N_CLUSTERS
