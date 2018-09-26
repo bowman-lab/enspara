@@ -55,7 +55,7 @@ jobs:
             python3 -m venv venv
             . venv/bin/activate
             pip install --progress-bar off .[dev]
-            python setup.py build_ext
+            python setup.py build_ext --inplace
             python setup.py install
 
       - save_cache:
