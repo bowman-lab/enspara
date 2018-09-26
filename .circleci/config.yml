@@ -36,6 +36,13 @@ jobs:
             - v1-dependencies-{{ .Environment.CIRCLE_JOB }}-{{ checksum "setup.py" }}
 
       - run:
+          name: Upgrade pip
+          command: |
+            python3 -m venv venv
+            . venv/bin/activate
+            pip install --upgrade pip
+
+      - run:
           name: Install numpy and cython
           command: |
             python3 -m venv venv
