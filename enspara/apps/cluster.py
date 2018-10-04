@@ -366,7 +366,7 @@ def main(argv=None):
 
         centers = load_asymm_frames(result.center_indices, args.trajectories,
                                     args.topologies, args.subsample)
-        with open(args.cluster_centers, 'wb') as f:
+        with open(args.center_features, 'wb') as f:
             pickle.dump(centers, f)
 
     # WRITE DISTANCES, ASSIGNMENTS

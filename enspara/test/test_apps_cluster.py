@@ -17,7 +17,7 @@ from sklearn.datasets import make_blobs
 from .. import exception
 from ..util import array as ra
 
-from ..apps import rmsd_cluster
+from ..apps import cluster
 
 TEST_DIR = os.path.dirname(__file__)
 
@@ -31,9 +31,9 @@ def runhelper(args, expected_size, algorithm='khybrid', expected_k=None,
     base = os.path.join(td, tf)
 
     fnames = {
-        'distances': base+'distances.h5',
-        'assignments': base+'assignments.h5',
-        'center-features': base+'center-features.%s' % centers_format,
+        'distances': base + 'distances.h5',
+        'assignments': base + 'assignments.h5',
+        'center-features': base + 'center-features.%s' % centers_format,
     }
 
     try:
@@ -43,7 +43,7 @@ def runhelper(args, expected_size, algorithm='khybrid', expected_k=None,
                 argv.extend(['--%s' % argname, fnames[argname]])
 
         argv.extend(args)
-        rmsd_cluster.main(argv)
+        cluster.main(argv)
 
         if expect_reassignment:
             assert os.path.isfile(fnames['assignments']), \
@@ -76,6 +76,8 @@ def runhelper(args, expected_size, algorithm='khybrid', expected_k=None,
         else:
             assert not os.path.isfile(fnames['assignments'])
             assert not os.path.isfile(fnames['distances'])
+            dists = None
+            assigns = None
 
         ctrsfile = fnames['center-features']
         assert os.path.isfile(ctrsfile), \
