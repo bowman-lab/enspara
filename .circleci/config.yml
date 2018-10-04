@@ -64,7 +64,7 @@ jobs:
           name: Run MPI tests
           command: |
             . venv/bin/activate
-            mpiexec -n 2 nosetests -a mpi enspara
+            OMP_NUM_THREADS=1 mpiexec -n 2 nosetests -a mpi enspara
 
       - store_artifacts:
           path: test-reports
