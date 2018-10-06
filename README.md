@@ -1,3 +1,5 @@
+[![Circle CI](https://circleci.com/gh/bowman-lab/enspara.svg?style=svg)](https://circleci.com/gh/bowman-lab/enspara)
+
 # enspara
 MSMs at Scale 
 
