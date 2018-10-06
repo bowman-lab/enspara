@@ -28,7 +28,7 @@ jobs:
 
       - run:
           name: Install System Dependencies
-          command: sudo apt-get update && sudo apt-get install -y openmpi-bin libopenmpi-dev build-essential cython
+          command: sudo apt-get update && sudo apt-get install -y libmpich12 libmpich-dev build-essential cython
 
       # Download and cache dependencies
       - restore_cache:
@@ -73,7 +73,7 @@ jobs:
           name: Run MPI tests
           command: |
             . venv/bin/activate
-            mpiexec -n 2 nosetests -a mpi enspara
+            OMP_NUM_THREADS=1 mpiexec -n 2 nosetests -a mpi enspara
 
       - store_artifacts:
           path: test-reports
