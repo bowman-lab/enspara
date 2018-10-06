@@ -10,7 +10,7 @@ from operator import mul
 import numpy as np
 import mdtraj as md
 
-from sklearn.externals.joblib import Parallel, delayed
+# from sklearn.externals.joblib import Parallel, delayed
 
 from .. import exception
 
@@ -99,14 +99,14 @@ def load_as_concatenated(filenames, lengths=None, processes=None,
             "Additional unnamed args can only be supplied iff no "
             "additonal keyword args are supplied")
     elif kwargs:
-        args = [kwargs]*len(filenames)
+        args = [kwargs] * len(filenames)
     elif args:
         if len(args) != len(filenames):
             raise exception.ImproperlyConfigured(
                 "When add'l unnamed args are provided, len(args) == "
                 "len(filenames).")
     else:  # not args and not kwargs
-        args = [{}]*len(filenames)
+        args = [{}] * len(filenames)
 
     logger.debug(
         "Configuring load calls with args[0] == [%s ... %s]",
@@ -115,10 +115,11 @@ def load_as_concatenated(filenames, lengths=None, processes=None,
     if lengths is None:
         logger.debug("Sounding %s trajectories with %s processes.",
                      len(filenames), processes)
-        lengths = Parallel(n_jobs=processes)(
-            delayed(sound_trajectory)(f, kw.get('stride', 1))
-            for f, kw in zip(filenames, args)
-            if 'frame' not in kw) # don't sound trjs with 'frame' kw
+        with mp.Pool(processes=processes) as pool:
+            lengths = pool.starmap(
+                sound_trajectory,
+                [(f, kw.get('stride', 1)) for f, kw
+                 in zip(filenames, args) if 'frame' not in kw])
 
         # trjs with frame are always length 1, add that to lengths now
         for i, kw in enumerate(args):
