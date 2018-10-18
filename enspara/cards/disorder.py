@@ -1,5 +1,5 @@
 # Author: Gregory R. Bowman <gregoryrbowman@gmail.com>
-# Contributors:
+# Contributors: Sukrit Singh <sukritsingh92@gmail.com>
 # Copyright (c) 2016, Washington University in St. Louis
 # All rights reserved.
 # Unauthorized copying of this file, via any medium is strictly prohibited
@@ -28,6 +28,13 @@ def transitions(assignments):
        has more than one "row" or trajectory), a ragged array where each
        row includes the frames at which the transition occurrs. If state
        n and n+1 differ in assignment, the transition is reported as n.
+
+    References
+    -------------
+    1) Sukrit Singh and Gregory R. Bowman, "Quantifying allosteric communication via 
+    both concerted structural changes and conformational disorder with CARDS".
+    Journal of Chemical Theory and Computation 2017 13 (4), 1509-1517
+    DOI: 10.1021/acs.jctc.6b01181 
     """
 
     if len(assignments.shape) == 1:

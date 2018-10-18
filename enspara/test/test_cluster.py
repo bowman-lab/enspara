@@ -580,7 +580,7 @@ class TestNumpyClustering(unittest.TestCase):
             np.concatenate(self.traj_lst),
             distance_method='euclidean',
             n_clusters=N_CLUSTERS,
-            n_iters=75)
+            n_iters=100)
 
         assert len(np.unique(result.assignments)) == N_CLUSTERS
         assert len(result.center_indices) == N_CLUSTERS
@@ -596,17 +596,18 @@ class TestNumpyClustering(unittest.TestCase):
             mindist = min([np.linalg.norm(c - g) for g in self.generators])
             self.assertLess(
                 mindist, distance,
-                "Expected center {c} to be less than 2 away frome one of"
+                "Expected center {c} to be less than {dmax} away frome one of "
                 "{g} (was {d}).".
-                format(c=c, g=self.generators, d=mindist))
+                format(c=c, g=self.generators, d=mindist, dmax=distance))
 
         for g in self.generators:
             mindist = min([np.linalg.norm(c - g) for c in centers])
             self.assertLess(
                 mindist, distance,
-                "Expected generator {g} to be less than 2 away frome one"
+                "Expected generator {g} to be less than {dmax} away frome one"
                 "of {c} (was {d}).".
-                format(c=c, g=self.generators, d=mindist))
+                format(c=c, g=self.generators, d=mindist, dmax=distance))
+            
 
 @attr('mpi')
 def test_kmedoids_propose_center_amongst():
