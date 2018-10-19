@@ -15,9 +15,10 @@ Enspara: MSMs at Scale
 Contents:
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 1
 
    installation
+   clustering
    apps
    cookbook
    _modules/enspara

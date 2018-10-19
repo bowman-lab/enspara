@@ -28,7 +28,7 @@ enspara\.apps\.reassign module
 enspara\.apps\.rmsd\_cluster module
 -----------------------------------
 
-.. automodule:: enspara.apps.rmsd_cluster
+.. automodule:: enspara.apps.cluster
     :members:
     :undoc-members:
     :show-inheritance:
