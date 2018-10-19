@@ -89,7 +89,7 @@ def process_command_line(argv):
 
 
 def prior_counts(C):
-    return builders.normalize(C, prior_counts=1/C.shape[0])
+    return builders.normalize(C, prior_counts=1/len(C))
 
 
 def process_units(timestep=None, infer_timestep=None):
