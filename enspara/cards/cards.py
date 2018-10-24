@@ -1,9 +1,4 @@
-# Author: Gregory R. Bowman <gregoryrbowman@gmail.com>
-# Contributors: Justin R. Porter <justinrporter@gmail.com>
-# Copyright (c) 2016, Washington University in St. Louis
-# All rights reserved.
-# Unauthorized copying of this file, via any medium is strictly prohibited
-# Proprietary and confidential
+
 
 import logging
 

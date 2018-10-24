@@ -1,10 +1,4 @@
 # -*- coding: utf-8 -*-
-# Author: Sukrit Singh <sukritsingh92@gmail.com>
-# Contributors: 
-# Copyright (c) 2018, Washington University in St. Louis
-# All rights reserved.
-# Unauthorized copying of this file, via any medium is strictly prohibited
-# Proprietary and confidential
 
 """CARDS is a method for quantifying correlated motions between residues in a 
 protein. This method works by classifying all dihedrals of a protein into 
@@ -14,12 +8,12 @@ representing whether or not the dihedral is ordered or disordered.
 
 If you use CARDS, please cite the following papers: 
 -----------------------------------------------------
-1)  Sukrit Singh and Gregory R. Bowman, "Quantifying allosteric communication via 
+[1] Sukrit Singh and Gregory R. Bowman, "Quantifying allosteric communication via 
     both concerted structural changes and conformational disorder with CARDS".
     Journal of Chemical Theory and Computation 2017 13 (4), 1509-1517
     DOI: 10.1021/acs.jctc.6b01181 
 
-2)  Justin R Porter, Maxwell I Zimmerman, Gregory R Bowman, "Enspara: Modeling molecular 
+[2] Justin R Porter, Maxwell I Zimmerman, Gregory R Bowman, "Enspara: Modeling molecular 
     ensembles with scalable data structures and parallel computing". 
     bioRxiv 431072; doi: https://doi.org/10.1101/431072 
 """
@@ -35,6 +29,7 @@ import json
 import warnings
 import numpy as np
 import mdtraj as md
+
 
 from glob import glob 
 from enspara.cards import cards
@@ -65,9 +60,17 @@ def process_command_line(argv):
     format appropriate for the rest of the script.'''
 
     parser = argparse.ArgumentParser(
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
         description="Compute CARDS matricies for a set of trajectories "
-                    "and save all matrices and dihedral mappings.")
+                    "and save all matrices and dihedral mappings.\n \n"
+                    "Please cite the following papers if you use CARDS with enspara:\n"
+                    "[1] Singh, S. and Bowman, G.R.\n" 
+                    "    Journal of Chemical Theory and Computation\n"
+                    "    2017 13 (4), 1509-1517\n"
+                    "    DOI: 10.1021/acs.jctc.6b01181\n"
+                    "\n"
+                    "[2] Porter,J.R.,  Zimmerman, M.I., and Bowman G.R.\n"
+                    "    bioRxiv 431072; doi: https://doi.org/10.1101/431072\n")
 
     # INPUTS
     input_args = parser.add_argument_group("Input Settings")
@@ -111,8 +114,8 @@ def process_command_line(argv):
 
 
 def load_trajs(args):
-    ''' Creates a generator object that can be then passed to the CARDS framework.
-    '''
+    """ Creates a generator object that can be then passed to the CARDS framework.
+    """
     trajectories = args.trajectories
     topology = args.topology[0]
     #filenames = glob(trajectories)
@@ -121,17 +124,21 @@ def load_trajs(args):
     logger.info("Starting CARDS; targets:\n%s",
                 json.dumps(targets, indent=4))
 
-
-    with timed("Collating trajectories took %.1f s.", logger.info):
-        gen = (md.load(traj, top=topology) for traj in args.trajectories)
+    gen = (md.load(traj, top=topology) for traj in args.trajectories)
 
     return gen
 
 def save_cards(ss_mi, dd_mi, sd_mi, ds_mi, outputName):
-    '''Save the four cards matrices as a single pickle file
-    '''
+    """Save the four cards matrices as a single pickle file
+    """
 
-    finalMats = [ss_mi, dd_mi, sd_mi, ds_mi]
+    #finalMats = [ss_mi, dd_mi, sd_mi, ds_mi]
+    finalMats = {
+        'Struc_struc_MI': ss_mi, 
+        'Disorder_disorder_MI': dd_mi,
+        'Struc_disorder_MI': sd_mi,
+        'Disorder_struc_MI': ds_mi, }
+    
     logger.info("Saving matrices - saved as %s", outputName)
 
     with open(outputName, 'wb') as f:
@@ -143,14 +150,15 @@ def save_cards(ss_mi, dd_mi, sd_mi, ds_mi, outputName):
 
 
 def main(argv=None):
-    '''Run the driver script for this module. This code only runs if we're
-    being run as a script. Otherwise, it's silent and just exposes methods.'''
+    """Run the driver script for this module. This code only runs if we're
+    being run as a script. Otherwise, it's silent and just exposes methods.
+    """
     args = process_command_line(argv)
 
-    trjList = load_trajs(args)
+    trj_list = load_trajs(args)
 
     with timed("Calculating CARDS correlations took %.1f s.", logger.info):
-        ss_mi, dd_mi, sd_mi, ds_mi, inds = cards(trjList, args.buffer_size, 
+        ss_mi, dd_mi, sd_mi, ds_mi, inds = cards(trj_list, args.buffer_size, 
                                                         args.processes)
 
     logger.info("Completed correlations. ")

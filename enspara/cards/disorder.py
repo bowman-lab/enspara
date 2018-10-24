@@ -1,9 +1,5 @@
-# Author: Gregory R. Bowman <gregoryrbowman@gmail.com>
-# Contributors: Sukrit Singh <sukritsingh92@gmail.com>
-# Copyright (c) 2016, Washington University in St. Louis
-# All rights reserved.
-# Unauthorized copying of this file, via any medium is strictly prohibited
-# Proprietary and confidential
+
+
 
 import logging
 import numpy as np
@@ -31,7 +27,7 @@ def transitions(assignments):
 
     References
     -------------
-    1)  Sukrit Singh and Gregory R. Bowman, "Quantifying allosteric communication via 
+    [1] Sukrit Singh and Gregory R. Bowman, "Quantifying allosteric communication via 
         both concerted structural changes and conformational disorder with CARDS".
         Journal of Chemical Theory and Computation 2017 13 (4), 1509-1517
         DOI: 10.1021/acs.jctc.6b01181 
@@ -140,9 +136,10 @@ def assign_order_disorder(rotamer_trajs):
 
     References
     ----------
-    [1] Singh, S., & Bowman, G. R. (2017). Quantifying Allosteric
-        Communication via Correlations in Structure and Disorder.
-        Biophysical Journal, 112(3), 498a.
+    [1] Sukrit Singh and Gregory R. Bowman, "Quantifying allosteric communication via 
+        both concerted structural changes and conformational disorder with CARDS".
+        Journal of Chemical Theory and Computation 2017 13 (4), 1509-1517
+        DOI: 10.1021/acs.jctc.6b01181 
     """
 
     logger.debug("Calculating ordered/disordered times")
@@ -189,9 +186,10 @@ def transition_stats(rotamer_trajs):
 
     References
     ----------
-    [1] Singh, S., & Bowman, G. R. (2017). Quantifying Allosteric
-        Communication via Correlations in Structure and Disorder.
-        Biophysical Journal, 112(3), 498a.
+    [1] Sukrit Singh and Gregory R. Bowman, "Quantifying allosteric communication via 
+        both concerted structural changes and conformational disorder with CARDS".
+        Journal of Chemical Theory and Computation 2017 13 (4), 1509-1517
+        DOI: 10.1021/acs.jctc.6b01181 
     """
 
     n_traj = len(rotamer_trajs)

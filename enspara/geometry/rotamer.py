@@ -1,13 +1,9 @@
-# Author: Gregory R. Bowman <gregoryrbowman@gmail.com>
-# Contributors: Sukrit Singh <sukritsingh92@gmail.com>
-# Copyright (c) 2016, Washington University in St. Louis
-# All rights reserved.
-# Unauthorized copying of this file, via any medium is strictly prohibited
-# Proprietary and confidential
+
 
 import numbers
 import mdtraj as md
 import numpy as np
+from enspara.exception import DataInvalid
 
 
 def dihedral_angles(traj, dihedral_type):
@@ -41,12 +37,12 @@ def _rotamers(angles, hard_boundaries, buffer_width=15):
 
     Parameters
     ----------
-    angles : array-like, shape = (1, n_frames)
+    angles : array-like, shape=(n_frames)
         Time-series data containing the values of  
         a single dihedral angle from a trajectory. This array MUST: 
         a) Be passed in degrees 
         b) Span from 0 to 360 in range 
-    hard_boundaries : array_like, shape=(1, n_boundaries)
+    hard_boundaries : array-like, shape=(n_boundaries)
         Single set of numbers containing the "hard" boundaries denoting 
         rotamer basins. This array MUST contain 0 as the first value and 
         360 as the last value. 
@@ -56,7 +52,7 @@ def _rotamers(angles, hard_boundaries, buffer_width=15):
 
     Returns
     --------
-    rotamers : array-like, shape=(1, n_frames) 
+    rotamers : array-like, shape=(n_frames) 
         Time-series data with rotamer state assignments. Each element i 
         contains the rotamer state assignment computed using the "angles" 
         array. 
@@ -68,15 +64,17 @@ def _rotamers(angles, hard_boundaries, buffer_width=15):
     n_basins = len(hard_boundaries)-1
 
     if buffer_width <= 0 or buffer_width >= 360. / n_basins:
-        return None
+        raise DataInvalid('Buffer width must be between 0 and 360 degrees.')
+        #return None
     if hard_boundaries[0] != 0 or hard_boundaries[-1] != 360:
-        return None
+        raise DataInvalid('hard_boundaries list must start with 0 and end with 360')
+        #return None
 
-    # Need to establish how long it is and cratea an appropriate output array
+    # Need to establish how long it is and create an appropriate output array
     n_frames = len(angles)
     rotamers = -1*np.ones(n_frames, dtype='int16')
 
-    # First, assign the first state to it's rotamer bin
+    # First, assign the first state to its rotamer bin
     # make sure assign first frame
     for i in range(n_basins):
         if angles[0] < hard_boundaries[i+1]:
@@ -84,15 +82,15 @@ def _rotamers(angles, hard_boundaries, buffer_width=15):
             break
 
     # Now we will go through each subsequent element of the array and 
-    #     assign each state based on whether or not there is a buffered transition
+    # assign each state based on whether or not there is a buffered transition
     cur_state = rotamers[0]
-    transitionArray= []
+    #transition_Array= [] used for debugging transitions in rotamers
     for i in range(1, n_frames):
         new_angle = angles[i]
         cur_angle = angles[i-1]
 
         # If there is a buffered transition we will reassign states
-        if (is_buffered_transition(cur_state, new_angle, hard_boundaries, buffer_width)):
+        if is_buffered_transition(cur_state, new_angle, hard_boundaries, buffer_width):
             cur_state = np.digitize(new_angle, hard_boundaries) - 1
 
         rotamers[i] = cur_state
@@ -110,7 +108,7 @@ def is_buffered_transition(cur_state, new_angle, hard_boundaries, buffer_width):
         Dihedral angle value at the dihedral's subsequent timestep. Note that
         this value must meet the same two conditions as described above in 
         _rotamers method. 
-    hard_boundaries : array_like, shape=(1, n_boundaries)
+    hard_boundaries : array-like, shape=(n_boundaries)
         Single set of numbers containing the "hard" boundaries denoting 
         rotamer basins. This array MUST contain 0 as the first value and 
         360 as the last value. 
@@ -135,25 +133,25 @@ def is_buffered_transition(cur_state, new_angle, hard_boundaries, buffer_width):
     result = False
 
     # Given the current angle, we need to identify the "gates" 
-    lowerBound, upperBound = get_gates(cur_state, hard_boundaries, buffer_width)
+    lower_bound, upper_bound = get_gates(cur_state, hard_boundaries, buffer_width)
     
     # Keep in mind these are gates representing what new_angle has to EXIT.
 
     # This means that if new_angle is within the interval spanning these gate
-    #   it has transitioned. 
+    # it has transitioned. 
 
     # We can check to see if this is a wrap around state or not. 
     
-    # If it is  meant to be a "wrap around detection", then the 
-    #   difference (Upper - Lower) would be negative because gates are
-    #   flipped.
-    if ((upperBound - lowerBound) < 0):
-        if (upperBound <= new_angle <= lowerBound):
+    # If it is  meant to be a "wrap around", then the 
+    # difference (Upper - Lower) would be negative because gates are
+    # flipped.
+    if ((upper_bound - lower_bound) < 0):
+        if (upper_bound <= new_angle <= lower_bound):
             result = True 
 
     # If the difference is positive, then we just need to flip our inequality
-    if ((upperBound - lowerBound) > 0):
-        if (not (lowerBound <= new_angle <= upperBound)):
+    if ((upper_bound - lower_bound) > 0):
+        if (not (lower_bound <= new_angle <= upper_bound)):
             result = True
 
     return result
@@ -169,7 +167,7 @@ def get_gates(cur_state, hard_boundaries, buffer_width):
     -----------
     cur_state : int, 
         Rotameric basin index presently being occupied by the dihedral
-    hard_boundaries : array_like, shape=(1, n_boundaries)
+    hard_boundaries : array-like, shape=(1, n_boundaries)
         Single set of numbers containing the "hard" boundaries denoting 
         rotamer basins. This array MUST contain 0 as the first value and 
         360 as the last value. 
@@ -179,9 +177,9 @@ def get_gates(cur_state, hard_boundaries, buffer_width):
 
     Returns 
     ----------
-    lowerBound : int
+    lower_bound : int
         Lower gate that must be crossed for a transition to occur
-    upperBound : int
+    upper_bound : int
         Upper gate that must be crossed for a transition to occur
 
     See also
@@ -199,26 +197,26 @@ def get_gates(cur_state, hard_boundaries, buffer_width):
     #         break
 
     # Now that we know the state it's in - we can dictate it's gates
-    lowerBound = hard_boundaries[stateNum]
-    upperBound = hard_boundaries[stateNum+1]
+    lower_bound = hard_boundaries[stateNum]
+    upper_bound = hard_boundaries[stateNum+1]
     # These represents the edges which have to be crossed by new_angle 
 
     # If the lower bound is zero, set upper bound to 360 (wrap around)
     # If the upper bound is 360, set lower bound to 0 (wrap around)
-    if (lowerBound == 0): 
-        lowerBound = 360
-    if (upperBound == 360):
-        upperBound = 0  
+    if (lower_bound == 0): 
+        lower_bound = 360
+    if (upper_bound == 360):
+        upper_bound = 0  
 
-    lowerBound -= buffer_width
-    upperBound += buffer_width
+    lower_bound -= buffer_width
+    upper_bound += buffer_width
 
 
     # Keep in mind that these are gates representing what boundaries must be 
     #   crossed by the new angle to be considered a transition
     # This point will be addressed in the is_buffered_transition method
 
-    return lowerBound, upperBound 
+    return lower_bound, upper_bound 
 
 
 
@@ -301,9 +299,10 @@ def all_rotamers(traj, buffer_width=15):
 
     References
     ----------
-    [1] Singh, S., & Bowman, G. R. (2017). Quantifying Allosteric
-        Communication via Correlations in Structure and Disorder.
-        Biophysical Journal, 112(3), 498a.
+    [1] Sukrit Singh and Gregory R. Bowman, "Quantifying allosteric communication via 
+        both concerted structural changes and conformational disorder with CARDS".
+        Journal of Chemical Theory and Computation 2017 13 (4), 1509-1517
+        DOI: 10.1021/acs.jctc.6b01181 
     """
     phi_rotameric_states, phi_atom_inds, n_phi_states = phi_rotamers(
         traj, buffer_width=buffer_width)
