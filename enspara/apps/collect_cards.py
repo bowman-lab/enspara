@@ -132,8 +132,8 @@ def save_cards(ss_mi, dd_mi, sd_mi, ds_mi, outputName):
     """Save the four cards matrices as a single pickle file
     """
 
-    #finalMats = [ss_mi, dd_mi, sd_mi, ds_mi]
-    finalMats = {
+    #final_mats = [ss_mi, dd_mi, sd_mi, ds_mi]
+    final_mats = {
         'Struc_struc_MI': ss_mi, 
         'Disorder_disorder_MI': dd_mi,
         'Struc_disorder_MI': sd_mi,
@@ -142,7 +142,7 @@ def save_cards(ss_mi, dd_mi, sd_mi, ds_mi, outputName):
     logger.info("Saving matrices - saved as %s", outputName)
 
     with open(outputName, 'wb') as f:
-        pickle.dump(finalMats, f)
+        pickle.dump(final_mats, f)
 
     return 0 
 

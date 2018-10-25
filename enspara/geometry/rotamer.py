@@ -98,7 +98,10 @@ def _rotamers(angles, hard_boundaries, buffer_width=15):
     return rotamers
 
 def is_buffered_transition(cur_state, new_angle, hard_boundaries, buffer_width):
-    """Returns whether or not the change in angle is a buffered transition
+    """Returns whether or not the change in angle is a buffered transition. 
+    A "buffered transition" is defined as a transition between rotameric states
+    that happens across a buffer-zone. That is, the transition occurred while 
+    the rotamer is buffered.
 
     Parameters 
     ----------
@@ -145,12 +148,12 @@ def is_buffered_transition(cur_state, new_angle, hard_boundaries, buffer_width):
     # If it is  meant to be a "wrap around", then the 
     # difference (Upper - Lower) would be negative because gates are
     # flipped.
-    if ((upper_bound - lower_bound) < 0):
+    if (upper_bound < lower_bound):
         if (upper_bound <= new_angle <= lower_bound):
             result = True 
 
     # If the difference is positive, then we just need to flip our inequality
-    if ((upper_bound - lower_bound) > 0):
+    if (upper_bound > lower_bound):
         if (not (lower_bound <= new_angle <= upper_bound)):
             result = True
 
@@ -189,16 +192,16 @@ def get_gates(cur_state, hard_boundaries, buffer_width):
     """
     # First, assign the current angle into one of the boundaries
     n_basins = len(hard_boundaries) - 1
-    stateNum = int(cur_state) 
+    state_num = int(cur_state) 
 
     # for i in range(n_basins):
     #     if cur_angle < hard_boundaries[i+1]:
-    #         stateNum = i
+    #         state_num = i
     #         break
 
     # Now that we know the state it's in - we can dictate it's gates
-    lower_bound = hard_boundaries[stateNum]
-    upper_bound = hard_boundaries[stateNum+1]
+    lower_bound = hard_boundaries[state_num]
+    upper_bound = hard_boundaries[state_num+1]
     # These represents the edges which have to be crossed by new_angle 
 
     # If the lower bound is zero, set upper bound to 360 (wrap around)
