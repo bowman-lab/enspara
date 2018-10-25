@@ -46,7 +46,7 @@ def cards(trajectories, buffer_width=15, n_procs=1):
 
     References
     ----------
-    1)  Sukrit Singh and Gregory R. Bowman, "Quantifying allosteric communication via 
+    [1]  Sukrit Singh and Gregory R. Bowman, "Quantifying allosteric communication via 
         both concerted structural changes and conformational disorder with CARDS".
         Journal of Chemical Theory and Computation 2017 13 (4), 1509-1517
         DOI: 10.1021/acs.jctc.6b01181 
