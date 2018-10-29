@@ -2,7 +2,7 @@
 # @Author: Sukrit Singh
 # @Date:   2018-10-29 11:12:20
 # @Last Modified by:   Sukrit Singh
-# @Last Modified time: 2018-10-29 16:36:09
+# @Last Modified time: 2018-10-29 16:46:17
 
 """This apps script computes the Shannon entropy for each residue using the definition
 of rotamers established by the CARDS framework. Shannon entropy is computed for each 
@@ -266,6 +266,7 @@ def compute_shannon_entropies(args, trj_list):
     rotamers = feat.RotamerFeaturizer(args.buffer_size, args.processes)
     rotamers.fit(trj_list)
 
+    print("Compiled all rotamer trajectories")
     # Then we convert the counts for each dihedral's rotamers
     counts = compute_rotamer_counts(rotamers)
 
@@ -313,7 +314,7 @@ def main(argv=None):
 
     trj_list = load_trajs(args)
 
-    with timed("Calculating CARDS correlations took %.1f s.", logger.info):
+    with timed("Calculating entropies took %.1f s.", logger.info):
         # ss_mi, dd_mi, sd_mi, ds_mi, inds = cards(trj_list, args.buffer_size, 
         #                                                 args.processes)
         entropies, residues = compute_shannon_entropies(args, trj_list)
