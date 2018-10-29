@@ -2,7 +2,7 @@
 # @Author: Sukrit Singh
 # @Date:   2018-10-29 11:12:20
 # @Last Modified by:   Sukrit Singh
-# @Last Modified time: 2018-10-29 16:46:17
+# @Last Modified time: 2018-10-29 17:31:00
 
 """This apps script computes the Shannon entropy for each residue using the definition
 of rotamers established by the CARDS framework. Shannon entropy is computed for each 
@@ -102,8 +102,14 @@ def process_command_line(argv):
     # OUTPUT
     output_args = parser.add_argument_group("Output Settings")
     output_args.add_argument(
-        '--entropies', action=readable_dir,
-        help="The location to write the normalized entropies file (as CSV)")
+        '--entropies', required=True, action=readable_dir,
+        help="The location to write each dihedral entropy (as dat)")
+    output_args.add_argument(
+        '--indices', required=True, action=readable_dir,
+        help="The location to write each dihedral's atom indices (as CSV)")
+    output_args.add_argument(
+        '--residue-entropies', required=True, action=readable_dir,
+        help="The location to write the residue entropy data (as CSV)")
 
     args = parser.parse_args(argv[1:])
 
@@ -291,16 +297,17 @@ def compute_shannon_entropies(args, trj_list):
                                                                     topology, 
                                                                     rotamers.atom_indices_,
                                                                     rotamers.n_feature_states_)
-    return residue_entropy, resi_list
+    return entropy_per_dihedral, rotamers.atom_indices_, residue_entropy, resi_list
 
 
-def save_all_entropies(entropies, residues, fileName):
+def save_all_entropies(dihedral_entropies, dihedral_atoms, residue_entropy_data, args):
     """Saves the final per-residue entropies as a CSV file with the corresponding
     residue ID. 
     """
-    final_entropy_data = np.vstack((residues, entropies)).T
 
-    np.savetxt(fileName, final_entropy_data, delimiter=",")
+    np.savetxt(args.residue_entropies, residue_entropy_data, delimiter=",")
+    np.savetxt(args.entropies, dihedral_entropies)
+    np.savetxt(args.indices, dihedral_atoms.astype(int), fmt='%i', delimiter=",")
 
     return 0 
 
@@ -317,11 +324,16 @@ def main(argv=None):
     with timed("Calculating entropies took %.1f s.", logger.info):
         # ss_mi, dd_mi, sd_mi, ds_mi, inds = cards(trj_list, args.buffer_size, 
         #                                                 args.processes)
-        entropies, residues = compute_shannon_entropies(args, trj_list)
+        dihedral_entropies, dihedral_atoms, residue_entropies, residues = \
+                                                compute_shannon_entropies(args, trj_list)
+
+    # Combine the residue and residue labels to generate a single per-residue matrix
+    residue_entropy_data = np.vstack((residues, residue_entropies)).T
 
     logger.info("Completed entropy calculation. ")
 
-    save_all_entropies(entropies, residues, args.entropies)
+    # Save both dihedral-entropy and residue-entropy
+    save_all_entropies(dihedral_entropies, dihedral_atoms, residue_entropy_data, args)
 
     logger.info("Saved all entropies as as %s", args.entropies)
 
