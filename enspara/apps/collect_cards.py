@@ -5,14 +5,12 @@ protein. This method works by classifying all dihedrals of a protein into
 rotameric and dynamical states. Each dihedral has either 2 or 3 rotameric 
 states, for backbone and sidechain dihedrals respectively, and 2 dynamical states 
 representing whether or not the dihedral is ordered or disordered. 
-
 If you use CARDS, please cite the following papers: 
 -----------------------------------------------------
 [1] Sukrit Singh and Gregory R. Bowman, "Quantifying allosteric communication via 
     both concerted structural changes and conformational disorder with CARDS".
     Journal of Chemical Theory and Computation 2017 13 (4), 1509-1517
     DOI: 10.1021/acs.jctc.6b01181 
-
 [2] Justin R Porter, Maxwell I Zimmerman, Gregory R Bowman, "Enspara: Modeling molecular 
     ensembles with scalable data structures and parallel computing". 
     bioRxiv 431072; doi: https://doi.org/10.1101/431072 
@@ -173,4 +171,4 @@ def main(argv=None):
 
 
 if __name__ == "__main__":
-    sys.exit(main(sys.argv))
+sys.exit(main(sys.argv))
