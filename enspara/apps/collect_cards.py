@@ -111,10 +111,18 @@ def process_command_line(argv):
 
 
 
+def load_trajectory_generator(trajectories, topology):
+
+    for i,t in enumerate(trajectories):
+        print('loading '+str(t))
+        yield md.load(t, top=topology)
+
+
+
 def load_trajs(args):
     """ Creates a generator object that can be then passed to the CARDS framework.
     """
-    trajectories = args.trajectories
+    trajectories = args.trajectories[0]
     topology = args.topology[0]
     #filenames = glob(trajectories)
     targets = {os.path.basename(topf): "%s files" % len(trjfs) for topf, trjfs
@@ -122,9 +130,13 @@ def load_trajs(args):
     logger.info("Starting CARDS; targets:\n%s",
                 json.dumps(targets, indent=4))
 
-    gen = (md.load(traj, top=topology) for traj in args.trajectories)
+    #gen = (md.load(traj, top=topology) for traj in args.trajectories)
+    gen = load_trajectory_generator(trajectories, topology)
+
+    print("Created generator")
 
     return gen
+
 
 def save_cards(ss_mi, dd_mi, sd_mi, ds_mi, outputName):
     """Save the four cards matrices as a single pickle file
@@ -171,4 +183,4 @@ def main(argv=None):
 
 
 if __name__ == "__main__":
-sys.exit(main(sys.argv))
+    sys.exit(main(sys.argv))
