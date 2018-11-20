@@ -86,7 +86,6 @@ class ClusterResult(namedtuple('ClusterResult',
                                 'distances',
                                 'assignments',
                                 'centers'])):
-    __slots__ = ()
 
     def partition(self, lengths):
         """Split each array in this ClusterResult into multiple
