@@ -48,6 +48,12 @@ def load_as_striped(filenames, *args, **kwargs):
             "node must be given. MPI size is %s, number of files is %s."
             % (MPI_SIZE, len(filenames)))
 
+    # if we're specifying parameters separately for each trj to load, we
+    # need to stripe those across nodes also.
+    if 'args' in kwargs and len(kwargs['args']) > 1:
+        assert len(kwargs['args']) == len(filenames)
+        kwargs['args'] = kwargs['args'].copy()[MPI_RANK::MPI_SIZE]
+
     local_lengths, my_xyz = load_as_concatenated(
         filenames=filenames[MPI_RANK::MPI_SIZE], *args, **kwargs)
 
