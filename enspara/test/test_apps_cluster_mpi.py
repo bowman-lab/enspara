@@ -9,6 +9,8 @@ import mdtraj as md
 from nose.tools import assert_equal
 from nose.plugins.attrib import attr
 
+from sklearn.datasets import make_blobs
+
 import numpy as np
 from numpy.testing import assert_array_equal, assert_allclose
 
@@ -31,7 +33,7 @@ def runhelper(args, expected_size, expect_reassignment=True):
     td = MPI.COMM_WORLD.bcast(td, root=0)
 
     fnames = {
-        'center-inds': td + '/center-inds.pkl',
+        'center-inds': td + '/center-inds.npy',
         'center-structs': td + '/center-structs.pkl',
         'distances': td + '/distances.h5',
         'assignments': td + '/assignments.h5',
@@ -265,3 +267,42 @@ def test_rmsd_khybrid_mpi_subsample():
     trj = md.load(TRJFILE, top=TOPFILE)
     expected_s = md.join([trj[i[1]] for i in inds])
     assert_array_equal(expected_s.xyz, md.join(s).xyz)
+
+
+@attr('mpi')
+def test_feature_khybrid_mpi_basic():
+
+    expected_size = (3, (50, 30, 20))
+
+    X, y = make_blobs(
+        n_samples=100, n_features=3, centers=3, center_box=(0, 100),
+        random_state=0)
+
+    try:
+        if MPI_RANK == 0:
+            f = tempfile.NamedTemporaryFile(suffix='.h5')
+            a = ra.RaggedArray(array=X, lengths=[50, 30, 20])
+            ra.save(f.name, a)
+        else:
+            f = None
+
+        tfname = MPI.COMM_WORLD.bcast(f.name if MPI_RANK == 0 else None,
+                                      root=0)
+
+        a, d, inds, s = runhelper([
+            '--features', tfname,
+            '--cluster-number', '3',
+            '--algorithm', 'khybrid',
+            '--cluster-distance', 'euclidean'],
+            expected_size=expected_size)
+
+        assert_equal(len(inds), 3)
+    finally:
+        if MPI_RANK == 0:
+            f.close()
+
+    y_ra = ra.RaggedArray(y, a.lengths)
+    for cid in range(len(inds)):
+        iis = ra.where(y_ra == cid)
+        i = (iis[0][0], iis[1][0])
+        assert np.all(a[i] == a[iis])

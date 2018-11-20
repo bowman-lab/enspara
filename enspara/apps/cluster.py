@@ -141,6 +141,10 @@ def process_command_line(argv):
     args = parser.parse_args(argv[1:])
 
     if args.features:
+        if mpi_mode:
+            raise exception.ImproperlyConfigured(
+                'Cannot use ragged array h5 files in MPI mode.')
+
         if args.cluster_distance in FEATURE_DISTANCES:
             args.cluster_distance = getattr(libdist, args.cluster_distance)
         else:
