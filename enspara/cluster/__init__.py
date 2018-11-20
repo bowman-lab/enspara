@@ -5,5 +5,5 @@ from . import hybrid
 from . import kcenters
 from . import kmedoids
 
-from .hybrid import KHybrid, KHybridMPI
-from .kcenters import KCenters, KCentersMPI
+from .hybrid import KHybrid
+from .kcenters import KCenters

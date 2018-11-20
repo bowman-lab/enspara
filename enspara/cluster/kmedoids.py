@@ -70,16 +70,16 @@ def kmedoids(X, distance_method, n_clusters, n_iters=5):
     cluster_center_inds = util.find_cluster_centers(assignments, distances)
 
     for i in range(n_iters):
-        cluster_center_inds, distances, assignments = _kmedoids_pam_update(
-            X, distance_method, cluster_center_inds, assignments,
-            distances)
+        cluster_center_inds, distances, assignments, centers = \
+            _kmedoids_pam_update(X, distance_method, cluster_center_inds,
+                                 assignments, distances)
         logger.info("KMedoids update %s", i)
 
     return util.ClusterResult(
         center_indices=cluster_center_inds,
         assignments=assignments,
         distances=distances,
-        centers=X[cluster_center_inds])
+        centers=centers)
 
 
 def _msq(x):
@@ -175,6 +175,9 @@ def _kmedoids_pam_update(
     updated_distances : ndarray, shape=(traj.shape[0],)
         Array giving the distance between this observation/frame and the
         relevant cluster center.
+    updated_centers : list
+        List of center coordinates (n_atoms, 3) or (n_features,) after
+        kmedoids updates have been run
     """
 
     assert np.issubdtype(type(assignments[0]), np.integer)
@@ -294,6 +297,6 @@ def _kmedoids_pam_update(
                 cid, old_cost, new_cost)
 
     logger.info("Kmedoid sweep reduced cost to %.7f (%.2f%% acceptance)",
-                min(old_cost, new_cost), acceptances/len(medoid_inds)*100)
+                min(old_cost, new_cost), acceptances / len(medoid_inds) * 100)
 
-    return medoid_inds, distances, assignments
+    return medoid_inds, distances, assignments, medoid_coords

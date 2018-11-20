@@ -5,8 +5,6 @@ import shutil
 
 from datetime import datetime
 
-from mdtraj.testing import get_fn
-
 from nose.tools import assert_equal, assert_raises
 
 import numpy as np
@@ -20,6 +18,8 @@ from ..util import array as ra
 from ..apps import cluster
 
 TEST_DIR = os.path.dirname(__file__)
+TRJFILE = os.path.join(os.path.dirname(__file__), 'data', 'frame0.xtc')
+TOPFILE = os.path.join(os.path.dirname(__file__), 'data', 'native.pdb')
 
 
 def runhelper(args, expected_size, algorithm='khybrid', expected_k=None,
@@ -96,8 +96,8 @@ def test_rmsd_cluster_basic():
     expected_size = (2, 501)
 
     runhelper([
-        '--trajectories', get_fn('frame0.xtc'), get_fn('frame0.xtc'),
-        '--topology', get_fn('native.pdb'),
+        '--trajectories', TRJFILE, TRJFILE,
+        '--topology', TOPFILE,
         '--cluster-radius', '0.1',
         '--atoms', '(name N or name C or name CA or name H or name O)',
         '--algorithm', 'khybrid'],
@@ -109,8 +109,8 @@ def test_rmsd_cluster_basic_kcenters():
     expected_size = (2, 501)
 
     runhelper([
-        '--trajectories', get_fn('frame0.xtc'), get_fn('frame0.xtc'),
-        '--topology', get_fn('native.pdb'),
+        '--trajectories', TRJFILE, TRJFILE,
+        '--topology', TOPFILE,
         '--cluster-radius', '0.1',
         '--atoms', '(name N or name C or name CA or name H or name O)',
         '--algorithm', 'kcenters'],
@@ -121,12 +121,11 @@ def test_rmsd_cluster_basic_kcenters():
 def test_rmsd_cluster_fixed_k_kcenters():
 
     expected_size = (2, 501)
-
     expected_k = 10
 
     runhelper([
-        '--trajectories', get_fn('frame0.xtc'), get_fn('frame0.xtc'),
-        '--topology', get_fn('native.pdb'),
+        '--trajectories', TRJFILE, TRJFILE,
+        '--topology', TOPFILE,
         '--cluster-number', str(expected_k),
         '--atoms', '(name N or name C or name CA or name H or name O)',
         '--algorithm', 'kcenters'],
@@ -141,8 +140,8 @@ def test_rmsd_cluster_broken_atoms():
 
     with assert_raises(exception.ImproperlyConfigured):
         runhelper([
-            '--trajectories', get_fn('frame0.xtc'), get_fn('frame0.xtc'),
-            '--topology', get_fn('native.pdb'),
+            '--trajectories', TRJFILE, TRJFILE,
+            '--topology', TOPFILE,
             '--cluster-radius', '0.1',
             '--atoms', 'residue -1',
             '--algorithm', 'khybrid'],
@@ -154,8 +153,8 @@ def test_rmsd_cluster_selection():
     expected_size = (2, 501)
 
     runhelper([
-        '--trajectories', get_fn('frame0.xtc'), get_fn('frame0.xtc'),
-        '--topology', get_fn('native.pdb'),
+        '--trajectories', TRJFILE, TRJFILE,
+        '--topology', TOPFILE,
         '--cluster-radius', '0.1',
         '--atoms', '(name N or name C or name CA)',
         '--algorithm', 'khybrid'],
@@ -167,8 +166,8 @@ def test_rmsd_cluster_subsample():
     expected_size = (2, 501)
 
     runhelper([
-        '--trajectories', get_fn('frame0.xtc'), get_fn('frame0.xtc'),
-        '--topology', get_fn('native.pdb'),
+        '--trajectories', TRJFILE, TRJFILE,
+        '--topology', TOPFILE,
         '--cluster-radius', '0.1',
         '--subsample', '4',
         '--atoms', '(name N or name C or name CA or name H or name O)',
@@ -181,8 +180,8 @@ def test_rmsd_cluster_multiprocess():
     expected_size = (2, 501)
 
     runhelper([
-        '--trajectories', get_fn('frame0.xtc'), get_fn('frame0.xtc'),
-        '--topology', get_fn('native.pdb'),
+        '--trajectories', TRJFILE, TRJFILE,
+        '--topology', TOPFILE,
         '--cluster-radius', '0.1',
         '--atoms', '(name N or name C or name CA or name H or name O)',
         '--algorithm', 'khybrid'],
@@ -194,8 +193,8 @@ def test_rmsd_cluster_subsample_and_noreassign():
     expected_size = (2, 501)
 
     runhelper([
-        '--trajectories', get_fn('frame0.xtc'), get_fn('frame0.xtc'),
-        '--topology', get_fn('native.pdb'),
+        '--trajectories', TRJFILE, TRJFILE,
+        '--topology', TOPFILE,
         '--atoms', '(name N or name C or name CA or name H or name O)',
         '--cluster-radius', '0.1',
         '--algorithm', 'khybrid',
@@ -214,9 +213,9 @@ def test_rmsd_cluster_multitop():
     top2 = os.path.join(TEST_DIR, 'cards_data', 'PROT_only.pdb')
 
     runhelper([
-        '--trajectories', get_fn('frame0.xtc'), get_fn('frame0.xtc'),
+        '--trajectories', TRJFILE, TRJFILE,
         '--trajectories', xtc2,
-        '--topology', get_fn('native.pdb'),
+        '--topology', TOPFILE,
         '--topology', top2,
         '--atoms', '(name N or name C or name CA or name H or name O) '
                    'and (residue 2)',
@@ -233,8 +232,8 @@ def test_rmsd_cluster_multitop_multiselection():
     top2 = os.path.join(TEST_DIR, 'cards_data', 'PROT_only.pdb')
 
     runhelper([
-        '--trajectories', get_fn('frame0.xtc'), get_fn('frame0.xtc'),
-        '--topology', get_fn('native.pdb'),
+        '--trajectories', TRJFILE, TRJFILE,
+        '--topology', TOPFILE,
         '--atoms', '(name N or name O) and (residue 2)',
         '--trajectories', xtc2,
         '--topology', top2,
@@ -250,8 +249,8 @@ def test_rmsd_cluster_multitop_multiselection():
         '--trajectories', xtc2,
         '--topology', top2,
         '--atoms', '(name CA) and (residue 3 or residue 4)',
-        '--trajectories', get_fn('frame0.xtc'), get_fn('frame0.xtc'),
-        '--topology', get_fn('native.pdb'),
+        '--trajectories', TRJFILE, TRJFILE,
+        '--topology', TOPFILE,
         '--atoms', '(name N or name O) and (residue 2)',
         '--cluster-radius', '0.1',
         '--algorithm', 'khybrid',
@@ -267,8 +266,8 @@ def test_rmsd_cluster_multitop_multiselection_noreassign():
     top2 = os.path.join(TEST_DIR, 'cards_data', 'PROT_only.pdb')
 
     runhelper([
-        '--trajectories', get_fn('frame0.xtc'), get_fn('frame0.xtc'),
-        '--topology', get_fn('native.pdb'),
+        '--trajectories', TRJFILE, TRJFILE,
+        '--topology', TOPFILE,
         '--atoms', '(name N or name O) and (residue 2)',
         '--trajectories', xtc2,
         '--topology', top2,
@@ -286,8 +285,8 @@ def test_rmsd_cluster_multitop_multiselection_noreassign():
         '--trajectories', xtc2,
         '--topology', top2,
         '--atoms', '(name CA) and (residue 3 or residue 4)',
-        '--trajectories', get_fn('frame0.xtc'), get_fn('frame0.xtc'),
-        '--topology', get_fn('native.pdb'),
+        '--trajectories', TRJFILE, TRJFILE,
+        '--topology', TOPFILE,
         '--atoms', '(name N or name O) and (residue 2)',
         '--cluster-radius', '0.1',
         '--algorithm', 'khybrid',

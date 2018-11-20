@@ -14,6 +14,7 @@ import itertools
 import pickle
 import json
 import warnings
+from glob import glob
 
 import numpy as np
 import mdtraj as md
@@ -38,12 +39,12 @@ else:
 from enspara.apps.reassign import reassign
 from enspara.apps.util import readable_dir
 
-from enspara.cluster import KHybrid, KCenters, KHybridMPI, KCentersMPI
+from enspara.cluster import KHybrid, KCenters
 from enspara.util import array as ra
 from enspara.util import load_as_concatenated
 from enspara.util.log import timed
 from enspara.util.parallel import auto_nprocs
-from enspara.cluster.util import load_frames
+from enspara.cluster.util import load_frames, partition_indices, ClusterResult
 
 from enspara.geometry import libdist
 
@@ -140,8 +141,6 @@ def process_command_line(argv):
     args = parser.parse_args(argv[1:])
 
     if args.features:
-        # CLUSTERING FEATURES
-
         if args.cluster_distance in FEATURE_DISTANCES:
             args.cluster_distance = getattr(libdist, args.cluster_distance)
         else:
@@ -171,7 +170,8 @@ def process_command_line(argv):
                 "features.")
 
     elif args.trajectories and args.topologies:
-        # CLUSTERING TRAJECTORIES
+        args.trajectories = expand_files(args.trajectories)
+
         if not args.cluster_distance or args.cluster_distance == 'rmsd':
             args.cluster_distance = md.rmsd
         else:
@@ -206,13 +206,16 @@ def process_command_line(argv):
             "required to cluster.")
 
     if args.algorithm == 'kcenters':
-        args.Clusterer = KCentersMPI if mpi_mode else KCenters
+        args.Clusterer = KCenters
     elif args.algorithm == 'khybrid':
-        args.Clusterer = KHybridMPI if mpi_mode else KHybrid
+        args.Clusterer = KHybrid
 
     if args.no_reassign and args.subsample == 1:
         warnings.warn("When subsampling is 1 (or unspecified), "
                       "--no-reassign has no effect.")
+    if not args.no_reassign and mpi_mode and args.subsample > 1:
+        warnings.warn("Reassignment is suppressed in MPI mode.")
+        args.no_reassign = True
 
     if args.center_features[args.center_features.rfind('.'):] == '.h5':
         warnings.warn(
@@ -220,6 +223,15 @@ def process_command_line(argv):
             "centers are saved as pickle. Are you sure this is what you want?")
 
     return args
+
+
+def expand_files(pgroups):
+    expanded_pgroups = []
+    for pgroup in pgroups:
+        expanded_pgroups.append([])
+        for p in pgroup:
+            expanded_pgroups[-1].extend(sorted(glob(p)))
+    return expanded_pgroups
 
 
 def load_trajectories(topologies, trajectories, selections, stride, processes):
@@ -317,6 +329,8 @@ def load_trjs_or_features(args):
         lengths = data.lengths
         data = data._data
     else:
+        assert len(args.trajectories) == len(args.topologies)
+
         targets = {os.path.basename(topf): "%s files" % len(trjfs)
                    for topf, trjfs
                    in zip(args.topologies, args.trajectories)
@@ -339,10 +353,10 @@ def load_trjs_or_features(args):
     return lengths, data
 
 
-def write_centers_indices(result, args):
-    if args.center_indices:
-        with open(args.center_indices, 'wb') as f:
-            np.save(f, result.center_indices)
+def write_centers_indices(path, indices):
+    if path:
+        with open(path, 'wb') as f:
+            np.save(f, indices)
     else:
         logger.info("--center-indices not provided, not writing center "
                     "indices to file.")
@@ -388,12 +402,15 @@ def main(argv=None):
     being run as a script. Otherwise, it's silent and just exposes methods.'''
     args = process_command_line(argv)
 
+    # note that in MPI mode, lengths will be global, whereas data will
+    # be local (i.e. only this node's data).
     lengths, data = load_trjs_or_features(args)
 
     clustering = args.Clusterer(
         metric=args.cluster_distance,
         n_clusters=args.cluster_number,
-        cluster_radius=args.cluster_radius)
+        cluster_radius=args.cluster_radius,
+        mpi_mode=mpi_mode)
 
     clustering.fit(data)
 
@@ -401,6 +418,7 @@ def main(argv=None):
         "Clustered %s frames into %s clusters in %s seconds.",
         sum(lengths), len(clustering.centers_), clustering.runtime_)
 
+    result = clustering.result_
     if mpi_mode:
         local_ctr_inds, local_dists, local_assigs = \
             result.center_indices, result.distances, result.assignments
@@ -408,21 +426,23 @@ def main(argv=None):
         with timed("Reassembled dist and assign arrays in %.2f sec",
                    logging.info):
             all_dists = mpi.ops.assemble_striped_ragged_array(
-                local_dists, global_lengths)
+                local_dists, lengths)
             all_assigs = mpi.ops.assemble_striped_ragged_array(
-                local_assigs, global_lengths)
+                local_assigs, lengths)
+            ctr_inds = mpi.ops.convert_local_indices(local_ctr_inds, lengths)
 
-            ctr_inds = mpi.ops.convert_local_indices(
-                local_ctr_inds, global_lengths)
-            ctr_inds = partition_indices(ctr_inds, global_lengths)
+        result = ClusterResult(
+            center_indices=ctr_inds,
+            distances=all_dists,
+            assignments=all_assigs,
+            centers=result.centers)
 
-        result.center_indices, result.distances, result.assignments = \
-            ctr_inds, all_dists, all_assigs
-    else:
-        result = clustering.result_.partition(lengths)
+    result = result.partition(lengths)
 
     if mpi_comm.Get_rank() == 0:
-        write_centers_indices(result, args)
+        write_centers_indices(
+            args.center_indices,
+            [(t, f * args.subsample) for t, f in result.center_indices])
         write_centers(result, args)
         write_assignments_and_distances_with_reassign(result, args)
     mpi_comm.barrier()

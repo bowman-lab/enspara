@@ -124,8 +124,8 @@ class ClusterResult(namedtuple('ClusterResult',
                 center_indices=partition_indices(self.center_indices, lengths),
                 centers=self.centers)
         else:
-            logger.Trajectory(
-                'Trajecotry lengths are equal (mean=%s, min=%s, max=%s),'
+            logger.debug(
+                'Trajectory lengths are equal (mean=%s, min=%s, max=%s),'
                 ' using RaggedArray as output to partitioning.',
                 np.mean(lengths), np.min(lengths), np.max(lengths))
             return ClusterResult(

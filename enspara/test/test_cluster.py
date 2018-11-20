@@ -305,7 +305,7 @@ def test_kmedoids_update_mpi_mdtraj():
         proposals=proposals,
     )
 
-    local_ctr_inds, local_distances, local_assignments = r
+    local_ctr_inds, local_distances, local_assignments, centers = r
 
     mpi_ctr_inds = [(i*MPI_SIZE)+r for r, i in local_ctr_inds]
 
@@ -348,7 +348,7 @@ def test_kmedoids_update_mpi_numpy():
         distances=local_distances,
         proposals=proposals)
 
-    local_ctr_inds, local_distances, local_assignments = r
+    local_ctr_inds, local_distances, local_assignments, centers = r
     mpi_ctr_inds = [(i*MPI_SIZE)+r for r, i in local_ctr_inds]
 
     assert_array_equal(
@@ -386,8 +386,7 @@ def test_kmedoids_update_mpi_numpy_separated_blobs():
         random_state=0,
     )
 
-    local_ctr_inds, local_distances, local_assignments = r
-    # mpi_ctr_inds = [len(X)*r + i for r, i in local_ctr_inds]
+    local_ctr_inds, local_distances, local_assignments, centers = r
 
     assignments = np.concatenate(MPI.COMM_WORLD.allgather(local_assignments))
     distances = np.concatenate(MPI.COMM_WORLD.allgather(local_distances))
@@ -418,7 +417,7 @@ def test_kmedoids_pam_update_numpy():
     assig = r.assignments
     dists = r.distances
 
-    ind, dists, assig = kmedoids._kmedoids_pam_update(
+    ind, dists, assig, _ = kmedoids._kmedoids_pam_update(
         X, DIST_FUNC, ind, assig, dists, random_state=0)
 
     assert_array_equal(ind, [0, 7, 17])
@@ -442,7 +441,7 @@ def test_kmedoids_pam_update_mdtraj():
     assig = r.assignments
     dists = r.distances
 
-    ind, dists, assig = kmedoids._kmedoids_pam_update(
+    ind, dists, assig, _ = kmedoids._kmedoids_pam_update(
         X, DIST_FUNC, ind, assig, dists, random_state=0)
 
     assert_array_equal(ind, [298, 44, 341])

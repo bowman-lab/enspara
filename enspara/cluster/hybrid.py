@@ -13,6 +13,7 @@ from . import kmedoids
 from . import util
 
 from ..exception import ImproperlyConfigured
+from ..mpi import MPI_SIZE
 
 logger = logging.getLogger(__name__)
 
@@ -41,15 +42,21 @@ class KHybrid(BaseEstimator, ClusterMixin, util.MolecularClusterMixin):
         choosing the zeroth element (default)
     random_state : int or np.RandomState
         Random state to use to seed the random number generator.
+    mpi_mode : bool, default=None
+        Use the MPI version of the algorithm. This assumes that each node
+        in the MPI swarm owns its own data. If None, it is determined
+        automatically.
 
     References
     ----------
-    .. [1] Beauchamp, K. A. et al. MSMBuilder2: Modeling Conformational Dynamics at the Picosecond to Millisecond Scale. J. Chem. Theory Comput. 7, 3412–3419 (2011).
+    .. [1] Beauchamp, K. A. et al. MSMBuilder2: Modeling Conformational
+    Dynamics at the Picosecond to Millisecond Scale. J. Chem. Theory
+    Comput. 7, 3412–3419 (2011).
     """
 
-    def __init__(self, n_clusters=None, cluster_radius=None,
-                 kmedoids_updates=5, random_first_center=False, *args,
-                 **kwargs):
+    def __init__(self, metric, n_clusters=None, cluster_radius=None,
+                 kmedoids_updates=5, random_first_center=False,
+                 random_state=None, mpi_mode=None):
 
         if n_clusters is None and cluster_radius is None:
             raise ImproperlyConfigured("Either n_clusters or cluster_radius "
@@ -60,9 +67,9 @@ class KHybrid(BaseEstimator, ClusterMixin, util.MolecularClusterMixin):
         self.cluster_radius = cluster_radius
         self.random_first_center = random_first_center
 
-        self.metric = util._get_distance_method(kwargs.pop('metric'))
-        self.random_state = check_random_state(
-            kwargs.pop('random_state', None))
+        self.metric = util._get_distance_method(metric)
+        self.random_state = check_random_state(random_state)
+        self.mpi_mode = mpi_mode if mpi_mode is not None else MPI_SIZE != 1
 
     def fit(self, X, init_centers=None):
         """Takes trajectories, X, and performs KHybrid clustering.
@@ -84,54 +91,8 @@ class KHybrid(BaseEstimator, ClusterMixin, util.MolecularClusterMixin):
             dist_cutoff=self.cluster_radius,
             random_first_center=self.random_first_center,
             init_centers=init_centers,
-            random_state=self.random_state)
-
-        self.runtime_ = time.perf_counter() - t0
-
-        return self
-
-
-class KHybridMPI(KHybrid):
-
-    def __init__(self, n_clusters=None, cluster_radius=None,
-                 kmedoids_updates=5, random_first_center=False,
-                 *args, **kwargs):
-
-        if n_clusters is None and cluster_radius is None:
-            raise ImproperlyConfigured("Either n_clusters or cluster_radius "
-                                       "is required for KHybrid clustering")
-
-        self.kmedoids_updates = kmedoids_updates
-        self.n_clusters = n_clusters
-        self.cluster_radius = cluster_radius
-        self.random_first_center = random_first_center
-
-        super(KHybrid, self).__init__(*args, **kwargs)
-
-    def fit(self, X, init_centers=None):
-        """Takes trajectories, X, and performs KHybrid clustering.
-        Optionally continues clustering from an initial set of cluster
-        centers.
-
-        Parameters
-        ----------
-        X : array-like, shape=(n_observations, n_features(, n_atoms))
-            Data to cluster.
-        """
-
-        t0 = time.perf_counter()
-
-        dists, assigs, ctr_inds = kcenters.kcenters_mpi(
-            X, self.metric, dist_cutoff=self.cluster_radius)
-
-        for i in range(self.kmedoids_updates):
-            ctr_inds, assigs, dists = kmedoids._kmedoids_pam_update(
-                X=X, metric=self.metric,
-                medoid_inds=ctr_inds,
-                assignments=assigs,
-                distances=dists,
-                cost=np.max,
-                random_state=self.random_state)
+            random_state=self.random_state,
+            mpi_mode=self.mpi_mode)
 
         self.runtime_ = time.perf_counter() - t0
 
@@ -141,19 +102,20 @@ class KHybridMPI(KHybrid):
 def hybrid(
         X, distance_method, n_iters=5, n_clusters=np.inf,
         dist_cutoff=0, random_first_center=False,
-        init_centers=None, random_state=None):
+        init_centers=None, random_state=None, mpi_mode=False):
 
     distance_method = util._get_distance_method(distance_method)
 
     result = kcenters.kcenters(
         X, distance_method, n_clusters=n_clusters, dist_cutoff=dist_cutoff,
-        init_centers=init_centers, random_first_center=random_first_center)
+        init_centers=init_centers, random_first_center=random_first_center,
+        mpi_mode=mpi_mode)
 
     cluster_center_inds, assignments, distances = (
         result.center_indices, result.assignments, result.distances)
 
     for i in range(n_iters):
-        cluster_center_inds, distances, assignments = \
+        cluster_center_inds, distances, assignments, centers = \
             kmedoids._kmedoids_pam_update(
                 X, distance_method,
                 cluster_center_inds, assignments, distances,
@@ -166,4 +128,4 @@ def hybrid(
         center_indices=cluster_center_inds,
         assignments=assignments,
         distances=distances,
-        centers=X[cluster_center_inds])
+        centers=centers)
