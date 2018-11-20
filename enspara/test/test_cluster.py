@@ -209,15 +209,16 @@ def test_kcenters_mpi_traj():
     data = trj[MPI_RANK::MPI_SIZE]
 
     r = kcenters.kcenters_mpi(data, md.rmsd, n_clusters=10)
-    world_distances, world_assignments, world_ctr_inds = r
+    local_distances, local_assignments, local_ctr_inds = \
+        r.distances, r.assignments, r.center_indices
 
-    mpi_assigs = np.empty((len(trj),), dtype=world_assignments.dtype)
-    mpi_dists = np.empty((len(trj),), dtype=world_distances.dtype)
-    mpi_ctr_inds = [(i*MPI_SIZE)+r for r, i in world_ctr_inds]
+    mpi_assigs = np.empty((len(trj),), dtype=local_assignments.dtype)
+    mpi_dists = np.empty((len(trj),), dtype=local_distances.dtype)
+    mpi_ctr_inds = [(i*MPI_SIZE)+r for r, i in local_ctr_inds]
 
     try:
-        np.save('assig%s.npy' % MPI_RANK, world_assignments)
-        np.save('dists%s.npy' % MPI_RANK, world_distances)
+        np.save('assig%s.npy' % MPI_RANK, local_assignments)
+        np.save('dists%s.npy' % MPI_RANK, local_distances)
         MPI.COMM_WORLD.Barrier()
 
         for i in range(MPI_SIZE):
@@ -250,15 +251,16 @@ def test_kcenters_mpi_numpy():
         return np.square(X -x).sum(axis=1)
 
     r = kcenters.kcenters_mpi(data, euc, n_clusters=10)
-    world_distances, world_assignments, world_ctr_inds = r
+    local_distances, local_assignments, local_ctr_inds = \
+        r.distances, r.assignments, r.center_indices
 
-    mpi_assigs = np.empty((len(trj),), dtype=world_assignments.dtype)
-    mpi_dists = np.empty((len(trj),), dtype=world_distances.dtype)
-    mpi_ctr_inds = [(i*MPI_SIZE)+r for r, i in world_ctr_inds]
+    mpi_assigs = np.empty((len(trj),), dtype=local_assignments.dtype)
+    mpi_dists = np.empty((len(trj),), dtype=local_distances.dtype)
+    mpi_ctr_inds = [(i*MPI_SIZE)+r for r, i in local_ctr_inds]
 
     try:
-        np.save('assig%s.npy' % MPI_RANK, world_assignments)
-        np.save('dists%s.npy' % MPI_RANK, world_distances)
+        np.save('assig%s.npy' % MPI_RANK, local_assignments)
+        np.save('dists%s.npy' % MPI_RANK, local_distances)
         MPI.COMM_WORLD.Barrier()
 
         for i in range(MPI_SIZE):
@@ -289,7 +291,8 @@ def test_kmedoids_update_mpi_mdtraj():
     data = trj[MPI_RANK::MPI_SIZE]
 
     r = kcenters.kcenters_mpi(data, DIST_FUNC, n_clusters=10)
-    local_distances, local_assignments, local_ctr_inds = r
+    local_distances, local_assignments, local_ctr_inds = \
+        r.distances, r.assignments, r.center_indices
 
     proposals = []
     r = kcenters.kcenters(trj, DIST_FUNC, n_clusters=len(local_ctr_inds))
@@ -334,7 +337,8 @@ def test_kmedoids_update_mpi_numpy():
         return np.square(X - x).sum(axis=1)
 
     r = kcenters.kcenters_mpi(data, DIST_FUNC, n_clusters=3)
-    local_distances, local_assignments, local_ctr_inds = r
+    local_distances, local_assignments, local_ctr_inds = \
+        r.distances, r.assignments, r.center_indices
 
     proposals = []
     for cid in range(len(means)):
@@ -376,14 +380,13 @@ def test_kmedoids_update_mpi_numpy_separated_blobs():
     def DIST_FUNC(X, x):
         return np.square(X - x).sum(axis=1)
 
-    r = kcenters.kcenters_mpi(X, DIST_FUNC, n_clusters=MPI_SIZE)
-    local_distances, local_assignments, local_ctr_inds = r
+    result = kcenters.kcenters_mpi(X, DIST_FUNC, n_clusters=MPI_SIZE)
 
     r = kmedoids._kmedoids_pam_update(
         X=X, metric=DIST_FUNC,
-        medoid_inds=local_ctr_inds,
-        assignments=local_assignments,
-        distances=local_distances,
+        medoid_inds=result.center_indices,
+        assignments=result.assignments,
+        distances=result.distances,
         random_state=0,
     )
 

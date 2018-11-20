@@ -50,6 +50,7 @@ def load_as_striped(filenames, *args, **kwargs):
 
     local_lengths, my_xyz = load_as_concatenated(
         filenames=filenames[MPI_RANK::MPI_SIZE], *args, **kwargs)
+
     local_lengths = np.array(local_lengths, dtype=int)
     global_lengths = assemble_striped_array(local_lengths)
 

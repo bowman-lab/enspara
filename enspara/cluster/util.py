@@ -13,10 +13,6 @@ from collections import namedtuple
 import mdtraj as md
 import numpy as np
 
-from sklearn.base import BaseEstimator, ClusterMixin
-
-from sklearn.utils import check_random_state
-
 from ..geometry.libdist import euclidean
 
 from ..exception import ImproperlyConfigured, DataInvalid
@@ -26,22 +22,10 @@ from ..util import array as ra
 logger = logging.getLogger(__name__)
 
 
-class Clusterer(BaseEstimator, ClusterMixin):
-    """Clusterer class defines the base API for a clustering object in
-    the sklearn style.
+class MolecularClusterMixin:
+    """Additional logic for clusterers in enspara that cluster molecular
+    trajectories.
     """
-
-    def __init__(self, *args, **kwargs):
-
-        self.metric = _get_distance_method(kwargs.pop('metric'))
-        # super().__init__(self, *args, **kwargs)
-
-        self.random_state = check_random_state(
-            kwargs.pop('random_state', None))
-
-
-    def fit(self, X):
-        raise NotImplementedError("All Clusterers should implement fit().")
 
     def predict(self, X):
         """Use an existing clustring fit to predict the assignments,

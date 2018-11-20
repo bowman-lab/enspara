@@ -1,8 +1,9 @@
-"""The RMSD Cluster App allows you to cluster your trajectories based on root
-mean square deviation. The entire protein or specific residue locations can be
-used for the clustering. Parameters such as the clustering algorithm and
-cluster radius can be specified. The app will return information about cluster
-centers and frame assignments. See the apps tab for more information.
+"""The cluster app allows you to cluster your trajectories based on
+distances from one another in a feature space. The entire protein or
+specific residue locations can be used for the clustering. Parameters
+such as the clustering algorithm and cluster radius can be specified.
+The app will return information about cluster centers and frame
+assignments. See the apps tab for more information.
 """
 
 import sys
@@ -17,15 +18,27 @@ import warnings
 import numpy as np
 import mdtraj as md
 
-logging.basicConfig(
-    level=logging.INFO,
-    format=('%(asctime)s %(name)-8s %(levelname)-7s %(message)s'),
-    datefmt='%m-%d-%Y %H:%M:%S')
+from mpi4py.MPI import COMM_WORLD as mpi_comm
+
+if mpi_comm.Get_size() > 1:
+    RANKSTR = "[Rank %s]" % mpi_comm.Get_rank()
+    logging.basicConfig(
+        level=logging.DEBUG if mpi_comm.Get_rank() == 0 else logging.INFO,
+        format=('%(asctime)s ' + RANKSTR +
+                ' %(name)-26s %(levelname)-7s %(message)s'),
+        datefmt='%m-%d-%Y %H:%M:%S')
+    mpi_mode = True
+else:
+    logging.basicConfig(
+        level=logging.INFO,
+        format=('%(asctime)s %(name)-8s %(levelname)-7s %(message)s'),
+        datefmt='%m-%d-%Y %H:%M:%S')
+    mpi_mode = False
 
 from enspara.apps.reassign import reassign
 from enspara.apps.util import readable_dir
 
-from enspara.cluster import KHybrid, KCenters
+from enspara.cluster import KHybrid, KCenters, KHybridMPI, KCentersMPI
 from enspara.util import array as ra
 from enspara.util import load_as_concatenated
 from enspara.util.log import timed
@@ -35,6 +48,7 @@ from enspara.cluster.util import load_frames
 from enspara.geometry import libdist
 
 from enspara import exception
+from enspara import mpi
 
 
 logger = logging.getLogger(__name__)
@@ -70,7 +84,6 @@ def process_command_line(argv):
              "flag. The first --topology flag is taken to be the "
              "topology to use for the first instance of the "
              "--trajectories flag, and so forth.")
-
 
     # PARAMETERS
     cluster_args = parser.add_argument_group("Clustering Settings")
@@ -193,9 +206,9 @@ def process_command_line(argv):
             "required to cluster.")
 
     if args.algorithm == 'kcenters':
-        args.Clusterer = KCenters
+        args.Clusterer = KCentersMPI if mpi_mode else KCenters
     elif args.algorithm == 'khybrid':
-        args.Clusterer = KHybrid
+        args.Clusterer = KHybridMPI if mpi_mode else KHybrid
 
     if args.no_reassign and args.subsample == 1:
         warnings.warn("When subsampling is 1 (or unspecified), "
@@ -244,7 +257,7 @@ def load_trajectories(topologies, trajectories, selections, stride, processes):
                 'top': top,
                 'stride': stride,
                 'atom_indices': indices,
-                })
+            })
 
     logger.info(
         "Loading %s trajectories with %s atoms using %s processes "
@@ -253,7 +266,7 @@ def load_trajectories(topologies, trajectories, selections, stride, processes):
     assert len(top.select(selection)) > 0, "No atoms selected for clustering"
 
     with timed("Loading took %.1f sec", logger.info):
-        lengths, xyz = load_as_concatenated(
+        lengths, xyz = mpi.io.load_as_striped(
             flat_trjs, args=configs, processes=auto_nprocs())
 
     with timed("Turned over array in %.2f min", logger.info):
@@ -261,8 +274,7 @@ def load_trajectories(topologies, trajectories, selections, stride, processes):
         del xyz
         xyz = tmp_xyz
 
-    logger.info(
-        "Loaded %s frames.", len(xyz))
+    logger.info("Loaded %s frames.", len(xyz))
 
     return lengths, xyz, top.subset(top.select(selection))
 
@@ -305,8 +317,10 @@ def load_trjs_or_features(args):
         lengths = data.lengths
         data = data._data
     else:
-        targets = {os.path.basename(topf): "%s files" % len(trjfs) for topf, trjfs
-                   in zip(args.topologies, args.trajectories)}
+        targets = {os.path.basename(topf): "%s files" % len(trjfs)
+                   for topf, trjfs
+                   in zip(args.topologies, args.trajectories)
+                   }
         logger.info("Beginning clustering; targets:\n%s",
                     json.dumps(targets, indent=4))
 
@@ -315,7 +329,8 @@ def load_trjs_or_features(args):
                 args.topologies, args.trajectories, selections=args.atoms,
                 stride=args.subsample, processes=auto_nprocs())
 
-        logger.info("Clustering using %s atoms matching '%s'.",  xyz.shape[1], args.atoms)
+        logger.info("Clustering using %s atoms matching '%s'.", xyz.shape[1],
+                    args.atoms)
 
         # md.rmsd requires an md.Trajectory object, so wrap `xyz` in
         # the topology.
@@ -324,27 +339,7 @@ def load_trjs_or_features(args):
     return lengths, data
 
 
-def main(argv=None):
-    '''Run the driver script for this module. This code only runs if we're
-    being run as a script. Otherwise, it's silent and just exposes methods.'''
-    args = process_command_line(argv)
-
-    lengths, data = load_trjs_or_features(args)
-
-    clustering = args.Clusterer(
-        metric=args.cluster_distance,
-        n_clusters=args.cluster_number,
-        cluster_radius=args.cluster_radius)
-
-    clustering.fit(data)
-
-    logger.info(
-        "Clustered %s frames into %s clusters in %s seconds.",
-        sum(lengths), len(clustering.centers_), clustering.runtime_)
-
-    result = clustering.result_.partition(lengths)
-
-    # WRITE CENTER INDS
+def write_centers_indices(result, args):
     if args.center_indices:
         with open(args.center_indices, 'wb') as f:
             np.save(f, result.center_indices)
@@ -352,7 +347,8 @@ def main(argv=None):
         logger.info("--center-indices not provided, not writing center "
                     "indices to file.")
 
-    # WRITE CENTERS
+
+def write_centers(result, args):
     if args.features:
         np.save(args.center_features, result.centers)
     else:
@@ -369,7 +365,8 @@ def main(argv=None):
         with open(args.center_features, 'wb') as f:
             pickle.dump(centers, f)
 
-    # WRITE DISTANCES, ASSIGNMENTS
+
+def write_assignments_and_distances_with_reassign(result, args):
     if args.subsample == 1:
         logger.debug("Subsampling was 1, not reassigning.")
         ra.save(args.distances, result.distances)
@@ -385,10 +382,59 @@ def main(argv=None):
     else:
         logger.debug("Got --no-reassign, not doing reassigment")
 
+
+def main(argv=None):
+    '''Run the driver script for this module. This code only runs if we're
+    being run as a script. Otherwise, it's silent and just exposes methods.'''
+    args = process_command_line(argv)
+
+    lengths, data = load_trjs_or_features(args)
+
+    clustering = args.Clusterer(
+        metric=args.cluster_distance,
+        n_clusters=args.cluster_number,
+        cluster_radius=args.cluster_radius)
+
+    clustering.fit(data)
+
+    print(type(clustering))
+    print(dir(clustering))
+
+    logger.info(
+        "Clustered %s frames into %s clusters in %s seconds.",
+        sum(lengths), len(clustering.centers_), clustering.runtime_)
+
+    if mpi_mode:
+        local_ctr_inds, local_dists, local_assigs = \
+            result.center_indices, result.distances, result.assignments
+
+        with timed("Reassembled dist and assign arrays in %.2f sec",
+                   logging.info):
+            all_dists = mpi.ops.assemble_striped_ragged_array(
+                local_dists, global_lengths)
+            all_assigs = mpi.ops.assemble_striped_ragged_array(
+                local_assigs, global_lengths)
+
+            ctr_inds = mpi.ops.convert_local_indices(
+                local_ctr_inds, global_lengths)
+            ctr_inds = partition_indices(ctr_inds, global_lengths)
+
+        result.center_indices, result.distances, result.assignments = \
+            ctr_inds, all_dists, all_assigs
+    else:
+        result = clustering.result_.partition(lengths)
+
+    if mpi_comm.Get_rank() == 0:
+        write_centers_indices(result, args)
+        write_centers(result, args)
+        write_assignments_and_distances_with_reassign(result, args)
+    mpi_comm.barrier()
+
     logger.info("Success! Data can be found in %s.",
                 os.path.dirname(args.distances))
 
     return 0
+
 
 if __name__ == "__main__":
     sys.exit(main(sys.argv))

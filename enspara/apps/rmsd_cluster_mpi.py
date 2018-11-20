@@ -12,7 +12,6 @@ import multiprocessing as mp
 from glob import glob
 
 import mdtraj as md
-
 from sklearn.utils import check_random_state
 
 from mpi4py.MPI import COMM_WORLD as COMM
@@ -90,7 +89,7 @@ def process_command_line(argv):
     args = parser.parse_args(argv[1:])
 
     args.trajectories = glob(args.trajectories)
-    args.radom_state = check_random_state(args.random_state)
+    args.random_state = check_random_state(args.random_state)
 
     if args.subsample > 1 and args.distances:
         warnings.warn('When subsampling > 1, distances are also subsampled.')
@@ -146,8 +145,10 @@ def main(argv=None):
             "Multiple cluster radii are not yet supported")
 
     tick = time.perf_counter()
-    local_dists, local_assigs, local_ctr_inds = kcenters_mpi(
+    result = kcenters_mpi(
         trjs, md.rmsd, dist_cutoff=args.cluster_radii[0])
+    local_dists, local_assigs, local_ctr_inds = \
+        result.distances, result.assignments, result.center_indices
     tock = time.perf_counter()
 
     logging.info(
@@ -155,7 +156,7 @@ def main(argv=None):
         "%.2fG) in %.2f min.",
         resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024**2,
         trjs.xyz.nbytes / 1024**3,
-        (tock - tick)/60)
+        (tock - tick) / 60)
 
     for i in range(args.kmedoids_iters):
         with timed("KMedoids iteration {i} took %.2f sec".format(i=i),

@@ -1,10 +1,3 @@
-# Author: Gregory R. Bowman <gregoryrbowman@gmail.com>
-# Contributors:
-# Copyright (c) 2016, Washington University in St. Louis
-# All rights reserved.
-# Unauthorized copying of this file, via any medium is strictly prohibited
-# Proprietary and confidential
-
 from __future__ import print_function, division, absolute_import
 
 import time
@@ -12,16 +5,19 @@ import logging
 
 import numpy as np
 
+from sklearn.base import BaseEstimator, ClusterMixin
+from sklearn.utils import check_random_state
+
 from . import kcenters
 from . import kmedoids
-from .util import _get_distance_method, ClusterResult, Clusterer
+from . import util
 
 from ..exception import ImproperlyConfigured
 
 logger = logging.getLogger(__name__)
 
 
-class KHybrid(Clusterer):
+class KHybrid(BaseEstimator, ClusterMixin, util.MolecularClusterMixin):
     """Sklearn-style object for khybrid clustering.
 
     KHybrid clustering uses the k-centers protocol to define cluster
@@ -55,8 +51,6 @@ class KHybrid(Clusterer):
                  kmedoids_updates=5, random_first_center=False, *args,
                  **kwargs):
 
-        super(KHybrid, self).__init__(self, *args, **kwargs)
-
         if n_clusters is None and cluster_radius is None:
             raise ImproperlyConfigured("Either n_clusters or cluster_radius "
                                        "is required for KHybrid clustering")
@@ -65,6 +59,10 @@ class KHybrid(Clusterer):
         self.n_clusters = n_clusters
         self.cluster_radius = cluster_radius
         self.random_first_center = random_first_center
+
+        self.metric = util._get_distance_method(kwargs.pop('metric'))
+        self.random_state = check_random_state(
+            kwargs.pop('random_state', None))
 
     def fit(self, X, init_centers=None):
         """Takes trajectories, X, and performs KHybrid clustering.
@@ -93,7 +91,7 @@ class KHybrid(Clusterer):
         return self
 
 
-class KHybridMPI(Clusterer):
+class KHybridMPI(KHybrid):
 
     def __init__(self, n_clusters=None, cluster_radius=None,
                  kmedoids_updates=5, random_first_center=False,
@@ -109,7 +107,6 @@ class KHybridMPI(Clusterer):
         self.random_first_center = random_first_center
 
         super(KHybrid, self).__init__(*args, **kwargs)
-
 
     def fit(self, X, init_centers=None):
         """Takes trajectories, X, and performs KHybrid clustering.
@@ -146,7 +143,7 @@ def hybrid(
         dist_cutoff=0, random_first_center=False,
         init_centers=None, random_state=None):
 
-    distance_method = _get_distance_method(distance_method)
+    distance_method = util._get_distance_method(distance_method)
 
     result = kcenters.kcenters(
         X, distance_method, n_clusters=n_clusters, dist_cutoff=dist_cutoff,
@@ -165,7 +162,7 @@ def hybrid(
 
         logger.info("KMedoids update %s of %s", i, n_iters)
 
-    return ClusterResult(
+    return util.ClusterResult(
         center_indices=cluster_center_inds,
         assignments=assignments,
         distances=distances,
