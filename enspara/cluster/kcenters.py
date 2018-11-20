@@ -129,9 +129,40 @@ class KCentersMPI(KCenters):
         return self
 
 
-def kcenters(
-        traj, distance_method, n_clusters=np.inf, dist_cutoff=0,
-        init_centers=None, random_first_center=False):
+def _kcenters_iteration(
+        traj, distance_method, distances, assignments, center_inds):
+
+    # scipy distance metrics return shape (n, 1) instead of (n), which
+    # causes breakage here.
+
+    assert len(traj) == len(distances)
+    assert len(traj) == len(assignments)
+    assert np.issubdtype(type(assignments[0]), np.integer)
+
+    new_center_index = np.argmax(distances)
+    new_center = traj[new_center_index]
+
+    dist = distance_method(traj, new_center)
+    assert len(dist.shape) == len(distances.shape)
+
+    inds = (dist < distances)
+    distances[inds] = dist[inds]
+    assignments[inds] = len(center_inds)
+
+    center_inds.append(new_center_index)
+    new_center_index = np.argmax(distances)
+    max_distance = np.max(distances)
+
+    return new_center, max_distance, distances, assignments, center_inds
+
+
+def kcenters_mpi(*args, **kwargs):
+    kwargs.pop('mpi_mode', None)
+    return kcenters(*args, mpi_mode=True, **kwargs)
+
+
+def kcenters(traj, distance_method, n_clusters=np.inf, dist_cutoff=0,
+             init_centers=None, random_first_center=False, mpi_mode=False):
     """The functional (rather than object-oriented) implementation of
     the k-centers clustering algorithm.
 
@@ -140,6 +171,12 @@ def kcenters(
     existing cluster centers, and adds it as a new cluster centers.
     Its worst-case runtime is O(kn), where k is the number of cluster
     centers and n is the number of observations.
+
+    This method can be used in MPI mode, where `traj` is assumed to be
+    only a subset of the data in a SIMD execution environment. As a
+    consequence, some inter-process communication is required. The user
+    is responsible for partitioning the data in `traj` appropriately
+    across the workers and for assembling the results correctly.
 
     Parameters
     ----------
@@ -152,24 +189,29 @@ def kcenters(
             'distance' between each element of the `traj` and a proposed
             cluster center.
         n_clusters : int (default=np.inf)
-            Stop finding new cluster centers when the number of clsuters
+            Stop finding new cluster centers when the number of clusters
             reaches this value.
         dist_cutoff : float (default=0)
             Stop finding new cluster centers when the maximum minimum
             distance between any point and a cluster center reaches this
             value.
-        init_centers : array-like, shape=(n_centers, n_featers)
+        init_centers : array-like, shape=(n_centers, n_features)
             A list of observations to use as the first `n_centers`
             centers before discovering new centers with the kcenters
             algorithm.
         random_first_center : bool, default=False
             When false, center 0 is always frame 0. If True, this value
             is chosen randomly.
+
     Returns
     -------
         result : ClusterResult
             Subclass of NamedTuple containing assignments, distances,
-            and center indices for this function.
+            and center indices for this function. In MPI mode, distances
+            and assignments are partitioned by node, and center indices
+            take the form (node, index). In regular mode, distances and
+            assignments are for all frames and center indices are just
+            positions.
 
     References
     ----------
@@ -191,136 +233,34 @@ def kcenters(
     elif n_clusters is not None and dist_cutoff is None:
         dist_cutoff = 0
 
+    min_max_dist = np.inf
+
     if random_first_center:
         raise NotImplementedError(
             "We haven't implemented kcenters 'random_first_center' yet.")
 
     if init_centers is None:
-        center_inds = []
-        cluster_centers = []
-        assignments = np.zeros(len(traj), dtype=int)
+        ctr_inds = []
+        centers = []
+        assignments = np.full(len(traj), -1, dtype=int)
         distances = np.full(len(traj), np.inf, dtype=float)
     else:
-        cluster_centers = [c for c in init_centers]
+        centers = [c for c in init_centers]
         logger.info("Updating assignments to previous cluster centers")
         assignments, distances = util.assign_to_nearest_center(
-            traj, cluster_centers, distance_method)
-        center_inds = list(
+            traj, centers, distance_method)
+        ctr_inds = list(
             util.find_cluster_centers(assignments, distances))
 
-    max_distance = np.max(distances)
-
-    while (len(cluster_centers) < n_clusters) and (max_distance > dist_cutoff):
-        new_center, max_distance, distances, assignments, center_inds = \
-            _kcenters_helper(traj, distance_method, distances,
-                             assignments, center_inds)
-
-        logger.info(
-            "kCenters cluster " + str(len(center_inds)) +
-            " will continue until max-distance, " +
-            '{0:0.6f}'.format(max_distance) + ", falls below " +
-            '{0:0.6f}'.format(dist_cutoff) +
-            " or num-clusters reaches " + str(n_clusters))
-
-        cluster_centers.append(new_center)
-
-    return util.ClusterResult(
-        center_indices=center_inds,
-        assignments=assignments,
-        distances=distances,
-        centers=cluster_centers)
-
-
-def _kcenters_helper(
-        traj, distance_method, distances, assignments, center_inds):
-
-    # scipy distance metrics return shape (n, 1) instead of (n), which
-    # causes breakage here.
-
-    new_center_index = np.argmax(distances)
-    new_center = traj[new_center_index]
-    dist = distance_method(traj, new_center)
-
-    assert len(dist.shape) == len(distances.shape)
-
-    inds = (dist < distances)
-    distances[inds] = dist[inds]
-    assignments[inds] = len(center_inds)
-
-    center_inds.append(new_center_index)
-    new_center_index = np.argmax(distances)
-    max_distance = np.max(distances)
-
-    return new_center, max_distance, distances, assignments, center_inds
-
-
-def kcenters_mpi(traj, distance_method, n_clusters=np.inf, dist_cutoff=0):
-    """KCenters implementation for MPI.
-
-    In this function, `traj` is assumed to be only a subset of the data
-    in a SIMD execution environment. As a consequence, some
-    inter-process communication is required. The user is responsible for
-    partitioning the data in `traj` appropriately across the workers and
-    for assembling the results correctly.
-
-    Parameters
-    ----------
-        traj : array-like
-            The data to cluster with kcenters.
-        distance_method : callable
-            A callable that takes two arguments: an array of shape
-            `traj.shape` and and array of shape `traj.shape[1:]`, and
-            returns an array of shape `traj.shape[0]`, representing the
-            'distance' between each element of the `traj` and a proposed
-            cluster center.
-        n_clusters : int (default=np.inf)
-            Stop finding new cluster centers when the number of clsuters
-            reaches this value.
-        dist_cutoff : float (default=0)
-            Stop finding new cluster centers when the maximum minimum
-            distance between any point and a cluster center reaches this
-            value.
-
-    Returns
-    -------
-        world_distances : np.ndarray, shape=(n_observations,)
-            For each observation in this MPI worker's world, the
-            distance between that observation and the nearest cluster
-            center
-        world_assignments : np.ndarray, shape=(n_observations,)
-            For each observation in this MPI worker's world, the
-            assignment of that observation to the nearest cluster center
-        world_center_indices : list of tuples
-            For each cluster center, a list of the pairs
-            (owner_rank, world_index).
-    """
-
-    if (n_clusters is np.inf) and (dist_cutoff is 0):
-            raise ImproperlyConfigured("Either n_clusters or cluster_radius "
-                                       "is required for KHybrid clustering")
-
-    distance_method = util._get_distance_method(distance_method)
-
-    if n_clusters is None and dist_cutoff is None:
-        raise ImproperlyConfigured(
-            "KCenters must specify 'n_clusters' or 'distance_cutoff'")
-    elif n_clusters is None and dist_cutoff is not None:
-        n_clusters = np.inf
-    elif n_clusters is not None and dist_cutoff is None:
-        dist_cutoff = 0
-
-    min_max_dist = np.inf
-
-    distances = np.full(shape=(len(traj),), fill_value=np.inf)
-    assignments = np.zeros(shape=(len(traj),), dtype=np.int32) - 1
-    ctr_inds = []
-    centers = []
+    if mpi_mode:
+        iteration = _kcenters_iteration_mpi
+    else:
+        iteration = _kcenters_iteration
 
     while (len(ctr_inds) < n_clusters) and (min_max_dist > dist_cutoff):
 
         new_center, min_max_dist, distances, assignments, center_inds = \
-            _kcenters_iteration_mpi(traj, distance_method, distances,
-                                    assignments, ctr_inds)
+            iteration(traj, distance_method, distances, assignments, ctr_inds)
         centers.append(new_center)
 
         if mpi.MPI_RANK == 0:
@@ -372,6 +312,7 @@ def _kcenters_iteration_mpi(traj, distance_method, distances, assignments,
 
     with log.timed("Computed distance in %.2f sec", log_func=logger.info):
         new_dists = distance_method(traj, new_center)
+    assert len(distances.shape) == len(new_dists.shape)
 
     inds = (new_dists < distances)
 

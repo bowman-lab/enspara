@@ -1,8 +1,4 @@
-from __future__ import print_function, division, absolute_import
-
 import unittest
-import warnings
-import time
 import os
 
 import numpy as np
@@ -307,7 +303,7 @@ def test_kmedoids_update_mpi_mdtraj():
         assignments=local_assignments,
         distances=local_distances,
         proposals=proposals,
-        )
+    )
 
     local_ctr_inds, local_distances, local_assignments = r
 
@@ -404,9 +400,8 @@ def test_kmedoids_update_mpi_numpy_separated_blobs():
         assert_array_equal(assignments[i*len(X):(i*len(X))+len(X)],
                            [cid_for_rank]*len(X))
 
-    assert_array_equal(np.bincount(assignments), [len(X)]*MPI_SIZE)
+    assert_array_equal(np.bincount(assignments), [len(X)] * MPI_SIZE)
 
-    print(distances)
     assert np.all(distances < 6), np.where(distances >= 6)
 
 
@@ -533,8 +528,6 @@ class TestNumpyClustering(unittest.TestCase):
         clust.fit(
             X=np.concatenate(self.traj_lst),
             init_centers=np.array(self.generators[0:2], dtype=float))
-
-        print(clust.result_.center_indices, len(clust.result_.center_indices))
 
         assert_equal(len(clust.result_.center_indices), 3)
         assert_equal(len(np.unique(clust.result_.center_indices)),

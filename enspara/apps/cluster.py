@@ -397,9 +397,6 @@ def main(argv=None):
 
     clustering.fit(data)
 
-    print(type(clustering))
-    print(dir(clustering))
-
     logger.info(
         "Clustered %s frames into %s clusters in %s seconds.",
         sum(lengths), len(clustering.centers_), clustering.runtime_)

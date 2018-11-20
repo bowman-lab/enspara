@@ -1,11 +1,3 @@
-
-# Author: Gregory R. Bowman <gregoryrbowman@gmail.com>
-# Contributors:
-# Copyright (c) 2016, Washington University in St. Louis
-# All rights reserved.
-# Unauthorized copying of this file, via any medium is strictly prohibited
-# Proprietary and confidential
-
 from __future__ import print_function, division, absolute_import
 
 import logging
@@ -14,8 +6,10 @@ import numpy as np
 
 from sklearn.utils import check_random_state
 
-from ..util.log import timed
 from .. import mpi
+from .. import exception
+
+from ..util.log import timed
 
 from . import util
 
@@ -54,7 +48,10 @@ def kmedoids(X, distance_method, n_clusters, n_iters=5):
 
     References
     ----------
-    .. [1]  Chodera, J. D., Singhal, N., Pande, V. S., Dill, K. A. & Swope, W. C. Automatic discovery of metastable states for the construction of Markov models of macromolecular conformational dynamics. J. Chem. Phys. 126, 155101 (2007).
+    .. [1]  Chodera, J. D., Singhal, N., Pande, V. S., Dill, K. A. &
+    Swope, W. C. Automatic discovery of metastable states for the
+    construction of Markov models of macromolecular conformational
+    dynamics. J. Chem. Phys. 126, 155101 (2007).
     """
 
     distance_method = util._get_distance_method(distance_method)
@@ -187,9 +184,16 @@ def _kmedoids_pam_update(
 
     if proposals is not None:
         logger.debug("Got proposals, won't randomly propose.")
-        assert len(proposals) == len(medoid_inds)
-        assert hasattr(proposals[0], '__len__') == \
-               hasattr(medoid_inds[0], '__len__')
+        if len(proposals) != len(medoid_inds):
+            raise exception.DataInvalid(
+                "Length of 'proposals' didn't match length of 'medoid_inds' "
+                "({} != {}).".format(len(proposals), len(medoid_inds)))
+        if (hasattr(proposals[0], '__len__') !=
+                hasattr(medoid_inds[0], '__len__')):
+            raise exception.DataInvalid(
+                "Depth of 'proposals' didn't match 'medoid_inds' "
+                "(proposals[0] == {}, whereas medoid_inds[0] == {})".format(
+                    proposals[0], medoid_inds[0]))
 
     # first we build a list of the actual coordinates of the cluster centers
     # this list will be updated as we go; this is primarily because we want
@@ -260,8 +264,8 @@ def _kmedoids_pam_update(
         new_medoids = medoid_coords.copy()
         new_medoids[cid] = proposed_center
 
-        with timed("Recomputed nearest medoid for {n} points in %.2f sec.".\
-                   format(n=np.count_nonzero(dst_up_assig_this)),
+        with timed("Recomputed nearest medoid for {n} points in %.2f sec."
+                   .format(n=np.count_nonzero(dst_up_assig_this)),
                    logger.debug):
             ambig_assigs, ambig_dists = util.assign_to_nearest_center(
                 X[dst_up_assig_this], new_medoids, metric)
