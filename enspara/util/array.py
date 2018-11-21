@@ -74,7 +74,11 @@ def save(filename, array, compression_level=1, tag='arr'):
         for i in range(len(array)):
             subarr = array[i]
 
-            atom = tables.Atom.from_dtype(array._data.dtype)
+            if hasattr(array, '_data'):
+                atom = tables.Atom.from_dtype(array._data.dtype)
+            else:
+                atom = tables.Atom.from_dtype(subarr.dtype)
+
             tag = tag + '_' + str(i).zfill(n_zeros)
 
             print(tag, subarr.shape)
