@@ -79,11 +79,10 @@ def save(filename, array, compression_level=1, tag='arr'):
             else:
                 atom = tables.Atom.from_dtype(subarr.dtype)
 
-            tag = tag + '_' + str(i).zfill(n_zeros)
+            t = tag + '_' + str(i).zfill(n_zeros)
 
-            print(tag, subarr.shape)
             node = handle.create_carray(
-                where='/', name=tag, atom=atom,
+                where='/', name=t, atom=atom,
                 shape=subarr.shape, filters=compression)
 
             node[:] = subarr

@@ -109,7 +109,6 @@ class Test_RaggedArray(unittest.TestCase):
             io.saveh(f.name, key0=a[0], key1=a[1], key2=a[2])
             b = ra.load(f.name, keys=['key1', 'key2'])
 
-        print(a.shape, b.shape)
         assert_ra_equal(a[1:], b[:])
 
     def test_RaggedArray_bad_size(self):
