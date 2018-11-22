@@ -362,7 +362,7 @@ def test_feature_cluster_manhattan():
         assert np.all(assignments[i] == assignments[iis])
 
 
-def test_feature_cluster_radius_based():
+def test_feature_cluster_radius_based_h5_input():
 
     expected_size = (3, (50, 30, 20))
 
@@ -384,3 +384,93 @@ def test_feature_cluster_radius_based():
             centers_format='npy')
 
         assert_equal(len(np.unique(assignments.flatten())), 11)
+
+
+def reorder_assignments(assigs):
+    """Rewrite an assignments array so that lower indices appear earlier.
+    """
+
+    assigs = assigs.copy()
+    aids = np.unique(assigs)
+
+    assig_is = {}
+    order = np.argsort([np.where(assigs == aid)[0][0] for aid in aids])
+    for aid in aids:
+        assig_is[aid] = (assigs == aid)
+
+    for i, aid in enumerate(order):
+        assigs[assig_is[aid]] = i
+
+    return assigs
+
+
+def test_feature_cluster_number_khybrid_npy_input():
+
+    expected_size = (3, (50, 30, 20))
+
+    X, y = make_blobs(
+        n_samples=100, n_features=3, centers=3, center_box=(0, 100),
+        random_state=3)
+
+    with tempfile.TemporaryDirectory() as d:
+
+        a = ra.RaggedArray(array=X, lengths=[50, 30, 20])
+
+        pathnames = []
+        for row_i in range(len(a.lengths)):
+            pathname = os.path.join(d, "%s.npy" % row_i)
+            np.save(pathname, a[row_i])
+            pathnames.append(pathname)
+
+        distances, assignments = runhelper([
+            '--features', pathnames[0], pathnames[1], pathnames[2],
+            '--cluster-number', '3',
+            '--algorithm', 'khybrid',
+            '--cluster-distance', 'euclidean'],
+            expected_size=expected_size,
+            centers_format='npy')
+
+    assert_array_equal(a.lengths, assignments.lengths)
+    assert_array_equal(a.lengths, distances.lengths)
+
+    y = remake_assignments_in_order(y)
+    assignments = remake_assignments_in_order(assignments.flatten())
+
+    assert_equal(len(np.unique(assignments)), 3)
+    assert_array_equal(y, assignments)
+
+
+def test_feature_cluster_number_kcenters_npy_input():
+
+    expected_size = (3, (50, 30, 20))
+
+    X, y = make_blobs(
+        n_samples=100, n_features=3, centers=3, center_box=(0, 100),
+        random_state=3)
+
+    with tempfile.TemporaryDirectory() as d:
+
+        a = ra.RaggedArray(array=X, lengths=[50, 30, 20])
+
+        pathnames = []
+        for row_i in range(len(a.lengths)):
+            pathname = os.path.join(d, "%s.npy" % row_i)
+            np.save(pathname, a[row_i])
+            pathnames.append(pathname)
+
+        distances, assignments = runhelper([
+            '--features', pathnames[0], pathnames[1], pathnames[2],
+            '--cluster-number', '3',
+            '--algorithm', 'kcenters',
+            '--cluster-distance', 'euclidean'],
+            expected_size=expected_size,
+            centers_format='npy')
+
+    assert_array_equal(a.lengths, assignments.lengths)
+    assert_array_equal(a.lengths, distances.lengths)
+
+    y = reorder_assignments(y)
+    assignments = reorder_assignments(assignments.flatten())
+
+    assert_equal(len(np.unique(assignments)), 3)
+    assert_array_equal(y, assignments)

@@ -13,7 +13,7 @@ from . import kmedoids
 from . import util
 
 from ..exception import ImproperlyConfigured
-from ..mpi import MPI_SIZE
+from ..mpi import MPI_SIZE, MPI_RANK
 
 logger = logging.getLogger(__name__)
 
@@ -119,7 +119,6 @@ def hybrid(
             kmedoids._kmedoids_pam_update(
                 X, distance_method,
                 cluster_center_inds, assignments, distances,
-                cost=np.max,
                 random_state=random_state)
 
         logger.info("KMedoids update %s of %s", i, n_iters)

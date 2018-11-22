@@ -24,7 +24,8 @@ from .util import fix_np_rng
 TEST_DIR = os.path.dirname(__file__)
 
 
-def runhelper(args, expected_size, expect_reassignment=True):
+def runhelper(args, expected_size, expect_reassignment=True,
+              centers_format='pkl'):
 
     if MPI_RANK == 0:
         td = tempfile.mkdtemp()
@@ -34,7 +35,7 @@ def runhelper(args, expected_size, expect_reassignment=True):
 
     fnames = {
         'center-inds': td + '/center-inds.npy',
-        'center-structs': td + '/center-structs.pkl',
+        'center-structs': td + 'center-features.%s' % centers_format,
         'distances': td + '/distances.h5',
         'assignments': td + '/assignments.h5',
     }
@@ -85,9 +86,11 @@ def runhelper(args, expected_size, expect_reassignment=True):
         assert os.path.isfile(ctrstructfile), \
             "Couldn't find %s. Dir contained: %s" % (
             ctrstructfile, os.listdir(os.path.dirname(ctrstructfile)))
-        with open(ctrstructfile, 'rb') as f:
-            center_structs = pickle.load(f)
-
+        try:
+            with open(ctrstructfile, 'rb') as f:
+                center_structs = pickle.load(f)
+        except pickle.UnpicklingError:
+            center_structs = np.load(ctrstructfile)
     finally:
         MPI.COMM_WORLD.Barrier()
         if MPI_RANK == 0:
@@ -269,9 +272,9 @@ def test_rmsd_khybrid_mpi_subsample():
     assert_array_equal(expected_s.xyz, md.join(s).xyz)
 
 
+@fix_np_rng(5)
 @attr('mpi')
 def test_feature_khybrid_mpi_basic():
-
     expected_size = (3, (50, 30, 20))
 
     X, y = make_blobs(
@@ -280,26 +283,31 @@ def test_feature_khybrid_mpi_basic():
 
     try:
         if MPI_RANK == 0:
-            f = tempfile.NamedTemporaryFile(suffix='.h5')
+            td = tempfile.TemporaryDirectory()
             a = ra.RaggedArray(array=X, lengths=[50, 30, 20])
-            ra.save(f.name, a)
+
+            for row_i in range(len(a.lengths)):
+                pathname = os.path.join(td.name, "%s.npy" % row_i)
+                np.save(pathname, a[row_i])
         else:
-            f = None
+            td = None
 
-        tfname = MPI.COMM_WORLD.bcast(f.name if MPI_RANK == 0 else None,
+        tdname = MPI.COMM_WORLD.bcast(td.name if MPI_RANK == 0 else None,
                                       root=0)
-
         a, d, inds, s = runhelper([
-            '--features', tfname,
+            '--features', os.path.join(tdname, '*.npy'),
             '--cluster-number', '3',
             '--algorithm', 'khybrid',
             '--cluster-distance', 'euclidean'],
-            expected_size=expected_size)
+            expected_size=expected_size,
+            centers_format='npy')
 
         assert_equal(len(inds), 3)
     finally:
         if MPI_RANK == 0:
-            f.close()
+            td.cleanup()
+
+        MPI.COMM_WORLD.Barrier()
 
     y_ra = ra.RaggedArray(y, a.lengths)
     for cid in range(len(inds)):

@@ -72,7 +72,7 @@ def process_command_line(argv):
     input_args = parser.add_argument_group("Input Settings")
     input_data_group = parser.add_mutually_exclusive_group(required=True)
     input_data_group.add_argument(
-        "--features",
+        "--features", nargs='+',
         help="The h5 file containin observations and features.")
     input_data_group.add_argument(
         '--trajectories', nargs="+", action='append',
@@ -141,7 +141,9 @@ def process_command_line(argv):
     args = parser.parse_args(argv[1:])
 
     if args.features:
-        if mpi_mode:
+        args.features = expand_files([args.features])[0]
+
+        if mpi_mode and len(args.features) == 1:
             raise exception.ImproperlyConfigured(
                 'Cannot use ragged array h5 files in MPI mode.')
 
@@ -152,9 +154,9 @@ def process_command_line(argv):
                 "The given distance (%s) is not compatible with features." %
                 args.cluster_distance)
 
-        if args.subsample != 1 and not args.no_reassign:
-            raise exception.ImproperlyConfigured(
-                "Subsampling/reassigning for features is not supported yet.")
+        if args.subsample != 1 and len(features) == 1:
+                raise exception.ImproperlyConfigured(
+                    "Subsampling is not supported for h5 inputs.")
 
         # TODO: not necessary if mutually exclusvie above works
         if args.trajectories:
@@ -221,10 +223,18 @@ def process_command_line(argv):
         warnings.warn("Reassignment is suppressed in MPI mode.")
         args.no_reassign = True
 
-    if args.center_features[args.center_features.rfind('.'):] == '.h5':
-        warnings.warn(
-            "You provided a centers file that looks like it's an h5... "
-            "centers are saved as pickle. Are you sure this is what you want?")
+    if args.trajectories:
+        if os.path.splitext(args.center_features)[1] == '.h5':
+            warnings.warn(
+                "You provided a centers file that looks like it's an h5... "
+                "centers are saved as pickle. Are you sure this is what you "
+                "want?")
+    else:
+        if os.path.splitext(args.center_features)[1] != '.npy':
+            warnings.warn(
+                "You provided a centers file that looks like it's not "
+                "an npy, but this is how they are saved. Are you sure "
+                "this is what you want?")
 
     return args
 
@@ -236,6 +246,28 @@ def expand_files(pgroups):
         for p in pgroup:
             expanded_pgroups[-1].extend(sorted(glob(p)))
     return expanded_pgroups
+
+
+def load_features(features, stride):
+    if len(features) == 1:
+        with timed("Loading features took %.1f s.", logger.info):
+            try:
+                data = ra.load(features[0])
+            except exception.DataInvalid:
+                data = ra.load(features[0], keys=...)
+
+        lengths = data.lengths
+        data = data._data
+    else:  # and len(features) > 1
+        with timed("Loading features took %.1f s.", logger.info):
+            lengths, data = mpi.io.load_npy_as_striped(features, stride)
+
+        with timed("Turned over array in %.2f min", logger.info):
+            tmp_data = data.copy()
+            del data
+            data = tmp_data
+
+    return lengths, data
 
 
 def load_trajectories(topologies, trajectories, selections, stride, processes):
@@ -282,7 +314,7 @@ def load_trajectories(topologies, trajectories, selections, stride, processes):
     assert len(top.select(selection)) > 0, "No atoms selected for clustering"
 
     with timed("Loading took %.1f sec", logger.info):
-        lengths, xyz = mpi.io.load_as_striped(
+        lengths, xyz = mpi.io.load_trajectory_as_striped(
             flat_trjs, args=configs, processes=auto_nprocs())
 
     with timed("Turned over array in %.2f min", logger.info):
@@ -324,15 +356,9 @@ def load_asymm_frames(center_indices, trajectories, topology, subsample):
 def load_trjs_or_features(args):
 
     if args.features:
-        with timed("Loading features took %.1f s.", logger.info):
-            try:
-                data = ra.load(args.features)
-            except exception.DataInvalid:
-                data = ra.load(args.features, keys=...)
-
-        lengths = data.lengths
-        data = data._data
+        lengths, data = load_features(args.features, stride=args.subsample)
     else:
+        assert args.trajectories
         assert len(args.trajectories) == len(args.topologies)
 
         targets = {os.path.basename(topf): "%s files" % len(trjfs)
@@ -440,7 +466,6 @@ def main(argv=None):
             distances=all_dists,
             assignments=all_assigs,
             centers=result.centers)
-
     result = result.partition(lengths)
 
     if mpi_comm.Get_rank() == 0:
