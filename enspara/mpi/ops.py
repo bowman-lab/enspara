@@ -107,10 +107,14 @@ def assemble_striped_ragged_array(local_array, global_lengths):
 
     for rank in range(MPI_SIZE):
         rank_array = COMM.bcast(local_array, root=rank)
-        rank_ra = ra.RaggedArray(
-            rank_array, lengths=global_lengths[rank::MPI_SIZE])
 
-        global_ra[rank::MPI_SIZE] = rank_ra
+        local_lengths = global_lengths[rank::MPI_SIZE]
+        if len(local_lengths) > 1:
+            rank_ra = ra.RaggedArray(
+                rank_array, lengths=local_lengths)
+            global_ra[rank::MPI_SIZE] = rank_ra
+        else:
+            global_ra[rank] = rank_array
 
     assert np.all(global_ra._data) >= 0
 
