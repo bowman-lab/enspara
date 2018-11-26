@@ -218,10 +218,10 @@ def test_rmsd_khybrid_mpi_basic():
     trj_sele = trj.atom_slice(trj.top.select(SELECTION))
 
     expected_s = md.join([trj[i[1]] for i in idx])
-    expected_i = [[1, 210],
-                  [0, 40],
-                  [1, 47],
-                  [1, 116]]
+    expected_i = [[0, 0],
+                  [0, 55],
+                  [1, 102],
+                  [1, 196]]
 
     assert_array_equal(idx, expected_i)
 
