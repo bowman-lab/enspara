@@ -433,8 +433,8 @@ def test_feature_cluster_number_khybrid_npy_input():
     assert_array_equal(a.lengths, assignments.lengths)
     assert_array_equal(a.lengths, distances.lengths)
 
-    y = remake_assignments_in_order(y)
-    assignments = remake_assignments_in_order(assignments.flatten())
+    y = reorder_assignments(y)
+    assignments = reorder_assignments(assignments.flatten())
 
     assert_equal(len(np.unique(assignments)), 3)
     assert_array_equal(y, assignments)
