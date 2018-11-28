@@ -13,11 +13,6 @@ from enspara.msm import implied_timescales, builders
 from enspara.util import array as ra
 from enspara.util.parallel import auto_nprocs
 
-import matplotlib as mpl
-mpl.use('Agg')
-
-from matplotlib import pyplot as plt
-
 
 def process_command_line(argv):
     '''Parse the command line and do a first-pass on processing them into a
@@ -89,7 +84,7 @@ def process_command_line(argv):
 
 
 def prior_counts(C):
-    return builders.normalize(C, prior_counts=1/len(C))
+    return builders.normalize(C, prior_counts=1/C.shape[0])
 
 
 def process_units(timestep=None, infer_timestep=None):
@@ -153,6 +148,10 @@ def main(argv=None):
         assignments, args.lag_times, n_times=args.n_eigenvalues,
         sliding_window=True, trim=args.trim,
         method=args.symmetrization, n_procs=args.processes)
+
+    import matplotlib as mpl
+    mpl.use('Agg')
+    from matplotlib import pyplot as plt
 
     unit_factor, unit_str = process_units(args.timestep, args.infer_timestep)
 

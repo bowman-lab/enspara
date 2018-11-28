@@ -36,18 +36,27 @@ jobs:
             - v1-dependencies-{{ .Environment.CIRCLE_JOB }}-{{ checksum "setup.py" }}
 
       - run:
+          name: Upgrade pip
+          command: |
+            python3 -m venv venv
+            . venv/bin/activate
+            pip install pip==18.0
+
+      - run:
           name: Install numpy and cython
           command: |
             python3 -m venv venv
             . venv/bin/activate
-            pip install -q numpy==$NUMPY_VERSION cython==$CYTHON_VERSION
+            pip install --progress-bar off numpy==$NUMPY_VERSION cython==$CYTHON_VERSION
 
       - run:
           name: Install and build enspara
           command: |
             python3 -m venv venv
             . venv/bin/activate
-            pip install -qe .[dev]
+            pip install --progress-bar off .[dev]
+            python setup.py build_ext --inplace
+            python setup.py install
 
       - save_cache:
           paths:
