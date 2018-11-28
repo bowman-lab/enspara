@@ -57,8 +57,6 @@ logger.setLevel(logging.INFO)
 
 
 def process_command_line(argv):
-    '''Parse the command line and do a first-pass on processing them into a
-    format appropriate for the rest of the script.'''
 
     FEATURE_DISTANCES = ['euclidean', 'manhattan']
     TRAJECTORY_DISTANCES = ['rmsd']
@@ -428,8 +426,7 @@ def write_assignments_and_distances_with_reassign(result, args):
 
 
 def main(argv=None):
-    '''Run the driver script for this module. This code only runs if we're
-    being run as a script. Otherwise, it's silent and just exposes methods.'''
+
     args = process_command_line(argv)
 
     # note that in MPI mode, lengths will be global, whereas data will

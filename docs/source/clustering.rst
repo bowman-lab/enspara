@@ -1,5 +1,5 @@
 Clustering
-========
+==========
 
 Once you have your simulations run, generally the first step in building an MSM
 is clustering your trajectories based on a parameter of interest. Commonly,
@@ -8,12 +8,13 @@ euclidean distance between some sort of feature vector.
 
 In :code:`enspara`, this functionality is availiable at three levels of detail.
 
-1. Apps. Clustering code is availiable in a command-line application that is
-capable of handling much of the bookkeeping necessary for more complex
-clustering operations.
+1. :ref:`Apps <clustering-app>`. Clustering code is availiable in a 
+command-line application that is capable of handling much of the bookkeeping
+necessary for more complex clustering operations.
 
-2. Objects. Clustering code is wrapped into sklearn-style objects that offer 
-simple API access to clustering algorithms and their parameters.
+2. :ref:`Objects <clustering-object>`. Clustering code is wrapped into 
+sklearn-style objects that offer simple API access to clustering algorithms 
+and their parameters.
 
 3. Functions. Clustering code is ultimately implemented as functions, which
 offer the highest degree of control over the function's behavior, but also
@@ -21,12 +22,13 @@ require the most work on the user's part.
 
 
 .. _clustering-app:
+
 Clustering App
 --------------------------------
 
 Clustering functionality is availiable in :code:`enspara` in the script
 :code:`apps/cluster.py`. Its help output explains at a granular level of detail
- what it is capable of, and so here we will seek to provide a high-level
+what it is capable of, and so here we will seek to provide a high-level
 discussion of how it can be used.
 
 When clustering, you will need to make a few important choices:
@@ -141,7 +143,7 @@ In this case, your :code:`cluster.py` invocation will look something like:
 
 Here, clusters will be generated until the maximum distance of any frame to its
 cluster center is 1.0 using a Euclidean distance (the :code:`--cluster-number`
-flag is also accepted).
+flag is also accepted). You can also specify a list of npy files 
 
 Subsampling and Reassignment
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -184,12 +186,14 @@ fundamentally less scalable. As a result, one can provide the
 some other script to do the reassignment (see the :code:`reassign.py` app).
 
 .. _clustering-object:
+
 Clustering Object
 -----------------
 
 Rather than relying on a pre-built script to cluster data, there is also a
 scikit-learn-like object for the two major clustering algorithms we use,
-k-hybrid and k-centers. They :doc:`enspara.cluster.hybrid.KHybrid` and :doc:`KCenters`, respectively.
+k-hybrid and k-centers. They are :any:`enspara.cluster.hybrid.KHybrid` and
+:any:`enspara.cluster.kcenters.KCenters`, respectively.
 
 An example of a script that clusters data using this object is:
 
@@ -227,3 +231,14 @@ An example of a script that clusters data using this object is:
 
     # a list of the `xyz` frame index for each cluster center
     print(clustering.center_indices_)
+
+
+.. _clustering-function:
+
+Clustering Functions
+--------------------
+
+Finally,  for the finest-grained control over the clustering process, we implement
+functions that execute the clustering algorithm over given data, often with very
+detailed control over stopping conditions and calculations. They are 
+:any:`enspara.cluster.hybrid.hybrid` and :any:`enspara.cluster.kcenters.kcenters`, respectively.

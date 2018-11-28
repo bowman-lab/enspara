@@ -342,8 +342,8 @@ def mi_to_nmi_apc(mutual_information, H_marginal=None):
 
     References
     ----------
-    [1] Dunn, S.D., et al (2008) Bioinformatics 24 (3): 330--40.
-    [2] Lopez, T., et al (2017) Nat. Struct. & Mol. Biol. 24: 726--33.
+    .. [1] Dunn, S.D., et al (2008) Bioinformatics 24 (3): 330--40.
+    .. [2] Lopez, T., et al (2017) Nat. Struct. & Mol. Biol. 24: 726--33.
         doi:10.1038/nsmb.3440
     """
 
@@ -493,6 +493,7 @@ def mi_to_apc(mi_arr):
     Returns
     -------
     apc_matrix : ndarray, shape=(n_features, n_features)
+        Matrix of average product correlations.
 
     Notes
     -----
@@ -500,17 +501,17 @@ def mi_to_apc(mi_arr):
 
     APC(M_i, M_j) = Σr I(M_i, M_r)*I(M_j, M_r) ; r ∈ [0, n_features]
 
-    Interestingly, this is the same as (MI/n)^2, where n is the number
+    Interestingly, this is the same as :math:`(MI/n)^2`, where n is the number
     of rows or columns in the matrix.
 
     See Also
     --------
     enspara.info_theory.deconvolute_network : computes a similar
-        quantity, but using MI^3, MI^4, ... too.
+        quantity, but using :math:`MI^3`, :math:`MI^4`, etc too.
 
     References
     ----------
-    [1] Dunn, S.D., et al (2008) Bioinformatics 24 (3): 330--40.
+    .. [1] Dunn, S.D., et al (2008) Bioinformatics 24 (3): 330--40.
     """
 
     _validate_mutual_information_matrix(mi_arr)
@@ -521,7 +522,9 @@ def mi_to_apc(mi_arr):
 def channel_capacity_normalization(mi, n_x, n_y):
     """Normalize an MI matrix by the channel capacity of each feature pair.
 
-    The channel capacity is a information-theoretic quantity that measures the maximum amount of information that can be reliably transmitted along a channel. In our simple case, this is the log of the number of states.
+    The channel capacity is a information-theoretic quantity that measures
+    the maximum amount of information that can be reliably transmitted along
+    a channel. In our simple case, this is the log of the number of states.
 
     Parameters
     ----------

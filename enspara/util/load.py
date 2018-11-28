@@ -55,11 +55,11 @@ def load_as_concatenated(filenames, lengths=None, processes=None,
                          args=None, **kwargs):
     '''Load many trajectories from disk into a single numpy array.
 
-    Additional arguments to md.load are supplied as *args XOR **kwargs.
-    If *args are supplied, args and filenames must be of the same length
-    and the ith arg is applied as the kwargs to the md.load (e.g. top,
-    selection) for the ith file. If **kwargs are specified, all are
-    passed as keyword args to all calls to md.load.
+    Additional arguments to md.load are supplied as ``*args`` XOR
+    ``**kwargs``. If ``*args`` are supplied, args and filenames must be
+    of the same length and the ith arg is applied as the kwargs to the
+    md.load (e.g. top, selection) for the ith file. If ``**kwargs`` are
+    specified, all are passed as keyword args to all calls to md.load.
 
     Parameters
     ----------

@@ -22,20 +22,14 @@ class RotamerFeaturizer(object):
 
     def fit(self, trajectories):
         """Assign rotameric states to a set of trajectories. Makes
-        availiable parameters feature_trajectories_, n_feature_states_,
-        atom_indices_.
+        availiable parameters ``feature_trajectories_``,
+        ``n_feature_states_,`` ``atom_indices_``.
 
         Parameters
         ----------
         trajectories: iterable, shape = n_trjs * (n_frames, n_features)
             Trajectories to consider for the calculation. Generators are
             accepted and can be used to mitigate memory usage.
-
-        References
-        ----------
-        [1] Singh, S., & Bowman, G. R. (2017). Quantifying Allosteric
-            Communication via Correlations in Structure and Disorder.
-            Biophysical Journal, 112(3), 498a.
         """
 
         # to support both lists and generators, we use an iterator over
