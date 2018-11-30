@@ -104,7 +104,7 @@ def load_as_concatenated(filenames, lengths=None, processes=None,
         if len(args) != len(filenames):
             raise exception.ImproperlyConfigured(
                 "When add'l unnamed args are provided, len(args) == "
-                "len(filenames).")
+                "len(filenames), but %s != %s." % (len(args), len(filenames)))
     else:  # not args and not kwargs
         args = [{}] * len(filenames)
 
