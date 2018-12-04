@@ -111,8 +111,9 @@ def hybrid(
         init_centers=init_centers, random_first_center=random_first_center,
         mpi_mode=mpi_mode)
 
-    cluster_center_inds, assignments, distances = (
-        result.center_indices, result.assignments, result.distances)
+    cluster_center_inds, assignments, distances, centers = (
+        result.center_indices, result.assignments, result.distances,
+        result.centers)
 
     for i in range(n_iters):
         cluster_center_inds, distances, assignments, centers = \

@@ -175,8 +175,6 @@ def kcenters(traj, distance_method, n_clusters=np.inf, dist_cutoff=0,
     elif n_clusters is not None and dist_cutoff is None:
         dist_cutoff = 0
 
-    min_max_dist = np.inf
-
     if random_first_center:
         raise NotImplementedError(
             "We haven't implemented kcenters 'random_first_center' yet.")
@@ -209,8 +207,8 @@ def kcenters(traj, distance_method, n_clusters=np.inf, dist_cutoff=0,
 
         if mpi.MPI_RANK == 0:
             logger.info(
-                "Center %s gives max dist of %.6f (stopping @ %.6f).",
-                len(center_inds), maxdist, dist_cutoff)
+                "Center %s gives max dist of %.6f (stopping @ d=%.6f/n=%s).",
+                len(center_inds), maxdist, dist_cutoff, n_clusters)
 
     return util.ClusterResult(
         center_indices=ctr_inds,
