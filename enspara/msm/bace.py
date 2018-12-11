@@ -1,11 +1,4 @@
-"""An implementation of the Baysean Agglomerative Clustering Engine
-(BACE).
-
-References
-----------
-.. [1] Bowman, G. R. Improved coarse-graining of Markov state models via
-       explicit consideration of statistical uncertainty. J Chem Phys
-       137, 134111 (2012).
+"""An implementation of the Baysean Agglomerative Clustering Engine.
 """
 
 import logging
@@ -50,7 +43,9 @@ def getInds(c, stateInds, chunkSize, updateSingleState=None):
 
 
 def bace(c, n_macrostates, chunk_size=100, n_procs=1):
-    """Perform baysean agglomerative coarse-graining procedure ('BACE')
+    """Perform baysean agglomerative coarse-graining procedure (BACE)
+
+    If you use this code, you should read and cite [1]_.
 
     Parameters
     ----------
@@ -64,12 +59,19 @@ def bace(c, n_macrostates, chunk_size=100, n_procs=1):
 
     Returns
     -------
-    bayes_factors : dict, (n_macrostates -> bayes' factor)
+    bayes_factors : dict
         Mapping from number of macrostates to the bayes' factor of that
         lumping.
-    labels : dict, (n_macrostates -> label array)
+    labels : dict
         Mapping from number of macrostates to the labelling of
         microstates into that number of macrostates.
+
+
+    References
+    ----------
+    .. [1] Bowman, G. R. Improved coarse-graining of Markov state models via
+        explicit consideration of statistical uncertainty. J Chem Phys 137,
+        134111 (2012).
     """
 
     # perform filter

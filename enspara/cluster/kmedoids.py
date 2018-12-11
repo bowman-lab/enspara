@@ -25,7 +25,7 @@ def kmedoids(X, distance_method, n_clusters, n_iters=5):
 
     Parameters
     ----------
-    X : array-like, shape=(n_observations, n_features, *)
+    X : array-like, shape=(n_observations, n_features, ``*``)
         Data to cluster. The user is responsible for pre-partitioning
         this data across nodes.
     distance_method : callable
@@ -45,13 +45,6 @@ def kmedoids(X, distance_method, n_clusters, n_iters=5):
     result : ClusterResult
         Subclass of NamedTuple containing assignments, distances,
         and center indices for this function.
-
-    References
-    ----------
-    .. [1]  Chodera, J. D., Singhal, N., Pande, V. S., Dill, K. A. &
-    Swope, W. C. Automatic discovery of metastable states for the
-    construction of Markov models of macromolecular conformational
-    dynamics. J. Chem. Phys. 126, 155101 (2007).
     """
 
     distance_method = util._get_distance_method(distance_method)

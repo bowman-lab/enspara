@@ -23,7 +23,7 @@ __all__ = ['committors', 'mfpts']
 
 
 def _I_m_Q(tprob, absorbing_states, n_states=None):
-    """Calculates (I-Q) as is defined in ref [1]. This is fundamental
+    """Calculates (I-Q) as is defined in ref [1]_. This is fundamental
     for calculating committors and mfpts.
     """
     # if no states are supplied, determine from tprob
@@ -39,12 +39,14 @@ def _I_m_Q(tprob, absorbing_states, n_states=None):
 
 def committors(tprob, sources, sinks):
     """Get the forward committors of the reaction sources -> sinks.
+
     The forward committor probability, q+, for a state is the
     probability that it reaches a defined sink state(s) before it
     reaches a source state(s). The reverse committor, q-, is the
     probability of reaching the source state first; at equilibrium the
     forward and reverse committors are related by the following
-    equation: q+ = 1 - q-
+    equation: :math:`q^+ = 1 - q^-`
+
     The forward committors are calculated by turning all sources and
     sinks into absorbing states and calculating the probability of
     reaching one set of aborbing states over the other, as covered in
@@ -52,11 +54,11 @@ def committors(tprob, sources, sinks):
 
     Parameters
     ----------
-    tprob : array, shape [n_states, n_states]
+    tprob : array-like, shape=(n_states, n_states)
         Transition probability matrix.
-    sources : array_like, int
-        The set of source (reactant states.
-    sinks : array_like, int
+    sources : array-like, int
+        The set of source (reactant) states.
+    sinks : array-like, int
         The set of sink (product) states.
 
     Returns
