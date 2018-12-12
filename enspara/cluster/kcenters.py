@@ -217,6 +217,7 @@ def kcenters(traj, distance_method, n_clusters=np.inf, dist_cutoff=0,
 
         new_center, distances, assignments, center_inds = \
             iteration(traj, distance_method, distances, assignments, ctr_inds,
+                      use_triangle_inequality=use_triangle_inequality,
                       **kwargs)
 
         centers.append(new_center)

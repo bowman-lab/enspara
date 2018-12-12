@@ -723,8 +723,6 @@ def test_mpi_kcenters_iteration_triangle_mdtraj():
     distances = np.full(len(X), np.inf, dtype=float)
 
     for i in range(6):
-        print("Iteration", i)
-
         trad_center, trad_dists, trad_assigs, trad_ctr_inds = \
             kcenters._kcenters_iteration_mpi(
                 X, md.rmsd, distances.copy(),
