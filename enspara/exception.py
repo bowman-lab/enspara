@@ -1,3 +1,7 @@
+"""Custom enspara-only exceptions.
+"""
+
+
 class ImproperlyConfigured(Exception):
     '''The given configuration is incomplete or otherwise not usable.'''
     pass

@@ -1,3 +1,6 @@
+"""MPI-enabled functions, typically for I/O or sharing data between nodes
+"""
+
 import warnings
 
 try:
