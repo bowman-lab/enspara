@@ -1,3 +1,10 @@
+"""Given cluster centers, reassign trajectories in batches.
+
+Options are provided for modifying what fraction of memory will be used
+and which atoms to use for reassignment.
+"""
+
+
 import os
 import sys
 import argparse
@@ -34,8 +41,6 @@ logger.setLevel(logging.INFO)
 
 
 def process_command_line(argv):
-    '''Parse the command line and do a first-pass on processing them into a
-    format appropriate for the rest of the script.'''
 
     parser = argparse.ArgumentParser(formatter_class=argparse.
                                      ArgumentDefaultsHelpFormatter)
@@ -281,8 +286,7 @@ def reassign(topologies, trajectories, atoms, centers, frac_mem=0.5):
 
 
 def main(argv=None):
-    '''Run the driver script for this module. This code only runs if we're
-    being run as a script. Otherwise, it's silent and just exposes methods.'''
+
     args = process_command_line(argv)
 
     tick = time.perf_counter()

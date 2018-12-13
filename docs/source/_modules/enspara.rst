@@ -9,6 +9,7 @@ enspara
     enspara.cluster
     enspara.geometry
     enspara.info_theory
+    enspara.mpi
     enspara.msm
     enspara.tpt
     enspara.util

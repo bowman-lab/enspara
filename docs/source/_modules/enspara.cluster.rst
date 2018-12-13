@@ -25,14 +25,6 @@ enspara\.cluster\.kmedoids module
     :undoc-members:
     :show-inheritance:
 
-enspara\.cluster\.save\_states module
--------------------------------------
-
-.. automodule:: enspara.cluster.save_states
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
 enspara\.cluster\.util module
 -----------------------------
 

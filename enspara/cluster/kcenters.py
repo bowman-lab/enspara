@@ -26,6 +26,9 @@ class KCenters(BaseEstimator, ClusterMixin, util.MolecularClusterMixin):
     Its worst-case runtime is O(kn), where k is the number of cluster
     centers and n is the number of observations.
 
+    The original algorithm and optimality guarantees are described in
+    [1]_.
+
     Parameters
     ----------
     metric : required
@@ -49,8 +52,9 @@ class KCenters(BaseEstimator, ClusterMixin, util.MolecularClusterMixin):
 
     References
     ----------
-    .. [1] Gonzalez, T. F. Clustering to minimize the maximum intercluster
-    distance. Theoretical Computer Science 38, 293–306 (1985).
+    .. [1] Gonzalez, T. F. Clustering to minimize the maximum
+        intercluster distance. Theoretical Computer Science 38, 293–306
+        (1985).
     """
 
     def __init__(
@@ -105,8 +109,7 @@ def kcenters_mpi(*args, **kwargs):
 
 def kcenters(traj, distance_method, n_clusters=np.inf, dist_cutoff=0,
              init_centers=None, random_first_center=False, mpi_mode=False):
-    """The functional (rather than object-oriented) implementation of
-    the k-centers clustering algorithm.
+    """Function implementation of the k-centers clustering algorithm.
 
     K-centers is essentially an outlier detection algorithm. It
     iteratively searches out the point that is most distant from all
@@ -119,6 +122,9 @@ def kcenters(traj, distance_method, n_clusters=np.inf, dist_cutoff=0,
     consequence, some inter-process communication is required. The user
     is responsible for partitioning the data in `traj` appropriately
     across the workers and for assembling the results correctly.
+
+    The original algorithm and optimality guarantees are described in
+    [2]_.
 
     Parameters
     ----------
@@ -157,8 +163,8 @@ def kcenters(traj, distance_method, n_clusters=np.inf, dist_cutoff=0,
 
     References
     ----------
-    .. [1] Gonzalez, T. F. Clustering to minimize the maximum intercluster
-    distance. Theoretical Computer Science 38, 293–306 (1985).
+    .. [2] Gonzalez, T. F. Clustering to minimize the maximum intercluster
+        distance. Theoretical Computer Science 38, 293–306 (1985).
     """
 
     if (n_clusters is np.inf) and (dist_cutoff is 0):

@@ -1,36 +1,25 @@
 enspara\.apps
 =====================
 
-enspara\.apps\.feature\_cluster module
---------------------------------------
-
-.. automodule:: enspara.apps.feature_cluster
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-enspara\.apps\.implied\_timescales module
+enspara\.apps\.implied\_timescales
 -----------------------------------------
 
 .. automodule:: enspara.apps.implied_timescales
     :members:
-    :undoc-members:
     :show-inheritance:
 
-enspara\.apps\.reassign module
+enspara\.apps\.reassign
 ------------------------------
 
 .. automodule:: enspara.apps.reassign
     :members:
-    :undoc-members:
     :show-inheritance:
 
-enspara\.apps\.rmsd\_cluster module
+enspara\.apps\.cluster
 -----------------------------------
 
-.. automodule:: enspara.apps.rmsd_cluster
+.. automodule:: enspara.apps.cluster
     :members:
-    :undoc-members:
     :show-inheritance:
 
 enspara\.apps\.util module
@@ -38,14 +27,4 @@ enspara\.apps\.util module
 
 .. automodule:: enspara.apps.util
     :members:
-    :undoc-members:
-    :show-inheritance:
-
-
-Module contents
----------------
-
-.. automodule:: enspara.apps
-    :members:
-    :undoc-members:
     :show-inheritance:

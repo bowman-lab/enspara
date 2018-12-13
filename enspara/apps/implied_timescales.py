@@ -1,3 +1,8 @@
+"""Given assignments and a list of lagtimes, plot implied timescales.
+
+Options are provided for using various forms of MSM and parallelization.
+"""
+
 import sys
 import argparse
 
@@ -15,8 +20,6 @@ from enspara.util.parallel import auto_nprocs
 
 
 def process_command_line(argv):
-    '''Parse the command line and do a first-pass on processing them into a
-    format appropriate for the rest of the script.'''
 
     parser = argparse.ArgumentParser(formatter_class=argparse.
                                      ArgumentDefaultsHelpFormatter)
@@ -28,7 +31,7 @@ def process_command_line(argv):
         "--n-eigenvalues", default=5, type=int,
         help="Number of eigenvalues to compute for each lag time.")
     parser.add_argument(
-        "--lag-times",  default="5:100:2",
+        "--lag-times", default="5:100:2",
         help="List of lagtimes (in frames) to compute eigenspectra for. "
              "Format is min:max:step.")
     parser.add_argument(
@@ -42,7 +45,7 @@ def process_command_line(argv):
              "trajectory ids. This is useful for handling assignments "
              "for shared state space clusterings.")
     parser.add_argument(
-        "--processes", default=max(1, auto_nprocs()/4), type=int,
+        "--processes", default=max(1, auto_nprocs() / 4), type=int,
         help="Number of processes to use. Because eigenvector "
              "decompositions are thread-parallelized, this should "
              "usually be several times smaller than the number of "
@@ -133,8 +136,7 @@ def process_units(timestep=None, infer_timestep=None):
 
 
 def main(argv=None):
-    '''Run the driver script for this module. This code only runs if we're
-    being run as a script. Otherwise, it's silent and just exposes methods.'''
+
     args = process_command_line(argv)
 
     try:

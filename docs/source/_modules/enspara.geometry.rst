@@ -1,6 +1,14 @@
 enspara\.geometry
 =================
 
+enspara\.geometry\.libdist module
+---------------------------------
+
+.. automodule:: enspara.geometry.libdist
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
 enspara\.geometry\.pockets module
 ---------------------------------
 
