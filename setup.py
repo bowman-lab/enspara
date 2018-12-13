@@ -1,6 +1,7 @@
 import platform
 import sys
 
+from setuptools import find_packages
 from distutils.core import setup
 from distutils.extension import Extension
 
@@ -74,7 +75,7 @@ cython_extensions = [
 
 setup(
     name='enspara',
-    packages=['enspara'],
+    packages=find_packages(exclude=["tests"],),
     version=__version__,
     url="https://github.com/bowman-lab/enspara",
     platforms=['Linux', 'Mac OS-X', 'Unix'],
