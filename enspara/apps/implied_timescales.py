@@ -21,8 +21,9 @@ from enspara.util.parallel import auto_nprocs
 
 def process_command_line(argv):
 
-    parser = argparse.ArgumentParser(formatter_class=argparse.
-                                     ArgumentDefaultsHelpFormatter)
+    parser = argparse.ArgumentParser(
+        prog='implied',
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
     parser.add_argument(
         "--assignments", required=True,
