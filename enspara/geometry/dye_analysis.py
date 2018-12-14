@@ -1,12 +1,12 @@
 import numpy as np
 import mdtraj as md
-
+import scipy
 
 def _get_unit_vectors(vec):
     return vec/np.sqrt(np.einsum('ij,ij->i', vec, vec))[:,None]
 
 
-def get_dye_centers(trj, dye_length=0.4):
+def get_dye_centers(trj, dye_length=0.6):
     """Determines the idealized location of each residues beta-carbon
     coordinate from N, CA, and C coordinates.
 
@@ -56,7 +56,7 @@ def make_point_cloud(center=[0,0,0], r=1.0, ppa=10):
     return circle_cloud
 
 
-def reduce_point_cloud(
+def _remove_touches_protein(
         xyz, dye_center, point_cloud, dye_bredth,
         touches_protein_cutoff=0.24):
     touches_protein_cutoff_sq = touches_protein_cutoff**2
@@ -72,7 +72,52 @@ def reduce_point_cloud(
     return point_cloud
 
 
-def mean_distance_distribution(point_cloud1, point_cloud2, max_warn=1000000):
+def cluster_grids(point_cloud, spacing, n_clouds=all):
+    orig_cluster_mapping= scipy.cluster.hierarchy.fclusterdata(
+        point_cloud, t=spacing, criterion='distance')
+    orig_cluster_mapping -= orig_cluster_mapping.min()
+    largest_labels = np.argsort(-np.bincount(orig_cluster_mapping))
+    if n_clouds is all:
+        n_clouds = np.unique(orig_cluster_mapping).shape[0]
+    contiguous_iis = np.hstack(
+        [
+            np.where(
+                orig_cluster_mapping==label)[0]
+            for label in largest_labels[:n_clouds]])
+    contiguous_clouds = point_cloud[contiguous_iis]
+    return contiguous_clouds
+
+
+def reduce_point_cloud(
+        xyz, dye_center, point_cloud, dye_bredth,
+        ppa, touches_protein_cutoff=0.24, n_clouds=all):
+    point_cloud = _remove_touches_protein(
+        xyz=xyz, dye_center=dye_center, point_cloud=point_cloud,
+        dye_bredth=dye_bredth, touches_protein_cutoff=touches_protein_cutoff)
+    if point_cloud.shape[0] == 0:
+        point_cloud = np.array([dye_center])
+    else:
+        point_cloud = cluster_grids(
+            point_cloud, spacing=dye_bredth*2/ppa*1.5, n_clouds=n_clouds)
+    return point_cloud
+
+
+def _get_ensemble_FRET_distances(
+        xyz, dye_centers, dye_bredth, ppa, n_clouds, base_point_cloud,
+        min_dist):
+    point_cloud_pair = [
+        reduce_point_cloud(
+            xyz,
+            center_coord,
+            base_point_cloud + center_coord,
+            dye_bredth,
+            ppa, n_clouds=n_clouds)
+        for center_coord in dye_centers]
+    return mean_distance_distribution(*point_cloud_pair, min_dist=min_dist)
+
+
+def mean_distance_distribution(
+        point_cloud1, point_cloud2, min_dist=0.6, max_warn=10000000):
     if point_cloud1.shape[0]*point_cloud2.shape[0] > max_warn:
         print("too many distances in point cloud!")
         raise
@@ -86,11 +131,13 @@ def mean_distance_distribution(point_cloud1, point_cloud2, max_warn=1000000):
         dists = np.sqrt(np.einsum("ij,ij->i", diffs, diffs))
         all_dists.append(dists)
     all_dists = np.hstack(all_dists)
-    return all_dists.mean()
+    return all_dists[all_dists >= min_dist].mean()
 
 
-def FRET_approx_dists(
-        trj, resSeq_pairs, dye_length=1.0, dye_bredth=2.0, ppa=10):
+def FRET_ensemble(
+        trj, resSeq_pairs, dye_length=0.6, dye_bredth=2.0, ppa=12,
+        n_clouds=2, min_dist=0.6):
+    assert np.array(resSeq_pairs).shape[1] == 2
     dye_centers = get_dye_centers(trj, dye_length=dye_length)
     base_point_cloud = make_point_cloud(r=dye_bredth, ppa=ppa)
     prot_resSeqs = np.array([res.resSeq for res in trj.top.residues])
@@ -98,13 +145,11 @@ def FRET_approx_dists(
     for resSeq_pair in resSeq_pairs:
         resis = np.array(
             [np.where(prot_resSeqs == resSeq)[0][0] for resSeq in resSeq_pair])
-        FRET_mean_dists = []
+        FRET_ensemble_dists = []
         for frame_num in np.arange(trj.n_frames):
-            point_cloud_pair = [
-                reduce_point_cloud(
-                    trj.xyz[frame_num], center_coord,
-                    base_point_cloud + center_coord, dye_bredth)
-                for center_coord in dye_centers[frame_num, resis]]
-            FRET_mean_dists.append(mean_distance_distribution(*point_cloud_pair))
-        all_FRET_mean_dists.append(np.array(FRET_mean_dists))
+            FRET_ensemble_dists_tmp = _get_ensemble_FRET_distances(
+                trj.xyz[frame_num], dye_centers[frame_num, resis], dye_bredth,
+                ppa, n_clouds, base_point_cloud, min_dist)
+            FRET_ensemble_dists.append(FRET_ensemble_dists_tmp)
+        all_FRET_mean_dists.append(np.array(FRET_ensemble_dists))
     return all_FRET_mean_dists
