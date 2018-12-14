@@ -83,6 +83,7 @@ setup(
     include_dirs=[np.get_include()],
     ext_modules=cythonize(cython_extensions),
     python_requires='>=3.5,<3.7',  # cython is broken for 3.7
+    entry_points={'console_scripts': ['enspara = enspara.apps.main:main']},
     install_requires=[
         'Cython>=0.24',
         'numpy>=1.13',

@@ -62,6 +62,7 @@ def process_command_line(argv):
     TRAJECTORY_DISTANCES = ['rmsd']
 
     parser = argparse.ArgumentParser(
+        prog='cluster',
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
         description="Cluster a set (or several sets) of trajectories "
                     "into a single state space based upon RMSD.")
