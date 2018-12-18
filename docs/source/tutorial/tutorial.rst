@@ -17,8 +17,8 @@ common model system for studying protein folding. It was prepared by Robert
 McGibbon for MSMBuilder3.
 
 .. code-block:: bash
-	
-	mkdir fs_peptide && cd fs_peptide
+
+    mkdir fs_peptide && cd fs_peptide
     wget https://ndownloader.figshare.com/articles/1030363/versions/1 -O fs_peptide.zip
     unzip fs_peptide.zip
 

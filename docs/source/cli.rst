@@ -1,4 +1,4 @@
-Apps
+CLI
 ========
 
 These apps make it easy to do the common tasks associated with building an MSM.
