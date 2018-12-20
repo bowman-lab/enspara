@@ -30,7 +30,7 @@ try:
 except ImportError:
     sys.stderr.write('-' * 80)
     sys.stderr.write('\n'.join([
-        'Error: building mdtraj requires numpy and cython>=0.19',
+        'Error: building enspara requires numpy and cython>=0.19',
         'Try running the command ``pip install numpy cython`` or'
         '``conda install numpy cython``.',
 
