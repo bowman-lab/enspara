@@ -37,6 +37,12 @@ except ImportError:
         'or see http://docs.scipy.org/doc/numpy/user/install.html and'
         'http://cython.org/ for more information.']))
 
+try:
+    import mdtraj
+    mdtraj_capi = mdtraj.capi()
+except (ImportError, AttributeError):
+    print('MDTraj>=1.1 is required')
+    sys.exit(1)
 
 # this probably won't work for everyone. Works for me, though!
 # they'll need gcc 7 installed. Unfortunately, I don't have any idea how
@@ -62,10 +68,14 @@ cython_extensions = [
         extra_compile_args=extra_compile_args,
         extra_link_args=extra_link_args,
     ), Extension(
-        "enspara.geometry.libdist",
-        ["enspara/geometry/libdist.pyx"],
+        name="enspara.geometry.libdist",
+        sources=["enspara/geometry/libdist.pyx"],
+        # msvc needs to be told "libtheobald", gcc wants just "theobald"
+        libraries=['theobald'],
         extra_compile_args=extra_compile_args,
         extra_link_args=extra_link_args,
+        include_dirs=[mdtraj_capi['include_dir'], np.get_include()],
+        library_dirs=[mdtraj_capi['lib_dir']],
     ), Extension(
         "enspara.msm.libmsm",
         ["enspara/msm/libmsm.pyx"],
