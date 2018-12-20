@@ -13,6 +13,7 @@ from sklearn.datasets import make_blobs
 
 from numpy.testing import assert_array_equal, assert_allclose
 
+from ..geometry import libdist
 from ..cluster.hybrid import KHybrid, hybrid
 from ..cluster import kcenters, kmedoids, util
 from ..exception import DataInvalid, ImproperlyConfigured
@@ -604,6 +605,149 @@ class TestNumpyClustering(unittest.TestCase):
                 format(c=c, g=self.generators, d=mindist, dmax=distance))
 
 
+def test_kcenters_iteration_triangle_npy():
+
+    means = [(0, 0), (0, 10), (10, 0)]
+    X, y = make_blobs(centers=means, random_state=1, n_samples=20)
+
+    ctr_inds = []
+    assignments = np.full(len(X), -1, dtype=int)
+    distances = np.full(len(X), np.inf, dtype=float)
+
+    for i in range(6):
+        trad_center, trad_dists, trad_assigs, trad_ctr_inds = \
+            kcenters._kcenters_iteration(
+                X, libdist.euclidean, distances.copy(),
+                assignments.copy(), ctr_inds.copy(),
+                use_triangle_inequality=False)
+
+        tri_center, tri_dists, tri_assigs, tri_ctr_inds = \
+            kcenters._kcenters_iteration(
+                X, libdist.euclidean, distances.copy(),
+                assignments.copy(), ctr_inds.copy(),
+                use_triangle_inequality=True)
+
+        assert_array_equal(trad_center, tri_center)
+        assert_array_equal(trad_dists, tri_dists)
+        assert_array_equal(trad_assigs, tri_assigs)
+        assert_array_equal(trad_ctr_inds, tri_ctr_inds)
+
+        distances = trad_dists
+        assignments = trad_assigs
+        ctr_inds = trad_ctr_inds
+
+
+def test_kcenters_iteration_triangle_mdtraj():
+
+    X = md.load(get_fn('frame0.h5'))
+
+    ctr_inds = []
+    assignments = np.full(len(X), -1, dtype=int)
+    distances = np.full(len(X), np.inf, dtype=float)
+
+    for i in range(6):
+        trad_center, trad_dists, trad_assigs, trad_ctr_inds = \
+            kcenters._kcenters_iteration(
+                X, md.rmsd, distances.copy(),
+                assignments.copy(), ctr_inds.copy(),
+                use_triangle_inequality=False)
+
+        tri_center, tri_dists, tri_assigs, tri_ctr_inds = \
+            kcenters._kcenters_iteration(
+                X, md.rmsd, distances.copy(),
+                assignments.copy(), ctr_inds.copy(),
+                use_triangle_inequality=True)
+
+        assert_allclose(trad_center.xyz, tri_center.xyz, atol=1e-07)
+        assert_allclose(trad_dists, tri_dists, atol=1e-3)
+        assert_array_equal(trad_assigs, tri_assigs)
+        assert_array_equal(trad_ctr_inds, tri_ctr_inds)
+
+        distances = trad_dists
+        assignments = trad_assigs
+        ctr_inds = trad_ctr_inds
+
+
+@attr('mpi')
+def test_mpi_kcenters_iteration_triangle_npy():
+    from ..mpi import MPI_RANK, MPI_SIZE
+
+    means = [(0, 0), (0, 10), (10, 0)]
+
+    # build blobs such that each node owns only one blob.
+    X, y = make_blobs(centers=means[MPI_RANK::MPI_SIZE],
+                      cluster_std=0.5,
+                      random_state=0,
+                      n_samples=20)
+
+    centers = []
+    ctr_inds = []
+    assignments = np.full(len(X), -1, dtype=int)
+    distances = np.full(len(X), np.inf, dtype=float)
+
+    for i in range(6):
+        trad_center, trad_dists, trad_assigs, trad_ctr_inds = \
+            kcenters._kcenters_iteration_mpi(
+                X, libdist.euclidean, distances.copy(),
+                assignments.copy(), ctr_inds.copy(),
+                centers=centers,
+                use_triangle_inequality=False)
+
+        tri_center, tri_dists, tri_assigs, tri_ctr_inds = \
+            kcenters._kcenters_iteration_mpi(
+                X, libdist.euclidean, distances.copy(),
+                assignments.copy(), ctr_inds.copy(),
+                centers=centers,
+                use_triangle_inequality=True)
+
+        assert_array_equal(trad_center, tri_center)
+        assert_array_equal(trad_dists, tri_dists)
+        assert_array_equal(trad_assigs, tri_assigs)
+        assert_array_equal(trad_ctr_inds, tri_ctr_inds)
+
+        centers.append(trad_center)
+        distances = trad_dists
+        assignments = trad_assigs
+        ctr_inds = trad_ctr_inds
+
+
+@attr('mpi')
+def test_mpi_kcenters_iteration_triangle_mdtraj():
+    from ..mpi import MPI_RANK, MPI_SIZE
+
+    X = md.load(get_fn('frame0.h5'))[MPI_RANK::MPI_SIZE]
+
+    centers = []
+    ctr_inds = []
+    assignments = np.full(len(X), -1, dtype=int)
+    distances = np.full(len(X), np.inf, dtype=float)
+
+    for i in range(6):
+        trad_center, trad_dists, trad_assigs, trad_ctr_inds = \
+            kcenters._kcenters_iteration_mpi(
+                X, md.rmsd, distances.copy(),
+                assignments.copy(), ctr_inds.copy(),
+                centers=centers,
+                use_triangle_inequality=False)
+
+        tri_center, tri_dists, tri_assigs, tri_ctr_inds = \
+            kcenters._kcenters_iteration_mpi(
+                X, md.rmsd, distances.copy(),
+                assignments.copy(), ctr_inds.copy(),
+                centers=centers,
+                use_triangle_inequality=True)
+
+        assert_allclose(trad_center.xyz, tri_center.xyz, atol=1e-07)
+        assert_allclose(trad_dists, tri_dists, atol=1e-3)
+        assert_array_equal(trad_assigs, tri_assigs)
+        assert_array_equal(trad_ctr_inds, tri_ctr_inds)
+
+        centers.append(trad_center)
+        distances = trad_dists
+        assignments = trad_assigs
+        ctr_inds = trad_ctr_inds
+
+
 @attr('mpi')
 def test_kmedoids_propose_center_amongst():
 
@@ -647,7 +791,3 @@ def test_kmedoids_propose_center_amongst_hits_all():
         hits.add(int(prop_c))
 
     assert_equal(hits, set([0, 3, 6, 9, 12, 15]))
-
-
-if __name__ == '__main__':
-    unittest.main()
