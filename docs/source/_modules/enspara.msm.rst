@@ -5,6 +5,10 @@ enspara\.msm
 enspara\.msm\.bace module
 -------------------------
 
+.. danger::
+    Our BACE implementation is still experimental. Use only if you are an
+    expert and know what you are doing.
+
 .. automodule:: enspara.msm.bace
     :members:
     :undoc-members:
