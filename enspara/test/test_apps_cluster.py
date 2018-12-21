@@ -474,3 +474,74 @@ def test_feature_cluster_number_kcenters_npy_input():
 
     assert_equal(len(np.unique(assignments)), 3)
     assert_array_equal(y, assignments)
+
+
+def test_feature_cluster_number_kcenters_npy_input_iterations_flag_error():
+
+    expected_size = (3, (50, 30, 20))
+
+    X, y = make_blobs(
+        n_samples=100, n_features=3, centers=3, center_box=(0, 100),
+        random_state=3)
+
+    with tempfile.TemporaryDirectory() as d:
+
+        a = ra.RaggedArray(array=X, lengths=[50, 30, 20])
+
+        pathnames = []
+        for row_i in range(len(a.lengths)):
+            pathname = os.path.join(d, "%s.npy" % row_i)
+            np.save(pathname, a[row_i])
+            pathnames.append(pathname)
+
+        with assert_raises(exception.ImproperlyConfigured):
+            _, _ = runhelper([
+                '--features', pathnames[0], pathnames[1], pathnames[2],
+                '--cluster-number', '3',
+                '--cluster-iterations', '100',
+                '--algorithm', 'kcenters',
+                '--cluster-distance', 'euclidean'],
+                expected_size=expected_size,
+                centers_format='npy')
+
+
+def test_feature_cluster_number_khybrid_npy_input_zero_iterations():
+
+    expected_size = (3, (50, 30, 20))
+
+    X, y = make_blobs(
+        n_samples=100, n_features=3, centers=3, center_box=(0, 100),
+        random_state=3)
+
+    kc = cluster.KCenters('euclidean', n_clusters=3)
+    kc.fit(X)
+
+    with tempfile.TemporaryDirectory() as d:
+
+        a = ra.RaggedArray(array=X, lengths=[50, 30, 20])
+
+        pathnames = []
+        for row_i in range(len(a.lengths)):
+            pathname = os.path.join(d, "%s.npy" % row_i)
+            np.save(pathname, a[row_i])
+            pathnames.append(pathname)
+
+        distances, assignments = runhelper([
+            '--features', pathnames[0], pathnames[1], pathnames[2],
+            '--cluster-number', '3',
+            '--algorithm', 'khybrid',
+            '--cluster-iterations', '0',
+            '--cluster-distance', 'euclidean'],
+            expected_size=expected_size,
+            centers_format='npy')
+
+    assert_array_equal(a.lengths, assignments.lengths)
+    assert_array_equal(a.lengths, distances.lengths)
+
+    y = reorder_assignments(y)
+    assignments = reorder_assignments(assignments.flatten())
+
+    assert_equal(len(np.unique(assignments)), 3)
+    assert_array_equal(y, assignments)
+
+    assert_array_equal(kc.distances_, distances.flatten())
