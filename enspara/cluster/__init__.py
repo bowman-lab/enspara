@@ -1,5 +1,5 @@
-
-from __future__ import print_function, division, absolute_import
+"""Library code for clustering tasks, including KCenters and KHybrid.
+"""
 
 from . import hybrid
 from . import kcenters

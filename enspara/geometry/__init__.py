@@ -1,4 +1,5 @@
-from __future__ import print_function, division, absolute_import
+"""Geometrical analysis, including distance, rotamer and pocket calculations
+"""
 
 from .pockets import *
 from .rotamer import *
