@@ -68,6 +68,8 @@ times. Let's plot it and see how it looks:
         plt.plot(lag_times, implied_timescales[:, i],
                  label='$\lambda_{%s}$' % (i+1))
 
+    plt.show()
+
 Once you've got a lagtime you're satisfied with, make an MSM the same way as
 before (we also could have stored the old one).
 
