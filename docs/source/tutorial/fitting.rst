@@ -3,9 +3,18 @@ Fitting
 
 Once you've clustered your data, you'll want to build a Markov state model.
 Because this process is usually much less computationally expensive than
-clustering, we'll drop into a python shell (or even better, jupyter notebook)
-to do it.
+clustering, we'll drop into a ipython shell (or even better, jupyter notebook)
+to do it::
 
+    $ ipython
+    Python 3.6.0 \|Continuum Analytics, Inc.\| (default, Dec 23 2016, 12:22:00)
+    Type 'copyright', 'credits' or 'license' for more information
+    IPython 6.2.1 -- An enhanced Interactive Python. Type '?' for help.
+
+    In [1]:
+
+Then, type/paste the following code to load the assignments you computed
+during clustering:
 
 .. code-block:: python
 
