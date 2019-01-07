@@ -5,7 +5,7 @@ For further information see reference.
 
 References
 -------------
-[1] Sukrit Singh and Gregory R. Bowman, "Quantifying allosteric communication via 
+.. [1] Sukrit Singh and Gregory R. Bowman, "Quantifying allosteric communication via 
     both concerted structural changes and conformational disorder with CARDS".
     Journal of Chemical Theory and Computation 2017 13 (4), 1509-1517
     DOI: 10.1021/acs.jctc.6b01181 
@@ -62,8 +62,8 @@ class RotamerFeaturizer(object):
         first_trj = next(trj_iter)
         rotamer_trj, atom_inds, rotamer_n_states = geometry.all_rotamers(
             first_trj, buffer_width=self.buffer_width)
-        print("Loaded dihedrals assignments and indices.")
-        print("Now loading trajectories.")
+        logger.info("Loaded dihedrals assignments and indices.")
+        logger.info("Now loading trajectories.")
 
         # build the list of all of the rotamerized trajectories, starting
         # with the one we just calculated above.
@@ -71,7 +71,7 @@ class RotamerFeaturizer(object):
         rotamer_trajs.extend(
             [geometry.all_rotamers(t, buffer_width=self.buffer_width)[0]
              for t in trj_iter])
-        print("Loaded all rotamer states.")
+        logger.info("Loaded all rotamer states.")
 
         self.feature_trajectories_ = rotamer_trajs
         self.n_feature_states_ = rotamer_n_states

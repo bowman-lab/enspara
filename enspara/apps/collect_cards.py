@@ -114,7 +114,7 @@ def process_command_line(argv):
 def load_trajectory_generator(trajectories, topology):
 
     for i,t in enumerate(trajectories):
-        print('loading '+str(t))
+        logger.info('loading '+str(t))
         yield md.load(t, top=topology)
 
 
@@ -133,7 +133,7 @@ def load_trajs(args):
     #gen = (md.load(traj, top=topology) for traj in args.trajectories)
     gen = load_trajectory_generator(trajectories, topology)
 
-    print("Created generator")
+    logger.info("Created generator")
 
     return gen
 
