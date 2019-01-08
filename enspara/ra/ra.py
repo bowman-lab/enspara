@@ -253,11 +253,14 @@ def _convert_from_2d(iis_ragged, lengths=None, starts=None, error_check=True):
             [second_dimension for n in first_dimension])
     first_dimension, second_dimension = _handle_negative_indices(
         first_dimension, second_dimension, lengths=lengths, starts=starts)
-    # Check for index error
+    # Check if row is too short for indexing
     if lengths is not None and error_check:
         if np.any(lengths[first_dimension] <= second_dimension):
-            raise IndexError
-    iis_flat = starts[first_dimension]+second_dimension
+            raise IndexError(("Length of dimension {} ({}) is out of "
+                              "range for index {}")
+                             .format(first_dimension, lengths[first_dimension],
+                                     second_dimension))
+    iis_flat = starts[first_dimension] + second_dimension
     return (iis_flat,)
 
 
