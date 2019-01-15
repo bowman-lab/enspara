@@ -16,6 +16,8 @@ import json
 import warnings
 from glob import glob
 
+import tables
+
 import numpy as np
 import mdtraj as md
 
@@ -62,6 +64,7 @@ def process_command_line(argv):
     TRAJECTORY_DISTANCES = ['rmsd']
 
     parser = argparse.ArgumentParser(
+        prog='cluster',
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
         description="Cluster a set (or several sets) of trajectories "
                     "into a single state space based upon RMSD.")
@@ -104,12 +107,15 @@ def process_command_line(argv):
     cluster_args.add_argument(
         '--cluster-number', default=None, type=int,
         help="Produce at least this number of clusters.")
-
     cluster_args.add_argument(
         "--cluster-distance", default=None,
         choices=FEATURE_DISTANCES + TRAJECTORY_DISTANCES,
         help="The metric for measuring distances. Some metrics (e.g. rmsd) "
              "only apply to trajectories, and others only to features.")
+    cluster_args.add_argument(
+        "--cluster-iterations", default=None, type=int,
+        help="The number of refinement iterations to perform. This is only "
+             "relevant to khybrid clustering.")
 
     cluster_args.add_argument(
         '--subsample', default=1, type=int,
@@ -211,6 +217,10 @@ def process_command_line(argv):
 
     if args.algorithm == 'kcenters':
         args.Clusterer = KCenters
+        if args.cluster_iterations is not None:
+            raise exception.ImproperlyConfigured(
+                "--cluster-iterations only has an effect when using an "
+                "interative clustering scheme (e.g. khybrid).")
     elif args.algorithm == 'khybrid':
         args.Clusterer = KHybrid
 
@@ -251,7 +261,7 @@ def load_features(features, stride):
         with timed("Loading features took %.1f s.", logger.info):
             try:
                 data = ra.load(features[0])
-            except exception.DataInvalid:
+            except tables.exceptions.NoSuchNodeError:
                 data = ra.load(features[0], keys=...)
 
         lengths = data.lengths
@@ -433,11 +443,16 @@ def main(argv=None):
     # be local (i.e. only this node's data).
     lengths, data = load_trjs_or_features(args)
 
+    kwargs = {}
+    if args.cluster_iterations is not None:
+        kwargs['kmedoids_updates'] = int(args.cluster_iterations)
+
     clustering = args.Clusterer(
         metric=args.cluster_distance,
         n_clusters=args.cluster_number,
         cluster_radius=args.cluster_radius,
-        mpi_mode=mpi_mode)
+        mpi_mode=mpi_mode,
+        **kwargs)
 
     clustering.fit(data)
 

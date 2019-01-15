@@ -94,7 +94,8 @@ Atom Selection and Shared State Spaces
 
 It is also possible to cluster proteins with differing topologies into the same
 state space. To do this, we rely on the :code:`--atoms` flag to select matching
-atoms between the two topologies. The :code:`--atoms` flag uses the MDTraj DSL
+atoms between the two topologies. The :code:`--atoms` flag uses the
+`MDTraj DSL <http://mdtraj.org/latest/atom_selection.html>`_
 selection syntax to specify which atoms will be loaded from each trajectory.
 
 Imagine we have simulations of a wild-type and point mutant. To specify the
