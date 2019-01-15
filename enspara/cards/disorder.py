@@ -1,16 +1,10 @@
-# Author: Gregory R. Bowman <gregoryrbowman@gmail.com>
-# Contributors:
-# Copyright (c) 2016, Washington University in St. Louis
-# All rights reserved.
-# Unauthorized copying of this file, via any medium is strictly prohibited
-# Proprietary and confidential
-
 import logging
 import numpy as np
 from ..util import array as ra
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
+
 
 def transitions(assignments):
     """Computes the frames at which a state transition occurs for a list
@@ -43,6 +37,25 @@ def transitions(assignments):
 
 
 def traj_ord_disord_times(transition_times):
+    """Calculate order, disorder times from a list of the times of transitions.
+
+    Parameters
+    ----------
+    transition_times : ndarray, shape=(n_transitions,)
+        Array containing the timpoints at which transitions happened
+
+    Returns
+    -------
+    ord_time : float
+        The order time
+    n_ord : int
+        The number of frames in the ordered state
+    disord_time : float
+        The disorder time
+    n_disord
+        The number of frames in the disordered state
+    """
+
     # this is for one trajectory
     # n_org and n_disord variables allow weight multiple trajectories
 
@@ -116,8 +129,11 @@ def create_disorder_traj(transition_times, traj_len, ord_time, disord_time):
 
 
 def assign_order_disorder(rotamer_trajs):
-    """Assigns each frame a disordered or ordered state (ordered=1; disorder=0).
-    
+    """Assigns each frame a disordered or ordered state.
+
+    Frames that are ordered will recieve a value of 0, disordered frames
+    are assigned 1.
+
     Parameters
     ----------
     rotamer_trajs: array, shape=(n_features, n_frames)
@@ -126,17 +142,12 @@ def assign_order_disorder(rotamer_trajs):
     Returns
     -------
     disordered_trajs: list
-        List of n.arrays with disorder/order assignments for each trajectory
+        List of arrays with disorder/order assignments for each trajectory
 
-    disorder_n_states: array, shape=(n_features,)
-        The number of possible states for each feature in disordered_trajs (2)
-   
-    References
-    ----------
-    [1] Singh, S., & Bowman, G. R. (2017). Quantifying Allosteric
-        Communication via Correlations in Structure and Disorder.
-        Biophysical Journal, 112(3), 498a.
+    disorder_n_states: ndarray, shape=(n_features,)
+        The number of possible states for each feature in disordered_trajs
     """
+
     logger.debug("Calculating ordered/disordered times")
     n_features = rotamer_trajs[0].shape[1]
     transition_times, mean_ordered_times, mean_disordered_times = \
@@ -152,8 +163,8 @@ def assign_order_disorder(rotamer_trajs):
                 transition_times[i][j], traj_len, mean_ordered_times[j],
                 mean_disordered_times[j])
 
-        disordered_trajs.append(dis_traj)
-    disorder_n_states = 2*np.ones(n_features, dtype='int')
+        disordered_trajs.append(dis_traj.astype('int16'))
+    disorder_n_states = 2*np.ones(n_features, dtype='int16')
 
     return disordered_trajs, disorder_n_states
 
@@ -161,7 +172,7 @@ def assign_order_disorder(rotamer_trajs):
 def transition_stats(rotamer_trajs):
     """Compute the transition time between disordered/ordered states and
     the mean transition time between a set of trajectories' mean tranisiton times
-    
+
     Parameters
     ----------
     rotamer_trajs: array, shape=(n_features, n_frames)
@@ -177,13 +188,7 @@ def transition_stats(rotamer_trajs):
         Mean ordered time for each feature
 
     mean_disordered_times: array, shape=(n_features,)
-        Mean disordered time for each feature    
-   
-    References
-    ----------
-    [1] Singh, S., & Bowman, G. R. (2017). Quantifying Allosteric
-        Communication via Correlations in Structure and Disorder.
-        Biophysical Journal, 112(3), 498a.
+        Mean disordered time for each feature
     """
 
     n_traj = len(rotamer_trajs)

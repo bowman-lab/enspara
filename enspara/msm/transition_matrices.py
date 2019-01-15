@@ -9,6 +9,7 @@ from __future__ import print_function, division, absolute_import
 
 import logging
 import csv
+import numbers
 
 import numpy as np
 import scipy
@@ -16,6 +17,7 @@ import scipy.sparse
 import scipy.sparse.linalg
 from scipy.sparse.csgraph import connected_components
 
+from .. import exception
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -109,7 +111,7 @@ class TrimMapping:
 
 
 def assigns_to_counts(
-        assigns, n_states=None, lag_time=1, sliding_window=True):
+        assigns, lag_time, max_n_states=None, sliding_window=True):
     """Count transitions between states in a single trajectory.
 
     Parameters
@@ -117,13 +119,13 @@ def assigns_to_counts(
     assigns : array, shape=(traj_len, )
         A 2-D array where each row is a trajectory consisting of a
         sequence of state indices.
-    n_states : int, default=None
+    lag_time : int
+        The lag time (i.e. observation interval) for counting
+        transitions.
+    max_n_states : int, default=None
         The number of states. This is useful for controlling the
         dimensions of the transition count matrix in cases where the
         input trajectory does not necessarily visit every state.
-    lag_time : int, default=1
-        The lag time (i.e. observation interval) for counting
-        transitions.
     sliding_window : bool, default=True
         Whether to use a sliding window for counting transitions or to
         take every lag_time'th state.
@@ -134,12 +136,27 @@ def assigns_to_counts(
         A transition count matrix.
     """
 
-    n_traj = len(assigns)
+    if not isinstance(lag_time, numbers.Integral):
+        raise exception.DataInvalid(
+            "The lag time must be an integer. Got %s type %s." %
+            lag_time, type(lag_time))
+    if lag_time < 1:
+        raise exception.DataInvalid(
+            "Lag times must be be strictly greater than 0. Got '%s'." %
+            lag_time)
+
+    # if it's 1d, later stuff will fail
+    if len(assigns.shape) == 1:
+        raise exception.DataInvalid(
+            'The given assignments array has 1-dimensional shape %s. '
+            'Two dimensional shapes = (n_trj, n_frames) are expected. '
+            'If this is really what you want, try using '
+            'assignments.reshape(1, -1) to create a single-row 2d array.')
 
     assigns = np.array([a[np.where(a != -1)] for a in assigns])
 
-    if n_states is None:
-        n_states = np.concatenate(assigns).max() + 1
+    if max_n_states is None:
+        max_n_states = np.concatenate(assigns).max() + 1
 
     transitions = [
         _transitions_helper(
@@ -149,7 +166,7 @@ def assigns_to_counts(
     mat_coords = np.hstack(transitions)
     mat_data = np.ones(mat_coords.shape[1], dtype=int)
     C = scipy.sparse.coo_matrix(
-        (mat_data, mat_coords), shape=(n_states,n_states))
+        (mat_data, mat_coords), shape=(max_n_states, max_n_states))
     return C
 
 

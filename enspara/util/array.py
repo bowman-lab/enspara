@@ -1,11 +1,27 @@
-import logging
 import collections
-import itertools
-import numpy as np
 import copy
+import itertools
+import logging
+import numbers
+import numpy as np
+import resource
+import tables
+import time
+import warnings
 
 from mdtraj import io
 from ..exception import DataInvalid, ImproperlyConfigured
+
+logger = logging.getLogger(__name__)
+
+
+def zeros_like(array, *args, **kwargs):
+
+    if hasattr(array, '_data'):
+        flat_arr = np.zeros_like(array._data)
+        return RaggedArray(array=flat_arr, lengths=array.lengths)
+    else:
+        return np.zeros_like(array)
 
 
 def where(mask):
@@ -27,6 +43,19 @@ def where(mask):
 
 
 def save(output_name, ragged_array):
+    """Save a RaggedArray or numpy ndarray to disk as an HDF5 file.
+
+    Parameters
+    ----------
+    output_name : str
+        Path of file to write out.
+    ragged_array : np.ndarray, RaggedArray
+        Array to write to disk.
+
+    See Also
+    --------
+    mdtraj.io.saveh
+    """
 
     try:
         io.saveh(
@@ -50,51 +79,84 @@ def load(input_name, keys=None):
         If this option is specified, the ragged array is built from this
         list of keys, each of which are assumed to be a row of the final
         ragged array. An ellipsis can be provided to indicate all keys.
+
+    Returns
+    -------
+    ra : RaggedArray
+        A ragged array from disk.
     """
 
-    ragged_load = io.loadh(input_name)
+    with tables.open_file(input_name) as handle:
+        if keys is None:
+            if '/lengths' in handle:
+                return RaggedArray(
+                    handle.get_node('/array')[:],
+                    lengths=handle.get_node('/lengths'))
+            else:
+                return handle.get_node('/arr_0')[:]
+        else:
+            if keys is Ellipsis:
+                keys = [k.name for k in handle.list_nodes('/')]
 
-    if keys is None:
-        try:
-            return RaggedArray(
-                ragged_load['array'], lengths=ragged_load['lengths'])
-        except KeyError:
-            return ragged_load['arr_0']
-    else:
-        if keys is Ellipsis:
-            keys = ragged_load.keys()
+            logger.debug('Loading keys %s into RA', keys)
 
-        shapes = [ragged_load._handle.get_node(where='/', name=k).shape
-                  for k in ragged_load.keys()]
+            shapes = [handle.get_node(where='/', name=k).shape
+                      for k in keys]
 
-        if not all(len(shapes[0]) == len(shape) for shape in shapes):
-            raise DataInvalid(
-                "Loading a RaggedArray using HDF5 file keys requires that all "
-                "input arrays have the same dimension. Got shapes: %s"
-                % shapes)
-        for dim in range(1, len(shapes[0])):
-            if not all(shapes[0][dim] == shape[dim] for shape in shapes):
+            if not all(len(shapes[0]) == len(shape) for shape in shapes):
                 raise DataInvalid(
-                    "Loading a RaggedArray using HDF5 file keys requires that "
-                    "all input arrays share nonragged dimensions. Dimension "
-                    "%s didnt' match. Got shapes: %s" % (dim, shapes))
+                    "Loading a RaggedArray using HDF5 file keys requires "
+                    "that all input arrays have the same dimension. Got "
+                    "shapes: %s" % shapes)
+            for dim in range(1, len(shapes[0])):
+                if not all(shapes[0][dim] == shape[dim] for shape in shapes):
+                    raise DataInvalid(
+                        "Loading a RaggedArray using HDF5 file keys requires "
+                        "that all input arrays share nonragged dimensions. "
+                        " Dimension  %s didn't match. Got shapes: %s"
+                        % (dim, shapes))
 
-        lengths = [shape[0] for shape in shapes]
-        first_shape = ragged_load[ragged_load.keys()[0]].shape
+            lengths = [shape[0] for shape in shapes]
+            first_shape = shapes[0]
 
-        concat_shape = list(first_shape)
-        concat_shape[0] = sum(lengths)
+            concat_shape = list(first_shape)
+            concat_shape[0] = sum(lengths)
+            dtype = handle.get_node(where='/', name=keys[0]).dtype
+            if not all([dtype == handle.get_node(where='/', name=k).dtype
+                        for k in keys]):
+                raise DataInvalid(
+                    "Can't load keys in %s because the keys didn't have all "
+                    "the same dtype. Keys were: %s" % (dtype, keys))
 
-        concat = np.zeros(concat_shape)
+            logger.debug('Allocating array of shape %s.', concat_shape)
+            tick = time.perf_counter()
+            concat = np.zeros(concat_shape, dtype=dtype)
+            tock = time.perf_counter()
+            logger.debug('Allocated %.3f MB in %.2f min.',
+                         concat.data.nbytes / 1024**2, tock-tick)
 
-        start = 0
-        for key in ragged_load.keys():
-            arr = ragged_load[key]
-            end = start + len(arr)
-            concat[start:end] = arr
-            start = end
+            logger.debug(
+                'Filling array with %s blocks with initial memory '
+                'footprint of %.3f GB',
+                len(keys),
+                resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024**2)
+            tick = time.perf_counter()
+            start = 0
+            for key in keys:
+                node = handle.get_node(where='/', name=key)
+                end = start + len(node)
+                node.read(out=concat[start:end])
+                start = end
 
-        return RaggedArray(array=concat, lengths=lengths)
+            tock = time.perf_counter()
+            logger.debug(
+                'Filled RaggedArray in %.3f min with %.3f GB memory overhead.',
+                (tock-tick) / 60,
+                resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024**2)
+            tick = time.perf_counter()
+
+            handle.close()
+            return RaggedArray(array=concat, lengths=lengths, copy=False)
 
 
 def partition_indices(indices, traj_lengths):
@@ -373,24 +435,36 @@ class RaggedArray(object):
 
     __slots__ = ('_data', '_array', 'lengths')
 
-    def __init__(self, array, lengths=None, error_checking=True):
+    def __init__(self, array, lengths=None, error_checking=True, copy=True):
         # Check that input is proper (array of arrays)
-        if error_checking is True:
+        if error_checking:
             array = np.array(list(array))
             if len(array) > 20000:
-                logging.warning(
-                    "error checking is turned off for ragged arrays "
-                    "with first dimension greater than 20000")
+                # lenghts is None => we are not inferring lengths from
+                # e.g. nested lists
+                if lengths is None:
+                    logger.warning(
+                        "error checking is turned off for ragged arrays "
+                        "with first dimension greater than 20000")
             else:
                 _ensure_ragged_data(array)
-        # concatenate data if list of lists
+
+        # prepare self._data
         if (len(array) > 0) and (lengths is None):
+            logger.debug("Interpreting array as list/array of lists/arrays.")
             if _is_iterable(array[0]):
+                if not copy:
+                    warnings.warn(
+                        "Can't create a view into %s, copying anyway." %
+                        type(array), RuntimeWarning)
                 self._data = np.concatenate(array)
             else:
-                self._data = np.array(array)
+                self._data = np.array(array, copy=copy)
         elif len(array) > 0:
-            self._data = np.array(array)
+            logger.debug("Interpreting array as concatenated array.")
+            self._data = np.array(array, copy=copy)
+
+        # Prepare with _array
         # new array greater with >0 elements
         if (lengths is None) and (len(array) > 0):
             # array of arrays
@@ -449,36 +523,35 @@ class RaggedArray(object):
 
     def __getitem__(self, iis):
         # ints are handled by numpy
-        if type(iis) is int:
+        if isinstance(iis, numbers.Integral):
             return self._array[iis]
         # slices and lists are handled by numpy, but return a RaggedArray
-        elif (type(iis) is slice) or (type(iis) is list) \
-                or (type(iis) is np.ndarray):
+        elif isinstance(iis, (slice, list, np.ndarray)):
             return RaggedArray(self._array[iis])
         # tuples get index conversion from 2d to 1d
-        elif type(iis) is tuple:
+        elif isinstance(iis, tuple):
             first_dimension, second_dimension = iis
             # if the first dimension is a slice, converts both sets of indices
-            if type(first_dimension) is slice:
+            if isinstance(first_dimension, slice):
                 first_dimension_iis = _slice_to_list(
                     first_dimension, length=len(self.lengths))
                 # if the second dimension is a slice, determines the 2d indices
                 # from the lengths in the ragged dimension
-                if type(second_dimension) is slice:
+                if isinstance(second_dimension, slice):
                     iis, new_lengths  = _get_iis_from_slices(
                         first_dimension_iis, second_dimension, self.lengths)
                 # if second dimension is an int, make it look like a list
                 # and get iis
-                elif type(second_dimension) is int:
+                elif isinstance(second_dimension, numbers.Integral):
                     iis, new_lengths = _get_iis_from_list(
                         first_dimension_iis, [second_dimension])
                 else:
                     iis, new_lengths = _get_iis_from_list(
                         first_dimension_iis, second_dimension)
-            elif type(second_dimension) is slice:
+            elif isinstance(second_dimension, slice):
                 # if the first dimension is an int, but the second is
                 # a slice, numpy can handle it.
-                if type(first_dimension) is int:
+                if isinstance(first_dimension, numbers.Integral):
                     return self._array[first_dimension][second_dimension]
                 # if the second dimension is a slice, determines the 2d indices
                 # from the lengths in the ragged dimension
@@ -509,34 +582,33 @@ class RaggedArray(object):
         if type(value) is type(self):
             value = value._array
         # ints, slices, lists, and numpy objects are handled by numpy
-        if (type(iis) is int) or (type(iis) is slice) or \
-                (type(iis) is list) or (type(iis) is np.ndarray):
+        if isinstance(iis, (numbers.Integral, slice, list, np.ndarray)):
             self._array[iis] = value
             self.__init__(self._array)
         # tuples get index conversion from 2d to 1d
-        elif type(iis) == tuple:
+        elif isinstance(iis, tuple):
             first_dimension, second_dimension = iis
             # if the first dimension is a slice, converts both sets of indices
-            if type(first_dimension) is slice:
+            if isinstance(first_dimension, slice):
                 first_dimension_iis = _slice_to_list(
                     first_dimension, length=len(self.lengths))
                 # if second dimension is a slice, determines the 2d indices
                 # from the lengths in the ragged dimension
-                if type(second_dimension) is slice:
+                if isinstance(second_dimension, slice):
                     iis, new_lengths = _get_iis_from_slices(
                         first_dimension_iis, second_dimension, self.lengths)
                 # if the second dimension is an int, make it look like a list
                 # and get iis
-                elif type(second_dimension) is int:
+                elif isinstance(second_dimension, numbers.Integral):
                     iis, new_lengths = _get_iis_from_list(
                         first_dimension_iis, [second_dimension])
                 else:
                     iis, new_lengths = _get_iis_from_list(
                         first_dimension_iis, second_dimension)
-            elif type(second_dimension) is slice:
+            elif isinstance(second_dimension, slice):
                 # if the first dimension is an int, but the second is
                 # a slice, numpy can handle it.
-                if type(first_dimension) is int:
+                if isinstance(first_dimension, numbers.Integral):
                     self._array[first_dimension][second_dimension] = value
                     self.__init__(self._array)
                     return
@@ -638,8 +710,12 @@ class RaggedArray(object):
         if type(other) is type(self):
             other = other._data
         new_data = getattr(self._data, operator)(other)
-        return RaggedArray(
-            array=new_data, lengths=self.lengths, error_checking=False)
+
+        if new_data is NotImplemented:
+            return NotImplemented
+        else:
+            return RaggedArray(array=new_data, lengths=self.lengths,
+                               error_checking=False)
 
     # Non-built in functions
     def all(self):
@@ -653,6 +729,10 @@ class RaggedArray(object):
 
     def min(self):
         return self._data.min()
+
+    @property
+    def size(self):
+        return self._data.size
 
     def append(self, values):
         # if the incoming values is a RaggedArray, pull just the array
@@ -681,4 +761,3 @@ class RaggedArray(object):
 
     def flatten(self):
         return self._data.flatten()
-

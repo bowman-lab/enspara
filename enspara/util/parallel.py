@@ -7,6 +7,7 @@
 
 from __future__ import print_function, division, absolute_import
 
+import os
 import ctypes
 import functools
 import multiprocessing as mp
@@ -14,6 +15,10 @@ import numpy as np
 import scipy
 import scipy.sparse
 import scipy.sparse.linalg
+
+
+def auto_nprocs():
+    return int(os.getenv('OMP_NUM_THREADS', mp.cpu_count()))
 
 
 def pool_dense2d(arr, processes=None):

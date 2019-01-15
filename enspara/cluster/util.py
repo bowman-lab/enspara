@@ -7,28 +7,25 @@
 # Unauthorized copying of this file, via any medium is strictly prohibited
 # Proprietary and confidential
 
-from __future__ import print_function, division, absolute_import
-
+import logging
 from collections import namedtuple
 
 import mdtraj as md
 import numpy as np
 
+from ..geometry.libdist import euclidean
+
 from ..exception import ImproperlyConfigured, DataInvalid
 from ..util import partition_list, partition_indices
 from ..util import array as ra
 
+logger = logging.getLogger(__name__)
 
-class Clusterer(object):
-    """Clusterer class defines the base API for a clustering object in
-    the sklearn style.
+
+class MolecularClusterMixin:
+    """Additional logic for clusterers in enspara that cluster molecular
+    trajectories.
     """
-
-    def __init__(self, metric):
-        self.metric = _get_distance_method(metric)
-
-    def fit(self, X):
-        raise NotImplementedError("All Clusterers should implement fit().")
 
     def predict(self, X):
         """Use an existing clustring fit to predict the assignments,
@@ -53,10 +50,11 @@ class Clusterer(object):
                 "To predict the clustering result for new data, the "
                 "clusterer first must have fit some data.")
 
-        pred_centers, pred_assigs, pred_dists = assign_to_nearest_center(
-            traj=X,
+        pred_assigs, pred_dists = assign_to_nearest_center(
+            trajectory=X,
             cluster_centers=self.centers_,
             distance_method=self.metric)
+        pred_centers = find_cluster_centers(pred_assigs, pred_dists)
 
         result = ClusterResult(
             assignments=pred_assigs,
@@ -88,7 +86,6 @@ class ClusterResult(namedtuple('ClusterResult',
                                 'distances',
                                 'assignments',
                                 'centers'])):
-    __slots__ = ()
 
     def partition(self, lengths):
         """Split each array in this ClusterResult into multiple
@@ -117,12 +114,20 @@ class ClusterResult(namedtuple('ClusterResult',
         square = all(lengths[0] == l for l in lengths)
 
         if square:
+            logger.debug(
+                'Lengths are homogenous (%s); using numpy arrays '
+                'as output to partitioning.', lengths[0])
             return ClusterResult(
-                assignments=np.array(partition_list(self.assignments, lengths)),
+                assignments=np.array(partition_list(self.assignments,
+                                                    lengths)),
                 distances=np.array(partition_list(self.distances, lengths)),
                 center_indices=partition_indices(self.center_indices, lengths),
                 centers=self.centers)
         else:
+            logger.debug(
+                'Lengths are nonhomogenous (median=%d, min=%d, max=%d); '
+                'using RaggedArray as output to partitioning.',
+                np.median(lengths), np.min(lengths), np.max(lengths))
             return ClusterResult(
                 assignments=ra.RaggedArray(self.assignments, lengths=lengths),
                 distances=ra.RaggedArray(self.distances, lengths=lengths),
@@ -130,45 +135,90 @@ class ClusterResult(namedtuple('ClusterResult',
                 centers=self.centers)
 
 
-def assign_to_nearest_center(traj, cluster_centers, distance_method):
-    """Assign each frame from traj to one of the given cluster centers
+def assign_to_nearest_center(trajectory, cluster_centers, distance_method):
+    """Assign each frame from trajectory to one of the given cluster centers
     using the given distance metric.
 
     Parameters
     ----------
-    traj: {array-like, trajectory}, shape=(n_frames, n_features, ...)
+    trajectory: md.Trajectory or ndarray, shape=(n_frames, n_features, ...)
         The frames to assign to a cluster_center. This parameter need
         only implement `__len__` and  be accepted by `distance_method`.
     cluster_centers : iterable
         Iterable containing some number of exemplar data that each datum
-        in `traj` can be compared to using distance_method.
-    distance_method: function, params=(traj, cluster_centers[i])
+        in `trajectory` can be compared to using distance_method.
+    distance_method: function, params=(trajectory, cluster_centers[i])
         The distance method to use for assigning each observation in
-        trajs to one of the cluster_centers. Must take the entire traj
-        and one item from cluster_centers as parameters.
+        trajectorys to one of the cluster_centers. Must take the entire
+        trajectory and one item from cluster_centers as parameters.
 
     Returns
     ----------
-    tuple : (cluster_center_indices, assignments, distances)
+    assignments : ndarray, shape=(n_frames,)
+        The assignment of each frame in `trajectory` to a frame in
+        cluster_centers.
+    distances : ndarray, shape=(n_frames,)
+        The distance between each frame in `trajectory` and its assigned
+        frame in cluster_centers.
+    """
+
+    assignments = np.zeros(len(trajectory), dtype=int)
+    distances = np.empty(len(trajectory), dtype=float)
+    distances.fill(np.inf)
+
+    # if there are more cluster_centers than trajectory, significant
+    # performance benefit can be realized by computing each frame's
+    # distance to ALL cluster centers, rather than the reverse.
+    if len(cluster_centers) > len(trajectory) and hasattr(cluster_centers, 'xyz'):
+        for i, frame in enumerate(trajectory):
+            dist = distance_method(cluster_centers, frame)
+            assignments[i] = np.argmin(dist)
+            distances[i] = np.min(dist)
+    else:
+        for i, center in enumerate(cluster_centers):
+            dist = distance_method(trajectory, center)
+            inds = (dist < distances)
+            distances[inds] = dist[inds]
+            assignments[inds] = i
+
+    return assignments, distances
+
+
+def find_cluster_centers(assignments, distances):
+    """Given a list of distances and assignments, find the
+    lowest-distance frame to each label in assignments.
+
+    Parameters
+    ----------
+    distances: array-like, shape=(n_frames,)
+        The distance of each observation to the cluster center.
+    assignments : array-like, shape=(n_frames,)
+        The assignment of each observation to a cluster.
+
+    Returns
+    ----------
+    cluster_center_indices : array, shape=(n_labels,)
         A tuple containing the assignment of each observation to a
         center (assignments), the distance to that center (distances),
         and a list of observations that are closest to a given center
         (cluster_center_indices.)
     """
 
-    assignments = np.zeros(len(traj), dtype=int)
-    distances = np.empty(len(traj), dtype=float)
-    distances.fill(np.inf)
-    cluster_center_inds = []
+    if len(distances) != len(assignments):
+        raise DataInvalid(
+            "Length of distances (%s) must match length of assignments "
+            "(%s)." % (len(distances), len(assignments)))
 
-    for i, center in enumerate(cluster_centers):
-        dist = distance_method(traj, center)
-        inds = (dist < distances)
-        distances[inds] = dist[inds]
-        assignments[inds] = i
-        cluster_center_inds.append(np.argmin(dist))
+    unique_centers = np.unique(assignments)
+    center_inds = np.zeros_like(unique_centers)
 
-    return cluster_center_inds, assignments, distances
+    for i, c in enumerate(unique_centers):
+        assigned_frames = np.where(assignments == c)[0]
+        ind = assigned_frames[np.argmin(distances[assigned_frames])]
+
+        center_inds[i] = ind
+
+    return center_inds
 
 
 def load_frames(filenames, indices, **kwargs):
@@ -215,36 +265,11 @@ def load_frames(filenames, indices, **kwargs):
     return centers
 
 
-def find_cluster_centers(traj_lst, distances):
-    '''
-    Use the distances matrix to calculate which of the trajectories in
-    traj_lst are the center of a cluster. Return a list of indices.
-    '''
-
-    if len(traj_lst) != len(distances):
-        raise DataInvalid(
-            "Expected len(traj_lst) ({}) to match len(distances) ({})".
-            format(len(traj_lst), distances.shape))
-
-    center_indices = np.argwhere(distances == 0)
-
-    try:
-        # 3D case (trj index, frame)
-        centers = [traj_lst[trj_indx][frame] for (trj_indx, frame)
-                   in center_indices]
-    except ValueError:
-        # 2D case (just frame)
-        centers = [traj_lst[trj_indx] for trj_indx
-                   in center_indices]
-
-    assert len(centers) == center_indices.shape[0]
-
-    return centers
-
-
 def _get_distance_method(metric):
     if metric == 'rmsd':
         return md.rmsd
+    if metric == 'euclidean':
+        return euclidean
     elif isinstance(metric, str):
         try:
             import msmbuilder.libdistance as libdistance
