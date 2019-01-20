@@ -455,6 +455,8 @@ def main(argv=None):
         **kwargs)
 
     clustering.fit(data)
+    # release the RAM held by the trajectories (we don't need it anymore)
+    del data
 
     logger.info(
         "Clustered %s frames into %s clusters in %s seconds.",
