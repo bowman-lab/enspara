@@ -486,8 +486,12 @@ def main(argv=None):
         write_centers_indices(
             args.center_indices,
             [(t, f * args.subsample) for t, f in result.center_indices])
-        write_centers(result, args)
-        write_assignments_and_distances_with_reassign(result, args)
+        with timed("Wrote center indices in %.2f sec.", logger.info):
+            write_centers_indices(
+                args.center_indices,
+                [(t, f * args.subsample) for t, f in result.center_indices])
+        with timed("Wrote center structures in %.2f sec.", logger.info):
+            write_centers(result, args)
     mpi_comm.barrier()
 
     logger.info("Success! Data can be found in %s.",
