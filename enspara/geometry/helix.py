@@ -1,4 +1,5 @@
 import numpy as np
+from enspara import exception
 
 
 def calculate_piecewise_helix_vectors(
@@ -31,7 +32,9 @@ def calculate_piecewise_helix_vectors(
     """
     if (helix_resnums is None) and ((helix_start is None) or
                                     (helix_end is None)):
-        raise
+        raise exception.ImproperlyConfigured(
+            "Either 'helix_resnums' or 'helix_start' and 'helix end' "
+            "are required.")
     elif helix_resnums is None:
         helix_resnums = np.arange(helix_start, helix_end+1)
     top = trj.topology
@@ -52,9 +55,9 @@ def calculate_summary_helix_vectors(
     trj : md.Trajectory object
         An MDTraj trajectory object containing frames of structures to
         compute helix-vectors from.
-    res_refs : array, shape [n_refs, ]
-        The residues to use for reference normal vectors from the vector
-        along the helix axis.
+    res_refs : array-like
+        Residue ids (resSeq) for which to build a coordinate frame relative
+        to the helical axis.
     helix_resnums : array, shape [n_residues, ], optional, default: None
         A list of residues that correspond to an alpha-helix. This is
         useful if residue numbers within a helix are unordinary. If a
@@ -112,7 +115,6 @@ def angles_from_vecs(vecs):
     inner_prod = dot_prods/mags[0]/mags
     angles = np.arccos(np.around(inner_prod, 5))
     return angles
-
 
 
 def _get_unit_vectors(vecs):
