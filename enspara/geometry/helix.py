@@ -33,7 +33,7 @@ def calculate_piecewise_helix_vectors(
     if (helix_resnums is None) and ((helix_start is None) or
                                     (helix_end is None)):
         raise exception.ImproperlyConfigured(
-            "Either 'helix_resnums' or 'helix_start' and 'helix end' "
+            "Either 'helix_resnums' or 'helix_start' and 'helix_end' "
             "are required.")
     elif helix_resnums is None:
         helix_resnums = np.arange(helix_start, helix_end+1)
@@ -109,10 +109,25 @@ def angles_from_plane_projection(vectors, v1, v2, degree=True):
     return angles, mags
 
 
-def angles_from_vecs(vecs):
+def angles_from_vecs(vecs, to=0):
+    """Compute the angle from one vector to all other vectors.
+
+    Parameters
+    ----------
+    vecs : np.ndarray, shape=(n_vectors, 3)
+        Vectors to compute the dot product of.
+    to : int
+        Index to compute the dot product of all `vecs` to.
+
+    Returns
+    -------
+    angles : np.ndarray, shape=(n_vectors,)
+        Angles between each vector in `vecs` and `to`.
+    """
+
     mags = np.sqrt(np.einsum('ij,ij->i', vecs, vecs))
-    dot_prods = np.einsum('ij,ij->i', vecs, [vecs[0]])
-    inner_prod = dot_prods/mags[0]/mags
+    dot_prods = np.einsum('ij,ij->i', vecs, [vecs[to]])
+    inner_prod = dot_prods / mags[to] / mags
     angles = np.arccos(np.around(inner_prod, 5))
     return angles
 
