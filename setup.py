@@ -96,6 +96,7 @@ setup(
         'mdtraj>=1.7',
         'mpi4py>=2.0.0',
         'psutil>=5.2.2',
+        'pandas>=0.19.2',
         'scikit-learn>=0.19.0',
         'scipy>=0.17'
     ],
