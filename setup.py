@@ -93,7 +93,7 @@ setup(
         'numpy>=1.13',
         'tables>=3.2',
         'matplotlib>=1.5.1',
-        'mdtraj>=1.7,<1.9',
+        'mdtraj>=1.7',
         'mpi4py>=2.0.0',
         'psutil>=5.2.2',
         'scikit-learn>=0.19.0',
