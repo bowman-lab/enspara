@@ -107,17 +107,6 @@ def create_grid(struct, grid_spacing, padding=0):
     n_y_cells = int(np.ceil((y_max-y_min)/grid_spacing)) + padding*2
     n_z_cells = int(np.ceil((z_max-z_min)/grid_spacing)) + padding*2
 
-<<<<<<< Updated upstream
-    x_coords = x_min + np.arange(n_x_cells)*grid_spacing
-    y_coords = y_min + np.arange(n_y_cells)*grid_spacing
-    z_coords = z_min + np.arange(n_z_cells)*grid_spacing
-    grid = np.zeros((n_x_cells,n_y_cells,n_z_cells,3))
-    for i in range(n_x_cells):
-        for j in range(n_y_cells):
-            for k in range(n_z_cells):
-                grid[i,j,k] = [x_coords[i], y_coords[j], z_coords[k]]
-
-=======
     x_coords = (x_min - grid_spacing*padding) + np.arange(n_x_cells)*grid_spacing
     y_coords = (y_min - grid_spacing*padding) + np.arange(n_y_cells)*grid_spacing
     z_coords = (z_min - grid_spacing*padding) + np.arange(n_z_cells)*grid_spacing
@@ -127,7 +116,6 @@ def create_grid(struct, grid_spacing, padding=0):
             x_mesh[:, :, :, None],
             y_mesh[:, :, :, None],
             z_mesh[:, :, :, None]], axis=3)
->>>>>>> Stashed changes
     return grid
 
 
@@ -200,7 +188,10 @@ def _check_diagonal_axis_helper(touches_protein, rank):
                 inds_consider = np.arange(inds_touching_protein[0]+1, inds_touching_protein[-1])
                 inds_surrounded_by_protein = inds_consider[np.where(diag[inds_consider]==0)[0]]
                 if inds_surrounded_by_protein.shape[0] > 0:
-                    rank[x_inds[inds_surrounded_by_protein],y_inds[inds_surrounded_by_protein],z_inds[inds_surrounded_by_protein]] += 1
+                    x_ind = x_inds[inds_surrounded_by_protein]
+                    y_ind = y_inds[inds_surrounded_by_protein]
+                    z_ind = z_inds[inds_surrounded_by_protein]
+                    rank[x_ind, y_ind, z_ind] += 1
 
 
 def _check_diagonal_axis(touches_protein, rank):
@@ -213,12 +204,11 @@ def _check_diagonal_axis(touches_protein, rank):
     _check_diagonal_axis_helper(touches_protein, rank)
     # swap axes to get other two faces
     # use sub-indices to avoid double/triple counting diagonals
-    _check_diagonal_axis_helper(touches_protein.swapaxes(1,2)[1:,1:,:], rank.swapaxes(1,2)[1:,1:,:])
-    _check_diagonal_axis_helper(touches_protein.swapaxes(0,2)[1:,1:,:], rank.swapaxes(0,2)[1:,1:,:])
+    _check_diagonal_axis_helper(
+        touches_protein.swapaxes(1,2)[1:,1:,:], rank.swapaxes(1,2)[1:,1:,:])
+    _check_diagonal_axis_helper(
+        touches_protein.swapaxes(0,2)[1:,1:,:], rank.swapaxes(0,2)[1:,1:,:])
 
-<<<<<<< Updated upstream
-def get_pocket_cells(struct, grid_spacing=0.1, distance_cutoff=0.24,
-=======
 
 def determine_touches_protein(struct, grid, probe_radius):
 
@@ -258,9 +248,9 @@ def determine_touches_protein(struct, grid, probe_radius):
     return touches_protein
 
 
-def get_pocket_cells(struct, grid_spacing=0.1, probe_radius=0.07,
->>>>>>> Stashed changes
-                     min_rank=3):
+def get_pocket_cells(
+        struct, grid_spacing=0.1, probe_radius=0.07,
+        min_rank=3):
     """Places on a grid on a single structure and identifies all the cells that
     are part of a pocket.
 
@@ -355,9 +345,11 @@ def cluster_pocket_cells(pocket_cells, grid_spacing=0.1, min_cluster_size=0):
         cells belongs to.
     """
 
-    # cluster into contiguous pockets by merging two cells if they are neighbors
-    # use a cutoff distance between grid_spacing and 2*grid_spacing to ensure pocket cells are contiguous
-    orig_cluster_mapping = scipy.cluster.hierarchy.fclusterdata(pocket_cells, t=grid_spacing*1.5, criterion='distance')
+    # cluster into contiguous pockets by merging two cells if they are
+    # neighbors use a cutoff distance between grid_spacing and
+    # 2*grid_spacing to ensure pocket cells are contiguous
+    orig_cluster_mapping = scipy.cluster.hierarchy.fclusterdata(
+        pocket_cells, t=grid_spacing*1.5, criterion='distance')
 
     # make sure numbered from 0, since seem to be numbered from 1
     if orig_cluster_mapping.min() > 0:
@@ -376,7 +368,8 @@ def cluster_pocket_cells(pocket_cells, grid_spacing=0.1, min_cluster_size=0):
     i = 0
     next_largest_cluster_size = num_cells_in_pocket[sorted_cluster_ids[i]]
     while next_largest_cluster_size > min_cluster_size:
-        inds_in_cluster = np.where(orig_cluster_mapping==sorted_cluster_ids[i])[0]
+        inds_in_cluster = np.where(
+            orig_cluster_mapping==sorted_cluster_ids[i])[0]
         for j in inds_in_cluster:
             sorted_cluster_mapping.append(i)
             sorted_pockets.append(pocket_cells[j])
