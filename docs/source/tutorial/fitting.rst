@@ -3,9 +3,18 @@ Fitting
 
 Once you've clustered your data, you'll want to build a Markov state model.
 Because this process is usually much less computationally expensive than
-clustering, we'll drop into a python shell (or even better, jupyter notebook)
-to do it.
+clustering, we'll drop into a ipython shell (or even better, jupyter notebook)
+to do it::
 
+    $ ipython
+    Python 3.6.0 \|Continuum Analytics, Inc.\| (default, Dec 23 2016, 12:22:00)
+    Type 'copyright', 'credits' or 'license' for more information
+    IPython 6.2.1 -- An enhanced Interactive Python. Type '?' for help.
+
+    In [1]:
+
+Then, type/paste the following code to load the assignments you computed
+during clustering:
 
 .. code-block:: python
 
@@ -58,6 +67,8 @@ times. Let's plot it and see how it looks:
     for i in range(implied_timescales.shape[1]):
         plt.plot(lag_times, implied_timescales[:, i],
                  label='$\lambda_{%s}$' % (i+1))
+
+    plt.show()
 
 Once you've got a lagtime you're satisfied with, make an MSM the same way as
 before (we also could have stored the old one).
