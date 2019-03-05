@@ -11,6 +11,7 @@ import scipy.cluster.hierarchy
 
 from sklearn.externals.joblib import Parallel, delayed
 
+
 def _grid_to_xyz(grid):
     """Convert a grid object (grid[x_ind,y_ind,z_ind]=[x,y,z])
     to an array of x,y,z coordinates
@@ -20,6 +21,7 @@ def _grid_to_xyz(grid):
     xyz = grid.reshape((n_cells,3))
 
     return xyz
+
 
 def xyz_to_mdtraj(xyz, cluster_ids=None):
     """Convert a set of x,y,z coordinates to and mdtraj.Trajectory with a carbon
@@ -71,7 +73,8 @@ def xyz_to_mdtraj(xyz, cluster_ids=None):
 
     return struct
 
-def create_grid(struct, grid_spacing):
+
+def create_grid(struct, grid_spacing, padding=0):
     """Create a grid spanning a structure with cubic cells, where each
     edge is grid_spacing long.
 
@@ -82,6 +85,9 @@ def create_grid(struct, grid_spacing):
     grid_spacing : float (nm)
         The length of each edge of a cell in nm. So a cell has a volume
         of grid_spacing^3.
+    padding : int, default=0
+        The number of grid points to pad on each side of the protein
+        (for good measure).
 
     Returns
     -------
@@ -97,10 +103,11 @@ def create_grid(struct, grid_spacing):
     z_min = struct.xyz[0,:,2].min()
     z_max = struct.xyz[0,:,2].max()
 
-    n_x_cells = int(np.ceil((x_max-x_min)/grid_spacing))
-    n_y_cells = int(np.ceil((y_max-y_min)/grid_spacing))
-    n_z_cells = int(np.ceil((z_max-z_min)/grid_spacing))
+    n_x_cells = int(np.ceil((x_max-x_min)/grid_spacing)) + padding*2
+    n_y_cells = int(np.ceil((y_max-y_min)/grid_spacing)) + padding*2
+    n_z_cells = int(np.ceil((z_max-z_min)/grid_spacing)) + padding*2
 
+<<<<<<< Updated upstream
     x_coords = x_min + np.arange(n_x_cells)*grid_spacing
     y_coords = y_min + np.arange(n_y_cells)*grid_spacing
     z_coords = z_min + np.arange(n_z_cells)*grid_spacing
@@ -110,7 +117,19 @@ def create_grid(struct, grid_spacing):
             for k in range(n_z_cells):
                 grid[i,j,k] = [x_coords[i], y_coords[j], z_coords[k]]
 
+=======
+    x_coords = (x_min - grid_spacing*padding) + np.arange(n_x_cells)*grid_spacing
+    y_coords = (y_min - grid_spacing*padding) + np.arange(n_y_cells)*grid_spacing
+    z_coords = (z_min - grid_spacing*padding) + np.arange(n_z_cells)*grid_spacing
+    y_mesh, x_mesh, z_mesh = np.meshgrid(y_coords, x_coords, z_coords)
+    grid = np.concatenate(
+        [
+            x_mesh[:, :, :, None],
+            y_mesh[:, :, :, None],
+            z_mesh[:, :, :, None]], axis=3)
+>>>>>>> Stashed changes
     return grid
+
 
 def _get_cell_inds_within_cutoff(grid, point, distance_cutoff):
     """Find the indices of all the cells of a grid that are within
@@ -139,6 +158,7 @@ def _get_cell_inds_within_cutoff(grid, point, distance_cutoff):
 
     return min_x_cell_ind, max_x_cell_ind, min_y_cell_ind, max_y_cell_ind, min_z_cell_ind, max_z_cell_ind
 
+
 def _check_cartesian_axis(touches_protein, rank):
     """Finds cells along the x-axis of a grid that are not filled by protein
     atoms (touches_protein[x_ind,y_ind,z_ind]=0) but are surrounded by protein
@@ -157,6 +177,7 @@ def _check_cartesian_axis(touches_protein, rank):
                 inds_surrounded_by_protein = inds_consider[np.where(x[inds_consider]==0)[0]]
                 if inds_surrounded_by_protein.shape[0] > 0:
                     rank[inds_surrounded_by_protein,j,k] += 1
+
 
 def _check_diagonal_axis_helper(touches_protein, rank):
     """Finds cells along a diagonal of a grid that are not filled by protein
@@ -181,6 +202,7 @@ def _check_diagonal_axis_helper(touches_protein, rank):
                 if inds_surrounded_by_protein.shape[0] > 0:
                     rank[x_inds[inds_surrounded_by_protein],y_inds[inds_surrounded_by_protein],z_inds[inds_surrounded_by_protein]] += 1
 
+
 def _check_diagonal_axis(touches_protein, rank):
     """Finds cells along a diagonal of a grid that are not filled by protein
     atoms (touches_protein[x_ind,y_ind,z_ind]=0) but are surrounded by protein
@@ -194,18 +216,62 @@ def _check_diagonal_axis(touches_protein, rank):
     _check_diagonal_axis_helper(touches_protein.swapaxes(1,2)[1:,1:,:], rank.swapaxes(1,2)[1:,1:,:])
     _check_diagonal_axis_helper(touches_protein.swapaxes(0,2)[1:,1:,:], rank.swapaxes(0,2)[1:,1:,:])
 
+<<<<<<< Updated upstream
 def get_pocket_cells(struct, grid_spacing=0.1, distance_cutoff=0.24,
+=======
+
+def determine_touches_protein(struct, grid, probe_radius):
+
+    n_x_cells, n_y_cells, n_z_cells = grid.shape[:3]
+    x_min, y_min, z_min = grid[0,0,0]
+    x_max, y_max, z_max = grid[-1,-1,-1]
+
+    # determine whether each cell touches protein
+    touches_protein = np.zeros(
+        (n_x_cells, n_y_cells, n_z_cells), dtype=bool)
+    radii = np.array(
+        [a.element.radius for a in struct.top.atoms])
+    for i in range(struct.top.n_atoms):
+        coord = struct.xyz[0, i]
+        distance_cutoff = probe_radius + radii[i]
+        # get sub-grid of cells that could be within cutoff distance of atom
+        min_x_cell_ind, max_x_cell_ind, \
+        min_y_cell_ind, max_y_cell_ind, \
+        min_z_cell_ind, max_z_cell_ind = _get_cell_inds_within_cutoff(
+            grid, coord, distance_cutoff)
+        subgrid = grid[
+            min_x_cell_ind:max_x_cell_ind+1,
+            min_y_cell_ind:max_y_cell_ind+1,
+            min_z_cell_ind:max_z_cell_ind+1]
+
+        # find cells in subgrid that are actually within distance cutoff
+        # and indicate they are not pockets and that they do touch protein
+        offset = np.subtract(subgrid, coord)
+        offset_sq = np.einsum('ijkl,ijkl->ijk', offset, offset)
+        subgrid_inds_within_cutoff = np.where(offset_sq < (distance_cutoff**2))
+        # convert to grid inds
+        grid_inds_within_cutoff = (
+            subgrid_inds_within_cutoff[0]+min_x_cell_ind,
+            subgrid_inds_within_cutoff[1]+min_y_cell_ind,
+            subgrid_inds_within_cutoff[2]+min_z_cell_ind)
+        touches_protein[grid_inds_within_cutoff] = True
+    return touches_protein
+
+
+def get_pocket_cells(struct, grid_spacing=0.1, probe_radius=0.07,
+>>>>>>> Stashed changes
                      min_rank=3):
     """Places on a grid on a single structure and identifies all the cells that
     are part of a pocket.
 
     The algorithm lays a grid over the protein. All cells within the
-    distance_cutoff of protein atoms are discarded as they are assumed to be
-    filled with protein cannot be pockets and, therefore, not pockets.
-    Each remaining cell is ranked by how many scans through it hit protein
-    on both sides. Seven scans are performed, one along each of the x/y/z axes
-    and one along each of the four diagonals cutting across a cube centered at
-    the given cell.
+    distance_cutoff of protein atoms (probe radius + atomic VDW)  are
+    discarded as they are assumed to be filled with protein cannot be
+    pockets and, therefore, not pockets. Each remaining cell is ranked 
+    by how many scans through it hit protein on both sides. Seven scans
+    are performed, one along each of the x/y/z axes and one along each
+    of the four diagonals cutting across a cube centered at the given
+    cell.
 
     Parameters
     ----------
@@ -214,10 +280,10 @@ def get_pocket_cells(struct, grid_spacing=0.1, distance_cutoff=0.24,
     grid_spacing : float, default=0.1 (nm)
         The length of each edge of a cell in nm.  So a cell has a volume of
         grid_spacing^3.
-    distance_cutoff : float, default = 0.24 (nm)
-        Cells within this distance (in nm) of a protein atom cannot be pockets.
-        The default comes from summing an approximate radius of carbon (0.17 nm)
-        and half the radius of water (half of 0.14 nm).
+    probe_radius : float, default = 0.07 (nm)
+        Radius of pocket cells. Cells within this distance and atomic radius
+        (in nm) of a protein atom cannot be pockets.
+        The default comes from half the radius of water (half of 0.14 nm).
     min_rank : int, default=3
         The minimum rank a cell has to have to be considered part of a pocket.
 
@@ -234,27 +300,7 @@ def get_pocket_cells(struct, grid_spacing=0.1, distance_cutoff=0.24,
     x_max, y_max, z_max = grid[-1,-1,-1]
 
     # determine whether each cell touches protein
-    distance_cutoff_sq = distance_cutoff**2
-    touches_protein = np.zeros((n_x_cells,n_y_cells,n_z_cells), dtype=bool)
-    for i in range(struct.top.n_atoms):
-        coord = struct.xyz[0,i]
-
-        # get sub-grid of cells that could be within cutoff distance of atom
-        min_x_cell_ind, max_x_cell_ind, min_y_cell_ind, max_y_cell_ind, min_z_cell_ind, max_z_cell_ind = _get_cell_inds_within_cutoff(
-                grid, coord, distance_cutoff)
-        subgrid = grid[min_x_cell_ind:max_x_cell_ind+1,min_y_cell_ind:max_y_cell_ind+1,min_z_cell_ind:max_z_cell_ind+1]
-
-        # find cells in subgrid that are actually within distance cutoff
-        # and indicate they are not pockets and that they do touch protein
-        offset = np.subtract(subgrid, coord)
-        offset_sq = np.einsum('ijkl,ijkl->ijk', offset, offset)
-        subgrid_inds_within_cutoff = np.where(offset_sq<distance_cutoff_sq)
-        # convert to grid inds
-        grid_inds_within_cutoff = (
-            subgrid_inds_within_cutoff[0]+min_x_cell_ind,
-            subgrid_inds_within_cutoff[1]+min_y_cell_ind,
-            subgrid_inds_within_cutoff[2]+min_z_cell_ind)
-        touches_protein[grid_inds_within_cutoff] = True
+    touches_protein = determine_touches_protein(struct, grid, probe_radius)
 
     # rank each remaining pocket cell based on the number of scans that
     # pass through protein on each side
@@ -281,6 +327,7 @@ def get_pocket_cells(struct, grid_spacing=0.1, distance_cutoff=0.24,
     pocket_cells = grid[pocket_inds]
 
     return pocket_cells
+
 
 def cluster_pocket_cells(pocket_cells, grid_spacing=0.1, min_cluster_size=0):
     """Identify sets of pocket cells that, together, comprise a single
@@ -343,13 +390,23 @@ def cluster_pocket_cells(pocket_cells, grid_spacing=0.1, min_cluster_size=0):
 
     return sorted_pockets, sorted_cluster_mapping
 
-def _get_pockets_helper(struct, grid_spacing, distance_cutoff, min_rank, min_cluster_size):
-    pocket_cells = get_pocket_cells(struct, grid_spacing=grid_spacing, distance_cutoff=distance_cutoff, min_rank=min_rank)
-    sorted_pockets, sorted_cluster_mapping = cluster_pocket_cells(pocket_cells, grid_spacing=grid_spacing, min_cluster_size=min_cluster_size)
-    pockets_as_mdtraj = xyz_to_mdtraj(sorted_pockets, cluster_ids=sorted_cluster_mapping)
+
+def _get_pockets_helper(
+        struct, grid_spacing, probe_radius, min_rank, min_cluster_size):
+    pocket_cells = get_pocket_cells(
+        struct, grid_spacing=grid_spacing, probe_radius=probe_radius,
+        min_rank=min_rank)
+    sorted_pockets, sorted_cluster_mapping = cluster_pocket_cells(
+        pocket_cells, grid_spacing=grid_spacing,
+        min_cluster_size=min_cluster_size)
+    pockets_as_mdtraj = xyz_to_mdtraj(
+        sorted_pockets, cluster_ids=sorted_cluster_mapping)
     return pockets_as_mdtraj
 
-def get_pockets(traj, grid_spacing=0.1, distance_cutoff=0.24, min_rank=3, min_cluster_size=0, n_procs=1):
+
+def get_pockets(
+        traj, grid_spacing=0.1, probe_radius=0.07, min_rank=3,
+        min_cluster_size=0, n_procs=1):
     """Finds the pockets in each frame of a trajectory.
 
     The algorithm lays a grid over the protein. All cells within the
@@ -366,10 +423,10 @@ def get_pockets(traj, grid_spacing=0.1, distance_cutoff=0.24, min_rank=3, min_cl
     grid_spacing : float, default=0.1 (nm)
         The length of each edge of a cell in nm.  So a cell has a volume of
         grid_spacing^3.
-    distance_cutoff : float, default = 0.24 (nm)
-        Cells within this distance (in nm) of a protein atom cannot be pockets.
-        The default comes from summing an approximate radius of carbon (0.17 nm)
-        and half the radius of water (half of 0.14 nm).
+    probe_radius : float, default = 0.07 (nm)
+        Radius of pocket cells. Cells within this distance and atomic radius
+        (in nm) of a protein atom cannot be pockets.
+        The default comes from half the radius of water (half of 0.14 nm).
     min_rank : int, default=3
         The minimum rank a cell has to have to be considered part of a pocket.
     min_cluster_size : int, default=0
@@ -388,6 +445,6 @@ def get_pockets(traj, grid_spacing=0.1, distance_cutoff=0.24, min_rank=3, min_cl
         largest to smallest.
     """
 
-    traj_pockets = Parallel(n_jobs=n_procs)(delayed(_get_pockets_helper)(struct, grid_spacing, distance_cutoff, min_rank, min_cluster_size) for struct in traj)
+    traj_pockets = Parallel(n_jobs=n_procs)(delayed(_get_pockets_helper)(struct, grid_spacing, probe_radius, min_rank, min_cluster_size) for struct in traj)
 
     return traj_pockets
