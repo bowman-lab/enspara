@@ -121,7 +121,7 @@ def weighted_mi(features, weights, n_feature_states=None, normalize=True):
             "Weights must sum to one, got %s." % weights.sum())
 
     if n_feature_states is None:
-        n_feature_states = np.full(features.shape[1], features.max(),
+        n_feature_states = np.full(features.shape[1], features.max() + 1,
                                    dtype='int16')
     else:
         n_feature_states = np.array(n_feature_states)
@@ -168,9 +168,13 @@ def weighted_mi(features, weights, n_feature_states=None, normalize=True):
     assert not np.any(np.isnan(mi_mats))
     mi_mtx = mi_mats.sum(axis=0)
 
+    assert not np.any(np.isinf(mi_mtx))
+
     if normalize:
         mi_mtx = channel_capacity_normalization(
             mi_mtx, n_feature_states, n_feature_states)
+
+    assert not np.any(np.isinf(mi_mtx))
 
     return mi_mtx
 
@@ -570,8 +574,11 @@ def channel_capacity_normalization(mi, n_x, n_y):
     n_x = _validate_feature_states_array(n_x, mi.shape[0])
     n_y = _validate_feature_states_array(n_y, mi.shape[1])
 
+    assert np.all(n_x >= 2)
+    assert np.all(n_y >= 2)
+
     min_num_states = np.fmin(*np.meshgrid(n_x, n_y))
-    mi /= np.log(min_num_states)
+    np.divide(mi, np.log(min_num_states), out=mi)
 
     return mi
 
@@ -632,10 +639,16 @@ def _validate_mutual_information_matrix(mi):
 
 
 def _validate_feature_states_array(n, mi_dim):
+
     if not hasattr(n, '__len__'):
         n = np.full(mi_dim, n, dtype='int')
     else:
         n = np.array(n)
+
+    if np.any(n < 2):
+        raise exception.DataInvalid(
+            'Cannot normalize channel capacity for n_states < 1, got: %s'
+            % n)
 
     if len(n) != mi_dim:
         raise exception.DataInvalid(
