@@ -7,6 +7,8 @@ normalized MI.
 
 import logging
 import warnings
+import itertools
+import numbers
 
 import numpy as np
 
@@ -73,7 +75,7 @@ def mi_matrix(Xs, Ys, n_x, n_y, normalize=True):
     return mi
 
 
-def weighted_mi(features, weights, normalize=True):
+def weighted_mi(features, weights, n_feature_states=None, normalize=True):
     """Compute a mutual information matrix using weighted observations.
 
     This function computes the mutual information of weighted samples by
@@ -89,6 +91,9 @@ def weighted_mi(features, weights, normalize=True):
     weights : np.ndarray, shape=(n_observations)
         Array containing a probability distribution across observations
         by which to weight each observation.
+    n_feature_states : np.ndarray, shape=(n_features), default=None
+        The number of states each feature can take on (used for normalization).
+        If None, max(features) will be used.
     normalize : bool, default=True
         Normalize by channel capacity (two in this case.)
 
@@ -111,42 +116,65 @@ def weighted_mi(features, weights, normalize=True):
             "the number of weights (%s)" %
             (features.shape[0], features.shape, weights.shape[0]))
 
-    if np.all(np.unique(features) != np.array([0, 1])):
-        raise NotImplementedError(
-            "Computing the weighted mutual information of non-binary "
-            "variables is not yet supported.")
+    if np.sum(weights.sum() != 1):
+        raise exception.DataInvalid(
+            "Weights must sum to one, got %s." % weights.sum())
+
+    if n_feature_states is None:
+        n_feature_states = np.full(features.shape[1], features.max() + 1,
+                                   dtype='int16')
+    else:
+        n_feature_states = np.array(n_feature_states)
+
+    if n_feature_states.shape[0] != (features.shape[1]):
+        raise exception.DataInvalid(
+            "The length of feature states number vector (%s) must equal the"
+            "number of features given (%s)" % (
+                n_feature_states.shape[0], features.shape[1])
+        )
 
     mi_mtx = np.zeros((features.shape[1], features.shape[1]), dtype=np.float)
 
-    for i in range(len(mi_mtx)):
-        P_x = np.bincount(features[:, i], weights=weights)
-        for j in range(i, len(mi_mtx)):
-            P_y = np.bincount(features[:, j], weights=weights)
+    max_n_fstates = max(n_feature_states)
 
-            P_x_y = np.zeros((2, 2))
-            for u in range(2):
-                for v in range(2):
-                    P_x_y[u, v] = weights[(features[:, i] == u) &
-                                          (features[:, j] == v)].sum()
+    P_marg = np.vstack([np.bincount(features[:, i],
+                                    weights=weights,
+                                    minlength=max_n_fstates)
+                        for i in range(len(mi_mtx))])
 
-            mi = 0
-            for u in range(len(P_x_y)):
-                for v in range(len(P_x_y)):
-                    if (P_x_y[u, v] != 0) and (P_x[u] != 0) and (P_y[v] != 0):
-                        val = P_x_y[u, v] * np.log(P_x_y[u, v]/(P_x[u]*P_y[v]))
-                        mi += val
+    features_1hot = np.dstack([features == u for u in range(max_n_fstates)])
 
-            if np.isnan(mi):
-                mi = 0
+    iis = list(itertools.product(np.arange(max_n_fstates),
+                                 np.arange(max_n_fstates)))
 
-            mi_mtx[i, j] = mi
+    P_joint = np.array(
+        [np.matmul((features_1hot[:, :, ii[0]] * weights[:, None]).T,
+                   features_1hot[:, :, ii[1]])
+         for ii in iis
+         ])
 
-    mi_mtx += mi_mtx.T
-    # the diagonal gets doubled by adding the transpose, reverse here
-    mi_mtx[np.diag_indices_from(mi_mtx)] /= 2
+    P_prod_marg = np.array([np.meshgrid(P_marg[:, ii[1]],
+                                        P_marg[:, ii[0]])
+                            for ii in iis])
+    P_prod_marg = P_prod_marg[:, 0, :, :] * P_prod_marg[:, 1, :, :]
+
+    mi_mats = np.zeros_like(P_joint)
+
+    # mi_mats = P_joint * np.log(P_joint/P_prod_marg)
+    np.divide(P_joint, P_prod_marg, where=(P_prod_marg != 0), out=mi_mats)
+    np.log(mi_mats, where=mi_mats != 0, out=mi_mats)
+    np.multiply(P_joint, mi_mats, out=mi_mats)
+
+    assert not np.any(np.isnan(mi_mats))
+    mi_mtx = mi_mats.sum(axis=0)
+
+    assert not np.any(np.isinf(mi_mtx))
 
     if normalize:
-        mi_mtx = channel_capacity_normalization(mi_mtx, 2, 2)
+        mi_mtx = channel_capacity_normalization(
+            mi_mtx, n_feature_states, n_feature_states)
+
+    assert not np.any(np.isinf(mi_mtx))
 
     return mi_mtx
 
@@ -543,14 +571,14 @@ def channel_capacity_normalization(mi, n_x, n_y):
     """
     mi = mi.copy()
 
-    if not hasattr(n_x, '__len__'):
-        n_x = [n_x]*mi.shape[0]
-    if not hasattr(n_y, '__len__'):
-        n_y = [n_y]*mi.shape[1]
-    for i in range(mi.shape[0]):
-        for j in range(mi.shape[1]):
-            min_num_states = np.min([n_x[i], n_y[j]])
-            mi[i, j] /= np.log(min_num_states)
+    n_x = _validate_feature_states_array(n_x, mi.shape[0])
+    n_y = _validate_feature_states_array(n_y, mi.shape[1])
+
+    assert np.all(n_x >= 2)
+    assert np.all(n_y >= 2)
+
+    min_num_states = np.fmin(*np.meshgrid(n_x, n_y))
+    np.divide(mi, np.log(min_num_states), out=mi)
 
     return mi
 
@@ -608,3 +636,29 @@ def _validate_mutual_information_matrix(mi):
         raise exception.DataInvalid(
             "Mutual information matrices must be symmetric; found "
             "differences at %s positions." % len(diffpos[0]))
+
+
+def _validate_feature_states_array(n, mi_dim):
+
+    if not hasattr(n, '__len__'):
+        n = np.full(mi_dim, n, dtype='int')
+    else:
+        n = np.array(n)
+
+    if np.any(n < 2):
+        raise exception.DataInvalid(
+            'Cannot normalize channel capacity for n_states < 1, got: %s'
+            % n)
+
+    if len(n) != mi_dim:
+        raise exception.DataInvalid(
+            "Feature states array must match mi array dim 0 "
+            "(got %s and %s)" % (len(n), mi_dim))
+    if not issubclass(n.dtype.type, numbers.Integral):
+        raise exception.DataInvalid(
+            "Feature states array must be integral (got %s)." % n.dtype)
+    if np.any(n <= 0):
+        raise exception.DataInvalid(
+            "Feature states array must be positive.")
+
+    return n
