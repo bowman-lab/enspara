@@ -5,7 +5,7 @@ from setuptools import find_packages
 from distutils.core import setup
 from distutils.extension import Extension
 
-__version__ = '0.1'
+__version__ = '0.1.0'
 
 CLASSIFIERS = [
     "Development Status :: 3 - Alpha",
@@ -30,7 +30,7 @@ try:
 except ImportError:
     sys.stderr.write('-' * 80)
     sys.stderr.write('\n'.join([
-        'Error: building mdtraj requires numpy and cython>=0.19',
+        'Error: building enspara requires numpy and cython>=0.19',
         'Try running the command ``pip install numpy cython`` or'
         '``conda install numpy cython``.',
 
@@ -77,7 +77,11 @@ setup(
     name='enspara',
     packages=find_packages(exclude=["tests"],),
     version=__version__,
-    url="https://github.com/bowman-lab/enspara",
+    project_urls={
+        'Documentation': 'https://enspara.readthedocs.io',
+        'Source': 'https://github.com/bowman-lab/enspara',
+        'Tracker': 'https://github.com/bowman-lab/enspara/issues',
+    },
     platforms=['Linux', 'Mac OS-X', 'Unix'],
     classifiers=CLASSIFIERS,
     include_dirs=[np.get_include()],

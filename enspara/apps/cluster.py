@@ -238,7 +238,7 @@ def process_command_line(argv):
                 "centers are saved as pickle. Are you sure this is what you "
                 "want?")
     else:
-        if os.path.splitext(args.center_features)[1] != '.npy':
+        if os.path.splitext(args.center_features)[1] != 'npy':
             warnings.warn(
                 "You provided a centers file that looks like it's not "
                 "an npy, but this is how they are saved. Are you sure "
@@ -260,9 +260,14 @@ def load_features(features, stride):
     if len(features) == 1:
         with timed("Loading features took %.1f s.", logger.info):
             try:
-                data = ra.load(features[0])
-            except tables.exceptions.NoSuchNodeError:
-                data = ra.load(features[0], keys=...)
+                try:
+                    data = ra.load(features[0])
+                except tables.exceptions.NoSuchNodeError:
+                    data = ra.load(features[0], keys=...)
+            except MemoryError:
+                logger.error(
+                    "Ran out of memory trying to allocate features array"
+                    " from file %s", features[0])
 
         lengths = data.lengths
         data = data._data
@@ -455,6 +460,8 @@ def main(argv=None):
         **kwargs)
 
     clustering.fit(data)
+    # release the RAM held by the trajectories (we don't need it anymore)
+    del data
 
     logger.info(
         "Clustered %s frames into %s clusters in %s seconds.",
@@ -481,11 +488,14 @@ def main(argv=None):
     result = result.partition(lengths)
 
     if mpi_comm.Get_rank() == 0:
-        write_centers_indices(
-            args.center_indices,
-            [(t, f * args.subsample) for t, f in result.center_indices])
-        write_centers(result, args)
+        with timed("Wrote center indices in %.2f sec.", logger.info):
+            write_centers_indices(
+                args.center_indices,
+                [(t, f * args.subsample) for t, f in result.center_indices])
+        with timed("Wrote center structures in %.2f sec.", logger.info):
+            write_centers(result, args)
         write_assignments_and_distances_with_reassign(result, args)
+
     mpi_comm.barrier()
 
     logger.info("Success! Data can be found in %s.",
