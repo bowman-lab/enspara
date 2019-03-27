@@ -1,4 +1,4 @@
-"""High-level routines crucial for Correlation of All Rotamer Dihedrals.
+"""High-level routines crucial for Correlation of All Rotameric and Dynamical States.
 """
 
 import logging

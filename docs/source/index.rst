@@ -22,11 +22,12 @@ Contents:
 
    installation
    tutorial/tutorial
-   clustering
-   transition-path-theory
-   pocket-detection
+   CARDS <cards>
    cli
+   clustering
    cookbook
+   pocket-detection
+   transition-path-theory
    _modules/enspara
 
 
