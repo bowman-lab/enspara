@@ -154,9 +154,3 @@ It also outputs the total Holistic communication matrix (``holistic_MI.csv``)
 
 This holistic communication matrix is what we can use to probe overall communication patterns in our system, 
 using techniques like *Target site analysis*, or other methods.  
-
-
-
-
-
-
