@@ -225,21 +225,21 @@ def process_command_line(argv):
         args.Clusterer = KHybrid
 
     if args.no_reassign and args.subsample == 1:
-        warnings.warn("When subsampling is 1 (or unspecified), "
-                      "--no-reassign has no effect.")
+        logger.warn("When subsampling is 1 (or unspecified), "
+                    "--no-reassign has no effect.")
     if not args.no_reassign and mpi_mode and args.subsample > 1:
-        warnings.warn("Reassignment is suppressed in MPI mode.")
+        logger.warn("Reassignment is suppressed in MPI mode.")
         args.no_reassign = True
 
     if args.trajectories:
         if os.path.splitext(args.center_features)[1] == '.h5':
-            warnings.warn(
-                "You provided a centers file that looks like it's an h5... "
-                "centers are saved as pickle. Are you sure this is what you "
-                "want?")
+            logger.warn(
+                "You provided a centers file (%s) that looks like it's "
+                "an h5... centers are saved as pickle. Are you sure this "
+                "is what you want?")
     else:
         if os.path.splitext(args.center_features)[1] != 'npy':
-            warnings.warn(
+            logger.warn(
                 "You provided a centers file that looks like it's not "
                 "an npy, but this is how they are saved. Are you sure "
                 "this is what you want?")
@@ -268,6 +268,7 @@ def load_features(features, stride):
                 logger.error(
                     "Ran out of memory trying to allocate features array"
                     " from file %s", features[0])
+                raise
 
         lengths = data.lengths
         data = data._data
