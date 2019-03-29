@@ -155,6 +155,41 @@ def normalize(C, prior_counts=None, calculate_eq_probs=True):
     return C, probs, equilibrium
 
 
+def prior_counts(C, psuedocounts_per_state=1, *args, **kwargs):
+    """Transform a transition counts matrix to a transition probability
+    matrix by adding a pseudocount and row-normalizing.
+
+    Parameters
+    ----------
+    C : array, shape=(n_states, n_states)
+        The matrix to normalize.
+    psuedocounts_per_state: float, default=1
+        Number of pseudocounts to add to each state. By default, this
+        value is 1, meaning that 1/n_states is added to each element of
+        the counts matrix (which is the same as adding one total count
+        to each state overall).
+    calculate_eq_probs: bool, default=True
+        Compute the equilibrium probability distribution of the output
+        matrix T. This is useful because calculating the eq probs is
+        expensive.
+
+    Returns
+    -------
+    C : array, shape=(n_states, n_states)
+        Transition counts matrix after symmetrization.
+    T : array, shape=(n_states, n_states)
+        Transition probabilities matrix derived from `C`.
+    eq_probs : array, shape=(n_states)
+        Equilibrium probability distribution of `T`.
+    """
+
+    prior_count = psuedocounts_per_state / C.shape[0]
+    C, probs, equilibrium = normalize(
+        C, prior_counts=prior_count, *args, **kwargs)
+
+    return C, probs, equilibrium
+
+
 def _apply_prior_counts(C, prior_counts):
     """Apply prior_counts to counts matrix C
     """
