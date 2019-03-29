@@ -25,13 +25,6 @@ jobs:
 
     steps:
       - checkout
-      # - run: |
-      #     sudo rm /etc/apt/sources.list
-      #     echo "deb http://archive.debian.org/debian/ jessie-backports main" | sudo tee -a /etc/apt/sources.list
-      #     echo "deb-src http://archive.debian.org/debian/ jessie-backports main" | sudo tee -a /etc/apt/sources.list
-      #     echo "Acquire::Check-Valid-Until false;" | sudo tee -a /etc/apt/apt.conf.d/10-nocheckvalid
-      #     echo 'Package: *\nPin: origin "archive.debian.org"\nPin-Priority: 500' | sudo tee -a /etc/apt/preferences.d/10-archive-pin
-      #     sudo apt-get update
       - run:
           name: Install System Dependencies
           command: sudo apt-get update && sudo apt-get install -y libmpich12 libmpich-dev build-essential cython
@@ -88,7 +81,7 @@ jobs:
   py3.5-np1.15:
     <<: *test-template
     docker:
-      - image: circleci/python:3.5
+      - image: circleci/python:3.5.7-stretch
 
   py3.6-np1.14:
     <<: *test-template
@@ -99,7 +92,7 @@ jobs:
   py3.5-np1.14:
     <<: *test-template
     docker:
-      - image: circleci/python:3.5    
+      - image: circleci/python:3.5.7-stretch
     environment:
       NUMPY_VERSION: 1.14.2
       CYTHON_VERSION: 0.28.5
