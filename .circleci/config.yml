@@ -16,7 +16,7 @@ workflows:
 jobs:
   py3.6-np1.15: &test-template
     docker:
-      - image: circleci/python:3.6.1
+      - image: circleci/python:3.6.8-stretch
     environment:
       NUMPY_VERSION: 1.15.2
       CYTHON_VERSION: 0.28.5
@@ -82,7 +82,7 @@ jobs:
   py3.5-np1.15:
     <<: *test-template
     docker:
-      - image: circleci/python:3.5
+      - image: circleci/python:3.5.7-stretch
 
   py3.6-np1.14:
     <<: *test-template
@@ -93,7 +93,7 @@ jobs:
   py3.5-np1.14:
     <<: *test-template
     docker:
-      - image: circleci/python:3.5    
+      - image: circleci/python:3.5.7-stretch
     environment:
       NUMPY_VERSION: 1.14.2
       CYTHON_VERSION: 0.28.5
