@@ -116,9 +116,8 @@ def weighted_mi(features, weights, n_feature_states=None, normalize=True):
             "the number of weights (%s)" %
             (features.shape[0], features.shape, weights.shape[0]))
 
-    if np.sum(weights.sum() != 1):
-        raise exception.DataInvalid(
-            "Weights must sum to one, got %s." % weights.sum())
+    if weights.sum() != 1:
+        weights = np.linalg.norm(weights, ord=1)
 
     if n_feature_states is None:
         n_feature_states = np.full(features.shape[1], features.max() + 1,
