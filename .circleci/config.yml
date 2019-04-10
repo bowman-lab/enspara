@@ -38,7 +38,7 @@ jobs:
       - run:
           name: install anaconda
           command: |
-            wget http://repo.continuum.io/miniconda/Miniconda-latest-Linux-x86_64.sh -O ~/miniconda.sh
+            wget http://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O ~/miniconda.sh
             chmod +x ~/miniconda.sh && ~/miniconda.sh -b
             export PATH=$HOME/miniconda2/bin:$PATH
             conda update --quiet --yes conda
@@ -47,7 +47,8 @@ jobs:
           name: Install numpy, cython, mdtraj
           command: |
             export PATH=$HOME/miniconda2/bin:$PATH
-            conda install numpy==$NUMPY_VERSION cython==$CYTHON_VERSION mdtraj==1.7
+            conda install numpy==$NUMPY_VERSION cython==$CYTHON_VERSION
+            conda install -c omnia mdtraj==1.7
 
       # - run:
       #     name: Upgrade pip
