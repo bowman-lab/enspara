@@ -3,7 +3,6 @@ import os
 
 import numpy as np
 import mdtraj as md
-from mdtraj.testing import get_fn
 
 from nose.tools import (assert_raises, assert_less, assert_true, assert_is,
                         assert_equal)
@@ -12,6 +11,8 @@ from nose.plugins.attrib import attr
 from sklearn.datasets import make_blobs
 
 from numpy.testing import assert_array_equal, assert_allclose
+
+from .util import get_fn
 
 from ..geometry import libdist
 from ..cluster.hybrid import KHybrid, hybrid

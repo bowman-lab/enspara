@@ -1,17 +1,15 @@
 import numpy as np
 import mdtraj as md
 
-from nose.tools import assert_is, assert_is_not, assert_equal
-from nose.plugins.attrib import attr
+from nose.tools import assert_is, assert_is_not
 
-from mdtraj.testing import get_fn
 from numpy.testing import assert_array_equal, assert_allclose
 
 from enspara.cluster import util
 from enspara.util import array as ra
 
-from .. import mpi
 from ..cluster import save_states
+from .util import get_fn
 
 
 def test_ClusterResult_partition_np():
