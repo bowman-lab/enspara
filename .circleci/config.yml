@@ -19,7 +19,7 @@ jobs:
       - image: circleci/python:3.6.8-stretch
     environment:
       NUMPY_VERSION: 1.15.2
-      CYTHON_VERSION: 0.28.5
+      CYTHON_VERSION: 0.26
 
     working_directory: ~/repo
 
@@ -47,7 +47,7 @@ jobs:
           command: |
             python3 -m venv venv
             . venv/bin/activate
-            pip install --progress-bar off numpy==$NUMPY_VERSION
+            pip install --progress-bar off numpy==$NUMPY_VERSION cython==$CYTHON_VERSION
 
       - run:
           name: Install and build enspara
@@ -88,7 +88,7 @@ jobs:
     <<: *test-template
     environment:
       NUMPY_VERSION: 1.14.2
-      CYTHON_VERSION: 0.28.5
+      CYTHON_VERSION: 0.26
 
   py3.5-np1.14:
     <<: *test-template
@@ -96,5 +96,5 @@ jobs:
       - image: circleci/python:3.5.7-stretch
     environment:
       NUMPY_VERSION: 1.14.2
-      CYTHON_VERSION: 0.28.5
+      CYTHON_VERSION: 0.26
 
