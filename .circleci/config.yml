@@ -36,18 +36,32 @@ jobs:
             - v1-dependencies-{{ .Environment.CIRCLE_JOB }}-{{ checksum "setup.py" }}
 
       - run:
-          name: Upgrade pip
+          name: install anaconda
           command: |
-            python3 -m venv venv
-            . venv/bin/activate
-            pip install pip==18.0
+            wget http://repo.continuum.io/miniconda/Miniconda-latest-Linux-x86_64.sh -O ~/miniconda.sh
+            chmod +x ~/miniconda.sh && ~/miniconda.sh -b
+            export PATH=$HOME/miniconda2/bin:$PATH
+            conda update --quiet --yes conda
 
       - run:
-          name: Install numpy and cython
+          name: Install numpy, cython, mdtraj
           command: |
-            python3 -m venv venv
-            . venv/bin/activate
-            pip install --progress-bar off numpy==$NUMPY_VERSION cython==$CYTHON_VERSION
+            python
+            pip conda install numpy==$NUMPY_VERSION cython==$CYTHON_VERSION mdtraj==1.7
+
+      # - run:
+      #     name: Upgrade pip
+      #     command: |
+      #       python3 -m venv venv
+      #       . venv/bin/activate
+      #       pip install pip==18.0
+
+      # - run:
+      #     name: Install numpy and cython
+      #     command: |
+      #       python3 -m venv venv
+      #       . venv/bin/activate
+      #       pip install --progress-bar off numpy==$NUMPY_VERSION cython==$CYTHON_VERSION
 
       - run:
           name: Install and build enspara
