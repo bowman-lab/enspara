@@ -46,8 +46,7 @@ jobs:
       - run:
           name: Install numpy, cython, mdtraj
           command: |
-            python
-            pip conda install numpy==$NUMPY_VERSION cython==$CYTHON_VERSION mdtraj==1.7
+            conda install numpy==$NUMPY_VERSION cython==$CYTHON_VERSION mdtraj==1.7
 
       # - run:
       #     name: Upgrade pip
