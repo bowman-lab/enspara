@@ -88,6 +88,7 @@ setup(
     ext_modules=cythonize(cython_extensions),
     python_requires='>=3.5,<3.7',  # cython is broken for 3.7
     entry_points={'console_scripts': ['enspara = enspara.apps.main:main']},
+    setup_requires=['Cython>=0.24'],
     install_requires=[
         'Cython>=0.24',
         'numpy>=1.13',
