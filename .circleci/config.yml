@@ -46,6 +46,7 @@ jobs:
       - run:
           name: Install numpy, cython, mdtraj
           command: |
+            export PATH=$HOME/miniconda2/bin:$PATH
             conda install numpy==$NUMPY_VERSION cython==$CYTHON_VERSION mdtraj==1.7
 
       # - run:
@@ -65,8 +66,7 @@ jobs:
       - run:
           name: Install and build enspara
           command: |
-            python3 -m venv venv
-            . venv/bin/activate
+            export PATH=$HOME/miniconda2/bin:$PATH
             pip install --progress-bar off .[dev]
             python setup.py build_ext --inplace
             python setup.py install
