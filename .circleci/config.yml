@@ -47,8 +47,8 @@ jobs:
           name: Install numpy, cython, mdtraj
           command: |
             export PATH=$HOME/miniconda3/bin:$PATH
-            conda install numpy==$NUMPY_VERSION cython==$CYTHON_VERSION
-            conda install -c omnia mdtraj==1.7
+            conda install --quiet --yes numpy==$NUMPY_VERSION cython==$CYTHON_VERSION
+            conda install --quiet --yes -c omnia mdtraj==1.9
 
       # - run:
       #     name: Upgrade pip
@@ -74,19 +74,19 @@ jobs:
 
       - save_cache:
           paths:
-            - ./venv
+            - ~/miniconda
           key: v1-dependencies-{{ checksum "setup.py" }}
 
       - run:
           name: Run non-MPI tests
           command: |
-            . venv/bin/activate
+            export PATH=$HOME/miniconda3/bin:$PATH
             nosetests -a '!mpi' enspara
 
       - run:
           name: Run MPI tests
           command: |
-            . venv/bin/activate
+            export PATH=$HOME/miniconda3/bin:$PATH
             OMP_NUM_THREADS=1 mpiexec -n 2 nosetests -a mpi enspara
 
       - store_artifacts:
