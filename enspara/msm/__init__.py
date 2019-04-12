@@ -1,5 +1,5 @@
-
-from __future__ import print_function, division, absolute_import
+"""MSM-building and core analysis routines.
+"""
 
 from . import builders
 from . import bace

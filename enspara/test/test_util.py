@@ -6,14 +6,14 @@ import numpy as np
 import mdtraj as md
 from mdtraj import io
 
-from mdtraj.testing import get_fn
 from nose.tools import assert_raises, assert_equals, assert_is, assert_true
 from numpy.testing import assert_array_equal
 
 from ..util import array as ra
 from ..util.load import load_as_concatenated, concatenate_trjs
-
 from ..exception import DataInvalid, ImproperlyConfigured
+
+from .util import get_fn
 
 
 def assert_ra_equal(a, b, **kwargs):

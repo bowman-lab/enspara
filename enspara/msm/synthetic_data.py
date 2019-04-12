@@ -57,9 +57,9 @@ def synthetic_ensemble(T, init_pops, n_steps, observable_per_state=None):
     this is a 2-D array where each row contains the populations of each state
     as a function of time.
 
-    Parameter
+    Parameters
     ----------
-    T : array, shape=(n_states, n_states)
+    T : ndarray, shape=(n_states, n_states)
         A row-normalized transition probability matrix.
     init_pops : array, shape=(n_states, )
         The initial probabilities of every state.

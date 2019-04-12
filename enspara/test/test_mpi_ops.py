@@ -2,12 +2,12 @@ import numpy as np
 from numpy.testing import assert_array_equal
 
 import mdtraj as md
-from mdtraj.testing import get_fn
 
 from nose.tools import (
     assert_is, assert_almost_equal, assert_equal, assert_raises)
 from nose.plugins.attrib import attr
 
+from .util import get_fn
 from .. import exception
 from .. import mpi
 

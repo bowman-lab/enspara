@@ -1,26 +1,17 @@
-[![Circle CI](https://circleci.com/gh/bowman-lab/enspara.svg?style=svg)](https://circleci.com/gh/bowman-lab/enspara)
+[![DOI:10.1007/978-3-319-76207-4_15](https://zenodo.org/badge/DOI/10.1063/1.5063794@jcp.2019.MMMK.issue-1.svg)]( https://doi.org/10.1063/1.5063794@jcp.2019.MMMK.issue-1) [![Circle CI](https://circleci.com/gh/bowman-lab/enspara.svg?style=svg)](https://circleci.com/gh/bowman-lab/enspara)
 
 # enspara
 MSMs at Scale 
 
-## Installation 
-1) Confirm Anaconda is installed on local machine and create/activate environment.
-2) Clone enspara from github to local machine: \
-`git clone git@github.com:gbowman/enspara.git` 
-3) Enter enspara from home directory and: \
-`python setup.py build_ext --inplace` 
-If setup failed, `conda install` necessary packages and rerun setup command. 
-4) Return to home directory and: 
-```
-mkdir modules 
-cd modules 
-ln -s ~/enspara/enspara 
-vim ~/.bashrc
-```
-5) Add the following line to the bash script: \
-`PYTHONPATH="directory path to modules:$PYTHONPATH"`
+## Reference
 
-This completes the process of installing enspara on your local machine.
+If you use `enspara` for published research, please cite us:
+
+Porter, J.R., Zimmerman, M.I. and Bowman, G.R., 2019. [Enspara: Modeling molecular ensembles with scalable data structures and parallel computing.](https://aip.scitation.org/doi/full/10.1063/1.5063794%40jcp.2019.MMMK.issue-1) The Journal of chemical physics, 150(4), p.044108.
+
+## Installation 
+
+Installation is documented [here](https://enspara.readthedocs.io/en/latest/installation.html).
 
 ## Building the docs
 

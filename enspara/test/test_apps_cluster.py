@@ -5,8 +5,6 @@ import shutil
 
 from datetime import datetime
 
-from mdtraj.testing import get_fn
-
 from nose.tools import assert_equal, assert_raises
 
 import numpy as np
@@ -20,6 +18,8 @@ from ..util import array as ra
 from ..apps import cluster
 
 TEST_DIR = os.path.dirname(__file__)
+TRJFILE = os.path.join(os.path.dirname(__file__), 'data', 'frame0.xtc')
+TOPFILE = os.path.join(os.path.dirname(__file__), 'data', 'native.pdb')
 
 
 def runhelper(args, expected_size, algorithm='khybrid', expected_k=None,
@@ -96,8 +96,8 @@ def test_rmsd_cluster_basic():
     expected_size = (2, 501)
 
     runhelper([
-        '--trajectories', get_fn('frame0.xtc'), get_fn('frame0.xtc'),
-        '--topology', get_fn('native.pdb'),
+        '--trajectories', TRJFILE, TRJFILE,
+        '--topology', TOPFILE,
         '--cluster-radius', '0.1',
         '--atoms', '(name N or name C or name CA or name H or name O)',
         '--algorithm', 'khybrid'],
@@ -109,8 +109,8 @@ def test_rmsd_cluster_basic_kcenters():
     expected_size = (2, 501)
 
     runhelper([
-        '--trajectories', get_fn('frame0.xtc'), get_fn('frame0.xtc'),
-        '--topology', get_fn('native.pdb'),
+        '--trajectories', TRJFILE, TRJFILE,
+        '--topology', TOPFILE,
         '--cluster-radius', '0.1',
         '--atoms', '(name N or name C or name CA or name H or name O)',
         '--algorithm', 'kcenters'],
@@ -121,12 +121,11 @@ def test_rmsd_cluster_basic_kcenters():
 def test_rmsd_cluster_fixed_k_kcenters():
 
     expected_size = (2, 501)
-
     expected_k = 10
 
     runhelper([
-        '--trajectories', get_fn('frame0.xtc'), get_fn('frame0.xtc'),
-        '--topology', get_fn('native.pdb'),
+        '--trajectories', TRJFILE, TRJFILE,
+        '--topology', TOPFILE,
         '--cluster-number', str(expected_k),
         '--atoms', '(name N or name C or name CA or name H or name O)',
         '--algorithm', 'kcenters'],
@@ -141,8 +140,8 @@ def test_rmsd_cluster_broken_atoms():
 
     with assert_raises(exception.ImproperlyConfigured):
         runhelper([
-            '--trajectories', get_fn('frame0.xtc'), get_fn('frame0.xtc'),
-            '--topology', get_fn('native.pdb'),
+            '--trajectories', TRJFILE, TRJFILE,
+            '--topology', TOPFILE,
             '--cluster-radius', '0.1',
             '--atoms', 'residue -1',
             '--algorithm', 'khybrid'],
@@ -154,8 +153,8 @@ def test_rmsd_cluster_selection():
     expected_size = (2, 501)
 
     runhelper([
-        '--trajectories', get_fn('frame0.xtc'), get_fn('frame0.xtc'),
-        '--topology', get_fn('native.pdb'),
+        '--trajectories', TRJFILE, TRJFILE,
+        '--topology', TOPFILE,
         '--cluster-radius', '0.1',
         '--atoms', '(name N or name C or name CA)',
         '--algorithm', 'khybrid'],
@@ -167,8 +166,8 @@ def test_rmsd_cluster_subsample():
     expected_size = (2, 501)
 
     runhelper([
-        '--trajectories', get_fn('frame0.xtc'), get_fn('frame0.xtc'),
-        '--topology', get_fn('native.pdb'),
+        '--trajectories', TRJFILE, TRJFILE,
+        '--topology', TOPFILE,
         '--cluster-radius', '0.1',
         '--subsample', '4',
         '--atoms', '(name N or name C or name CA or name H or name O)',
@@ -181,8 +180,8 @@ def test_rmsd_cluster_multiprocess():
     expected_size = (2, 501)
 
     runhelper([
-        '--trajectories', get_fn('frame0.xtc'), get_fn('frame0.xtc'),
-        '--topology', get_fn('native.pdb'),
+        '--trajectories', TRJFILE, TRJFILE,
+        '--topology', TOPFILE,
         '--cluster-radius', '0.1',
         '--atoms', '(name N or name C or name CA or name H or name O)',
         '--algorithm', 'khybrid'],
@@ -194,8 +193,8 @@ def test_rmsd_cluster_subsample_and_noreassign():
     expected_size = (2, 501)
 
     runhelper([
-        '--trajectories', get_fn('frame0.xtc'), get_fn('frame0.xtc'),
-        '--topology', get_fn('native.pdb'),
+        '--trajectories', TRJFILE, TRJFILE,
+        '--topology', TOPFILE,
         '--atoms', '(name N or name C or name CA or name H or name O)',
         '--cluster-radius', '0.1',
         '--algorithm', 'khybrid',
@@ -214,9 +213,9 @@ def test_rmsd_cluster_multitop():
     top2 = os.path.join(TEST_DIR, 'cards_data', 'PROT_only.pdb')
 
     runhelper([
-        '--trajectories', get_fn('frame0.xtc'), get_fn('frame0.xtc'),
+        '--trajectories', TRJFILE, TRJFILE,
         '--trajectories', xtc2,
-        '--topology', get_fn('native.pdb'),
+        '--topology', TOPFILE,
         '--topology', top2,
         '--atoms', '(name N or name C or name CA or name H or name O) '
                    'and (residue 2)',
@@ -233,8 +232,8 @@ def test_rmsd_cluster_multitop_multiselection():
     top2 = os.path.join(TEST_DIR, 'cards_data', 'PROT_only.pdb')
 
     runhelper([
-        '--trajectories', get_fn('frame0.xtc'), get_fn('frame0.xtc'),
-        '--topology', get_fn('native.pdb'),
+        '--trajectories', TRJFILE, TRJFILE,
+        '--topology', TOPFILE,
         '--atoms', '(name N or name O) and (residue 2)',
         '--trajectories', xtc2,
         '--topology', top2,
@@ -250,8 +249,8 @@ def test_rmsd_cluster_multitop_multiselection():
         '--trajectories', xtc2,
         '--topology', top2,
         '--atoms', '(name CA) and (residue 3 or residue 4)',
-        '--trajectories', get_fn('frame0.xtc'), get_fn('frame0.xtc'),
-        '--topology', get_fn('native.pdb'),
+        '--trajectories', TRJFILE, TRJFILE,
+        '--topology', TOPFILE,
         '--atoms', '(name N or name O) and (residue 2)',
         '--cluster-radius', '0.1',
         '--algorithm', 'khybrid',
@@ -267,8 +266,8 @@ def test_rmsd_cluster_multitop_multiselection_noreassign():
     top2 = os.path.join(TEST_DIR, 'cards_data', 'PROT_only.pdb')
 
     runhelper([
-        '--trajectories', get_fn('frame0.xtc'), get_fn('frame0.xtc'),
-        '--topology', get_fn('native.pdb'),
+        '--trajectories', TRJFILE, TRJFILE,
+        '--topology', TOPFILE,
         '--atoms', '(name N or name O) and (residue 2)',
         '--trajectories', xtc2,
         '--topology', top2,
@@ -286,8 +285,8 @@ def test_rmsd_cluster_multitop_multiselection_noreassign():
         '--trajectories', xtc2,
         '--topology', top2,
         '--atoms', '(name CA) and (residue 3 or residue 4)',
-        '--trajectories', get_fn('frame0.xtc'), get_fn('frame0.xtc'),
-        '--topology', get_fn('native.pdb'),
+        '--trajectories', TRJFILE, TRJFILE,
+        '--topology', TOPFILE,
         '--atoms', '(name N or name O) and (residue 2)',
         '--cluster-radius', '0.1',
         '--algorithm', 'khybrid',
@@ -363,7 +362,7 @@ def test_feature_cluster_manhattan():
         assert np.all(assignments[i] == assignments[iis])
 
 
-def test_feature_cluster_radius_based():
+def test_feature_cluster_radius_based_h5_input():
 
     expected_size = (3, (50, 30, 20))
 
@@ -385,3 +384,164 @@ def test_feature_cluster_radius_based():
             centers_format='npy')
 
         assert_equal(len(np.unique(assignments.flatten())), 11)
+
+
+def reorder_assignments(assigs):
+    """Rewrite an assignments array so that lower indices appear earlier.
+    """
+
+    assigs = assigs.copy()
+    aids = np.unique(assigs)
+
+    assig_is = {}
+    order = np.argsort([np.where(assigs == aid)[0][0] for aid in aids])
+    for aid in aids:
+        assig_is[aid] = (assigs == aid)
+
+    for i, aid in enumerate(order):
+        assigs[assig_is[aid]] = i
+
+    return assigs
+
+
+def test_feature_cluster_number_khybrid_npy_input():
+
+    expected_size = (3, (50, 30, 20))
+
+    X, y = make_blobs(
+        n_samples=100, n_features=3, centers=3, center_box=(0, 100),
+        random_state=3)
+
+    with tempfile.TemporaryDirectory() as d:
+
+        a = ra.RaggedArray(array=X, lengths=[50, 30, 20])
+
+        pathnames = []
+        for row_i in range(len(a.lengths)):
+            pathname = os.path.join(d, "%s.npy" % row_i)
+            np.save(pathname, a[row_i])
+            pathnames.append(pathname)
+
+        distances, assignments = runhelper([
+            '--features', pathnames[0], pathnames[1], pathnames[2],
+            '--cluster-number', '3',
+            '--algorithm', 'khybrid',
+            '--cluster-distance', 'euclidean'],
+            expected_size=expected_size,
+            centers_format='npy')
+
+    assert_array_equal(a.lengths, assignments.lengths)
+    assert_array_equal(a.lengths, distances.lengths)
+
+    y = reorder_assignments(y)
+    assignments = reorder_assignments(assignments.flatten())
+
+    assert_equal(len(np.unique(assignments)), 3)
+    assert_array_equal(y, assignments)
+
+
+def test_feature_cluster_number_kcenters_npy_input():
+
+    expected_size = (3, (50, 30, 20))
+
+    X, y = make_blobs(
+        n_samples=100, n_features=3, centers=3, center_box=(0, 100),
+        random_state=3)
+
+    with tempfile.TemporaryDirectory() as d:
+
+        a = ra.RaggedArray(array=X, lengths=[50, 30, 20])
+
+        pathnames = []
+        for row_i in range(len(a.lengths)):
+            pathname = os.path.join(d, "%s.npy" % row_i)
+            np.save(pathname, a[row_i])
+            pathnames.append(pathname)
+
+        distances, assignments = runhelper([
+            '--features', pathnames[0], pathnames[1], pathnames[2],
+            '--cluster-number', '3',
+            '--algorithm', 'kcenters',
+            '--cluster-distance', 'euclidean'],
+            expected_size=expected_size,
+            centers_format='npy')
+
+    assert_array_equal(a.lengths, assignments.lengths)
+    assert_array_equal(a.lengths, distances.lengths)
+
+    y = reorder_assignments(y)
+    assignments = reorder_assignments(assignments.flatten())
+
+    assert_equal(len(np.unique(assignments)), 3)
+    assert_array_equal(y, assignments)
+
+
+def test_feature_cluster_number_kcenters_npy_input_iterations_flag_error():
+
+    expected_size = (3, (50, 30, 20))
+
+    X, y = make_blobs(
+        n_samples=100, n_features=3, centers=3, center_box=(0, 100),
+        random_state=3)
+
+    with tempfile.TemporaryDirectory() as d:
+
+        a = ra.RaggedArray(array=X, lengths=[50, 30, 20])
+
+        pathnames = []
+        for row_i in range(len(a.lengths)):
+            pathname = os.path.join(d, "%s.npy" % row_i)
+            np.save(pathname, a[row_i])
+            pathnames.append(pathname)
+
+        with assert_raises(exception.ImproperlyConfigured):
+            _, _ = runhelper([
+                '--features', pathnames[0], pathnames[1], pathnames[2],
+                '--cluster-number', '3',
+                '--cluster-iterations', '100',
+                '--algorithm', 'kcenters',
+                '--cluster-distance', 'euclidean'],
+                expected_size=expected_size,
+                centers_format='npy')
+
+
+def test_feature_cluster_number_khybrid_npy_input_zero_iterations():
+
+    expected_size = (3, (50, 30, 20))
+
+    X, y = make_blobs(
+        n_samples=100, n_features=3, centers=3, center_box=(0, 100),
+        random_state=3)
+
+    kc = cluster.KCenters('euclidean', n_clusters=3)
+    kc.fit(X)
+
+    with tempfile.TemporaryDirectory() as d:
+
+        a = ra.RaggedArray(array=X, lengths=[50, 30, 20])
+
+        pathnames = []
+        for row_i in range(len(a.lengths)):
+            pathname = os.path.join(d, "%s.npy" % row_i)
+            np.save(pathname, a[row_i])
+            pathnames.append(pathname)
+
+        distances, assignments = runhelper([
+            '--features', pathnames[0], pathnames[1], pathnames[2],
+            '--cluster-number', '3',
+            '--algorithm', 'khybrid',
+            '--cluster-iterations', '0',
+            '--cluster-distance', 'euclidean'],
+            expected_size=expected_size,
+            centers_format='npy')
+
+    assert_array_equal(a.lengths, assignments.lengths)
+    assert_array_equal(a.lengths, distances.lengths)
+
+    y = reorder_assignments(y)
+    assignments = reorder_assignments(assignments.flatten())
+
+    assert_equal(len(np.unique(assignments)), 3)
+    assert_array_equal(y, assignments)
+
+    assert_array_equal(kc.distances_, distances.flatten())

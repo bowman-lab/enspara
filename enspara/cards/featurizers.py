@@ -1,3 +1,17 @@
+
+"""Featurizer that converts atomic position trajectories into rotamer trajectories. 
+Rotamer classification is done using the CARDS definition of rotamer states. 
+For further information see reference. 
+
+References
+-------------
+.. [1] Sukrit Singh and Gregory R. Bowman, "Quantifying allosteric communication via 
+    both concerted structural changes and conformational disorder with CARDS".
+    Journal of Chemical Theory and Computation 2017 13 (4), 1509-1517
+    DOI: 10.1021/acs.jctc.6b01181 
+"""
+
+
 from __future__ import print_function, division, absolute_import
 
 import logging
@@ -22,8 +36,8 @@ class RotamerFeaturizer(object):
 
     def fit(self, trajectories):
         """Assign rotameric states to a set of trajectories. Makes
-        availiable parameters feature_trajectories_, n_feature_states_,
-        atom_indices_.
+        availiable parameters ``feature_trajectories_``,
+        ``n_feature_states_,`` ``atom_indices_``.
 
         Parameters
         ----------
@@ -32,10 +46,11 @@ class RotamerFeaturizer(object):
             accepted and can be used to mitigate memory usage.
 
         References
-        ----------
-        [1] Singh, S., & Bowman, G. R. (2017). Quantifying Allosteric
-            Communication via Correlations in Structure and Disorder.
-            Biophysical Journal, 112(3), 498a.
+        -------------
+        .. [1] Sukrit Singh and Gregory R. Bowman, "Quantifying allosteric communication via 
+            both concerted structural changes and conformational disorder with CARDS".
+            Journal of Chemical Theory and Computation 2017 13 (4), 1509-1517
+            DOI: 10.1021/acs.jctc.6b01181 
         """
 
         # to support both lists and generators, we use an iterator over
@@ -47,6 +62,8 @@ class RotamerFeaturizer(object):
         first_trj = next(trj_iter)
         rotamer_trj, atom_inds, rotamer_n_states = geometry.all_rotamers(
             first_trj, buffer_width=self.buffer_width)
+        logger.info("Loaded dihedrals assignments and indices.")
+        logger.info("Now loading trajectories.")
 
         # build the list of all of the rotamerized trajectories, starting
         # with the one we just calculated above.
@@ -54,6 +71,7 @@ class RotamerFeaturizer(object):
         rotamer_trajs.extend(
             [geometry.all_rotamers(t, buffer_width=self.buffer_width)[0]
              for t in trj_iter])
+        logger.info("Loaded all rotamer states.")
 
         self.feature_trajectories_ = rotamer_trajs
         self.n_feature_states_ = rotamer_n_states

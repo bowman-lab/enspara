@@ -2,13 +2,13 @@ import warnings
 
 import numpy as np
 import mdtraj as md
-from mdtraj.testing import get_fn
 
 from nose.tools import assert_equal, assert_is
 from numpy.testing import assert_array_equal
 
 from enspara.util.preprocessing import ResidueTypeScaler
 from enspara import exception
+from enspara.test.util import get_fn
 
 
 def test_residue_scaler():

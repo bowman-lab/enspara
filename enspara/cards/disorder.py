@@ -1,16 +1,10 @@
-# Author: Gregory R. Bowman <gregoryrbowman@gmail.com>
-# Contributors:
-# Copyright (c) 2016, Washington University in St. Louis
-# All rights reserved.
-# Unauthorized copying of this file, via any medium is strictly prohibited
-# Proprietary and confidential
-
 import logging
 import numpy as np
 from ..util import array as ra
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
+
 
 def transitions(assignments):
     """Computes the frames at which a state transition occurs for a list
@@ -28,6 +22,13 @@ def transitions(assignments):
        has more than one "row" or trajectory), a ragged array where each
        row includes the frames at which the transition occurrs. If state
        n and n+1 differ in assignment, the transition is reported as n.
+
+    References
+    -------------
+    .. [1] Sukrit Singh and Gregory R. Bowman, "Quantifying allosteric communication via 
+        both concerted structural changes and conformational disorder with CARDS".
+        Journal of Chemical Theory and Computation 2017 13 (4), 1509-1517
+        DOI: 10.1021/acs.jctc.6b01181 
     """
 
     if len(assignments.shape) == 1:
@@ -43,6 +44,25 @@ def transitions(assignments):
 
 
 def traj_ord_disord_times(transition_times):
+    """Calculate order, disorder times from a list of the times of transitions.
+
+    Parameters
+    ----------
+    transition_times : ndarray, shape=(n_transitions,)
+        Array containing the timpoints at which transitions happened
+
+    Returns
+    -------
+    ord_time : float
+        The order time
+    n_ord : int
+        The number of frames in the ordered state
+    disord_time : float
+        The disorder time
+    n_disord
+        The number of frames in the disordered state
+    """
+
     # this is for one trajectory
     # n_org and n_disord variables allow weight multiple trajectories
 
@@ -116,7 +136,10 @@ def create_disorder_traj(transition_times, traj_len, ord_time, disord_time):
 
 
 def assign_order_disorder(rotamer_trajs):
-    """Assigns each frame a disordered or ordered state (ordered=1; disorder=0).
+    """Assigns each frame a disordered or ordered state.
+
+    Frames that are ordered will recieve a value of 0, disordered frames
+    are assigned 1.
 
     Parameters
     ----------
@@ -126,16 +149,16 @@ def assign_order_disorder(rotamer_trajs):
     Returns
     -------
     disordered_trajs: list
-        List of n.arrays with disorder/order assignments for each trajectory
-
-    disorder_n_states: array, shape=(n_features,)
-        The number of possible states for each feature in disordered_trajs (2)
+        List of arrays with disorder/order assignments for each trajectory
+    disorder_n_states: ndarray, shape=(n_features,)
+        The number of possible states for each feature in disordered_trajs
 
     References
     ----------
-    [1] Singh, S., & Bowman, G. R. (2017). Quantifying Allosteric
-        Communication via Correlations in Structure and Disorder.
-        Biophysical Journal, 112(3), 498a.
+    .. [1] Sukrit Singh and Gregory R. Bowman, "Quantifying allosteric communication via 
+        both concerted structural changes and conformational disorder with CARDS".
+        Journal of Chemical Theory and Computation 2017 13 (4), 1509-1517
+        DOI: 10.1021/acs.jctc.6b01181 
     """
 
     logger.debug("Calculating ordered/disordered times")
@@ -182,9 +205,10 @@ def transition_stats(rotamer_trajs):
 
     References
     ----------
-    [1] Singh, S., & Bowman, G. R. (2017). Quantifying Allosteric
-        Communication via Correlations in Structure and Disorder.
-        Biophysical Journal, 112(3), 498a.
+    .. [1] Sukrit Singh and Gregory R. Bowman, "Quantifying allosteric communication via 
+        both concerted structural changes and conformational disorder with CARDS".
+        Journal of Chemical Theory and Computation 2017 13 (4), 1509-1517
+        DOI: 10.1021/acs.jctc.6b01181 
     """
 
     n_traj = len(rotamer_trajs)

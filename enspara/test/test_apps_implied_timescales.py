@@ -2,13 +2,13 @@ import os
 
 import numpy as np
 
-from mdtraj.testing import get_fn
-
 from nose.tools import assert_raises, assert_equals
 from numpy.testing import assert_array_equal
 
 from .. import exception
 from ..apps import implied_timescales
+
+from .util import get_fn
 
 TEST_DATA_DIR = os.path.join(os.path.dirname(__file__), 'cards_data')
 TRJ_PATH = os.path.join(TEST_DATA_DIR, "trj0.xtc")

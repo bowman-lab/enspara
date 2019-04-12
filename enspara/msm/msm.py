@@ -232,13 +232,13 @@ class MSM(SklearnBaseEstimator):
         zipfile : bool, default=False
             Convert the output to a tarball-zip after writing.
         mapping_ : str, default='mapping.csv'
-            The name to give the csv containing the mapping_ file.
+            The name to give the csv containing the mapping file.
         tcounts_ : str, default='tcounts.mtx'
-            The name to give the mtx containing the tcounts_ file.
+            The name to give the mtx containing the tcounts file.
         tprobs_ : str, default='tprobs.mtx'
-            The name to give the mtx containing the tprobs_ file.
+            The name to give the mtx containing the tprobs file.
         eq_probs_ : str, default='eq-probs.dat'
-            The name to give the dat containing the eq_probs_ file.
+            The name to give the dat containing the eq_probs file.
         config : str, default='config.pkl'
             The name to give the pickled configuration.
         '''

@@ -13,10 +13,6 @@ from collections import namedtuple
 import mdtraj as md
 import numpy as np
 
-from sklearn.base import BaseEstimator, ClusterMixin
-
-from sklearn.utils import check_random_state
-
 from ..geometry.libdist import euclidean
 
 from ..exception import ImproperlyConfigured, DataInvalid
@@ -26,22 +22,10 @@ from ..util import array as ra
 logger = logging.getLogger(__name__)
 
 
-class Clusterer(BaseEstimator, ClusterMixin):
-    """Clusterer class defines the base API for a clustering object in
-    the sklearn style.
+class MolecularClusterMixin:
+    """Additional logic for clusterers in enspara that cluster molecular
+    trajectories.
     """
-
-    def __init__(self, *args, **kwargs):
-
-        self.metric = _get_distance_method(kwargs.pop('metric'))
-        # super().__init__(self, *args, **kwargs)
-
-        self.random_state = check_random_state(
-            kwargs.pop('random_state', None))
-
-
-    def fit(self, X):
-        raise NotImplementedError("All Clusterers should implement fit().")
 
     def predict(self, X):
         """Use an existing clustring fit to predict the assignments,
@@ -102,7 +86,6 @@ class ClusterResult(namedtuple('ClusterResult',
                                 'distances',
                                 'assignments',
                                 'centers'])):
-    __slots__ = ()
 
     def partition(self, lengths):
         """Split each array in this ClusterResult into multiple
@@ -132,18 +115,19 @@ class ClusterResult(namedtuple('ClusterResult',
 
         if square:
             logger.debug(
-                'Trajecotry lengths are equal (%s), using numpy arrays '
+                'Lengths are homogenous (%s); using numpy arrays '
                 'as output to partitioning.', lengths[0])
             return ClusterResult(
-                assignments=np.array(partition_list(self.assignments, lengths)),
+                assignments=np.array(partition_list(self.assignments,
+                                                    lengths)),
                 distances=np.array(partition_list(self.distances, lengths)),
                 center_indices=partition_indices(self.center_indices, lengths),
                 centers=self.centers)
         else:
             logger.debug(
-                'Trajecotry lengths are equal (mean=%s, min=%s, max=%s),'
-                ' using RaggedArray as output to partitioning.',
-                np.mean(lengths), np.min(lengths), np.max(lengths))
+                'Lengths are nonhomogenous (median=%d, min=%d, max=%d); '
+                'using RaggedArray as output to partitioning.',
+                np.median(lengths), np.min(lengths), np.max(lengths))
             return ClusterResult(
                 assignments=ra.RaggedArray(self.assignments, lengths=lengths),
                 distances=ra.RaggedArray(self.distances, lengths=lengths),

@@ -76,7 +76,8 @@ def assemble_striped_array(local_arr):
 
 
 def assemble_striped_ragged_array(local_array, global_lengths):
-    """Assemble an array that is striped according to the first dim of a ragged array.
+    """Assemble an array that is striped according to the first dim of a
+    ragged array.
 
     This is relevant because, unlike a regular striped array, the
     striping is complex, since the length of each row of the RA can be
@@ -106,14 +107,18 @@ def assemble_striped_ragged_array(local_array, global_lengths):
 
     for rank in range(MPI_SIZE):
         rank_array = COMM.bcast(local_array, root=rank)
-        rank_ra = ra.RaggedArray(
-            rank_array, lengths=global_lengths[rank::MPI_SIZE])
 
-        global_ra[rank::MPI_SIZE] = rank_ra
+        local_lengths = global_lengths[rank::MPI_SIZE]
+        if len(local_lengths) > 1:
+            rank_ra = ra.RaggedArray(
+                rank_array, lengths=local_lengths)
+            global_ra[rank::MPI_SIZE] = rank_ra
+        else:
+            global_ra[rank] = rank_array
 
     assert np.all(global_ra._data) >= 0
 
-    return global_ra._data
+    return global_ra._data.astype(local_array.dtype)
 
 
 def mean(local_array):
@@ -180,6 +185,7 @@ def distribute_frame(data, world_index, owner_rank):
     else:
         return frame
 
+
 def randind(local_array, random_state=None):
     """Given the local fragment of an assumed-larger array, give the
     location of a randomly chosen element of the array (uniformly
@@ -220,7 +226,6 @@ def randind(local_array, random_state=None):
         global_index = None
 
     global_index = MPI.COMM_WORLD.bcast(global_index, root=0)
-
 
     # this computation is the same as finding global_index % MPI_SIZE and
     # global_index // MPI_SIZE iff our data are 'packed' on nodes, but not

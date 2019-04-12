@@ -1,9 +1,7 @@
 Installation
 ============
 
-At present, since enspara is in the early development stages, we don't have a streamlined installation process.
-
-The following steps will get you set up.
+Enspara can be installed from our github repository in the following way:
 
 1. Confirm Anaconda is installed on local machine and create/activate environment.
 
@@ -13,31 +11,25 @@ The following steps will get you set up.
 
 	git clone git@github.com:gbowman/enspara.git
 
-3. Enter enspara from home directory and:
+3. Install compiled dependecies of enspara (one frequently runs into problems compiling these locally via `pip`, but if you prefer you can just run `setup.py` and `pip` will try to download an compile these packages):
 
 .. code-block:: bash
 
-	python setup.py build_ext --inplace
+	conda install numpy==1.14
+	conda install cython
+	conda install mpi4py
+	conda install -c omnia mdtraj
+
+4. Enter enspara from home directory and:
+
+.. code-block:: bash
+
+	python setup.py install
 
 If setup failed, `conda install` necessary packages and rerun setup command. 
 
-4. Return to home directory and: 
+5. Check that you've been successful:
 
 .. code-block:: bash
 
-	mkdir modules 
-	cd modules 
-	ln -s ~/enspara/enspara 
-	vim ~/.bashrc
-
-5. Add the following line to the bash script:
-
-.. code-block:: bash
-
-	PYTHONPATH="$PYTHONPATH:/path/to/enspara"
-
-6. Check that you've been successful:
-
-.. code-block:: bash
-
-	python -c 'import enspara'
+	cd && python -c 'import enspara'

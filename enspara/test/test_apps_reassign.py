@@ -10,15 +10,13 @@ from datetime import datetime
 import numpy as np
 import mdtraj as md
 
-from mdtraj.testing import get_fn
-
 from nose.tools import assert_less, assert_equal, assert_is
 from numpy.testing import assert_array_equal, assert_allclose
 
-from .. import cards
 from ..util import array as ra
-
 from ..apps import reassign
+
+from .util import get_fn
 
 
 TEST_DIR = os.path.dirname(__file__)
