@@ -1,13 +1,60 @@
 import logging
+
 import numpy as np
+import tables
 
 from ..util.load import load_as_concatenated
-from .. import exception
+from .. import exception, ra
 
 from . import MPI_RANK, MPI_SIZE
 from .ops import assemble_striped_array
 
 logger = logging.getLogger(__name__)
+
+
+def load_h5_as_striped(filename, stride=1):
+    """Load HDF5 files into distributed arrays across nodes in an MPI swarm.
+
+    Table i is loaded by node i % n, where n is the number of nodes in
+    the swarm.
+
+    Parameters
+    ----------
+    filenames : list
+        A list of relative paths to the trajectory files to be loaded.
+        The md.load function is used, and all file types md.load
+        supports are supported by this function.
+    stride : int, default=1
+        Load only every stride-th frame.
+
+    Returns
+    -------
+    (global_lengths, xyz) : tuple
+       A 2-tuple of trajectory lengths (list of ints, frames) and
+       coordinates (ndarray, shape=(n_atoms, n_frames, 3)).
+
+    See also
+    --------
+    enspara.mpi.io.load_trajectory_as_striped, enspara.ra.load
+    """
+
+    with tables.open_file(filename) as handle:
+        all_keys = [k.name for k in handle.list_nodes('/')]
+        all_shapes = [handle.get_node(where='/', name=k).shape
+                      for k in all_keys]
+
+    if len(all_keys) == 2 and 'array' in all_keys and 'lengths' in all_keys:
+        raise NotImplementedError(
+            'Parallel loading of RaggedArrays that have been stored as '
+            'arrays and lengths cannot be loaded in parallel.')
+
+    local_data = ra.load(filename,
+                         keys=all_keys[MPI_RANK::MPI_SIZE],
+                         stride=stride)
+
+    global_lengths = [s[0] for s in all_shapes]
+
+    return global_lengths, local_data
 
 
 def load_npy_as_striped(filenames, stride=1):

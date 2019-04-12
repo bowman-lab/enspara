@@ -67,7 +67,7 @@ def save(output_name, ragged_array):
         io.saveh(output_name, ragged_array)
 
 
-def load(input_name, keys=None):
+def load(input_name, keys=None, stride=1):
     """Load a RaggedArray from the disk. If only 'arr_0' is present in
     the target file, a numpy array is loaded instead.
 
@@ -89,11 +89,12 @@ def load(input_name, keys=None):
     with tables.open_file(input_name) as handle:
         if keys is None:
             if '/lengths' in handle:
-                return RaggedArray(
-                    handle.get_node('/array')[:],
+                a = RaggedArray(
+                    handle.get_node('/array'),
                     lengths=handle.get_node('/lengths'))
+                return a[::stride]
             else:
-                return handle.get_node('/arr_0')[:]
+                return handle.get_node('/arr_0')[::stride]
         else:
             if keys is Ellipsis:
                 keys = [k.name for k in handle.list_nodes('/')]
@@ -120,7 +121,7 @@ def load(input_name, keys=None):
             first_shape = shapes[0]
 
             concat_shape = list(first_shape)
-            concat_shape[0] = sum(lengths)
+            concat_shape[0] = sum([l // stride for l in lengths])
             dtype = handle.get_node(where='/', name=keys[0]).dtype
             if not all([dtype == handle.get_node(where='/', name=k).dtype
                         for k in keys]):
@@ -133,7 +134,7 @@ def load(input_name, keys=None):
             concat = np.zeros(concat_shape, dtype=dtype)
             tock = time.perf_counter()
             logger.debug('Allocated %.3f MB in %.2f min.',
-                         concat.data.nbytes / 1024**2, tock-tick)
+                         concat.data.nbytes / 1024**2, tock - tick)
 
             logger.debug(
                 'Filling array with %s blocks with initial memory '
@@ -145,13 +146,13 @@ def load(input_name, keys=None):
             for key in keys:
                 node = handle.get_node(where='/', name=key)
                 end = start + len(node)
-                node.read(out=concat[start:end])
+                node.read(out=concat[start:end], step=stride)
                 start = end
 
             tock = time.perf_counter()
             logger.debug(
                 'Filled RaggedArray in %.3f min with %.3f GB memory overhead.',
-                (tock-tick) / 60,
+                (tock - tick) / 60,
                 resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024**2)
             tick = time.perf_counter()
 
@@ -482,8 +483,13 @@ class RaggedArray(object):
             self._array = []
         # rebuild array from 1d and lengths
         else:
-            self._array = np.array(
-                partition_list(self._data, lengths), dtype='O')
+            try:
+                self._array = np.array(
+                    partition_list(self._data, lengths), dtype='O')
+            except DataInvalid:
+                raise DataInvalid(
+                    "Sum of lengths (%s) didn't match data shape (%s)." %
+                    (sum(lengths), self._data.shape))
             self.lengths = np.array(lengths)
 
     @property
