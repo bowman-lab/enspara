@@ -42,8 +42,55 @@ def where(mask):
         return np.where(mask)
 
 
-def save(output_name, ragged_array):
+def save(filename, array, compression_level=1, tag='arr'):
     """Save a RaggedArray or numpy ndarray to disk as an HDF5 file.
+     Parameters
+    ----------
+    filename : str
+        Path of file to write out (per tables.open_file).
+    array : np.ndarray, RaggedArray
+        Array to write to disk.
+    compression_level : int
+        Level of compression to use, 0-9, with 0 meaning no compression.
+        Per the pytables Filters complevel flag.
+    tag : str, default='array'
+        The name under which each row in the ragged array will be saved,
+        for example 'array_00'.
+    """
+
+    try:
+        n_zeros = len(str(len(array.lengths))) + 1
+    except AttributeError:
+        n_zeros = 1
+        array = [array]
+
+    compression = tables.Filters(
+        complevel=compression_level,
+        complib='zlib',
+        shuffle=True)
+
+    with tables.open_file(filename, 'w') as handle:
+        for i in range(len(array)):
+            subarr = array[i]
+
+            if hasattr(array, '_data'):
+                atom = tables.Atom.from_dtype(array._data.dtype)
+            else:
+                atom = tables.Atom.from_dtype(subarr.dtype)
+
+            t = tag + '_' + str(i).zfill(n_zeros)
+
+            node = handle.create_carray(
+                where='/', name=t, atom=atom,
+                shape=subarr.shape, filters=compression)
+
+            node[:] = subarr
+
+    return filename
+
+
+def _save_old_style(output_name, ragged_array):
+    """Depricated en bloc RaggedArray saving routine.
 
     Parameters
     ----------
@@ -67,7 +114,7 @@ def save(output_name, ragged_array):
         io.saveh(output_name, ragged_array)
 
 
-def load(input_name, keys=None):
+def load(input_name, keys=...):
     """Load a RaggedArray from the disk. If only 'arr_0' is present in
     the target file, a numpy array is loaded instead.
 
@@ -75,7 +122,7 @@ def load(input_name, keys=None):
     ----------
     input_name: filename or file handle
         File from which data will be loaded.
-    keys : list, default=None
+    keys : list, default=...
         If this option is specified, the ragged array is built from this
         list of keys, each of which are assumed to be a row of the final
         ragged array. An ellipsis can be provided to indicate all keys.
@@ -97,6 +144,14 @@ def load(input_name, keys=None):
         else:
             if keys is Ellipsis:
                 keys = [k.name for k in handle.list_nodes('/')]
+            if '/lengths' in handle and '/array' in handle:
+                warnings.warn("Found keys '/lengths' and '/array' in h5 "
+                              "file %s, are you sure this isn't an "
+                              "old-style h5?", input_name)
+            if len(keys) == 1:
+                logger.debug("Found only one key ('%s') returning that as "
+                             "numpy array", keys[0])
+                return handle.get_node('/' + keys[0])[:]
 
             logger.debug('Loading keys %s into RA', keys)
 

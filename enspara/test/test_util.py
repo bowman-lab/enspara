@@ -103,13 +103,13 @@ class Test_RaggedArray(unittest.TestCase):
     def test_RaggedArray_load_specific_h5_arrays(self):
 
         src = np.array(range(55))
-        a = ra.RaggedArray(array=src, lengths=[25, 30])
+        a = ra.RaggedArray(array=src, lengths=[15, 10, 30])
 
         with tempfile.NamedTemporaryFile(suffix='.h5') as f:
-            io.saveh(f.name, key0=a[0], key1=a[1])
-            b = ra.load(f.name, keys=['key1'])
+            io.saveh(f.name, key0=a[0], key1=a[1], key2=a[2])
+            b = ra.load(f.name, keys=['key1', 'key2'])
 
-        assert_array_equal(a[1], b[0])
+        assert_ra_equal(a[1:], b[:])
 
     def test_RaggedArray_bad_size(self):
 
