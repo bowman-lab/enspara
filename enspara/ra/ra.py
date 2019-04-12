@@ -126,6 +126,11 @@ def load(input_name, keys=..., stride=1):
         If this option is specified, the ragged array is built from this
         list of keys, each of which are assumed to be a row of the final
         ragged array. An ellipsis can be provided to indicate all keys.
+    stride: int, default=1
+        This option specifies a stride in the second dimension of the
+        loaded ragged array. This is equivalent to slicing out
+        [:, ::stride], except that it does not load the entire dataset
+        into memory.
 
     Returns
     -------
@@ -172,11 +177,9 @@ def load(input_name, keys=..., stride=1):
                         " Dimension  %s didn't match. Got shapes: %s"
                         % (dim, shapes))
 
-            lengths = [shape[0] for shape in shapes]
-            first_shape = shapes[0]
+            lengths = [(shape[0] + stride - 1) // stride for shape in shapes]
+            concat_shape = (sum(lengths),) + (shapes[0][1:])
 
-            concat_shape = list(first_shape)
-            concat_shape[0] = sum([l // stride for l in lengths])
             dtype = handle.get_node(where='/', name=keys[0]).dtype
             if not all([dtype == handle.get_node(where='/', name=k).dtype
                         for k in keys]):
@@ -196,12 +199,13 @@ def load(input_name, keys=..., stride=1):
                 'footprint of %.3f GB',
                 len(keys),
                 resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024**2)
+
             tick = time.perf_counter()
             start = 0
             for key in keys:
-                node = handle.get_node(where='/', name=key)
+                node = handle.get_node(where='/', name=key)[::stride]
                 end = start + len(node)
-                node.read(out=concat[start:end], step=stride)
+                concat[start:end] = node
                 start = end
 
             tock = time.perf_counter()

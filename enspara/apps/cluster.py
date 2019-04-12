@@ -158,7 +158,7 @@ def process_command_line(argv):
                 "The given distance (%s) is not compatible with features." %
                 args.cluster_distance)
 
-        if args.subsample != 1 and len(features) == 1:
+        if args.subsample != 1 and len(args.features) == 1:
                 raise exception.ImproperlyConfigured(
                     "Subsampling is not supported for h5 inputs.")
 
@@ -257,29 +257,24 @@ def expand_files(pgroups):
 
 
 def load_features(features, stride):
-    if len(features) == 1:
-        with timed("Loading features took %.1f s.", logger.info):
-            try:
-                try:
-                    data = ra.load(features[0])
-                except tables.exceptions.NoSuchNodeError:
-                    data = ra.load(features[0], keys=...)
-            except MemoryError:
-                logger.error(
-                    "Ran out of memory trying to allocate features array"
-                    " from file %s", features[0])
-                raise
+    try:
+        if len(features) == 1:
+            with timed("Loading features took %.1f s.", logger.info):
+                lengths, data = mpi.io.load_h5_as_striped(features[0], stride)
 
-        lengths = data.lengths
-        data = data._data
-    else:  # and len(features) > 1
-        with timed("Loading features took %.1f s.", logger.info):
-            lengths, data = mpi.io.load_npy_as_striped(features, stride)
+        else:  # and len(features) > 1
+            with timed("Loading features took %.1f s.", logger.info):
+                lengths, data = mpi.io.load_npy_as_striped(features, stride)
 
         with timed("Turned over array in %.2f min", logger.info):
             tmp_data = data.copy()
             del data
             data = tmp_data
+    except MemoryError:
+        logger.error(
+            "Ran out of memory trying to allocate features array"
+            " from file %s", features[0])
+        raise
 
     return lengths, data
 

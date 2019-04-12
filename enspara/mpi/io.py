@@ -50,7 +50,7 @@ def load_h5_as_striped(filename, stride=1):
 
     local_data = ra.load(filename,
                          keys=all_keys[MPI_RANK::MPI_SIZE],
-                         stride=stride)
+                         stride=stride)._data
 
     global_lengths = [s[0] for s in all_shapes]
 

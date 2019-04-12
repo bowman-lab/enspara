@@ -22,5 +22,5 @@ def test_parallel_h5_read():
         ra.save(f.name, full_arr)
         global_lengths, local_arr = mpi.io.load_h5_as_striped(f.name)
 
-    for i, subarr in enumerate(full_arr[mpi.MPI_RANK::mpi.MPI_SIZE]):
-        assert_array_equal(subarr, local_arr[i])
+    assert_array_equal(local_arr,
+                       full_arr[mpi.MPI_RANK::mpi.MPI_SIZE]._data)

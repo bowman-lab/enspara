@@ -78,10 +78,7 @@ class Test_RaggedArray(unittest.TestCase):
             ra.save(f.name, a)
             b = ra.load(f.name, stride=3)
 
-        print(a.shape)
-        print(b.shape)
-
-        assert_ra_equal(a[::3], b)
+        assert_ra_equal(a[:, ::3], b)
 
     def test_RaggedArray_disk_roundtrip_numpy(self):
         a = np.ones(shape=(5, 5))
