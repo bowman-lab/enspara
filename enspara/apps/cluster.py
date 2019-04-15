@@ -147,10 +147,6 @@ def process_command_line(argv):
     if args.features:
         args.features = expand_files([args.features])[0]
 
-        if mpi_mode and len(args.features) == 1:
-            raise exception.ImproperlyConfigured(
-                'Cannot use ragged array h5 files in MPI mode.')
-
         if args.cluster_distance in FEATURE_DISTANCES:
             args.cluster_distance = getattr(libdist, args.cluster_distance)
         else:
@@ -158,7 +154,7 @@ def process_command_line(argv):
                 "The given distance (%s) is not compatible with features." %
                 args.cluster_distance)
 
-        if args.subsample != 1 and len(features) == 1:
+        if args.subsample != 1 and len(args.features) == 1:
                 raise exception.ImproperlyConfigured(
                     "Subsampling is not supported for h5 inputs.")
 
@@ -238,11 +234,12 @@ def process_command_line(argv):
                 "an h5... centers are saved as pickle. Are you sure this "
                 "is what you want?")
     else:
-        if os.path.splitext(args.center_features)[1] != 'npy':
+        if os.path.splitext(args.center_features)[1] != '.npy':
             logger.warn(
-                "You provided a centers file that looks like it's not "
+                "You provided a centers file (%s) that looks like it's not "
                 "an npy, but this is how they are saved. Are you sure "
-                "this is what you want?")
+                "this is what you want?" %
+                os.path.basename(args.center_features))
 
     return args
 
@@ -257,29 +254,24 @@ def expand_files(pgroups):
 
 
 def load_features(features, stride):
-    if len(features) == 1:
-        with timed("Loading features took %.1f s.", logger.info):
-            try:
-                try:
-                    data = ra.load(features[0])
-                except tables.exceptions.NoSuchNodeError:
-                    data = ra.load(features[0], keys=...)
-            except MemoryError:
-                logger.error(
-                    "Ran out of memory trying to allocate features array"
-                    " from file %s", features[0])
-                raise
+    try:
+        if len(features) == 1:
+            with timed("Loading features took %.1f s.", logger.info):
+                lengths, data = mpi.io.load_h5_as_striped(features[0], stride)
 
-        lengths = data.lengths
-        data = data._data
-    else:  # and len(features) > 1
-        with timed("Loading features took %.1f s.", logger.info):
-            lengths, data = mpi.io.load_npy_as_striped(features, stride)
+        else:  # and len(features) > 1
+            with timed("Loading features took %.1f s.", logger.info):
+                lengths, data = mpi.io.load_npy_as_striped(features, stride)
 
         with timed("Turned over array in %.2f min", logger.info):
             tmp_data = data.copy()
             del data
             data = tmp_data
+    except MemoryError:
+        logger.error(
+            "Ran out of memory trying to allocate features array"
+            " from file %s", features[0])
+        raise
 
     return lengths, data
 
