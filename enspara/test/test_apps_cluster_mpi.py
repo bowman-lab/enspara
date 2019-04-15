@@ -314,3 +314,48 @@ def test_feature_khybrid_mpi_basic():
         iis = ra.where(y_ra == cid)
         i = (iis[0][0], iis[1][0])
         assert np.all(a[i] == a[iis])
+
+
+@fix_np_rng(5)
+@attr('mpi')
+def test_feature_khybrid_mpi_h5():
+    expected_size = (3, (50, 30, 20))
+
+    X, y = make_blobs(
+        n_samples=100, n_features=3, centers=3, center_box=(0, 100),
+        random_state=0)
+
+    try:
+        if MPI_RANK == 0:
+            td = tempfile.TemporaryDirectory()
+            a = ra.RaggedArray(array=X, lengths=[50, 30, 20])
+
+            for row_i in range(len(a.lengths)):
+                pathname = os.path.join(td.name, "data.h5")
+                ra.save(pathname, a)
+        else:
+            td = None
+
+        pathname = MPI.COMM_WORLD.bcast(pathname if MPI_RANK == 0 else None,
+                                        root=0)
+        a, d, inds, s = runhelper([
+            '--features', pathname,
+            '--cluster-number', '3',
+            '--algorithm', 'khybrid',
+            '--cluster-distance', 'manhattan'],
+            expected_size=expected_size,
+            centers_format='npy')
+
+        assert_equal(len(inds), 3)
+    finally:
+        if MPI_RANK == 0:
+            td.cleanup()
+
+        MPI.COMM_WORLD.Barrier()
+
+    y_ra = ra.RaggedArray(y, a.lengths)
+    for cid in range(len(inds)):
+        iis = ra.where(y_ra == cid)
+        i = (iis[0][0], iis[1][0])
+        assert np.all(a[i] == a[iis])
+
