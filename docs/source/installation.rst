@@ -24,7 +24,7 @@ Enspara can be installed from our github repository in the following way:
 
 .. code-block:: bash
 
-	python setup.py install 
+	python setup.py install
 
 If setup failed, `conda install` necessary packages and rerun setup command. 
 
