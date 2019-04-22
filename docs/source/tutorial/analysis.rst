@@ -124,6 +124,6 @@ entropy cost for its neighboring hydrogen bond to form.
 
 There are lots more things you can do with ``enspara``, including
 :doc:`transition path theory <../transition-path-theory>`,
-:doc:`CARDS <../_modules/enspara\.cards>`, and
+:doc:`CARDS <../cards>`, and
 :doc:`pocket detection <../pocket-detection>`, so make sure to explore our
 API documentation!

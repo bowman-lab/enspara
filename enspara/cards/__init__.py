@@ -1,4 +1,4 @@
-"""Functions and objects for Correlation of All Rotamer Dihedrals.
+"""Functions and objects for Correlation of All Rotameric and Dynamical States.
 """
 
 from .cards import *

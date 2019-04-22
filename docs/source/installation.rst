@@ -9,7 +9,7 @@ Enspara can be installed from our github repository in the following way:
 
 .. code-block:: bash
 
-	git clone git@github.com:gbowman/enspara.git
+	git clone https://github.com/bowman-lab/enspara
 
 3. Install compiled dependecies of enspara (one frequently runs into problems compiling these locally via `pip`, but if you prefer you can just run `setup.py` and `pip` will try to download an compile these packages):
 
