@@ -13,10 +13,7 @@ import logging
 import itertools
 import pickle
 import json
-import warnings
 from glob import glob
-
-import tables
 
 import numpy as np
 import mdtraj as md

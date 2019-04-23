@@ -1,5 +1,3 @@
-from __future__ import print_function, division, absolute_import
-
 import time
 import logging
 
@@ -13,7 +11,7 @@ from . import kmedoids
 from . import util
 
 from ..exception import ImproperlyConfigured
-from ..mpi import MPI_SIZE, MPI_RANK
+from .. import mpi
 
 logger = logging.getLogger(__name__)
 
@@ -69,7 +67,7 @@ class KHybrid(BaseEstimator, ClusterMixin, util.MolecularClusterMixin):
 
         self.metric = util._get_distance_method(metric)
         self.random_state = check_random_state(random_state)
-        self.mpi_mode = mpi_mode if mpi_mode is not None else MPI_SIZE != 1
+        self.mpi_mode = mpi_mode if mpi_mode is not None else mpi.size() != 1
 
     def fit(self, X, init_centers=None):
         """Takes trajectories, X, and performs KHybrid clustering.
