@@ -11,6 +11,8 @@ from enspara import exception
 from enspara.util import array as ra
 from enspara.info_theory import mutual_info
 
+from . import fix_np_rng
+
 
 # GENERATORS FOR BUILDING ARRAYS
 
@@ -131,6 +133,7 @@ def test_asymmetrical_mi_zero():
         assert_allclose(mi, 0, atol=1e-3)
 
 
+@fix_np_rng(0)
 def test_symmetrical_mi_nonzero():
     # test that the MI matrix for sets of uncorrelated things results
     # in zero MI
