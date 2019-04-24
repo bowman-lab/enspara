@@ -17,4 +17,3 @@ else:
 
     from . import ops
     from . import io
-    from . import util
