@@ -11,7 +11,7 @@ from enspara import exception
 from enspara.util import array as ra
 from enspara.info_theory import mutual_info
 
-from . import fix_np_rng
+from .util import fix_np_rng
 
 
 # GENERATORS FOR BUILDING ARRAYS
