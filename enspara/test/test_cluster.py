@@ -627,6 +627,7 @@ class TestNumpyClustering(unittest.TestCase):
         self.check_generators(
             np.concatenate(self.traj_lst)[centers], distance=4.0)
 
+    @fix_np_rng(0)
     def test_numpy_kmedoids(self):
         N_CLUSTERS = 3
 
