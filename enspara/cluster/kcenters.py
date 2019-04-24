@@ -70,7 +70,7 @@ class KCenters(BaseEstimator, ClusterMixin, util.MolecularClusterMixin):
         self.random_first_center = random_first_center
 
         self.random_state = check_random_state(random_state)
-        self.mpi_mode = mpi.MPI_SIZE != 1 if mpi_mode is None else mpi_mode
+        self.mpi_mode = mpi.size() != 1 if mpi_mode is None else mpi_mode
 
     def fit(self, X, init_centers=None):
         """Takes trajectories, X, and performs KCenters clustering.
@@ -212,7 +212,8 @@ def kcenters(traj, distance_method, n_clusters=np.inf, dist_cutoff=0,
         iteration = _kcenters_iteration
         kwargs = {}
 
-    maxdist = distances.max()
+    maxdist = (mpi.ops.striped_array_max(distances) if mpi_mode
+               else distances.max())
     while (len(ctr_inds) < n_clusters) and (maxdist > dist_cutoff):
 
         new_center, distances, assignments, center_inds = \
@@ -221,12 +222,16 @@ def kcenters(traj, distance_method, n_clusters=np.inf, dist_cutoff=0,
                       **kwargs)
 
         centers.append(new_center)
-        maxdist = distances.max()
+        maxdist = (mpi.ops.striped_array_max(distances) if mpi_mode
+                   else distances.max())
 
-        if mpi.MPI_RANK == 0:
+        if mpi.rank() == 0:
             logger.info(
                 "Center %s gives max dist of %.6f (stopping @ d=%.6f/n=%s).",
                 len(center_inds), maxdist, dist_cutoff, n_clusters)
+
+    logger.info("Terminated k-centers with n=%s and d=%0.6f.",
+                len(center_inds), maxdist,)
 
     return util.ClusterResult(
         center_indices=ctr_inds,
@@ -325,9 +330,9 @@ def _kcenters_iteration_mpi(
         with log.timed("Gathered distances in %.2f sec", logger.debug):
             # this could likely be accomplished with mpi.reduce instead...
             dist_locs = np.array(
-                mpi.MPI.COMM_WORLD.allgather(np.argmax(distances)))
+                mpi.comm.allgather(np.argmax(distances)))
             dist_vals = np.array(
-                mpi.MPI.COMM_WORLD.allgather(np.max(distances)))
+                mpi.comm.allgather(np.max(distances)))
 
         new_cluster_center_owner = np.argmax(dist_vals)
         new_cluster_center_index = dist_locs[new_cluster_center_owner]

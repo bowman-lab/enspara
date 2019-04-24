@@ -1,5 +1,3 @@
-from __future__ import print_function, division, absolute_import
-
 import logging
 
 import numpy as np
@@ -76,7 +74,7 @@ def kmedoids(X, distance_method, n_clusters, n_iters=5):
 
 
 def _msq(x):
-    return mpi.ops.mean(np.square(x))
+    return mpi.ops.striped_array_mean(np.square(x))
 
 
 def _propose_new_center_amongst(X, state_inds, mpi_mode, random_state):
@@ -100,10 +98,10 @@ def _propose_new_center_amongst(X, state_inds, mpi_mode, random_state):
     # TODO: make it impossible to choose the current center
     if mpi_mode:
         r, idx = mpi.ops.randind(state_inds, random_state)
-        if mpi.MPI_RANK == r:
-            i = mpi.MPI.COMM_WORLD.bcast(state_inds[idx], root=r)
+        if mpi.rank() == r:
+            i = mpi.comm.bcast(state_inds[idx], root=r)
         else:
-            i = mpi.MPI.COMM_WORLD.bcast(None, root=r)
+            i = mpi.comm.bcast(None, root=r)
         proposed_center = mpi.ops.distribute_frame(
             data=X, owner_rank=r, world_index=i)
         proposed_center_ind = (r, i)
@@ -199,7 +197,7 @@ def _kmedoids_pam_update(
     if hasattr(medoid_inds[0], '__len__'):
         assert len(medoid_inds[0]) == 2
         for center_idx, (rank, frame_idx) in enumerate(medoid_inds):
-            assert rank < mpi.MPI_SIZE
+            assert rank < mpi.size()
             new_center = mpi.ops.distribute_frame(
                 data=X, owner_rank=rank, world_index=frame_idx)
             medoid_coords.append(new_center)

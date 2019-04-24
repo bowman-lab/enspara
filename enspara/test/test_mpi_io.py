@@ -15,7 +15,7 @@ def test_parallel_h5_read():
 
     full_arr = ra.RaggedArray([
         np.random.random(size=(ra_len, 11))
-        for ra_len in [random.randint(3, 17) for i in range(mpi.MPI_SIZE * 3)]
+        for ra_len in [random.randint(3, 17) for i in range(mpi.size() * 3)]
     ])
 
     with tempfile.NamedTemporaryFile(suffix='.h5') as f:
@@ -23,7 +23,7 @@ def test_parallel_h5_read():
         global_lengths, local_arr = mpi.io.load_h5_as_striped(f.name)
 
     assert_array_equal(local_arr,
-                       full_arr[mpi.MPI_RANK::mpi.MPI_SIZE]._data)
+                       full_arr[mpi.rank()::mpi.size()]._data)
 
 
 @attr('mpi')
@@ -31,7 +31,7 @@ def test_parallel_h5_read_strided():
 
     full_arr = ra.RaggedArray([
         np.random.random(size=(ra_len, 11))
-        for ra_len in [random.randint(3, 17) for i in range(mpi.MPI_SIZE * 3)]
+        for ra_len in [random.randint(3, 17) for i in range(mpi.size() * 3)]
     ])
 
     with tempfile.NamedTemporaryFile(suffix='.h5') as f:
@@ -39,4 +39,4 @@ def test_parallel_h5_read_strided():
         global_lengths, local_arr = mpi.io.load_h5_as_striped(f.name, stride=3)
 
     assert_array_equal(local_arr,
-                       full_arr[mpi.MPI_RANK::mpi.MPI_SIZE, ::3]._data)
+                       full_arr[mpi.rank()::mpi.size(), ::3]._data)

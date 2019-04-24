@@ -6,7 +6,7 @@ import tables
 from ..util.load import load_as_concatenated
 from .. import exception, ra
 
-from . import MPI, MPI_RANK, MPI_SIZE
+from .. import mpi
 from .ops import assemble_striped_array
 
 logger = logging.getLogger(__name__)
@@ -38,16 +38,16 @@ def load_h5_as_striped(filename, stride=1):
     enspara.mpi.io.load_trajectory_as_striped, enspara.ra.load
     """
 
-    if MPI_RANK == 0:
+    if mpi.rank() == 0:
         with tables.open_file(filename) as handle:
             all_keys = [k.name for k in handle.list_nodes('/')]
             all_shapes = [handle.get_node(where='/', name=k).shape
                           for k in all_keys]
 
-    all_keys = MPI.COMM_WORLD.bcast(all_keys if MPI_RANK == 0 else None,
-                                    root=0)
-    all_shapes = MPI.COMM_WORLD.bcast(all_shapes if MPI_RANK == 0 else None,
-                                      root=0)
+    all_keys = mpi.comm.bcast(all_keys if mpi.rank() == 0 else None,
+                              root=0)
+    all_shapes = mpi.comm.bcast(all_shapes if mpi.rank() == 0 else None,
+                                root=0)
     global_lengths = [s[0] for s in all_shapes]
 
     if len(all_keys) == 2 and 'array' in all_keys and 'lengths' in all_keys:
@@ -56,14 +56,14 @@ def load_h5_as_striped(filename, stride=1):
             'arrays and lengths cannot be loaded in parallel.')
 
     local_data = ra.load(filename,
-                         keys=all_keys[MPI_RANK::MPI_SIZE],
+                         keys=all_keys[mpi.rank()::mpi.size()],
                          stride=stride)
 
     if hasattr(local_data, '_data'):
         local_data = local_data._data
     else:
         # we shoud only get here if only one key is given to load
-        assert len(global_lengths[MPI_RANK::MPI_SIZE]) == 1
+        assert len(global_lengths[mpi.rank()::mpi.size()]) == 1
         local_data = local_data
 
     return global_lengths, local_data
@@ -113,7 +113,7 @@ def load_npy_as_striped(filenames, stride=1):
 
     global_lengths = [s[0] for s, d in specs]
     logger.debug("Determined global lengths to be %s", global_lengths)
-    local_lengths = [s[0] for s, d in specs[MPI_RANK::MPI_SIZE]]
+    local_lengths = [s[0] for s, d in specs[mpi.rank()::mpi.size()]]
 
     local_data = np.empty((sum(local_lengths),) + shape0[1:],
                           dtype=dtype)
@@ -121,7 +121,7 @@ def load_npy_as_striped(filenames, stride=1):
                  local_data.shape, local_data.dtype)
 
     # TODO could be thread parallelized?
-    local_filenames = filenames[MPI_RANK::MPI_SIZE]
+    local_filenames = filenames[mpi.rank()::mpi.size()]
     start = 0
     for i, f in enumerate(local_filenames):
         data = np.load(f, mmap_mode='r')
@@ -171,20 +171,20 @@ def load_trajectory_as_striped(filenames, *args, **kwargs):
     enspara.util.load.load_as_concatenated, enspara.mpi.io.load_npy_as_striped
     """
 
-    if len(filenames) < MPI_SIZE:
+    if len(filenames) < mpi.size():
         raise exception.ImproperlyConfigured(
             "To stripe files across MPI workers, at least 1 file per "
             "node must be given. MPI size is %s, number of files is %s."
-            % (MPI_SIZE, len(filenames)))
+            % (mpi.size(), len(filenames)))
 
     # if we're specifying parameters separately for each trj to load, we
     # need to stripe those across nodes also.
     if 'args' in kwargs and len(kwargs['args']) > 1:
         assert len(kwargs['args']) == len(filenames)
-        kwargs['args'] = kwargs['args'].copy()[MPI_RANK::MPI_SIZE]
+        kwargs['args'] = kwargs['args'].copy()[mpi.rank()::mpi.size()]
 
     local_lengths, my_xyz = load_as_concatenated(
-        filenames=filenames[MPI_RANK::MPI_SIZE], *args, **kwargs)
+        filenames=filenames[mpi.rank()::mpi.size()], *args, **kwargs)
 
     local_lengths = np.array(local_lengths, dtype=int)
     global_lengths = assemble_striped_array(local_lengths)

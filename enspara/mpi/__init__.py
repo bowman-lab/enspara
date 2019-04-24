@@ -1,9 +1,19 @@
 """MPI-enabled functions, typically for I/O or sharing data between nodes
 """
-from mpi4py import *
 
-MPI_RANK = MPI.COMM_WORLD.Get_rank()
-MPI_SIZE = MPI.COMM_WORLD.Get_size()
+try:
+    from mpi4py import MPI as mpi4py
+except ModuleNotFoundError:
+    import warnings
+    warnings.warn("mpi4py isn't installed; MPI functions will be disabled. "
+                  "Use your package manager to install mpi if you wan this "
+                  "(e.g. 'brew install mpich', 'apt-get install mpich').")
+else:
+    import sys
 
-from . import ops
-from . import io
+    comm = mpi4py.COMM_WORLD
+    rank = mpi4py.COMM_WORLD.Get_rank
+    size = mpi4py.COMM_WORLD.Get_size
+
+    from . import ops
+    from . import io

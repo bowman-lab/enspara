@@ -5,10 +5,8 @@ from sklearn.utils import check_random_state
 
 from ..exception import ImproperlyConfigured, DataInvalid
 from ..util import array as ra
+from .. import mpi
 
-from . import MPI, MPI_RANK, MPI_SIZE
-
-COMM = MPI.COMM_WORLD
 logger = logging.getLogger(__name__)
 
 
@@ -34,7 +32,7 @@ def convert_local_indices(local_ctr_inds, global_lengths):
 
     ctr_inds = []
     for rank, local_fid in local_ctr_inds:
-        global_fid = file_origin_ra[rank::MPI_SIZE].flatten()[local_fid]
+        global_fid = file_origin_ra[rank::mpi.size()].flatten()[local_fid]
         ctr_inds.append(global_fid)
 
     return ctr_inds
@@ -59,16 +57,16 @@ def assemble_striped_array(local_arr):
         Full array that is striped across all nodes.
     """
 
-    total_dim1 = COMM.allreduce(len(local_arr), op=MPI.SUM)
+    total_dim1 = mpi.comm.allreduce(len(local_arr), op=mpi.mpi4py.SUM)
     total_shape = (total_dim1,) + local_arr.shape[1:]
 
     if not np.all(local_arr > 0):
-        raise ImproperlyConfigured("On rank %s, a length <= 0 was found. Lengths must be strictly greater than zero." % MPI_RANK)
+        raise ImproperlyConfigured("On rank %s, a length <= 0 was found. Lengths must be strictly greater than zero." % mpi.rank())
 
     global_lengths = np.zeros(total_shape, dtype=local_arr.dtype) - 1
 
-    for i in range(MPI_SIZE):
-        global_lengths[i::MPI_SIZE] = COMM.bcast(local_arr, root=i)
+    for i in range(mpi.size()):
+        global_lengths[i::mpi.size()] = mpi.comm.bcast(local_arr, root=i)
 
     assert np.all(global_lengths > 0), global_lengths
 
@@ -105,14 +103,14 @@ def assemble_striped_ragged_array(local_array, global_lengths):
     global_array = np.zeros(shape=(np.sum(global_lengths),)) - 1
     global_ra = ra.RaggedArray(global_array, lengths=global_lengths)
 
-    for rank in range(MPI_SIZE):
-        rank_array = COMM.bcast(local_array, root=rank)
+    for rank in range(mpi.size()):
+        rank_array = mpi.comm.bcast(local_array, root=rank)
 
-        local_lengths = global_lengths[rank::MPI_SIZE]
+        local_lengths = global_lengths[rank::mpi.size()]
         if len(local_lengths) > 1:
             rank_ra = ra.RaggedArray(
                 rank_array, lengths=local_lengths)
-            global_ra[rank::MPI_SIZE] = rank_ra
+            global_ra[rank::mpi.size()] = rank_ra
         else:
             global_ra[rank] = rank_array
 
@@ -121,8 +119,27 @@ def assemble_striped_ragged_array(local_array, global_lengths):
     return global_ra._data.astype(local_array.dtype)
 
 
-def mean(local_array):
-    """Compute the mean of an array across all MPI nodes.
+def striped_array_max(local_array):
+    """Compute the max of an array striped across MPI nodes.
+
+    Works by computing the local max, then using allreduce to compute
+    the maximum of local maxes.
+    """
+
+    local_max = local_array.max()
+
+    mpi.comm.Barrier()
+    global_max = mpi.comm.allreduce(local_max, op=mpi.mpi4py.MAX)
+
+    return global_max
+
+
+def striped_array_mean(local_array):
+    """Compute the mean of an array striped across MPI nodes.
+
+    Works by computing the sum of the local array, summing local sums
+    and local element counts across all nodes (via allreduce) and only
+    then computing the mean.
     """
 
     local_sum = np.sum(local_array)
@@ -131,8 +148,8 @@ def mean(local_array):
     global_sum = np.zeros(1) - 1
     global_len = np.zeros(1) - 1
 
-    global_sum = COMM.allreduce(local_sum, op=MPI.SUM)
-    global_len = COMM.allreduce(local_len, op=MPI.SUM)
+    global_sum = mpi.comm.allreduce(local_sum, op=mpi.mpi4py.SUM)
+    global_len = mpi.comm.allreduce(local_len, op=mpi.mpi4py.SUM)
 
     assert global_len >= 0
     assert global_sum >= local_sum
@@ -161,23 +178,23 @@ def distribute_frame(data, world_index, owner_rank):
         A single slice of `data`, of shape `data.shape[1:]`.
     """
 
-    if owner_rank >= MPI_SIZE:
+    if owner_rank >= mpi.size():
         raise ImproperlyConfigured(
             'In MPI swarm of size %s, recieved owner rank == %s.',
-            MPI_SIZE, owner_rank)
+            mpi.size(), owner_rank)
 
     if hasattr(data, 'xyz'):
-        if MPI_RANK == owner_rank:
+        if mpi.rank() == owner_rank:
             frame = data[world_index].xyz
         else:
             frame = np.empty_like(data[0].xyz)
     else:
-        if MPI_RANK == owner_rank:
+        if mpi.rank() == owner_rank:
             frame = data[world_index]
         else:
             frame = np.empty_like(data[0])
 
-    MPI.COMM_WORLD.Bcast(frame, root=owner_rank)
+    mpi.comm.Bcast(frame, root=owner_rank)
 
     if hasattr(data, 'xyz'):
         wrapped_data = type(data)(xyz=frame, topology=data.top)
@@ -209,7 +226,7 @@ def randind(local_array, random_state=None):
     random_state = check_random_state(random_state)
 
     # First thing, we need to find out how long all the local arrays are.
-    n_states = np.array(COMM.allgather(len(local_array)))
+    n_states = np.array(mpi.comm.allgather(len(local_array)))
     assert np.all(n_states >= 0)
 
     if sum(n_states) < 1:
@@ -218,21 +235,21 @@ def randind(local_array, random_state=None):
             n_states)
 
     # Then, we select a random index from amongst the total lengths
-    if MPI_RANK == 0:
+    if mpi.rank() == 0:
         # this is modeled after numpy.random.choice, but for some reason
         # our formulation here gives the samer results.
         global_index = random_state.randint(sum(n_states))
     else:
         global_index = None
 
-    global_index = MPI.COMM_WORLD.bcast(global_index, root=0)
+    global_index = mpi.comm.bcast(global_index, root=0)
 
-    # this computation is the same as finding global_index % MPI_SIZE and
-    # global_index // MPI_SIZE iff our data are 'packed' on nodes, but not
+    # this computation is the same as finding global_index % mpi.size() and
+    # global_index // mpi.size() iff our data are 'packed' on nodes, but not
     # otherwise.
 
-    concat = np.concatenate([np.arange(sum(n_states))[r::MPI_SIZE]
-                             for r in range(MPI_SIZE)])
+    concat = np.concatenate([np.arange(sum(n_states))[r::mpi.size()]
+                             for r in range(mpi.size())])
     a = ra.RaggedArray(
         concat,
         lengths=n_states,
