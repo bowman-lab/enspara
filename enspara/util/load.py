@@ -1,3 +1,4 @@
+import os
 import logging
 import math
 
@@ -227,9 +228,11 @@ def shared_array_like_trj(lengths, example_trj):
             raise
         arr_bytes = reduce(mul, full_shape, 1) * ctypes.sizeof(dtype)
         raise exception.InsufficientResourceError(
-            ("Couldn't allocate array of size %.2f GB. Run df -h to "
-             "ensure that shared memory (/tmp/shm or similar) can "
-             "accommodate an array of this size.") % (arr_bytes / 1024**3))
+            ("Couldn't allocate array of size %.2f GB on %s as part of "
+             "loading trajectories in parallel. Check this partition "
+             "to ensure it has sufficient space.") %
+            (os.path.basename(mp.util.get_temp_dir()),
+             arr_bytes / 1024**3))
 
     return full_shape, shared_array
 
