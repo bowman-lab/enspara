@@ -228,9 +228,10 @@ def shared_array_like_trj(lengths, example_trj):
             raise
         arr_bytes = reduce(mul, full_shape, 1) * ctypes.sizeof(dtype)
         raise exception.InsufficientResourceError(
-            ("Couldn't allocate array of size %.2f GB on %s as part of "
+            ("Couldn't allocate array of size %.2f GB to %s as part of "
              "loading trajectories in parallel. Check this partition "
-             "to ensure it has sufficient space.") %
+             "to ensure it has sufficient space or set $TEMPDIR to a "
+             "path that does have sufficient space.") %
             (os.path.basename(mp.util.get_temp_dir()),
              arr_bytes / 1024**3))
 
