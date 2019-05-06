@@ -151,7 +151,8 @@ def load(input_name, keys=..., stride=1):
             if keys is Ellipsis:
                 keys = [k.name for k in handle.list_nodes('/')]
             if '/lengths' in handle and '/array' in handle:
-                warnings.warn("Found keys '/lengths' and '/array' in h5 "
+                warnings.warn(DeprecationWarning,
+                              "Found keys '/lengths' and '/array' in h5 "
                               "file %s, are you sure this isn't an "
                               "old-style h5?", input_name)
             if len(keys) == 1:
