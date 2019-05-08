@@ -146,7 +146,13 @@ def load(input_name, keys=..., stride=1):
                     lengths=handle.get_node('/lengths'))
                 return a[::stride]
             else:
-                return handle.get_node('/arr_0')[::stride]
+                try:
+                    return handle.get_node('/arr_0')[::stride]
+                except tables.NoSuchNodeError:
+                    raise ImproperlyConfigured(
+                        "With keys=None, load expected keys ('lengths', "
+                        "'array') or 'arr_0', but got %s." %
+                        (np.array([k.name for k in handle.list_nodes('/')])))
         else:
             if keys is Ellipsis:
                 keys = [k.name for k in handle.list_nodes('/')]
