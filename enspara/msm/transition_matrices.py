@@ -139,7 +139,7 @@ def assigns_to_counts(
     if not isinstance(lag_time, numbers.Integral):
         raise exception.DataInvalid(
             "The lag time must be an integer. Got %s type %s." %
-            lag_time, type(lag_time))
+            (lag_time, type(lag_time)))
     if lag_time < 1:
         raise exception.DataInvalid(
             "Lag times must be be strictly greater than 0. Got '%s'." %
