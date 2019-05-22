@@ -270,6 +270,9 @@ def load_features(features, stride):
             " from file %s", features[0])
         raise
 
+    logger.info("Loaded %s trajectories with %s frames with stride %s.",
+                len(lengths), len(data), stride)
+
     return lengths, data
 
 
@@ -359,7 +362,8 @@ def load_asymm_frames(center_indices, trajectories, topology, subsample):
 def load_trjs_or_features(args):
 
     if args.features:
-        lengths, data = load_features(args.features, stride=args.subsample)
+        with timed("Loading features took %.1f s.", logger.info):
+            lengths, data = load_features(args.features, stride=args.subsample)
     else:
         assert args.trajectories
         assert len(args.trajectories) == len(args.topologies)
