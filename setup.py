@@ -98,7 +98,7 @@ setup(
         'mpi4py>=2.0.0',
         'psutil>=5.2.2',
         'pandas',
-        'scikit-learn>=0.19.0',
+        'scikit-learn>=0.21.0',
         'scipy>=0.17'
     ],
     extras_require={
