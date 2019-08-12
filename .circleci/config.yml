@@ -19,7 +19,7 @@ jobs:
       - image: circleci/python:3.6.8-stretch
     environment:
       NUMPY_VERSION: 1.15.2
-      CYTHON_VERSION: 0.26
+      CYTHON_VERSION: 0.27
 
     working_directory: ~/repo
 
@@ -101,7 +101,7 @@ jobs:
     <<: *test-template
     environment:
       NUMPY_VERSION: 1.14.2
-      CYTHON_VERSION: 0.26
+      CYTHON_VERSION: 0.27
 
   py3.5-np1.14:
     <<: *test-template
@@ -109,5 +109,5 @@ jobs:
       - image: circleci/python:3.5.7-stretch
     environment:
       NUMPY_VERSION: 1.14.2
-      CYTHON_VERSION: 0.26
+      CYTHON_VERSION: 0.27
 
