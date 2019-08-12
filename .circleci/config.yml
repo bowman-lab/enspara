@@ -99,17 +99,17 @@ jobs:
     docker:
       - image: circleci/python:3.5.7-stretch
 
-  py3.6-np1.16:
+  py3.6-np1.14:
     <<: *test-template
     environment:
-      NUMPY_VERSION: 1.16
+      NUMPY_VERSION: 1.14
       CYTHON_VERSION: 0.26
 
-  py3.5-np1.16:
+  py3.5-np1.14:
     <<: *test-template
     docker:
       - image: circleci/python:3.5.7-stretch
     environment:
-      NUMPY_VERSION: 1.16
+      NUMPY_VERSION: 1.14
       CYTHON_VERSION: 0.26
 
