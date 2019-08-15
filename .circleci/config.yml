@@ -52,8 +52,9 @@ jobs:
             conda init bash
 
       - run:
-          name: Install numpy, cython, mdtra
+          name: Install numpy, cython, mdtraj
           command: |
+            export PATH=$HOME/miniconda3/bin:$PATH
             conda activate myenv
             conda install --quiet --yes numpy==$NUMPY_VERSION cython==$CYTHON_VERSION
             conda install --quiet --yes -c omnia mdtraj
