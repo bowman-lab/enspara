@@ -16,10 +16,11 @@ workflows:
 jobs:
   py3.6-np1.15: &test-template
     docker:
-      - image: circleci/python:3.6.8-stretch
+      - image: circleci/python:stretch
     environment:
       NUMPY_VERSION: 1.15.2
       CYTHON_VERSION: 0.27
+      PYTHON_VERSION: 3.6.8
 
     working_directory: ~/repo
 
@@ -46,6 +47,7 @@ jobs:
           name: Install numpy, cython, mdtraj
           command: |
             export PATH=$HOME/miniconda3/bin:$PATH
+            conda install --quiet --yes python==$PYTHON_VERSION
             conda install --quiet --yes numpy==$NUMPY_VERSION cython==$CYTHON_VERSION
             conda install --quiet --yes -c omnia mdtraj
 
@@ -94,20 +96,23 @@ jobs:
 
   py3.5-np1.15:
     <<: *test-template
-    docker:
-      - image: circleci/python:3.5.7-stretch
+    environment:
+      NUMPY_VERSION: 1.15.2
+      CYTHON_VERSION: 0.27
+      PYTHON_VERSION: 3.5.7
 
   py3.6-np1.14:
     <<: *test-template
     environment:
       NUMPY_VERSION: 1.14.2
       CYTHON_VERSION: 0.27
+      PYTHON_VERSION: 3.5.7
 
   py3.5-np1.14:
     <<: *test-template
-    docker:
-      - image: circleci/python:3.5.7-stretch
     environment:
       NUMPY_VERSION: 1.14.2
       CYTHON_VERSION: 0.27
+      PYTHON_VERSION: 3.6.8
+
 
