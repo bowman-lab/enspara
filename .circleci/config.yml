@@ -36,20 +36,24 @@ jobs:
             - v1-dependencies-{{ .Environment.CIRCLE_JOB }}-{{ checksum "setup.py" }}
 
       - run:
-          name: install anaconda
+          name: Install anaconda
           command: |
             wget http://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O ~/miniconda.sh
             chmod +x ~/miniconda.sh && ~/miniconda.sh -b
             export PATH=$HOME/miniconda3/bin:$PATH
             conda update --quiet --yes conda
+            conda init bash
 
       - run:
-          name: Install numpy, cython, mdtraj
+          name: Create conda environment
           command: |
             export PATH=$HOME/miniconda3/bin:$PATH
             conda create --name myenv python==$PYTHON_VERSION
             conda init bash
-            source ~/.bashrc
+
+      - run:
+          name: Install numpy, cython, mdtra
+          command: |
             conda activate myenv
             conda install --quiet --yes numpy==$NUMPY_VERSION cython==$CYTHON_VERSION
             conda install --quiet --yes -c omnia mdtraj
