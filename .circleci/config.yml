@@ -54,6 +54,7 @@ jobs:
       - run:
           name: Install numpy, cython, mdtraj
           command: |
+            source /home/circleci/.bashrc
             export PATH=$HOME/miniconda3/bin:$PATH
             conda activate myenv
             conda install --quiet --yes numpy==$NUMPY_VERSION cython==$CYTHON_VERSION
