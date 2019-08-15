@@ -19,7 +19,7 @@ jobs:
       - image: circleci/python:stretch
     environment:
       NUMPY_VERSION: 1.15.2
-      CYTHON_VERSION: 0.26
+      CYTHON_VERSION: 0.26.1
       PYTHON_VERSION: 3.6.8
 
     working_directory: ~/repo
@@ -47,8 +47,9 @@ jobs:
           name: Install numpy, cython, mdtraj
           command: |
             export PATH=$HOME/miniconda3/bin:$PATH
-            conda create --name myenv python==$PYTHON_VERSION numpy==$NUMPY_VERSION cython==$CYTHON_VERSION
+            conda create --name myenv python==$PYTHON_VERSION
             conda activate myenv
+            conda install --quiet --yes numpy==$NUMPY_VERSION cython==$CYTHON_VERSION
             conda install --quiet --yes -c omnia mdtraj
 
       # - run:
@@ -101,21 +102,21 @@ jobs:
     <<: *test-template
     environment:
       NUMPY_VERSION: 1.15.2
-      CYTHON_VERSION: 0.26
+      CYTHON_VERSION: 0.26.1
       PYTHON_VERSION: 3.5.6
 
   py3.6-np1.14:
     <<: *test-template
     environment:
       NUMPY_VERSION: 1.14.2
-      CYTHON_VERSION: 0.26
+      CYTHON_VERSION: 0.26.1
       PYTHON_VERSION: 3.6.8
 
   py3.5-np1.14:
     <<: *test-template
     environment:
       NUMPY_VERSION: 1.14.2
-      CYTHON_VERSION: 0.26
+      CYTHON_VERSION: 0.26.1
       PYTHON_VERSION: 3.5.6
 
 
