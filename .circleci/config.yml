@@ -47,8 +47,8 @@ jobs:
           name: Install numpy, cython, mdtraj
           command: |
             export PATH=$HOME/miniconda3/bin:$PATH
-            conda install --quiet --yes python==$PYTHON_VERSION
-            conda install --quiet --yes numpy==$NUMPY_VERSION cython==$CYTHON_VERSION
+            conda create --name myenv python==$PYTHON_VERSION numpy==$NUMPY_VERSION cython==$CYTHON_VERSION
+            conda activate myenv
             conda install --quiet --yes -c omnia mdtraj
 
       # - run:
@@ -69,6 +69,7 @@ jobs:
           name: Install and build enspara
           command: |
             export PATH=$HOME/miniconda3/bin:$PATH
+            conda activate myenv
             pip install --progress-bar off .[dev]
             python setup.py build_ext --inplace
             python setup.py install
@@ -82,12 +83,14 @@ jobs:
           name: Run non-MPI tests
           command: |
             export PATH=$HOME/miniconda3/bin:$PATH
+            conda activate myenv
             nosetests -a '!mpi' enspara
 
       - run:
           name: Run MPI tests
           command: |
             export PATH=$HOME/miniconda3/bin:$PATH
+            conda activate myenv
             OMP_NUM_THREADS=1 mpiexec -n 2 nosetests -a mpi enspara
 
       - store_artifacts:
@@ -99,20 +102,20 @@ jobs:
     environment:
       NUMPY_VERSION: 1.15.2
       CYTHON_VERSION: 0.26
-      PYTHON_VERSION: 3.5.7
+      PYTHON_VERSION: 3.5.6
 
   py3.6-np1.14:
     <<: *test-template
     environment:
       NUMPY_VERSION: 1.14.2
       CYTHON_VERSION: 0.26
-      PYTHON_VERSION: 3.5.7
+      PYTHON_VERSION: 3.6.8
 
   py3.5-np1.14:
     <<: *test-template
     environment:
       NUMPY_VERSION: 1.14.2
       CYTHON_VERSION: 0.26
-      PYTHON_VERSION: 3.6.8
+      PYTHON_VERSION: 3.5.6
 
 
