@@ -49,6 +49,8 @@ jobs:
             export PATH=$HOME/miniconda3/bin:$PATH
             conda create --name myenv python==$PYTHON_VERSION
             conda activate myenv
+            conda init bash
+            source ~/.bashrc
             conda install --quiet --yes numpy==$NUMPY_VERSION cython==$CYTHON_VERSION
             conda install --quiet --yes -c omnia mdtraj
 
