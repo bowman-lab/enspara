@@ -13,7 +13,6 @@ import logging
 import itertools
 import pickle
 import json
-import warnings
 from glob import glob
 
 import numpy as np
@@ -62,6 +61,7 @@ def process_command_line(argv):
     TRAJECTORY_DISTANCES = ['rmsd']
 
     parser = argparse.ArgumentParser(
+        prog='cluster',
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
         description="Cluster a set (or several sets) of trajectories "
                     "into a single state space based upon RMSD.")
@@ -104,12 +104,15 @@ def process_command_line(argv):
     cluster_args.add_argument(
         '--cluster-number', default=None, type=int,
         help="Produce at least this number of clusters.")
-
     cluster_args.add_argument(
         "--cluster-distance", default=None,
         choices=FEATURE_DISTANCES + TRAJECTORY_DISTANCES,
         help="The metric for measuring distances. Some metrics (e.g. rmsd) "
              "only apply to trajectories, and others only to features.")
+    cluster_args.add_argument(
+        "--cluster-iterations", default=None, type=int,
+        help="The number of refinement iterations to perform. This is only "
+             "relevant to khybrid clustering.")
 
     cluster_args.add_argument(
         '--subsample', default=1, type=int,
@@ -141,10 +144,6 @@ def process_command_line(argv):
     if args.features:
         args.features = expand_files([args.features])[0]
 
-        if mpi_mode and len(args.features) == 1:
-            raise exception.ImproperlyConfigured(
-                'Cannot use ragged array h5 files in MPI mode.')
-
         if args.cluster_distance in FEATURE_DISTANCES:
             args.cluster_distance = getattr(libdist, args.cluster_distance)
         else:
@@ -152,7 +151,7 @@ def process_command_line(argv):
                 "The given distance (%s) is not compatible with features." %
                 args.cluster_distance)
 
-        if args.subsample != 1 and len(features) == 1:
+        if args.subsample != 1 and len(args.features) == 1:
                 raise exception.ImproperlyConfigured(
                     "Subsampling is not supported for h5 inputs.")
 
@@ -211,28 +210,33 @@ def process_command_line(argv):
 
     if args.algorithm == 'kcenters':
         args.Clusterer = KCenters
+        if args.cluster_iterations is not None:
+            raise exception.ImproperlyConfigured(
+                "--cluster-iterations only has an effect when using an "
+                "interative clustering scheme (e.g. khybrid).")
     elif args.algorithm == 'khybrid':
         args.Clusterer = KHybrid
 
     if args.no_reassign and args.subsample == 1:
-        warnings.warn("When subsampling is 1 (or unspecified), "
-                      "--no-reassign has no effect.")
+        logger.warn("When subsampling is 1 (or unspecified), "
+                    "--no-reassign has no effect.")
     if not args.no_reassign and mpi_mode and args.subsample > 1:
-        warnings.warn("Reassignment is suppressed in MPI mode.")
+        logger.warn("Reassignment is suppressed in MPI mode.")
         args.no_reassign = True
 
     if args.trajectories:
         if os.path.splitext(args.center_features)[1] == '.h5':
-            warnings.warn(
-                "You provided a centers file that looks like it's an h5... "
-                "centers are saved as pickle. Are you sure this is what you "
-                "want?")
+            logger.warn(
+                "You provided a centers file (%s) that looks like it's "
+                "an h5... centers are saved as pickle. Are you sure this "
+                "is what you want?")
     else:
         if os.path.splitext(args.center_features)[1] != '.npy':
-            warnings.warn(
-                "You provided a centers file that looks like it's not "
+            logger.warn(
+                "You provided a centers file (%s) that looks like it's not "
                 "an npy, but this is how they are saved. Are you sure "
-                "this is what you want?")
+                "this is what you want?" %
+                os.path.basename(args.center_features))
 
     return args
 
@@ -247,23 +251,27 @@ def expand_files(pgroups):
 
 
 def load_features(features, stride):
-    if len(features) == 1:
-        with timed("Loading features took %.1f s.", logger.info):
-            try:
-                data = ra.load(features[0])
-            except exception.DataInvalid:
-                data = ra.load(features[0], keys=...)
+    try:
+        if len(features) == 1:
+            with timed("Loading features took %.1f s.", logger.info):
+                lengths, data = mpi.io.load_h5_as_striped(features[0], stride)
 
-        lengths = data.lengths
-        data = data._data
-    else:  # and len(features) > 1
-        with timed("Loading features took %.1f s.", logger.info):
-            lengths, data = mpi.io.load_npy_as_striped(features, stride)
+        else:  # and len(features) > 1
+            with timed("Loading features took %.1f s.", logger.info):
+                lengths, data = mpi.io.load_npy_as_striped(features, stride)
 
         with timed("Turned over array in %.2f min", logger.info):
             tmp_data = data.copy()
             del data
             data = tmp_data
+    except MemoryError:
+        logger.error(
+            "Ran out of memory trying to allocate features array"
+            " from file %s", features[0])
+        raise
+
+    logger.info("Loaded %s trajectories with %s frames with stride %s.",
+                len(lengths), len(data), stride)
 
     return lengths, data
 
@@ -354,7 +362,8 @@ def load_asymm_frames(center_indices, trajectories, topology, subsample):
 def load_trjs_or_features(args):
 
     if args.features:
-        lengths, data = load_features(args.features, stride=args.subsample)
+        with timed("Loading features took %.1f s.", logger.info):
+            lengths, data = load_features(args.features, stride=args.subsample)
     else:
         assert args.trajectories
         assert len(args.trajectories) == len(args.topologies)
@@ -433,13 +442,20 @@ def main(argv=None):
     # be local (i.e. only this node's data).
     lengths, data = load_trjs_or_features(args)
 
+    kwargs = {}
+    if args.cluster_iterations is not None:
+        kwargs['kmedoids_updates'] = int(args.cluster_iterations)
+
     clustering = args.Clusterer(
         metric=args.cluster_distance,
         n_clusters=args.cluster_number,
         cluster_radius=args.cluster_radius,
-        mpi_mode=mpi_mode)
+        mpi_mode=mpi_mode,
+        **kwargs)
 
     clustering.fit(data)
+    # release the RAM held by the trajectories (we don't need it anymore)
+    del data
 
     logger.info(
         "Clustered %s frames into %s clusters in %s seconds.",
@@ -466,11 +482,14 @@ def main(argv=None):
     result = result.partition(lengths)
 
     if mpi_comm.Get_rank() == 0:
-        write_centers_indices(
-            args.center_indices,
-            [(t, f * args.subsample) for t, f in result.center_indices])
-        write_centers(result, args)
+        with timed("Wrote center indices in %.2f sec.", logger.info):
+            write_centers_indices(
+                args.center_indices,
+                [(t, f * args.subsample) for t, f in result.center_indices])
+        with timed("Wrote center structures in %.2f sec.", logger.info):
+            write_centers(result, args)
         write_assignments_and_distances_with_reassign(result, args)
+
     mpi_comm.barrier()
 
     logger.info("Success! Data can be found in %s.",

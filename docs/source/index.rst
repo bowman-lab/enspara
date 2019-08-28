@@ -6,6 +6,9 @@
 Enspara: MSMs at Scale
 ============================================
 
+Enspara is primarily a python library, but it also contains a few applications
+for very common Markov-state model related tasks.
+
 * MSM estimation and manipulation
 * Turn-key applications for clustering and analysis
 * Transition path theory
@@ -18,9 +21,13 @@ Contents:
    :maxdepth: 1
 
    installation
+   tutorial/tutorial
+   CARDS <cards>
+   cli
    clustering
-   apps
    cookbook
+   pocket-detection
+   transition-path-theory
    _modules/enspara
 
 

@@ -5,7 +5,7 @@ from setuptools import find_packages
 from distutils.core import setup
 from distutils.extension import Extension
 
-__version__ = '0.1'
+__version__ = '0.1.0'
 
 CLASSIFIERS = [
     "Development Status :: 3 - Alpha",
@@ -30,7 +30,7 @@ try:
 except ImportError:
     sys.stderr.write('-' * 80)
     sys.stderr.write('\n'.join([
-        'Error: building mdtraj requires numpy and cython>=0.19',
+        'Error: building enspara requires numpy and cython>=0.19',
         'Try running the command ``pip install numpy cython`` or'
         '``conda install numpy cython``.',
 
@@ -77,20 +77,27 @@ setup(
     name='enspara',
     packages=find_packages(exclude=["tests"],),
     version=__version__,
-    url="https://github.com/bowman-lab/enspara",
+    project_urls={
+        'Documentation': 'https://enspara.readthedocs.io',
+        'Source': 'https://github.com/bowman-lab/enspara',
+        'Tracker': 'https://github.com/bowman-lab/enspara/issues',
+    },
     platforms=['Linux', 'Mac OS-X', 'Unix'],
     classifiers=CLASSIFIERS,
     include_dirs=[np.get_include()],
     ext_modules=cythonize(cython_extensions),
     python_requires='>=3.5,<3.7',  # cython is broken for 3.7
+    entry_points={'console_scripts': ['enspara = enspara.apps.main:main']},
+    setup_requires=['Cython>=0.24', 'numpy>=1.13'],
     install_requires=[
         'Cython>=0.24',
         'numpy>=1.13',
         'tables>=3.2',
         'matplotlib>=1.5.1',
-        'mdtraj>=1.7,<1.9',
+        'mdtraj>=1.7',
         'mpi4py>=2.0.0',
         'psutil>=5.2.2',
+        'pandas',
         'scikit-learn>=0.19.0',
         'scipy>=0.17'
     ],

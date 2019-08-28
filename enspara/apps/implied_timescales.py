@@ -21,8 +21,9 @@ from enspara.util.parallel import auto_nprocs
 
 def process_command_line(argv):
 
-    parser = argparse.ArgumentParser(formatter_class=argparse.
-                                     ArgumentDefaultsHelpFormatter)
+    parser = argparse.ArgumentParser(
+        prog='implied',
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
     parser.add_argument(
         "--assignments", required=True,
@@ -140,7 +141,7 @@ def main(argv=None):
     args = process_command_line(argv)
 
     try:
-        assignments = ra.load(args.assignments)
+        assignments = ra.load(args.assignments, keys=None)
     except NoSuchNodeError:
         assignments = ra.load(args.assignments, keys=...)
     if args.trj_ids is not None:

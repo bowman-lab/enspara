@@ -14,10 +14,10 @@ from sklearn.datasets import make_blobs
 import numpy as np
 from numpy.testing import assert_array_equal, assert_allclose
 
+from ..import mpi
 from ..apps import cluster
 from ..cluster import util, kcenters
 from ..util import array as ra
-from ..mpi import MPI, MPI_RANK
 
 from .util import fix_np_rng
 
@@ -27,11 +27,11 @@ TEST_DIR = os.path.dirname(__file__)
 def runhelper(args, expected_size, expect_reassignment=True,
               centers_format='pkl'):
 
-    if MPI_RANK == 0:
+    if mpi.rank() == 0:
         td = tempfile.mkdtemp()
     else:
         td = None
-    td = MPI.COMM_WORLD.bcast(td, root=0)
+    td = mpi.comm.bcast(td, root=0)
 
     fnames = {
         'center-inds': td + '/center-inds.npy',
@@ -48,7 +48,7 @@ def runhelper(args, expected_size, expect_reassignment=True,
             '--assignments', fnames['assignments'],
             '--center-indices', fnames['center-inds'],
             '--center-features', fnames['center-structs']] + args)
-        MPI.COMM_WORLD.Barrier()
+        mpi.comm.Barrier()
 
         if expect_reassignment:
             assert os.path.isfile(fnames['assignments']), \
@@ -92,8 +92,8 @@ def runhelper(args, expected_size, expect_reassignment=True,
         except pickle.UnpicklingError:
             center_structs = np.load(ctrstructfile)
     finally:
-        MPI.COMM_WORLD.Barrier()
-        if MPI_RANK == 0:
+        mpi.comm.Barrier()
+        if mpi.rank() == 0:
             shutil.rmtree(td)
 
     return assigns, dists, center_inds, center_structs
@@ -110,7 +110,7 @@ def test_rmsd_kcenters_mpi():
 
     with tempfile.TemporaryDirectory() as tdname:
 
-        tdname = MPI.COMM_WORLD.bcast(tdname, root=0)
+        tdname = mpi.comm.bcast(tdname, root=0)
 
         for i in range(expected_size[0]):
             shutil.copy(TRJFILE, os.path.join(tdname, 'frame%s.xtc' % i))
@@ -153,7 +153,7 @@ def test_rmsd_kcenters_mpi_subsample():
 
     with tempfile.TemporaryDirectory() as tdname:
 
-        tdname = MPI.COMM_WORLD.bcast(tdname, root=0)
+        tdname = mpi.comm.bcast(tdname, root=0)
 
         for i in range(expected_size[0]):
             shutil.copy(TRJFILE, os.path.join(tdname, 'frame%s.xtc' % i))
@@ -199,9 +199,9 @@ def test_rmsd_khybrid_mpi_basic():
         shutil.copy(TRJFILE, os.path.join(tdname, 'frame0.xtc'))
         shutil.copy(TRJFILE, os.path.join(tdname, 'frame1.xtc'))
 
-        tdname = MPI.COMM_WORLD.bcast(tdname, root=0)
+        tdname = mpi.comm.bcast(tdname, root=0)
 
-        MPI.COMM_WORLD.Barrier()
+        mpi.comm.Barrier()
 
         a, d, idx, s = runhelper([
             '--trajectories', os.path.join(tdname, 'frame?.xtc'),
@@ -250,7 +250,7 @@ def test_rmsd_khybrid_mpi_subsample():
 
     with tempfile.TemporaryDirectory() as tdname:
 
-        tdname = MPI.COMM_WORLD.bcast(tdname, root=0)
+        tdname = mpi.comm.bcast(tdname, root=0)
 
         for i in range(expected_size[0]):
             shutil.copy(TRJFILE, os.path.join(tdname, 'frame%s.xtc' % i))
@@ -282,7 +282,7 @@ def test_feature_khybrid_mpi_basic():
         random_state=0)
 
     try:
-        if MPI_RANK == 0:
+        if mpi.rank() == 0:
             td = tempfile.TemporaryDirectory()
             a = ra.RaggedArray(array=X, lengths=[50, 30, 20])
 
@@ -292,8 +292,8 @@ def test_feature_khybrid_mpi_basic():
         else:
             td = None
 
-        tdname = MPI.COMM_WORLD.bcast(td.name if MPI_RANK == 0 else None,
-                                      root=0)
+        tdname = mpi.comm.bcast(td.name if mpi.rank() == 0 else None,
+                                root=0)
         a, d, inds, s = runhelper([
             '--features', os.path.join(tdname, '*.npy'),
             '--cluster-number', '3',
@@ -304,13 +304,58 @@ def test_feature_khybrid_mpi_basic():
 
         assert_equal(len(inds), 3)
     finally:
-        if MPI_RANK == 0:
+        if mpi.rank() == 0:
             td.cleanup()
 
-        MPI.COMM_WORLD.Barrier()
+        mpi.comm.Barrier()
 
     y_ra = ra.RaggedArray(y, a.lengths)
     for cid in range(len(inds)):
         iis = ra.where(y_ra == cid)
         i = (iis[0][0], iis[1][0])
         assert np.all(a[i] == a[iis])
+
+
+@fix_np_rng(5)
+@attr('mpi')
+def test_feature_khybrid_mpi_h5():
+    expected_size = (3, (50, 30, 20))
+
+    X, y = make_blobs(
+        n_samples=100, n_features=3, centers=3, center_box=(0, 100),
+        random_state=0)
+
+    try:
+        if mpi.rank() == 0:
+            td = tempfile.TemporaryDirectory()
+            a = ra.RaggedArray(array=X, lengths=[50, 30, 20])
+
+            for row_i in range(len(a.lengths)):
+                pathname = os.path.join(td.name, "data.h5")
+                ra.save(pathname, a)
+        else:
+            td = None
+
+        pathname = mpi.comm.bcast(pathname if mpi.rank() == 0 else None,
+                                  root=0)
+        a, d, inds, s = runhelper([
+            '--features', pathname,
+            '--cluster-number', '3',
+            '--algorithm', 'khybrid',
+            '--cluster-distance', 'manhattan'],
+            expected_size=expected_size,
+            centers_format='npy')
+
+        assert_equal(len(inds), 3)
+    finally:
+        if mpi.rank() == 0:
+            td.cleanup()
+
+        mpi.comm.Barrier()
+
+    y_ra = ra.RaggedArray(y, a.lengths)
+    for cid in range(len(inds)):
+        iis = ra.where(y_ra == cid)
+        i = (iis[0][0], iis[1][0])
+        assert np.all(a[i] == a[iis])
+

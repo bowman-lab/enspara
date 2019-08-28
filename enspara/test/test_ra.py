@@ -6,14 +6,14 @@ import numpy as np
 import mdtraj as md
 from mdtraj import io
 
-from mdtraj.testing import get_fn
 from nose.tools import assert_raises, assert_equals, assert_is, assert_true
 from numpy.testing import assert_array_equal
 
 from ..util import array as ra
 from ..util.load import load_as_concatenated, concatenate_trjs
-
 from ..exception import DataInvalid, ImproperlyConfigured
+
+from .util import get_fn
 
 
 def assert_ra_equal(a, b, **kwargs):
@@ -70,6 +70,16 @@ class Test_RaggedArray(unittest.TestCase):
             b = ra.load(f.name)
             assert_ra_equal(a, b)
 
+    def test_RaggedArray_disk_roundtrip_with_stride(self):
+        src = np.array(range(55))
+        a = ra.RaggedArray(array=src, lengths=[25, 30])
+
+        with tempfile.NamedTemporaryFile(suffix='.h5') as f:
+            ra.save(f.name, a)
+            b = ra.load(f.name, stride=3)
+
+        assert_ra_equal(a[:, ::3], b)
+
     def test_RaggedArray_disk_roundtrip_numpy(self):
         a = np.ones(shape=(5, 5))
 
@@ -103,13 +113,13 @@ class Test_RaggedArray(unittest.TestCase):
     def test_RaggedArray_load_specific_h5_arrays(self):
 
         src = np.array(range(55))
-        a = ra.RaggedArray(array=src, lengths=[25, 30])
+        a = ra.RaggedArray(array=src, lengths=[15, 10, 30])
 
         with tempfile.NamedTemporaryFile(suffix='.h5') as f:
-            io.saveh(f.name, key0=a[0], key1=a[1])
-            b = ra.load(f.name, keys=['key1'])
+            io.saveh(f.name, key0=a[0], key1=a[1], key2=a[2])
+            b = ra.load(f.name, keys=['key1', 'key2'])
 
-        assert_array_equal(a[1], b[0])
+        assert_ra_equal(a[1:], b[:])
 
     def test_RaggedArray_bad_size(self):
 
@@ -183,7 +193,7 @@ class Test_RaggedArray(unittest.TestCase):
         assert_array_equal(a[:,1], [[1],[1],[1]])
         assert_array_equal(a[:,np.arange(3)[1]], [[1],[1],[1]])
 
-        a[:,np.arange(3)[1]] = [[90],[90],[70]] 
+        a[:,np.arange(3)[1]] = [[90],[90],[70]]
         assert_array_equal(a[:,1], [[90], [90], [70]])
         assert_array_equal(a[:,np.arange(3)[1]], [[90], [90], [70]])
 

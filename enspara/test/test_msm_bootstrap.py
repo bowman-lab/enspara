@@ -8,8 +8,10 @@ from ..msm.msm import MSM
 from ..msm import builders
 
 from .msm_data import TRIMMABLE
+from .util import fix_np_rng
 
 
+@fix_np_rng(0)
 def test_bootstrap_msm():
 
     assigs = TRIMMABLE['assigns']
