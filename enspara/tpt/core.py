@@ -92,7 +92,8 @@ def committors(tprob, sources, sinks):
         # ignore 'SparseEfficiencyWarning: spsolve requires A be CSC or CSR
         # matrix format'; TODO: is this because I_m_Q is dense?
         warnings.simplefilter("ignore")
-        committors = scipy.sparse.linalg.spsolve(I_m_Q, R).flatten()
+        committors = scipy.sparse.linalg.spsolve(I_m_Q, R).sum(axis=1)
+        committors[sinks] = 1.0
 
     return committors
 
