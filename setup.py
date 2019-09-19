@@ -4,7 +4,7 @@ import sys
 from setuptools import find_packages
 from distutils.core import setup
 from distutils.extension import Extension
-
+import distutils.ccompiler
 __version__ = '0.1.0'
 
 CLASSIFIERS = [
@@ -37,14 +37,19 @@ except ImportError:
         'or see http://docs.scipy.org/doc/numpy/user/install.html and'
         'http://cython.org/ for more information.']))
 
-
-# this probably won't work for everyone. Works for me, though!
-# they'll need gcc 7 installed. Unfortunately, I don't have any idea how
-# to detect local c compilers. :/
-if 'darwin' in platform.system().lower():
-    use_openmp = False
-else:
+use_openmp = False
+def use_openmp():
     use_openmp = True
+
+# this code checks for OS. If OS is OSx then it checks for GCC as default compiler
+#if GCC is the default compiler adds -fopenmp to linker and compiler args. 
+if 'darwin' in platform.system().lower():
+    if 'gcc' in  distutils.ccompiler.get_default_compiler():
+        use_openmp = False
+    else:
+        use_openmp() 
+else:
+    use_openmp()
 
 extra_compile_args = ['-Wno-unreachable-code']
 extra_link_args = []
