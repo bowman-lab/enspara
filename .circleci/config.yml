@@ -14,12 +14,12 @@ workflows:
       - py3.5-np1.14
       - py3.7-np1.15
       - py3.7-np1.14
-      - py3.6-np1.18
-      - py3.5-np1.18
-      - py3.6-np1.17
-      - py3.5-np1.17
-      - py3.7-np1.18
-      - py3.7-np1.18
+     # - py3.6-np1.18
+     # - py3.5-np1.18
+     # - py3.6-np1.17
+     # - py3.5-np1.17
+     # - py3.7-np1.18
+     # - py3.7-np1.18
 
 jobs:
   py3.6-np1.15: &test-template
@@ -133,46 +133,46 @@ jobs:
       - image: circleci/python:3.7.4-stretch
       
       
-  py3.5-np1.17:
-    <<: *test-template
-    docker:
-      - image: circleci/python:3.5.7-stretch
-    environment:
-      NUMPY_VERSION: 1.17.0
-      CYTHON_VERSION: 0.29.2
+ # py3.5-np1.17:
+ #   <<: *test-template
+ #   docker:
+ #     - image: circleci/python:3.5.7-stretch
+ #   environment:
+ #     NUMPY_VERSION: 1.17.0
+ #     CYTHON_VERSION: 0.29.2
       
-  py3.5-np1.18:
-    <<: *test-template
-    docker:
-      - image: circleci/python:3.5.7-stretch
-    environment:
-      NUMPY_VERSION: 1.18.dev0
-      CYTHON_VERSION: 0.29.2
+ # py3.5-np1.18:
+ #   <<: *test-template
+ #   docker:
+ #     - image: circleci/python:3.5.7-stretch
+ #   environment:
+ #     NUMPY_VERSION: 1.18.dev0
+ #     CYTHON_VERSION: 0.29.2
       
-  py3.6-np1.17:
-    <<: *test-template
-    environment:
-      NUMPY_VERSION: 1.17.0
-      CYTHON_VERSION: 0.29.2
+ # py3.6-np1.17:
+ #   <<: *test-template
+ #   environment:
+ #     NUMPY_VERSION: 1.17.0
+ #     CYTHON_VERSION: 0.29.2
       
-  py3.6-np1.18:
-    <<: *test-template
-    environment:
-      NUMPY_VERSION: 1.18.dev0
-      CYTHON_VERSION: 0.29.2
+ # py3.6-np1.18:
+ #   <<: *test-template
+ #   environment:
+ #     NUMPY_VERSION: 1.18.dev0
+ #     CYTHON_VERSION: 0.29.2
       
-  py3.7-np1.17:
-    <<: *test-template
-    docker:
-      - image: circleci/python:3.7.4-stretch
-    environment:
-      NUMPY_VERSION: 1.17.0
-      CYTHON_VERSION: 0.29.2
+ # py3.7-np1.17:
+ #   <<: *test-template
+ #   docker:
+ #     - image: circleci/python:3.7.4-stretch
+ #   environment:
+ #     NUMPY_VERSION: 1.17.0
+ #     CYTHON_VERSION: 0.29.2
       
-  py3.7-np1.18:
-    <<: *test-template
-    docker:
-      - image: circleci/python:3.7.4-stretch
-    environment:
-      NUMPY_VERSION: 1.18.dev0
-      CYTHON_VERSION: 0.29.2
+ # py3.7-np1.18:
+ #   <<: *test-template
+ #   docker:
+ #    - image: circleci/python:3.7.4-stretch
+ #   environment:
+ #     NUMPY_VERSION: 1.18.dev0
+ #     CYTHON_VERSION: 0.29.2
