@@ -1,3 +1,4 @@
+import itertools
 import numpy as np
 import mdtraj as md
 
@@ -57,5 +58,5 @@ def _bfactors_from_rmsfs(pdb, rmsfs):
     bfactors = np.concatenate(
         [
             list(itertools.repeat(rmsf, r.n_atoms))
-            for rmsf,r in zip(rmsfs, centers.top.residues)])
+            for rmsf,r in zip(rmsfs, pdb.top.residues)])
     return bfactors
