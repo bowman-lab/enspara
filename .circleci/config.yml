@@ -58,7 +58,7 @@ jobs:
           command: |
             export PATH=$HOME/miniconda3/bin:$PATH
             conda install --quiet --yes numpy==$NUMPY_VERSION cython==$CYTHON_VERSION
-            conda install --quiet --yes -c omnia mdtraj
+            conda install --quiet --yes -c conda-forge mdtraj
 
       # - run:
       #     name: Upgrade pip
