@@ -13,10 +13,10 @@ workflows:
       - py3.6-np1.14
       - py3.5-np1.14
       - py3.7-np1.15
-      - py3.7-np1.14
       - py3.5-np1.16
       - py3.6-np1.16
       - py3.7-np1.16
+     # - py3.7-np1.14
      # - py3.6-np1.18
      # - py3.5-np1.18
      # - py3.6-np1.17
@@ -31,6 +31,7 @@ jobs:
     environment:
       NUMPY_VERSION: 1.15.2
       CYTHON_VERSION: 0.29.2
+      PYTHON_VERSION: https://repo.continuum.io/miniconda/Miniconda3-4.5.1-Linux-x86_64.sh
 
     working_directory: ~/repo
 
@@ -48,7 +49,7 @@ jobs:
       - run:
           name: install anaconda
           command: |
-            wget http://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O ~/miniconda.sh
+            wget $PYTHON_VERSION -O ~/miniconda.sh
             chmod +x ~/miniconda.sh && ~/miniconda.sh -b
             export PATH=$HOME/miniconda3/bin:$PATH
             conda update --quiet --yes conda
@@ -107,7 +108,11 @@ jobs:
     <<: *test-template
     docker:
       - image: circleci/python:3.5.7-stretch
-
+    environment:
+      NUMPY_VERSION: 1.14.2
+      CYTHON_VERSION: 0.29.2
+      PYTHON_VERSION: https://repo.continuum.io/miniconda/Miniconda3-4.2.11-Linux-x86_64.sh
+  
   py3.6-np1.14:
     <<: *test-template
     environment:
@@ -121,19 +126,14 @@ jobs:
     environment:
       NUMPY_VERSION: 1.14.2
       CYTHON_VERSION: 0.29.2
-      
-  py3.7-np1.14:
-    <<: *test-template
-    docker:
-      - image: circleci/python:3.7.4-stretch
-    environment:
-      NUMPY_VERSION: 1.14.2
-      CYTHON_VERSION: 0.29.2
-      
+      PYTHON_VERSION: https://repo.continuum.io/miniconda/Miniconda3-4.2.11-Linux-x86_64.sh
+          
   py3.7-np1.15:
     <<: *test-template
     docker:
       - image: circleci/python:3.7.4-stretch
+    environment:
+      PYTHON_VERSION: https://repo.continuum.io/miniconda/Miniconda3-4.7.10-Linux-x86_64.sh
       
   py3.5-np1.16:
     <<: *test-template
@@ -142,6 +142,7 @@ jobs:
     environment:
       NUMPY_VERSION: 1.16.5
       CYTHON_VERSION: 0.29.2
+      PYTHON_VERSION: https://repo.continuum.io/miniconda/Miniconda3-4.2.11-Linux-x86_64.sh
   
   py3.6-np1.16:
     <<: *test-template
@@ -156,6 +157,7 @@ jobs:
     environment:
       NUMPY_VERSION: 1.16.5
       CYTHON_VERSION: 0.29.2
+      PYTHON_VERSION: https://repo.continuum.io/miniconda/Miniconda3-4.7.10-Linux-x86_64.sh
 
  # py3.5-np1.17:
  #   <<: *test-template
@@ -200,3 +202,12 @@ jobs:
  #   environment:
  #     NUMPY_VERSION: 1.18.dev0
  #     CYTHON_VERSION: 0.29.2
+ 
+ # py3.7-np1.14:
+ #   <<: *test-template
+ #   docker:
+ #     - image: circleci/python:3.7.4-stretch
+ #   environment:
+ #     NUMPY_VERSION: 1.14.2
+ #     CYTHON_VERSION: 0.29.2
+ #     PYTHON_VERSION: https://repo.continuum.io/miniconda/Miniconda3-4.7.10-Linux-x86_64.sh
