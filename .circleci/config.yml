@@ -13,152 +13,129 @@ workflows:
       - py3.6-np1.14
       - py3.5-np1.14
       - py3.7-np1.15
-      - py3.5-np1.16
       - py3.6-np1.16
       - py3.7-np1.16
-     # - py3.7-np1.14
-     # - py3.6-np1.18
-     # - py3.5-np1.18
-     # - py3.6-np1.17
-     # - py3.5-np1.17
-     # - py3.7-np1.18
-     # - py3.7-np1.18
+     
+test-template: &test-template
+  docker:
+    - image: ubuntu:bionic
+  steps:
+    - checkout
+    - run:
+        name: Install System Dependencies
+        command: apt-get update && apt-get install -y libmpich12 libmpich-dev build-essential
+
+    # Download and cache dependencies
+    - restore_cache:
+        keys:
+          - v1-dependencies-{{ .Environment.CIRCLE_JOB }}-{{ checksum "setup.py" }}
+
+    - run:
+        name: install anaconda
+        command: |
+          apt update
+          apt install -y wget
+          cd $HOME
+          wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O ~/miniconda.sh
+          chmod +x ~/miniconda.sh && bash ~/miniconda.sh -b -p $HOME/miniconda
+          export PATH=$HOME/miniconda/bin:$PATH
+            
+    - run:
+        name: Install numpy, cython, mdtraj
+        command: |
+          export PATH="$HOME/miniconda/bin:$PATH"
+          conda update  --yes conda
+          echo $PYTHON_VERSION
+          conda create -n myenv python=$PYTHON_VERSION -c conda-forge
+          source activate myenv
+          conda install --yes pip
+          conda install --yes -c conda-forge numpy=$NUMPY_VERSION cython=$CYTHON_VERSION
+          conda install --yes -c conda-forge nose mdtraj  
+          python --version
+          python -c "import numpy; print(numpy.__version__)"
+
+    - run:
+        name: Install and build enspara
+        command: |
+          export PATH=$HOME/miniconda/bin:$PATH
+          source activate myenv
+          pip install --progress-bar off .[dev]
+          python setup.py build_ext --inplace
+          python setup.py install
+
+    - save_cache:
+        paths:
+          - ~/miniconda
+        key: v1-dependencies-{{ checksum "setup.py" }}
+
+    - run:
+        name: Run non-MPI tests
+        command: |
+          export PATH=$HOME/miniconda/bin:$PATH
+          source activate myenv
+          nosetests -a '!mpi' enspara
+
+    - run:
+        name: Run MPI tests
+        command: |
+          export PATH=$HOME/miniconda/bin:$PATH
+          source activate myenv
+          OMP_NUM_THREADS=1 mpiexec -n 2 nosetests -a mpi enspara
+
+    - store_artifacts:
+        path: test-reports
+        destination: test-reports
 
 jobs:
-  py3.6-np1.15: &test-template
-    docker:
-      - image: circleci/python:3.6.8-stretch
+  py3.6-np1.15:
+    <<: *test-template
     environment:
-      NUMPY_VERSION: 1.15.2
-      CYTHON_VERSION: 0.29.2
-      PYTHON_VERSION: https://repo.continuum.io/miniconda/Miniconda3-4.5.1-Linux-x86_64.sh
-
-    working_directory: ~/repo
-
-    steps:
-      - checkout
-      - run:
-          name: Install System Dependencies
-          command: sudo apt-get update && sudo apt-get install -y libmpich12 libmpich-dev build-essential
-
-      # Download and cache dependencies
-      - restore_cache:
-          keys:
-            - v1-dependencies-{{ .Environment.CIRCLE_JOB }}-{{ checksum "setup.py" }}
-
-      - run:
-          name: install anaconda
-          command: |
-            wget $PYTHON_VERSION -O ~/miniconda.sh
-            chmod +x ~/miniconda.sh && ~/miniconda.sh -b
-            export PATH=$HOME/miniconda3/bin:$PATH
-            conda update --quiet --yes conda
-
-      - run:
-          name: Install numpy, cython, mdtraj
-          command: |
-            export PATH=$HOME/miniconda3/bin:$PATH
-            conda install --quiet --yes numpy==$NUMPY_VERSION cython==$CYTHON_VERSION
-            conda install --quiet --yes -c conda-forge mdtraj
-
-      # - run:
-      #     name: Upgrade pip
-      #     command: |
-      #       python3 -m venv venv
-      #       . venv/bin/activate
-      #       pip install pip==18.0
-
-      # - run:
-      #     name: Install numpy and cython
-      #     command: |
-      #       python3 -m venv venv
-      #       . venv/bin/activate
-      #       pip install --progress-bar off numpy==$NUMPY_VERSION cython==$CYTHON_VERSION
-
-      - run:
-          name: Install and build enspara
-          command: |
-            export PATH=$HOME/miniconda3/bin:$PATH
-            pip install --progress-bar off .[dev]
-            python setup.py build_ext --inplace
-            python setup.py install
-
-      - save_cache:
-          paths:
-            - ~/miniconda
-          key: v1-dependencies-{{ checksum "setup.py" }}
-
-      - run:
-          name: Run non-MPI tests
-          command: |
-            export PATH=$HOME/miniconda3/bin:$PATH
-            nosetests -a '!mpi' enspara
-
-      - run:
-          name: Run MPI tests
-          command: |
-            export PATH=$HOME/miniconda3/bin:$PATH
-            OMP_NUM_THREADS=1 mpiexec -n 2 nosetests -a mpi enspara
-
-      - store_artifacts:
-          path: test-reports
-          destination: test-reports
+      NUMPY_VERSION: 1.14.2
+      CYTHON_VERSION: 0.26.1
+      PYTHON_VERSION: 3.6
 
   py3.5-np1.15:
     <<: *test-template
-    docker:
-      - image: circleci/python:3.5.7-stretch
     environment:
       NUMPY_VERSION: 1.14.2
-      CYTHON_VERSION: 0.29.2
-      PYTHON_VERSION: https://repo.continuum.io/miniconda/Miniconda3-4.2.11-Linux-x86_64.sh
+      CYTHON_VERSION: 0.26.1
+      PYTHON_VERSION: 3.5
   
   py3.6-np1.14:
     <<: *test-template
     environment:
       NUMPY_VERSION: 1.14.2
-      CYTHON_VERSION: 0.29.2
+      CYTHON_VERSION: 0.26.1
+      PYTHON_VERSION: 3.6
 
   py3.5-np1.14:
     <<: *test-template
-    docker:
-      - image: circleci/python:3.5.7-stretch
     environment:
       NUMPY_VERSION: 1.14.2
-      CYTHON_VERSION: 0.29.2
-      PYTHON_VERSION: https://repo.continuum.io/miniconda/Miniconda3-4.2.11-Linux-x86_64.sh
+      CYTHON_VERSION: 0.26.1
+      PYTHON_VERSION: 3.5
           
   py3.7-np1.15:
     <<: *test-template
-    docker:
-      - image: circleci/python:3.7.4-stretch
     environment:
-      PYTHON_VERSION: https://repo.continuum.io/miniconda/Miniconda3-4.7.10-Linux-x86_64.sh
-      
-  py3.5-np1.16:
-    <<: *test-template
-    docker:
-      - image: circleci/python:3.5.7-stretch
-    environment:
-      NUMPY_VERSION: 1.16.5
+      NUMPY_VERSION: 1.15.2
       CYTHON_VERSION: 0.29.2
-      PYTHON_VERSION: https://repo.continuum.io/miniconda/Miniconda3-4.2.11-Linux-x86_64.sh
-  
+      PYTHON_VERSION: 3.7.1
+
   py3.6-np1.16:
     <<: *test-template
     environment:
       NUMPY_VERSION: 1.16.5
-      CYTHON_VERSION: 0.29.2
-      
+      CYTHON_VERSION: 0.26.1
+      PYTHON_VERSION: 3.6
+
   py3.7-np1.16:
     <<: *test-template
-    docker:
-      - image: circleci/python:3.7.4-stretch
     environment:
       NUMPY_VERSION: 1.16.5
       CYTHON_VERSION: 0.29.2
-      PYTHON_VERSION: https://repo.continuum.io/miniconda/Miniconda3-4.7.10-Linux-x86_64.sh
-
+      PYTHON_VERSION: 3.7.1
+      
  # py3.5-np1.17:
  #   <<: *test-template
  #   docker:
@@ -211,3 +188,10 @@ jobs:
  #     NUMPY_VERSION: 1.14.2
  #     CYTHON_VERSION: 0.29.2
  #     PYTHON_VERSION: https://repo.continuum.io/miniconda/Miniconda3-4.7.10-Linux-x86_64.sh
+
+ # py3.5-np1.16:
+ #  <<: *test-template
+ #  environment:
+ #    NUMPY_VERSION: 1.16.5
+ #    CYTHON_VERSION: 0.29.2
+ #    PYTHON_VERSION: 3.5.7
