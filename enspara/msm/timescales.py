@@ -10,7 +10,7 @@ import logging
 
 import numpy as np
 
-from sklearn.externals.joblib import Parallel, delayed
+from joblib import Parallel, delayed
 
 from .transition_matrices import assigns_to_counts, eigenspectrum, \
     trim_disconnected
