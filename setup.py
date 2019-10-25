@@ -58,9 +58,9 @@ install_requires = [
 #if GCC is the default compiler adds -fopenmp to linker and compiler args. 
 if 'darwin' in platform.system().lower():
     if 'gcc' in  distutils.ccompiler.get_default_compiler():
-        use_openmp = False
-    else:
         use_openmp() 
+    else:
+        use_openmp = False
 else:
     use_openmp()
 
