@@ -50,9 +50,9 @@ install_requires = [
     'mdtraj>=1.7',
     'psutil>=5.2.2',
     'pandas',
-    'scikit-learn>=0.19.0',
+    'scikit-learn>=0.21.0',
     'scipy>=0.17'
-        ]
+]
 
 # this code checks for OS. If OS is OSx then it checks for GCC as default compiler
 #if GCC is the default compiler adds -fopenmp to linker and compiler args. 

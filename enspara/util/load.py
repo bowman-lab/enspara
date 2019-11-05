@@ -11,8 +11,6 @@ from operator import mul
 import numpy as np
 import mdtraj as md
 
-# from sklearn.externals.joblib import Parallel, delayed
-
 from .. import exception
 
 logger = logging.getLogger(__name__)
