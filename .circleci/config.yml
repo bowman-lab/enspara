@@ -8,13 +8,14 @@ workflows:
   version: 2
   test:
     jobs:
-      - py3.6-np1.15
-      - py3.5-np1.15
-      - py3.6-np1.14
-      - py3.5-np1.14
-      - py3.7-np1.15
-      - py3.6-np1.16
-      - py3.7-np1.16
+      - conda-py3.6-np1.15
+      - conda-py3.5-np1.15
+      - conda-py3.6-np1.14
+      - conda-py3.5-np1.14
+      - conda-py3.7-np1.15
+      - conda-py3.6-np1.16
+      - conda-py3.7-np1.16
+      - pip-py3.7-np1.16
       
 test-template-pip: &test-template-pip
   docker:
@@ -34,9 +35,9 @@ test-template-pip: &test-template-pip
         name: install python 
         command: |
           cd $HOME
-          wget https://www.python.org/ftp/python/3.7.4/Python-3.7.4.tgz
-          tar -xf Python-3.7.4.tgz
-          cd Python-3.7.4
+          wget https://www.python.org/ftp/python/$PYTHON_VERSION/Python-$PYTHON_VERSION.tgz
+          tar -xf Python-$PYTHON_VERSION.tgz
+          cd Python-$PYTHON_VERSION
           ./configure --enable-optimizations
           make
           sudo make altinstall
@@ -159,54 +160,60 @@ test-template-conda: &test-template-anaconda
         destination: test-reports
 
 jobs:
-  py3.6-np1.15:
+  conda-py3.6-np1.15:
     <<: *test-template-anaconda
     environment:
       NUMPY_VERSION: 1.15.2
       CYTHON_VERSION: 0.26.1
       PYTHON_VERSION: 3.6
 
-  py3.5-np1.15:
+  conda-py3.5-np1.15:
     <<: *test-template-anaconda
     environment:
       NUMPY_VERSION: 1.15.2
       CYTHON_VERSION: 0.26.1
       PYTHON_VERSION: 3.5
   
-  py3.6-np1.14:
+  conda-py3.6-np1.14:
     <<: *test-template-anaconda
     environment:
       NUMPY_VERSION: 1.14.2
       CYTHON_VERSION: 0.26.1
       PYTHON_VERSION: 3.6
 
-  py3.5-np1.14:
+  conda-py3.5-np1.14:
     <<: *test-template-anaconda
     environment:
       NUMPY_VERSION: 1.14.2
       CYTHON_VERSION: 0.26.1
       PYTHON_VERSION: 3.5
           
-  py3.7-np1.15:
+  conda-py3.7-np1.15:
     <<: *test-template-anaconda
     environment:
       NUMPY_VERSION: 1.15.2
       CYTHON_VERSION: 0.29.2
       PYTHON_VERSION: 3.7.1
 
-  py3.6-np1.16:
+  conda-py3.6-np1.16:
     <<: *test-template-anaconda
     environment:
       NUMPY_VERSION: 1.16.5
       CYTHON_VERSION: 0.26.1
       PYTHON_VERSION: 3.6
 
-  py3.7-np1.16:
+  conda-py3.7-np1.16:
     <<: *test-template-anaconda
     environment:
       NUMPY_VERSION: 1.16.5
       CYTHON_VERSION: 0.29.2
       PYTHON_VERSION: 3.7.1
+  conda-py3.7-np1.16:
+    <<: *test-template-pip
+    environment:
+      NUMPY_VERSION: 1.16.5
+      CYTHON_VERSION: 0.29.2
+      PYTHON_VERSION: 3.7.4
       
  # py3.5-np1.17:
  #   <<: *test-template
