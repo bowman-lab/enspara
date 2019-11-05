@@ -16,7 +16,7 @@ workflows:
       - py3.6-np1.16
       - py3.7-np1.16
       
-test-template: &test-template-pip
+test-template-pip: &test-template-pip
   docker:
     - image: ubuntu:bionic
   steps:
@@ -88,7 +88,7 @@ test-template: &test-template-pip
         path: test-reports
         destination: test-reports
      
-test-template: &test-template-anaconda
+test-template-conda: &test-template-anaconda
   docker:
     - image: ubuntu:bionic
   steps:
