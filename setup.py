@@ -95,7 +95,7 @@ setup(
         'tables>=3.2',
         'matplotlib>=1.5.1',
         'mdtraj>=1.7',
-        'mpi4py>=2.0.0',
+        # 'mpi4py>=2.0.0',
         'psutil>=5.2.2',
         'pandas',
         'scikit-learn>=0.21.0',
