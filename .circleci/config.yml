@@ -15,6 +15,76 @@ workflows:
       - py3.7-np1.15
       - py3.6-np1.16
       - py3.7-np1.16
+      
+test-template: &test-template-pip
+  docker:
+    - image: ubuntu:bionic
+  steps:
+    - checkout
+    - run:
+        name: Install System Dependencies
+        command: apt-get update && apt-get install -y libmpich12 libmpich-dev build-essential
+
+    # Download and cache dependencies
+    - restore_cache:
+        keys:
+          - v1-dependencies-{{ .Environment.CIRCLE_JOB }}-{{ checksum "setup.py" }}
+
+    - run:
+        name: install anaconda
+        command: |
+          apt update
+          apt install -y wget
+          cd $HOME
+          wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O ~/miniconda.sh
+          chmod +x ~/miniconda.sh && bash ~/miniconda.sh -b -p $HOME/miniconda
+          export PATH=$HOME/miniconda/bin:$PATH
+            
+    - run:
+        name: Install numpy, cython, mdtraj
+        command: |
+          export PATH="$HOME/miniconda/bin:$PATH"
+          conda update  --yes conda
+          echo $PYTHON_VERSION
+          conda create -n myenv python=$PYTHON_VERSION -c conda-forge
+          source activate myenv
+          conda install --yes pip
+          conda install --yes -c conda-forge numpy=$NUMPY_VERSION cython=$CYTHON_VERSION
+          conda install --yes -c conda-forge nose mdtraj  
+          python --version
+          python -c "import numpy; print(numpy.__version__)"
+
+    - run:
+        name: Install and build enspara
+        command: |
+          export PATH=$HOME/miniconda/bin:$PATH
+          source activate myenv
+          pip install --progress-bar off .[dev]
+          python setup.py build_ext --inplace
+          python setup.py install
+
+    - save_cache:
+        paths:
+          - ~/miniconda
+        key: v1-dependencies-{{ checksum "setup.py" }}
+
+    - run:
+        name: Run non-MPI tests
+        command: |
+          export PATH=$HOME/miniconda/bin:$PATH
+          source activate myenv
+          nosetests -a '!mpi' enspara
+
+    - run:
+        name: Run MPI tests
+        command: |
+          export PATH=$HOME/miniconda/bin:$PATH
+          source activate myenv
+          OMP_NUM_THREADS=1 mpiexec -n 2 nosetests -a mpi enspara
+
+    - store_artifacts:
+        path: test-reports
+        destination: test-reports
      
 test-template: &test-template-anaconda
   docker:
