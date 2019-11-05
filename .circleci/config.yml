@@ -208,7 +208,8 @@ jobs:
       NUMPY_VERSION: 1.16.5
       CYTHON_VERSION: 0.29.2
       PYTHON_VERSION: 3.7.1
-  conda-py3.7-np1.16:
+      
+  pip-py3.7-np1.16:
     <<: *test-template-pip
     environment:
       NUMPY_VERSION: 1.16.5
