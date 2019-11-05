@@ -24,7 +24,7 @@ test-template-pip: &test-template-pip
     - checkout
     - run:
         name: Install System Dependencies
-        command: apt-get update && apt-get install -y libmpich12 libmpich-dev build-essential zlib1g-dev libncurses5-dev libgdbm-dev libnss3-dev libssl-dev libreadline-dev libffi-dev wget tar 
+        command: apt-get update && apt-get install -y libmpich12 libmpich-dev build-essential zlib1g-dev libncurses5-dev libgdbm-dev libnss3-dev libssl-dev libreadline-dev libffi-dev wget tar g++
 
     # Download and cache dependencies
     - restore_cache:
@@ -40,7 +40,7 @@ test-template-pip: &test-template-pip
           cd Python-$PYTHON_VERSION
           ./configure --enable-optimizations
           make
-          sudo make altinstall
+          make altinstall
           python3.7 --version
           
     - run:
