@@ -23,7 +23,7 @@ test-template: &test-template-pip
     - checkout
     - run:
         name: Install System Dependencies
-        command: apt-get update && apt-get install -y libmpich12 libmpich-dev build-essential
+        command: apt-get update && apt-get install -y libmpich12 libmpich-dev build-essential zlib1g-dev libncurses5-dev libgdbm-dev libnss3-dev libssl-dev libreadline-dev libffi-dev wget tar 
 
     # Download and cache dependencies
     - restore_cache:
@@ -31,15 +31,17 @@ test-template: &test-template-pip
           - v1-dependencies-{{ .Environment.CIRCLE_JOB }}-{{ checksum "setup.py" }}
 
     - run:
-        name: install anaconda
+        name: install python 
         command: |
-          apt update
-          apt install -y wget
           cd $HOME
-          wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O ~/miniconda.sh
-          chmod +x ~/miniconda.sh && bash ~/miniconda.sh -b -p $HOME/miniconda
-          export PATH=$HOME/miniconda/bin:$PATH
-            
+          wget https://www.python.org/ftp/python/3.7.4/Python-3.7.4.tgz
+          tar -xf Python-3.7.4.tgz
+          cd Python-3.7.4
+          ./configure --enable-optimizations
+          make
+          sudo make altinstall
+          python3.7 --version
+          
     - run:
         name: Install numpy, cython, mdtraj
         command: |
