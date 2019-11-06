@@ -41,19 +41,11 @@ test-template-pip: &test-template-pip
           ./configure --enable-optimizations
           make
           make altinstall
-          python3.7 --version
+          python --version
           
     - run:
         name: Install numpy, cython, mdtraj
         command: |
-          export PATH="$HOME/miniconda/bin:$PATH"
-          conda update  --yes conda
-          echo $PYTHON_VERSION
-          conda create -n myenv python=$PYTHON_VERSION -c conda-forge
-          source activate myenv
-          conda install --yes pip
-          conda install --yes -c conda-forge numpy=$NUMPY_VERSION cython=$CYTHON_VERSION
-          conda install --yes -c conda-forge nose mdtraj  
           python --version
           python -c "import numpy; print(numpy.__version__)"
 
