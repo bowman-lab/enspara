@@ -15,10 +15,10 @@ Enspara can be installed from our github repository in the following way:
 
 .. code-block:: bash
 
+        conda install -c conda-forge mdtraj=1.8.0
 	conda install numpy==1.14
 	conda install cython
-	conda install mpi4py
-	conda install -c omnia mdtraj
+	conda install mpi4py -c conda-forge
 
 4. Enter enspara from home directory and:
 
