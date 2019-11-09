@@ -38,25 +38,32 @@ test-template-pip: &test-template-pip
           wget https://www.python.org/ftp/python/$PYTHON_VERSION/Python-$PYTHON_VERSION.tgz
           tar -xf Python-$PYTHON_VERSION.tgz
           cd Python-$PYTHON_VERSION
-          ./configure --enable-optimizations
+          ./configure --enable-optimizations --prefix=/opt/python
           make
-          make altinstall
-          python --version
+          make install
+          export PATH=/opt/python/bin:$PATH
+          wget https://bootstrap.pypa.io/get-pip.py
+          python3 get-pip.py 
+          python3 --version
+          which python3
+          pip --version
+          pip3 --version
           
     - run:
         name: Install numpy, cython, mdtraj
         command: |
-          python --version
-          python -c "import numpy; print(numpy.__version__)"
+          export PATH=/opt/python/bin:$PATH
+          pip3 install numpy==$NUMPY_VERSION cython==$CYTHON_VERSION
+          pip3 install nose mdtraj
+          python3 --version
+          python3 -c "import numpy; print(numpy.__version__)"
 
     - run:
         name: Install and build enspara
         command: |
-          export PATH=$HOME/miniconda/bin:$PATH
-          source activate myenv
-          pip install --progress-bar off .[dev]
-          python setup.py build_ext --inplace
-          python setup.py install
+          pip3 install --progress-bar off .[dev]
+          python3 setup.py build_ext --inplace
+          python3 setup.py install
 
     - save_cache:
         paths:
