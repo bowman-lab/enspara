@@ -74,8 +74,7 @@ test-template-pip: &test-template-pip
     - run:
         name: Run non-MPI tests
         command: |
-          export PATH=$HOME/miniconda/bin:$PATH
-          source activate myenv
+          export PATH=/opt/python/bin:$PATH
           nosetests -a '!mpi' enspara
 
     - run:
