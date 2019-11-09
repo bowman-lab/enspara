@@ -61,6 +61,7 @@ test-template-pip: &test-template-pip
     - run:
         name: Install and build enspara
         command: |
+          export PATH=/opt/python/bin:$PATH
           pip3 install --progress-bar off .[dev]
           python3 setup.py build_ext --inplace
           python3 setup.py install
