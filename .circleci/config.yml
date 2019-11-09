@@ -80,8 +80,7 @@ test-template-pip: &test-template-pip
     - run:
         name: Run MPI tests
         command: |
-          export PATH=$HOME/miniconda/bin:$PATH
-          source activate myenv
+          export PATH=/opt/python/bin:$PATH
           OMP_NUM_THREADS=1 mpiexec -n 2 nosetests -a mpi enspara
 
     - store_artifacts:
