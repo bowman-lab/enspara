@@ -40,7 +40,7 @@ except ImportError:
 use_openmp = False
 def use_openmp():
     use_openmp = True
-    install_requires.append('mpi4py>=2.0.0')
+    #install_requires.append('mpi4py>=2.0.0')
 
 install_requires = [
     'Cython>=0.24',
