@@ -87,6 +87,12 @@ test-template-pip: &test-template-pip
         command: |
           export PATH=/opt/python/bin:$PATH
           nosetests -a '!mpi' enspara
+          
+    - run:
+        name: Install mpi4py
+        command: |
+          export PATH=/opt/python/bin:$PATH
+          pip3 install mpi4py=2.0.0
 
     - run:
         name: Run MPI tests
@@ -156,7 +162,13 @@ test-template-conda: &test-template-anaconda
           export PATH=$HOME/miniconda/bin:$PATH
           source activate myenv
           nosetests -a '!mpi' enspara
-
+          
+    - run:
+        name: Install mpi4py
+        command: |
+          export PATH=$HOME/miniconda/bin:$PATH
+          source activate myenv
+          conda install mpi4py=2.0.0
     - run:
         name: Run MPI tests
         command: |
