@@ -57,20 +57,25 @@ def assemble_striped_array(local_arr):
         Full array that is striped across all nodes.
     """
 
+    if mpi.size() == 1:
+        return local_arr
+
     total_dim1 = mpi.comm.allreduce(len(local_arr), op=mpi.mpi4py.SUM)
     total_shape = (total_dim1,) + local_arr.shape[1:]
 
     if not np.all(local_arr > 0):
-        raise ImproperlyConfigured("On rank %s, a length <= 0 was found. Lengths must be strictly greater than zero." % mpi.rank())
+        raise ImproperlyConfigured(
+            ("On rank %s, a length <= 0 was found. Lengths must be "
+             "strictly greater than zero.") % mpi.rank())
 
-    global_lengths = np.zeros(total_shape, dtype=local_arr.dtype) - 1
+    global_arr = np.zeros(total_shape, dtype=local_arr.dtype) - 1
 
     for i in range(mpi.size()):
-        global_lengths[i::mpi.size()] = mpi.comm.bcast(local_arr, root=i)
+        global_arr[i::mpi.size()] = mpi.comm.bcast(local_arr, root=i)
 
-    assert np.all(global_lengths > 0), global_lengths
+    assert np.all(global_arr > 0), global_arr
 
-    return global_lengths
+    return global_arr
 
 
 def assemble_striped_ragged_array(local_array, global_lengths):
@@ -144,6 +149,9 @@ def striped_array_mean(local_array):
 
     local_sum = np.sum(local_array)
     local_len = len(local_array)
+
+    if mpi.size() == 1:
+        return local_sum / local_len
 
     global_sum = np.zeros(1) - 1
     global_len = np.zeros(1) - 1
