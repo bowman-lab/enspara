@@ -98,7 +98,7 @@ test-template-pip: &test-template-pip
         name: Run MPI tests
         command: |
           export PATH=/opt/python/bin:$PATH
-          OMP_NUM_THREADS=1 mpiexec -n 2 nosetests -a mpi enspara
+          OMP_NUM_THREADS=1 mpiexec --allow-run-as-root -n 2 nosetests -a mpi enspara
 
     - store_artifacts:
         path: test-reports
@@ -174,7 +174,7 @@ test-template-conda: &test-template-anaconda
         command: |
           export PATH=$HOME/miniconda/bin:$PATH
           source activate myenv
-          OMP_NUM_THREADS=1 mpiexec -n 2 nosetests -a mpi enspara
+          OMP_NUM_THREADS=1 mpiexec --allow-run-as-root -n 2 nosetests -a mpi enspara
 
     - store_artifacts:
         path: test-reports
