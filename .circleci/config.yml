@@ -92,7 +92,7 @@ test-template-pip: &test-template-pip
         name: Install mpi4py
         command: |
           export PATH=/opt/python/bin:$PATH
-          pip3 install mpi4py=2.0.0
+          pip3 install mpi4py
 
     - run:
         name: Run MPI tests
@@ -168,7 +168,7 @@ test-template-conda: &test-template-anaconda
         command: |
           export PATH=$HOME/miniconda/bin:$PATH
           source activate myenv
-          conda install mpi4py==2.0.0
+          conda install mpi4py
     - run:
         name: Run MPI tests
         command: |
