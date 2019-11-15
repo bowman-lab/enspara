@@ -37,11 +37,6 @@ test-template-pip: &test-template-pip
         name: Install System Dependencies
         command: apt-get update && apt-get install -y libmpich12 libmpich-dev build-essential zlib1g-dev libncurses5-dev libgdbm-dev libnss3-dev libssl-dev libreadline-dev libffi-dev wget tar g++ libbz2-dev libhdf5-dev
 
-    # Download and cache dependencies
-    - restore_cache:
-        keys:
-          - v1-dependencies-{{ .Environment.CIRCLE_JOB }}-{{ checksum "setup.py" }}
-
     - run:
         name: install python 
         command: |
@@ -59,7 +54,12 @@ test-template-pip: &test-template-pip
           which python3
           pip --version
           pip3 --version
-          
+
+    # Download and cache dependencies
+    - restore_cache:
+        keys:
+          - v1-dependencies-{{ .Environment.CIRCLE_JOB }}-{{ checksum "setup.py" }}
+
     - run:
         name: Install numpy, cython, mdtraj
         command: |
@@ -98,7 +98,7 @@ test-template-pip: &test-template-pip
         name: Run MPI tests
         command: |
           export PATH=/opt/python/bin:$PATH
-          OMP_NUM_THREADS=1 mpiexec --allow-run-as-root -n 2 nosetests -a mpi enspara
+          OMP_NUM_THREADS=1 mpiexec -n 2 nosetests -a mpi enspara
 
     - store_artifacts:
         path: test-reports
@@ -174,7 +174,7 @@ test-template-conda: &test-template-anaconda
         command: |
           export PATH=$HOME/miniconda/bin:$PATH
           source activate myenv
-          OMP_NUM_THREADS=1 mpiexec --allow-run-as-root -n 2 nosetests -a mpi enspara
+          OMP_NUM_THREADS=1 mpiexec -n 2 nosetests -a mpi enspara
 
     - store_artifacts:
         path: test-reports
