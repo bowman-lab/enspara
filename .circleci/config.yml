@@ -261,14 +261,14 @@ jobs:
   pip-py3.6-np1.14:
     <<: *test-template-pip
     environment:
-      NUMPY_VERSION: 1.14.6
+      NUMPY_VERSION: 1.14.2
       CYTHON_VERSION: 0.29.2
       PYTHON_VERSION: 3.6.6
       
   pip-py3.6-np1.15:
     <<: *test-template-pip
     environment:
-      NUMPY_VERSION: 1.15.4
+      NUMPY_VERSION: 1.15.2
       CYTHON_VERSION: 0.29.2
       PYTHON_VERSION: 3.6.6
       
@@ -289,14 +289,14 @@ jobs:
   pip-py3.7-np1.14:
     <<: *test-template-pip
     environment:
-      NUMPY_VERSION: 1.14.6
+      NUMPY_VERSION: 1.14.2
       CYTHON_VERSION: 0.29.2
       PYTHON_VERSION: 3.7.5
       
   pip-py3.7-np1.15:
     <<: *test-template-pip
     environment:
-      NUMPY_VERSION: 1.15.4
+      NUMPY_VERSION: 1.15.2
       CYTHON_VERSION: 0.29.2
       PYTHON_VERSION: 3.7.5
       
