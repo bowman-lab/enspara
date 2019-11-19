@@ -35,7 +35,7 @@ test-template-pip: &test-template-pip
     - checkout
     - run:
         name: Install System Dependencies
-        command: apt-get update && apt-get install -y libmpich12 libmpich-dev build-essential zlib1g-dev libncurses5-dev libgdbm-dev libnss3-dev libssl-dev libreadline-dev libffi-dev wget tar g++ libbz2-dev libhdf5-dev
+        command: apt-get update && apt-get install -y ca-certificates libmpich12 libmpich-dev build-essential zlib1g-dev libncurses5-dev libgdbm-dev libnss3-dev libssl-dev libreadline-dev libffi-dev wget tar g++ libbz2-dev libhdf5-dev
 
     - run:
         name: install python 
@@ -111,7 +111,7 @@ test-template-conda: &test-template-anaconda
     - checkout
     - run:
         name: Install System Dependencies
-        command: apt-get update && apt-get install -y libmpich12 libmpich-dev build-essential
+        command: apt-get update && apt-get install -y libmpich12 libmpich-dev build-essential ca-certificates 
 
     # Download and cache dependencies
     - restore_cache:
