@@ -106,13 +106,13 @@ test-template-pip: &test-template-pip
         destination: test-reports
      
 test-template-conda: &test-template-anaconda
-  docker:
-    - image: ubuntu:bionic
   steps:
     - checkout
     - run:
         name: Install System Dependencies
-        command: apt-get update && apt-get install -y libmpich12 libmpich-dev build-essential ca-certificates 
+        command: |
+          sudo apt-get update
+          sudo apt-get install -y libmpich12 libmpich-dev build-essential ca-certificates 
 
     # Download and cache dependencies
     - restore_cache:
@@ -122,8 +122,8 @@ test-template-conda: &test-template-anaconda
     - run:
         name: install anaconda
         command: |
-          apt update
-          apt install -y wget
+          sudo apt update
+          sudo apt install -y wget
           cd $HOME
           wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O ~/miniconda.sh
           chmod +x ~/miniconda.sh && bash ~/miniconda.sh -b -p $HOME/miniconda
@@ -182,12 +182,12 @@ test-template-conda: &test-template-anaconda
         destination: test-reports
 
 jobs:
-  conda-py3.6-np1.15:
-    <<: *test-template-anaconda
-    environment:
-      NUMPY_VERSION: 1.15.4
-      CYTHON_VERSION: 0.26.1
-      PYTHON_VERSION: 3.6
+#   conda-py3.6-np1.15:
+#     <<: *test-template-anaconda
+#     environment:
+#       NUMPY_VERSION: 1.15.4
+#       CYTHON_VERSION: 0.26.1
+#       PYTHON_VERSION: 3.6
 
   #conda-py3.5-np1.15:
     #<<: *test-template-anaconda
@@ -196,12 +196,12 @@ jobs:
       #CYTHON_VERSION: 0.26.1
       #PYTHON_VERSION: 3.5
   
-  conda-py3.6-np1.14:
-    <<: *test-template-anaconda
-    environment:
-      NUMPY_VERSION: 1.14.6
-      CYTHON_VERSION: 0.26.1
-      PYTHON_VERSION: 3.6
+#   conda-py3.6-np1.14:
+#     <<: *test-template-anaconda
+#     environment:
+#       NUMPY_VERSION: 1.14.6
+#       CYTHON_VERSION: 0.26.1
+#       PYTHON_VERSION: 3.6
 
   #conda-py3.5-np1.14:
     #<<: *test-template-anaconda
@@ -210,19 +210,19 @@ jobs:
       #CYTHON_VERSION: 0.26.1
       #PYTHON_VERSION: 3.5
           
-  conda-py3.7-np1.15:
-    <<: *test-template-anaconda
-    environment:
-      NUMPY_VERSION: 1.15.4
-      CYTHON_VERSION: 0.29.2
-      PYTHON_VERSION: 3.7.1
+#   conda-py3.7-np1.15:
+#     <<: *test-template-anaconda
+#     environment:
+#       NUMPY_VERSION: 1.15.4
+#       CYTHON_VERSION: 0.29.2
+#       PYTHON_VERSION: 3.7.1
 
-  conda-py3.6-np1.16:
-    <<: *test-template-anaconda
-    environment:
-      NUMPY_VERSION: 1.16.5
-      CYTHON_VERSION: 0.26.1
-      PYTHON_VERSION: 3.6
+#   conda-py3.6-np1.16:
+#     <<: *test-template-anaconda
+#     environment:
+#       NUMPY_VERSION: 1.16.5
+#       CYTHON_VERSION: 0.26.1
+#       PYTHON_VERSION: 3.6
 
   conda-py3.7-np1.16:
     <<: *test-template-anaconda
@@ -259,68 +259,68 @@ jobs:
       #CYTHON_VERSION: 0.29.2
       #PYTHON_VERSION: 3.5.6
 
-  pip-py3.6-np1.14:
-    <<: *test-template-pip
-    docker:
-      - image: circleci/python:3.6.9-buster
-    environment:
-      NUMPY_VERSION: 1.14.6
-      CYTHON_VERSION: 0.29.2
-      # PYTHON_VERSION: 3.6.6
+#   pip-py3.6-np1.14:
+#     <<: *test-template-pip
+#     docker:
+#       - image: circleci/python:3.6.9-buster
+#     environment:
+#       NUMPY_VERSION: 1.14.6
+#       CYTHON_VERSION: 0.29.2
+#       # PYTHON_VERSION: 3.6.6
 
-  pip-py3.6-np1.15:
-    <<: *test-template-pip
-    docker:
-      - image: circleci/python:3.6.9-buster
-    environment:
-      NUMPY_VERSION: 1.15.4
-      CYTHON_VERSION: 0.29.2
-      # PYTHON_VERSION: 3.6.6
+#   pip-py3.6-np1.15:
+#     <<: *test-template-pip
+#     docker:
+#       - image: circleci/python:3.6.9-buster
+#     environment:
+#       NUMPY_VERSION: 1.15.4
+#       CYTHON_VERSION: 0.29.2
+#       # PYTHON_VERSION: 3.6.6
 
-  pip-py3.6-np1.16:
-    <<: *test-template-pip
-    docker:
-      - image: circleci/python:3.6.9-buster
-    environment:
-      NUMPY_VERSION: 1.16.5
-      CYTHON_VERSION: 0.29.2
-      # PYTHON_VERSION: 3.6.6
+#   pip-py3.6-np1.16:
+#     <<: *test-template-pip
+#     docker:
+#       - image: circleci/python:3.6.9-buster
+#     environment:
+#       NUMPY_VERSION: 1.16.5
+#       CYTHON_VERSION: 0.29.2
+#       # PYTHON_VERSION: 3.6.6
 
-  pip-py3.6-np1.17:
-    <<: *test-template-pip
-    docker:
-      - image: circleci/python:3.6.9-buster
-    environment:
-      NUMPY_VERSION: 1.17.3
-      CYTHON_VERSION: 0.29.2
-      # PYTHON_VERSION: 3.6.6
+#   pip-py3.6-np1.17:
+#     <<: *test-template-pip
+#     docker:
+#       - image: circleci/python:3.6.9-buster
+#     environment:
+#       NUMPY_VERSION: 1.17.3
+#       CYTHON_VERSION: 0.29.2
+#       # PYTHON_VERSION: 3.6.6
       
-  pip-py3.7-np1.14:
-    <<: *test-template-pip
-    docker:
-      - image: circleci/python:3.7.5-buster
-    environment:
-      NUMPY_VERSION: 1.14.6
-      CYTHON_VERSION: 0.29.2
-      # PYTHON_VERSION: 3.7.5
+#   pip-py3.7-np1.14:
+#     <<: *test-template-pip
+#     docker:
+#       - image: circleci/python:3.7.5-buster
+#     environment:
+#       NUMPY_VERSION: 1.14.6
+#       CYTHON_VERSION: 0.29.2
+#       # PYTHON_VERSION: 3.7.5
       
-  pip-py3.7-np1.15:
-    <<: *test-template-pip
-    docker:
-      - image: circleci/python:3.7.5-buster
-    environment:
-      NUMPY_VERSION: 1.15.4
-      CYTHON_VERSION: 0.29.2
-      # PYTHON_VERSION: 3.7.5
+#   pip-py3.7-np1.15:
+#     <<: *test-template-pip
+#     docker:
+#       - image: circleci/python:3.7.5-buster
+#     environment:
+#       NUMPY_VERSION: 1.15.4
+#       CYTHON_VERSION: 0.29.2
+#       # PYTHON_VERSION: 3.7.5
       
-  pip-py3.7-np1.16:
-    <<: *test-template-pip
-    docker:
-      - image: circleci/python:3.7.5-buster
-    environment:
-      NUMPY_VERSION: 1.16.5
-      CYTHON_VERSION: 0.29.2
-      # PYTHON_VERSION: 3.7.5
+#   pip-py3.7-np1.16:
+#     <<: *test-template-pip
+#     docker:
+#       - image: circleci/python:3.7.5-buster
+#     environment:
+#       NUMPY_VERSION: 1.16.5
+#       CYTHON_VERSION: 0.29.2
+#       # PYTHON_VERSION: 3.7.5
       
   pip-py3.7-np1.17:
     <<: *test-template-pip
