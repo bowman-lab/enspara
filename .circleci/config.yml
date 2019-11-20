@@ -65,7 +65,7 @@ test-template-pip: &test-template-pip
         command: |
           export PATH=/opt/python/bin:$PATH
           pip3 install --progress-bar off numpy==$NUMPY_VERSION cython==$CYTHON_VERSION
-          pip3 install --progress-bar off --no-binary mdtraj
+          pip3 install --progress-bar off mdtraj
           pip3 install --progress-bar off nose
           python3 --version
           python3 -c "import numpy; print(numpy.__version__)"
