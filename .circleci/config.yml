@@ -36,8 +36,8 @@ test-template-pip: &test-template-pip
     - run:
         name: Install System Dependencies
         command: |
-          sudo apt-get update
-          sudo apt-get install -y ca-certificates libmpich12 libmpich-dev build-essential zlib1g-dev libncurses5-dev libgdbm-dev libnss3-dev libssl-dev libreadline-dev libffi-dev wget tar g++ libbz2-dev libhdf5-dev
+          apt-get update
+          apt-get install -y ca-certificates libmpich12 libmpich-dev build-essential zlib1g-dev libncurses5-dev libgdbm-dev libnss3-dev libssl-dev libreadline-dev libffi-dev wget tar g++ libbz2-dev libhdf5-dev
 
     # Download and cache dependencies
     - restore_cache:
