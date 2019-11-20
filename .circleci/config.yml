@@ -106,6 +106,8 @@ test-template-pip: &test-template-pip
         destination: test-reports
      
 test-template-conda: &test-template-anaconda
+  docker:
+    - image: ubuntu:bionic
   steps:
     - checkout
     - run:
