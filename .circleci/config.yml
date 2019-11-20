@@ -66,9 +66,9 @@ test-template-pip: &test-template-pip
         name: Install numpy, cython, mdtraj
         command: |
           export PATH=/opt/python/bin:$PATH
-          pip3 install --user --progress-bar off numpy==$NUMPY_VERSION cython==$CYTHON_VERSION
-          pip3 install --user --progress-bar off mdtraj
-          pip3 install --user --progress-bar off nose
+          pip3 install numpy==$NUMPY_VERSION cython==$CYTHON_VERSION
+          pip3 install mdtraj
+          pip3 install nose
           python3 --version
           python3 -c "import numpy; print(numpy.__version__)"
 
