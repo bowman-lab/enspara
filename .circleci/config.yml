@@ -70,7 +70,8 @@ test-template-pip: &test-template-pip
           pip3 install mdtraj
           pip3 install nose
           python3 --version
-          python3 -c "import numpy; print(numpy.__version__)"
+          python3 -c "import numpy; print('numpy', numpy.__version__)"
+          python3 -c "import mdtraj; print('mdtraj', mdtraj.__version__)"
 
     - run:
         name: Install and build enspara
@@ -263,68 +264,68 @@ jobs:
       #CYTHON_VERSION: 0.29.2
       #PYTHON_VERSION: 3.5.6
 
-#   pip-py3.6-np1.14:
-#     <<: *test-template-pip
-#     docker:
-#       - image: circleci/python:3.6.9-buster
-#     environment:
-#       NUMPY_VERSION: 1.14.6
-#       CYTHON_VERSION: 0.29.2
-#       # PYTHON_VERSION: 3.6.6
+  # pip-py3.6-np1.14:
+  #   <<: *test-template-pip
+  #   # docker:
+  #   #   - image: circleci/python:3.6.9-buster
+  #   environment:
+  #     NUMPY_VERSION: 1.14.6
+  #     CYTHON_VERSION: 0.29.2
+  #     PYTHON_VERSION: 3.6.6
 
-#   pip-py3.6-np1.15:
-#     <<: *test-template-pip
-#     docker:
-#       - image: circleci/python:3.6.9-buster
-#     environment:
-#       NUMPY_VERSION: 1.15.4
-#       CYTHON_VERSION: 0.29.2
-#       # PYTHON_VERSION: 3.6.6
+  pip-py3.6-np1.15:
+    <<: *test-template-pip
+    # docker:
+    #   - image: circleci/python:3.6.9-buster
+    environment:
+      NUMPY_VERSION: 1.15.4
+      CYTHON_VERSION: 0.29.2
+      PYTHON_VERSION: 3.6.6
 
-#   pip-py3.6-np1.16:
-#     <<: *test-template-pip
-#     docker:
-#       - image: circleci/python:3.6.9-buster
-#     environment:
-#       NUMPY_VERSION: 1.16.5
-#       CYTHON_VERSION: 0.29.2
-#       # PYTHON_VERSION: 3.6.6
+  pip-py3.6-np1.16:
+    <<: *test-template-pip
+    # docker:
+    #   - image: circleci/python:3.6.9-buster
+    environment:
+      NUMPY_VERSION: 1.16.5
+      CYTHON_VERSION: 0.29.2
+      PYTHON_VERSION: 3.6.6
 
-#   pip-py3.6-np1.17:
-#     <<: *test-template-pip
-#     docker:
-#       - image: circleci/python:3.6.9-buster
-#     environment:
-#       NUMPY_VERSION: 1.17.3
-#       CYTHON_VERSION: 0.29.2
-#       # PYTHON_VERSION: 3.6.6
+  pip-py3.6-np1.17:
+    <<: *test-template-pip
+    # docker:
+    #   - image: circleci/python:3.6.9-buster
+    environment:
+      NUMPY_VERSION: 1.17.3
+      CYTHON_VERSION: 0.29.2
+      PYTHON_VERSION: 3.6.6
       
-#   pip-py3.7-np1.14:
-#     <<: *test-template-pip
-#     docker:
-#       - image: circleci/python:3.7.5-buster
-#     environment:
-#       NUMPY_VERSION: 1.14.6
-#       CYTHON_VERSION: 0.29.2
-#       # PYTHON_VERSION: 3.7.5
+  pip-py3.7-np1.14:
+    <<: *test-template-pip
+    # docker:
+    #   - image: circleci/python:3.7.5-buster
+    environment:
+      NUMPY_VERSION: 1.14.6
+      CYTHON_VERSION: 0.29.2
+      PYTHON_VERSION: 3.7.5
       
-#   pip-py3.7-np1.15:
-#     <<: *test-template-pip
-#     docker:
-#       - image: circleci/python:3.7.5-buster
-#     environment:
-#       NUMPY_VERSION: 1.15.4
-#       CYTHON_VERSION: 0.29.2
-#       # PYTHON_VERSION: 3.7.5
+  pip-py3.7-np1.15:
+    <<: *test-template-pip
+    # docker:
+    #   - image: circleci/python:3.7.5-buster
+    environment:
+      NUMPY_VERSION: 1.15.4
+      CYTHON_VERSION: 0.29.2
+      PYTHON_VERSION: 3.7.5
       
-#   pip-py3.7-np1.16:
-#     <<: *test-template-pip
-#     docker:
-#       - image: circleci/python:3.7.5-buster
-#     environment:
-#       NUMPY_VERSION: 1.16.5
-#       CYTHON_VERSION: 0.29.2
-#       # PYTHON_VERSION: 3.7.5
+  pip-py3.7-np1.16:
+    <<: *test-template-pip
+    # docker:
+    #   - image: circleci/python:3.7.5-buster
+    environment:
+      NUMPY_VERSION: 1.16.5
+      CYTHON_VERSION: 0.29.2
+      PYTHON_VERSION: 3.7.5
       
   pip-py3.7-np1.17:
     <<: *test-template-pip
