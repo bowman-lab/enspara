@@ -92,7 +92,12 @@ def committors(tprob, sources, sinks):
         # ignore 'SparseEfficiencyWarning: spsolve requires A be CSC or CSR
         # matrix format'; TODO: is this because I_m_Q is dense?
         warnings.simplefilter("ignore")
-        committors = scipy.sparse.linalg.spsolve(I_m_Q, R).flatten()
+        # solve for probability of landing in any of the sink states
+        B = scipy.sparse.linalg.spsolve(I_m_Q, R)
+        # reshape and sum over probabilities
+        committors = B.reshape(n_states, sinks.shape[0]).sum(axis=1)
+        # ensure sink states have correct sinkage
+        committors[sinks] = 1.0
 
     return committors
 
