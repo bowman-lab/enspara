@@ -8,25 +8,25 @@ workflows:
   version: 2
   test:
     jobs:
-      - conda-py3.6-np1.15
+      #- conda-py3.6-np1.15
       #- conda-py3.5-np1.15
-      - conda-py3.6-np1.14
+      #- conda-py3.6-np1.14
       #- conda-py3.5-np1.14
-      - conda-py3.7-np1.15
-      - conda-py3.6-np1.16
-      - conda-py3.7-np1.16
+      #- conda-py3.7-np1.15
+      #- conda-py3.6-np1.16
+      #- conda-py3.7-np1.16
       #- pip-py3.5-np1.14
       #- pip-py3.5-np1.15
       #- pip-py3.5-np1.16
       #- pip-py3.5-np1.17
       - pip-py3.6-np1.14
       - pip-py3.6-np1.15
-      - pip-py3.6-np1.16
-      - pip-py3.6-np1.17
+      #- pip-py3.6-np1.16
+      #- pip-py3.6-np1.17
       - pip-py3.7-np1.14
       - pip-py3.7-np1.15
-      - pip-py3.7-np1.16
-      - pip-py3.7-np1.17
+      #- pip-py3.7-np1.16
+      #- pip-py3.7-np1.17
       
 test-template-pip: &test-template-pip
   docker:
@@ -67,7 +67,7 @@ test-template-pip: &test-template-pip
         command: |
           export PATH=/opt/python/bin:$PATH
           pip3 install --progress-bar off numpy==$NUMPY_VERSION cython==$CYTHON_VERSION
-          pip3 install --progress-bar off mdtraj
+          pip3 install --progress-bar off --no-use-pep517 mdtraj
           pip3 install --progress-bar off nose
           python3 --version
           python3 -c "import numpy; print('numpy', numpy.__version__)"
