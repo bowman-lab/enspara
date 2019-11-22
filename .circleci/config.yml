@@ -186,12 +186,12 @@ test-template-conda: &test-template-anaconda
         destination: test-reports
 
 jobs:
-#   conda-py3.6-np1.15:
-#     <<: *test-template-anaconda
-#     environment:
-#       NUMPY_VERSION: 1.15.4
-#       CYTHON_VERSION: 0.26.1
-#       PYTHON_VERSION: 3.6
+   conda-py3.6-np1.15:
+     <<: *test-template-anaconda
+     environment:
+       NUMPY_VERSION: 1.15.4
+       CYTHON_VERSION: 0.26.1
+       PYTHON_VERSION: 3.6
 
   #conda-py3.5-np1.15:
     #<<: *test-template-anaconda
@@ -200,12 +200,12 @@ jobs:
       #CYTHON_VERSION: 0.26.1
       #PYTHON_VERSION: 3.5
   
-#   conda-py3.6-np1.14:
-#     <<: *test-template-anaconda
-#     environment:
-#       NUMPY_VERSION: 1.14.6
-#       CYTHON_VERSION: 0.26.1
-#       PYTHON_VERSION: 3.6
+   conda-py3.6-np1.14:
+     <<: *test-template-anaconda
+     environment:
+       NUMPY_VERSION: 1.14.6
+       CYTHON_VERSION: 0.26.1
+       PYTHON_VERSION: 3.6
 
   #conda-py3.5-np1.14:
     #<<: *test-template-anaconda
@@ -214,19 +214,19 @@ jobs:
       #CYTHON_VERSION: 0.26.1
       #PYTHON_VERSION: 3.5
           
-#   conda-py3.7-np1.15:
-#     <<: *test-template-anaconda
-#     environment:
-#       NUMPY_VERSION: 1.15.4
-#       CYTHON_VERSION: 0.29.2
-#       PYTHON_VERSION: 3.7.1
+  conda-py3.7-np1.15:
+    <<: *test-template-anaconda
+    environment:
+      NUMPY_VERSION: 1.15.4
+      CYTHON_VERSION: 0.29.2
+      PYTHON_VERSION: 3.7.1
 
-#   conda-py3.6-np1.16:
-#     <<: *test-template-anaconda
-#     environment:
-#       NUMPY_VERSION: 1.16.5
-#       CYTHON_VERSION: 0.26.1
-#       PYTHON_VERSION: 3.6
+  conda-py3.6-np1.16:
+    <<: *test-template-anaconda
+    environment:
+      NUMPY_VERSION: 1.16.5
+      CYTHON_VERSION: 0.26.1
+      PYTHON_VERSION: 3.6
 
   conda-py3.7-np1.16:
     <<: *test-template-anaconda
@@ -263,14 +263,14 @@ jobs:
       #CYTHON_VERSION: 0.29.2
       #PYTHON_VERSION: 3.5.6
 
-  # pip-py3.6-np1.14:
-  #   <<: *test-template-pip
-  #   # docker:
-  #   #   - image: circleci/python:3.6.9-buster
-  #   environment:
-  #     NUMPY_VERSION: 1.14.6
-  #     CYTHON_VERSION: 0.29.2
-  #     PYTHON_VERSION: 3.6.6
+  pip-py3.6-np1.14:
+    <<: *test-template-pip
+    # docker:
+    #   - image: circleci/python:3.6.9-buster
+    environment:
+      NUMPY_VERSION: 1.14.6
+      CYTHON_VERSION: 0.29.2
+      PYTHON_VERSION: 3.6.6
 
   pip-py3.6-np1.15:
     <<: *test-template-pip
