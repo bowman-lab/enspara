@@ -4,7 +4,7 @@ import sys
 from setuptools import find_packages
 from distutils.core import setup
 from distutils.extension import Extension
-
+import distutils.ccompiler
 __version__ = '0.1.0'
 
 CLASSIFIERS = [
@@ -37,14 +37,32 @@ except ImportError:
         'or see http://docs.scipy.org/doc/numpy/user/install.html and'
         'http://cython.org/ for more information.']))
 
-
-# this probably won't work for everyone. Works for me, though!
-# they'll need gcc 7 installed. Unfortunately, I don't have any idea how
-# to detect local c compilers. :/
-if 'darwin' in platform.system().lower():
-    use_openmp = False
-else:
+use_openmp = False
+def use_openmp():
     use_openmp = True
+    #install_requires.append('mpi4py>=2.0.0')
+
+install_requires = [
+    'Cython>=0.24',
+    'numpy>=1.13',
+    'tables>=3.2',
+    'matplotlib>=1.5.1',
+    'mdtraj>=1.7',
+    'psutil>=5.2.2',
+    'pandas',
+    'scikit-learn>=0.21.0',
+    'scipy>=0.17'
+]
+
+# this code checks for OS. If OS is OSx then it checks for GCC as default compiler
+#if GCC is the default compiler adds -fopenmp to linker and compiler args. 
+if 'darwin' in platform.system().lower():
+    if 'gcc' in  distutils.ccompiler.get_default_compiler():
+        use_openmp() 
+    else:
+        use_openmp = False
+else:
+    use_openmp()
 
 extra_compile_args = ['-Wno-unreachable-code']
 extra_link_args = []
@@ -86,21 +104,10 @@ setup(
     classifiers=CLASSIFIERS,
     include_dirs=[np.get_include()],
     ext_modules=cythonize(cython_extensions),
-    python_requires='>=3.5,<3.7',  # cython is broken for 3.7
+    python_requires='>=3.5,<3.8',  # cython is broken for 3.7
     entry_points={'console_scripts': ['enspara = enspara.apps.main:main']},
     setup_requires=['Cython>=0.24', 'numpy>=1.13'],
-    install_requires=[
-        'Cython>=0.24',
-        'numpy>=1.13',
-        'tables>=3.2',
-        'matplotlib>=1.5.1',
-        'mdtraj>=1.7',
-        'mpi4py>=2.0.0',
-        'psutil>=5.2.2',
-        'pandas',
-        'scikit-learn>=0.21.0',
-        'scipy>=0.17'
-    ],
+    install_requires=install_requires,
     extras_require={
         'dev': [
             'nose',
