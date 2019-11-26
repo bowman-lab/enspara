@@ -28,10 +28,10 @@ Finding pockets with LIGSITE
     import pandas as pd
 
     top_df = pd.DataFrame()
-    top_df['serial'] = range(len(pockets_grid_points))
+    top_df['serial'] = list(range(pockets_xyz.shape[0]))
     top_df['name'] = 'PK'
     top_df['element'] = 'H'
-    top_df['resSeq'] = range(len(pockets_grid_points))
+    top_df['resSeq'] = list(range(pockets_xyz.shape[0]))
     top_df['resName'] = 'PCK'
     top_df['chainID'] = 0
 

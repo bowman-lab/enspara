@@ -9,7 +9,7 @@ import mdtraj as md
 import numpy as np
 import scipy.cluster.hierarchy
 
-from sklearn.externals.joblib import Parallel, delayed
+from joblib import Parallel, delayed
 
 
 def _grid_to_xyz(grid):
@@ -18,7 +18,7 @@ def _grid_to_xyz(grid):
     """
 
     n_cells = grid.shape[0] * grid.shape[1] * grid.shape[2]
-    xyz = grid.reshape((n_cells,3))
+    xyz = grid.reshape((n_cells, 3))
 
     return xyz
 
@@ -257,7 +257,7 @@ def get_pocket_cells(
     The algorithm lays a grid over the protein. All cells within the
     distance_cutoff of protein atoms (probe radius + atomic VDW)  are
     discarded as they are assumed to be filled with protein cannot be
-    pockets and, therefore, not pockets. Each remaining cell is ranked 
+    pockets and, therefore, not pockets. Each remaining cell is ranked
     by how many scans through it hit protein on both sides. Seven scans
     are performed, one along each of the x/y/z axes and one along each
     of the four diagonals cutting across a cube centered at the given
