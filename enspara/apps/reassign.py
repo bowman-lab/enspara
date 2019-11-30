@@ -4,7 +4,6 @@ Options are provided for modifying what fraction of memory will be used
 and which atoms to use for reassignment.
 """
 
-
 import os
 import sys
 import argparse
@@ -20,7 +19,7 @@ import psutil
 import numpy as np
 import mdtraj as md
 
-from sklearn.externals.joblib import Parallel, delayed
+from joblib import Parallel, delayed
 
 logging.basicConfig(
     level=logging.INFO,

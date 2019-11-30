@@ -18,17 +18,28 @@ from glob import glob
 import numpy as np
 import mdtraj as md
 
-from mpi4py.MPI import COMM_WORLD as mpi_comm
+try:
+    # this mpi will get overriden by the enspara mpi module in a few lines.
+    from mpi4py.MPI import COMM_WORLD as mpi
 
-if mpi_comm.Get_size() > 1:
-    RANKSTR = "[Rank %s]" % mpi_comm.Get_rank()
-    logging.basicConfig(
-        level=logging.DEBUG if mpi_comm.Get_rank() == 0 else logging.INFO,
-        format=('%(asctime)s ' + RANKSTR +
-                ' %(name)-26s %(levelname)-7s %(message)s'),
-        datefmt='%m-%d-%Y %H:%M:%S')
-    mpi_mode = True
-else:
+    # this happens now and here becuase otherwise these changes to logging
+    # don't propagate to enspara submodules.
+    if mpi.Get_size() > 1:
+        RANKSTR = "[Rank %s]" % mpi.Get_rank()
+        logging.basicConfig(
+            level=logging.DEBUG if mpi.Get_rank() == 0 else logging.INFO,
+            format=('%(asctime)s ' + RANKSTR +
+                    ' %(name)-26s %(levelname)-7s %(message)s'),
+            datefmt='%m-%d-%Y %H:%M:%S')
+        mpi_mode = True
+    else:
+        logging.basicConfig(
+            level=logging.INFO,
+            format=('%(asctime)s %(name)-8s %(levelname)-7s %(message)s'),
+            datefmt='%m-%d-%Y %H:%M:%S')
+        mpi_mode = False
+
+except ModuleNotFoundError:
     logging.basicConfig(
         level=logging.INFO,
         format=('%(asctime)s %(name)-8s %(levelname)-7s %(message)s'),
@@ -38,6 +49,7 @@ else:
 from enspara.apps.reassign import reassign
 from enspara.apps.util import readable_dir
 
+from enspara import mpi
 from enspara.cluster import KHybrid, KCenters
 from enspara.util import array as ra
 from enspara.util import load_as_concatenated
@@ -481,7 +493,7 @@ def main(argv=None):
             centers=result.centers)
     result = result.partition(lengths)
 
-    if mpi_comm.Get_rank() == 0:
+    if mpi.rank() == 0:
         with timed("Wrote center indices in %.2f sec.", logger.info):
             write_centers_indices(
                 args.center_indices,
@@ -490,7 +502,7 @@ def main(argv=None):
             write_centers(result, args)
         write_assignments_and_distances_with_reassign(result, args)
 
-    mpi_comm.barrier()
+    mpi.comm.barrier()
 
     logger.info("Success! Data can be found in %s.",
                 os.path.dirname(args.distances))
