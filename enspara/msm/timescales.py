@@ -1,16 +1,6 @@
-# Author: Gregory R. Bowman <gregoryrbowman@gmail.com>
-# Contributors:
-# Copyright (c) 2016, Washington University in St. Louis
-# All rights reserved.
-# Unauthorized copying of this file, via any medium is strictly prohibited
-# Proprietary and confidential
-
-from __future__ import print_function, division, absolute_import
 import logging
 
 import numpy as np
-
-from joblib import Parallel, delayed
 
 from .transition_matrices import assigns_to_counts, eigenspectrum, \
     trim_disconnected
@@ -37,8 +27,8 @@ def calc_imp_times(assigns, lag_time, n_states, n_times, method,
 
     _, T, _ = method(C)
 
-    e_vals, e_vecs = eigenspectrum(
-        T, n_eigs=n_times+1)  # +1 accounts for eq pops
+    n_times += 1  # +1 accounts for eq pops
+    e_vals, e_vecs = eigenspectrum(T, n_eigs=n_times)
     imp_times = -lag_time / np.log(e_vals[1:])
 
     return imp_times
@@ -85,12 +75,16 @@ def implied_timescales(
     n_states = assigns.max() + 1
 
     if n_times is None:
-        n_times = int(np.floor(n_states/10.0))+1
-    if n_times > n_states-1:  # -1 accounts for eq pops
-        n_times = n_states-1
+        n_times = int(np.floor(n_states / 10.0)) + 1
+    if n_times > n_states - 1:  # -1 accounts for eq pops
+        n_times = n_states - 1
 
-    implied_times_list = Parallel(n_jobs=n_procs)(
-        delayed(calc_imp_times)(assigns, t, n_states, n_times, method,
-                                sliding_window, trim) for t in lag_times)
+    implied_times_list = [
+        calc_imp_times(assigns, t, n_states, n_times,
+                       method, sliding_window, trim)
+        for t in lag_times]
+    # implied_times_list = Parallel(n_jobs=n_procs)(
+    #     delayed(calc_imp_times)(assigns, t, n_states, n_times, method,
+    #                             sliding_window, trim) for t in lag_times)
 
     return np.array(implied_times_list)
