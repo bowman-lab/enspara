@@ -6,8 +6,6 @@ Options are provided for using various forms of MSM and parallelization.
 import sys
 import argparse
 
-from functools import partial
-
 import numpy as np
 import mdtraj as md
 
@@ -16,7 +14,6 @@ from tables.exceptions import NoSuchNodeError
 from enspara import exception
 from enspara.msm import implied_timescales, builders
 from enspara.util import array as ra
-from enspara.util.parallel import auto_nprocs
 
 
 def process_command_line(argv):
@@ -45,12 +42,6 @@ def process_command_line(argv):
         help="Computed the implied timescales for only the given "
              "trajectory ids. This is useful for handling assignments "
              "for shared state space clusterings.")
-    parser.add_argument(
-        "--processes", default=max(1, auto_nprocs() / 4), type=int,
-        help="Number of processes to use. Because eigenvector "
-             "decompositions are thread-parallelized, this should "
-             "usually be several times smaller than the number of "
-             "cores availiable on your machine.")
     parser.add_argument(
         "--trim", default=False, action="store_true",
         help="Turn ergodic trimming on.")
@@ -150,7 +141,7 @@ def main(argv=None):
     tscales = implied_timescales(
         assignments, args.lag_times, n_times=args.n_eigenvalues,
         sliding_window=True, trim=args.trim,
-        method=args.symmetrization, n_procs=args.processes)
+        method=args.symmetrization)
 
     import matplotlib as mpl
     mpl.use('Agg')
