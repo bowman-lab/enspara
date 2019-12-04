@@ -36,39 +36,39 @@ test-template-pip: &test-template-pip
     - run:
         name: Install System Dependencies
         command: |
-          apt-get update
-          apt-get install -y ca-certificates libmpich12 libmpich-dev build-essential zlib1g-dev libncurses5-dev libgdbm-dev libnss3-dev libssl-dev libreadline-dev libffi-dev wget tar g++ libbz2-dev libhdf5-dev
+          sudo apt-get update
+          sudo apt-get install -y ca-certificates libmpich12 libmpich-dev build-essential zlib1g-dev libncurses5-dev libgdbm-dev libnss3-dev libssl-dev libreadline-dev libffi-dev wget tar g++ libbz2-dev libhdf5-dev
 
     # Download and cache dependencies
     #- restore_cache:
         #keys:
           #- v1-dependencies-{{ .Environment.CIRCLE_JOB }}-{{ checksum "setup.py" }}
 
-    - run:
-        name: install python 
-        command: |
-          cd $HOME
-          wget https://www.python.org/ftp/python/$PYTHON_VERSION/Python-$PYTHON_VERSION.tgz
-          tar -xf Python-$PYTHON_VERSION.tgz
-          cd Python-$PYTHON_VERSION
-          ./configure --enable-optimizations --prefix=/opt/python
-          make
-          make install
-          export PATH=/opt/python/bin:$PATH
-          wget https://bootstrap.pypa.io/get-pip.py
-          python3 get-pip.py 
-          python3 --version
-          which python3
-          pip --version
-          pip3 --version
+    # - run:
+    #     name: install python 
+    #     command: |
+    #       cd $HOME
+    #       wget https://www.python.org/ftp/python/$PYTHON_VERSION/Python-$PYTHON_VERSION.tgz
+    #       tar -xf Python-$PYTHON_VERSION.tgz
+    #       cd Python-$PYTHON_VERSION
+    #       ./configure --enable-optimizations --prefix=/opt/python
+    #       make
+    #       make install
+    #       export PATH=/opt/python/bin:$PATH
+    #       wget https://bootstrap.pypa.io/get-pip.py
+    #       python3 get-pip.py 
+    #       python3 --version
+    #       which python3
+    #       pip --version
+    #       pip3 --version
 
     - run:
         name: Install numpy, cython, mdtraj
         command: |
           export PATH=/opt/python/bin:$PATH
-          pip3 install --progress-bar off numpy==$NUMPY_VERSION cython==$CYTHON_VERSION
-          pip3 install --progress-bar off --no-use-pep517 mdtraj
-          pip3 install --progress-bar off nose
+          pip3 install --user --progress-bar off numpy==$NUMPY_VERSION cython==$CYTHON_VERSION
+          pip3 install --user --progress-bar off --no-use-pep517 mdtraj
+          pip3 install --user --progress-bar off nose
           python3 --version
           python3 -c "import numpy; print('numpy', numpy.__version__)"
           pip3 freeze | grep mdtraj
@@ -274,8 +274,8 @@ jobs:
 
   pip-py3.6-np1.15:
     <<: *test-template-pip
-    # docker:
-    #   - image: circleci/python:3.6.9-buster
+    docker:
+      - image: circleci/python:3.6.9-buster
     environment:
       NUMPY_VERSION: 1.15.4
       CYTHON_VERSION: 0.29.2
@@ -283,8 +283,8 @@ jobs:
 
   pip-py3.6-np1.16:
     <<: *test-template-pip
-    # docker:
-    #   - image: circleci/python:3.6.9-buster
+    docker:
+      - image: circleci/python:3.6.9-buster
     environment:
       NUMPY_VERSION: 1.16.5
       CYTHON_VERSION: 0.29.2
@@ -292,8 +292,8 @@ jobs:
 
   pip-py3.6-np1.17:
     <<: *test-template-pip
-    # docker:
-    #   - image: circleci/python:3.6.9-buster
+    docker:
+      - image: circleci/python:3.6.9-buster
     environment:
       NUMPY_VERSION: 1.17.3
       CYTHON_VERSION: 0.29.2
@@ -301,8 +301,8 @@ jobs:
       
   pip-py3.7-np1.14:
     <<: *test-template-pip
-    # docker:
-    #   - image: circleci/python:3.7.5-buster
+    docker:
+      - image: circleci/python:3.7.5-buster
     environment:
       NUMPY_VERSION: 1.14.6
       CYTHON_VERSION: 0.29.2
@@ -310,8 +310,8 @@ jobs:
       
   pip-py3.7-np1.15:
     <<: *test-template-pip
-    # docker:
-    #   - image: circleci/python:3.7.5-buster
+    docker:
+      - image: circleci/python:3.7.5-buster
     environment:
       NUMPY_VERSION: 1.15.4
       CYTHON_VERSION: 0.29.2
@@ -319,8 +319,8 @@ jobs:
       
   pip-py3.7-np1.16:
     <<: *test-template-pip
-    # docker:
-    #   - image: circleci/python:3.7.5-buster
+    docker:
+      - image: circleci/python:3.7.5-buster
     environment:
       NUMPY_VERSION: 1.16.5
       CYTHON_VERSION: 0.29.2
@@ -328,8 +328,8 @@ jobs:
       
   pip-py3.7-np1.17:
     <<: *test-template-pip
-    #docker:
-      #- image: circleci/python:3.7.5-buster
+    docker:
+      - image: circleci/python:3.7.5-buster
     environment:
       NUMPY_VERSION: 1.17.3
       CYTHON_VERSION: 0.29.2
