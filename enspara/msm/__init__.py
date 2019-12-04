@@ -3,8 +3,7 @@
 
 from . import builders
 from . import bace
-
-from .synthetic_data import *
-from .timescales import *
-from .transition_matrices import *
-from .msm import *
+from . import synthetic_data
+from . import timescales
+from . import transition_matrices
+from . import msm
