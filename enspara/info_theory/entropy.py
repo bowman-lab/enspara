@@ -9,7 +9,8 @@ import warnings
 import numpy as np
 
 from .. import exception
-from ..msm import eq_probs, assigns_to_counts, builders
+from ..msm import builders
+from ..msm.transition_matrices import eq_probs, assigns_to_counts
 
 
 def Q_from_assignments(

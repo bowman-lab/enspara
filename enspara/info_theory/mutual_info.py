@@ -174,11 +174,13 @@ def weighted_mi(features, weights, n_feature_states=None, normalize=True):
             mi_mtx, n_feature_states, n_feature_states)
 
     assert not np.any(np.isinf(mi_mtx))
+    np.clip(mi_mtx, a_min=0, a_max=np.inf, out=mi_mtx)
 
     return mi_mtx
 
 
-def mi_matrix_serial(states_a_list, states_b_list, n_a_states, n_b_states, normalize=True):
+def mi_matrix_serial(states_a_list, states_b_list, n_a_states, n_b_states,
+                     normalize=True):
     """Compute the mutual information matrix in a serial fashion.
 
     Used mostly for testing.

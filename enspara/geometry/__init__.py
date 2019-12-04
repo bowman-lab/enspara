@@ -3,3 +3,4 @@
 
 from . import pockets
 from . import rotamer
+from .rotamer import all_rotamers

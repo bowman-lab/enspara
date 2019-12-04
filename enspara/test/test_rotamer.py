@@ -18,15 +18,15 @@ TEST_TRJS = [TRJ, TRJ]
 
 def test_rotamer_dtype():
 
-    rots, inds, n = geometry.phi_rotamers(TRJ)
+    rots, inds, n = geometry.rotamer.phi_rotamers(TRJ)
     assert issubclass(rots.dtype.type, np.integer)
     assert issubclass(n.dtype.type, np.integer)
 
-    rots, inds, n = geometry.psi_rotamers(TRJ)
+    rots, inds, n = geometry.rotamer.psi_rotamers(TRJ)
     assert issubclass(rots.dtype.type, np.integer)
     assert issubclass(n.dtype.type, np.integer)
 
-    rots, inds, n = geometry.chi_rotamers(TRJ)
+    rots, inds, n = geometry.rotamer.chi_rotamers(TRJ)
     assert issubclass(rots.dtype.type, np.integer)
     assert issubclass(n.dtype.type, np.integer)
 
