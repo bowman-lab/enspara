@@ -44,24 +44,6 @@ test-template-pip: &test-template-pip
         #keys:
           #- v1-dependencies-{{ .Environment.CIRCLE_JOB }}-{{ checksum "setup.py" }}
 
-    # - run:
-    #     name: install python 
-    #     command: |
-    #       cd $HOME
-    #       wget https://www.python.org/ftp/python/$PYTHON_VERSION/Python-$PYTHON_VERSION.tgz
-    #       tar -xf Python-$PYTHON_VERSION.tgz
-    #       cd Python-$PYTHON_VERSION
-    #       ./configure --enable-optimizations --prefix=/opt/python
-    #       make
-    #       make install
-    #       export PATH=/opt/python/bin:$PATH
-    #       wget https://bootstrap.pypa.io/get-pip.py
-    #       python3 get-pip.py 
-    #       python3 --version
-    #       which python3
-    #       pip --version
-    #       pip3 --version
-
     - run:
         name: Install numpy, cython, mdtraj
         command: |
