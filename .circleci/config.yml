@@ -78,7 +78,7 @@ test-template-pip: &test-template-pip
           export PATH=/opt/python/bin:$PATH
           pip3 install --user --progress-bar off .[dev]
           python3 setup.py build_ext --inplace
-          python3 setup.py install
+          python3 setup.py --user install
 
     #- save_cache:
         #paths:
@@ -265,8 +265,8 @@ jobs:
 
   pip-py3.6-np1.14:
     <<: *test-template-pip
-    # docker:
-    #   - image: circleci/python:3.6.9-buster
+    docker:
+      - image: circleci/python:3.6.9-buster
     environment:
       NUMPY_VERSION: 1.14.6
       CYTHON_VERSION: 0.29.2
