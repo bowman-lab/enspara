@@ -78,7 +78,7 @@ test-template-pip: &test-template-pip
           export PATH=/opt/python/bin:$PATH
           pip3 install --user --progress-bar off .[dev]
           python3 setup.py build_ext --inplace
-          python3 setup.py --user install
+          python3 setup.py install --user 
 
     #- save_cache:
         #paths:
