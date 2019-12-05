@@ -95,7 +95,7 @@ test-template-pip: &test-template-pip
         name: Install mpi4py
         command: |
           export PATH=/opt/python/bin:$PATH
-          pip3 install mpi4py
+          pip3 install --user mpi4py
 
     - run:
         name: Run MPI tests
