@@ -1,7 +1,6 @@
 import logging
 
 import numpy as np
-from scipy.sparse.linalg.eigen import ArpackNoConvergence
 
 from .transition_matrices import assigns_to_counts, eigenspectrum, \
     trim_disconnected
@@ -29,7 +28,13 @@ def calc_imp_times(assigns, lag_time, n_states, n_times, method,
     _, T, _ = method(C)
 
     n_times += 1  # +1 accounts for eq pops
-    e_vals, e_vecs = eigenspectrum(T, n_eigs=n_times)
+
+    try:
+        e_vals, e_vecs = eigenspectrum(T, n_eigs=n_times)
+    except ArpackNoConvergence:
+        logger.error("ArpackNoConvergence for lag time %s frames", lag_time)
+        raise
+
     imp_times = -lag_time / np.log(e_vals[1:])
 
     return imp_times
@@ -80,12 +85,8 @@ def implied_timescales(
 
     implied_times_list = []
     for t in lag_times:
-        try:
-            tscale = calc_imp_times(assigns, t, n_states, n_times,
-                                    method, sliding_window, trim)
-        except ArpackNoConvergence:
-            logger.warn("ArpackNoConvergence for lag time %s frames", t)
-            tscale = np.nan
+        tscale = calc_imp_times(assigns, t, n_states, n_times,
+                                method, sliding_window, trim)
 
         implied_times_list.append(tscale)
 
