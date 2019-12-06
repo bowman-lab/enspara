@@ -28,7 +28,13 @@ def calc_imp_times(assigns, lag_time, n_states, n_times, method,
     _, T, _ = method(C)
 
     n_times += 1  # +1 accounts for eq pops
-    e_vals, e_vecs = eigenspectrum(T, n_eigs=n_times)
+
+    try:
+        e_vals, e_vecs = eigenspectrum(T, n_eigs=n_times)
+    except ArpackNoConvergence:
+        logger.error("ArpackNoConvergence for lag time %s frames", lag_time)
+        raise
+
     imp_times = -lag_time / np.log(e_vals[1:])
 
     return imp_times
@@ -36,7 +42,7 @@ def calc_imp_times(assigns, lag_time, n_states, n_times, method,
 
 def implied_timescales(
         assigns, lag_times, method, n_times=None,
-        sliding_window=True, trim=False, n_procs=None):
+        sliding_window=True, trim=False):
     """Calculate the implied timescales across a range of lag times.
 
     Parameters
@@ -61,8 +67,6 @@ def implied_timescales(
     sliding_window : bool, default=True
         Whether to use a sliding window for counting transitions or to
         take every lag_time'th state.
-    n_procs : int, default=1,
-        Parallelize this computation across this number of processes.
 
     Returns
     -------
@@ -79,12 +83,11 @@ def implied_timescales(
     if n_times > n_states - 1:  # -1 accounts for eq pops
         n_times = n_states - 1
 
-    implied_times_list = [
-        calc_imp_times(assigns, t, n_states, n_times,
-                       method, sliding_window, trim)
-        for t in lag_times]
-    # implied_times_list = Parallel(n_jobs=n_procs)(
-    #     delayed(calc_imp_times)(assigns, t, n_states, n_times, method,
-    #                             sliding_window, trim) for t in lag_times)
+    implied_times_list = []
+    for t in lag_times:
+        tscale = calc_imp_times(assigns, t, n_states, n_times,
+                                method, sliding_window, trim)
+
+        implied_times_list.append(tscale)
 
     return np.array(implied_times_list)
