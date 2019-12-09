@@ -1,10 +1,51 @@
-import numpy as np
+import glob
 import mdtraj as md
+import numpy as np
+import os
 import scipy
 from functools import partial
 from multiprocessing import Pool
 from ..msm.synthetic_data import synthetic_trajectory
 from .. import ra
+from ..exception import DataInvalid
+
+
+def load_dye(dye):
+    """Loads a FRET dye point cloud.
+
+    Attributes
+    ----------
+    dye : str,
+        The path or name of a dye file. i.e. 'AF488'.
+
+    Returns
+    ----------
+    dye_pdb : md.Trajectory,
+        An MDTraj object representing the pdb of a FRET dye point cloud.
+    """
+    # obtain paths for dye folder and potential dye PDB file
+    geometry_path = os.path.split(
+        os.path.abspath(__file__))[0]
+    dye_folder_path = os.path.join(
+        os.path.split(geometry_path)[0], 'data', 'dyes')
+    dye_path = os.path.join(dye_folder_path, '%s.pdb' % dye)
+    # check if str supplied is a path to a file
+    if os.path.exists(dye):
+        dye_pdb = md.load(dye)
+    # otherwise try and load from data folder
+    elif os.path.exists(dye_path):
+        dye_pdb = md.load(dye_path)
+    # print error message
+    else:
+        dye_path_names = np.sort(glob.glob(os.path.join(dye_folder_path, '*.pdb')))
+        dye_names = ", ".join(
+            [
+                os.path.split(p)[-1].split('.pdb')[0]
+                for p in dye_path_names]) 
+        raise DataInvalid(
+            '%s is not a path to a pdb, nor does it exist in enspara. '
+            'Consider using one of the following: %s' % (dye, dye_names))
+    return dye_pdb
 
 def norm_vec(vec):
     """Divides vector by its magnitude to obtain unit vector.
