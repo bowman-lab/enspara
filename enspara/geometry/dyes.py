@@ -1,0 +1,565 @@
+import numpy as np
+import mdtraj as md
+import scipy
+from functools import partial
+from multiprocessing import Pool
+from ..msm.synthetic_data import synthetic_trajectory
+from .. import ra
+
+def norm_vec(vec):
+    """Divides vector by its magnitude to obtain unit vector.
+    """
+    # depending on shape, gets list of unit vectors or single unit vector
+    try:
+        unit = vec / np.sqrt(np.einsum('ij,ij->i', vec, vec))[:,None]
+    except:
+        unit = vec / np.sqrt(np.dot(vec, vec))
+    return unit
+
+
+def divide_chunks(l, n):
+    """Returns `n`-sized chunks from `l`.
+    """
+    # looping till length l 
+    for i in range(0, len(l), n):  
+        yield l[i:i + n] 
+
+
+def int_norm(xs, ys):
+    """Normalizes ys so that integral is unity.
+    """
+    dx = xs[1] - xs[0]
+    I = np.sum(ys*dx)
+    return (ys / I)
+
+
+def determine_rot_mat(pdb, resSeq):
+    """Determines the rotation matrix needed to align coordinates
+    to a specific residue. Calculates rotation centered around CA,
+    with CB pointing to the z-axis and N laying in the z-y plane.
+
+    Attributes
+    ----------
+    pdb : md.Trajectory,
+        MDTraj trajectory object containing the pdb coordinates and topology.
+    resSeq : int,
+        The residue sequence number to use for calculating rotation matrix.
+
+    Returns
+    ----------
+    M : nd.array, shape=(3,3),
+        The rotation matrix.
+    ca_coord : nd.array, shape=(3, )
+        The CA coordinate of the specified residue number.
+    """
+    # Determine the CB coordinate. Calculates where it should be if not
+    # present (i.e. gly or pro).
+    cb_coord = calc_cb_coords(pdb, resSeqs=resSeq)[0]
+    # Extracts CA and N coordinates
+    ca_coord = pdb.xyz[0, find_atom_index(pdb, resSeq, 'CA')]
+    n_coord = pdb.xyz[0, find_atom_index(pdb, resSeq, 'N')]
+    # z axis is in the direction of the CB coordinate from the CA coordinate
+    z_vec = norm_vec(cb_coord - ca_coord)
+    # x axis is normal to the z axis and the y axis (N coordinate lays on
+    # this plane)
+    x_vec = norm_vec(np.cross(norm_vec(n_coord - ca_coord), z_vec))
+    # obtain y vector as orthonormal to other vectors
+    y_vec = norm_vec(np.cross(z_vec, x_vec))
+    # obtain rotation matrix
+    M = np.array([x_vec, y_vec, z_vec])
+    return M, ca_coord
+
+
+def find_atom_index(pdb, resSeq, atom_name):
+    """Helper function to determine the index of an atom
+    with a specified resSeq and atom-name"""
+    ii = None
+    # iterate over residues
+    for residue in pdb.top.residues:
+        # if the correct resSeq, iterate over atoms
+        if residue.resSeq == resSeq:
+            for atom in residue.atoms:
+                # if correct atom name, store index and break
+                if atom.name == atom_name:
+                    ii = atom.index
+                    break
+            else:
+                continue
+            break
+    return ii
+
+
+def calc_cb_coords(pdb, resSeqs=None):
+    """Calculates the CB coordinates from CA, C, and N coordinates.
+
+    Attributes
+    ----------
+    pdb : md.Trajectory,
+        MDTraj trajectory object containing the pdb coordinates and topology.
+    resSeqs : list, default=None,
+        The residues to determine CB coordinates. If none are supplied, will
+        calculate a CB coordinate for every residue.
+
+    Returns
+    cb_coords : ndarray, shape=(n_coordinates, 3),
+        A CB coordinate for every residue supplied.
+    """
+    l = 0.153 # average CA-CB distance
+    # get CA, N, and C coordinates for each residue
+    top = pdb.topology
+    # grab indices of coordinates
+    if resSeqs is None:
+        ca_iis = top.select("name CA")
+        c_iis = top.select("name C")
+        n_iis = top.select("name N")
+    else:
+        resSeqs = np.array(resSeqs).reshape(-1)
+        ca_iis = np.array(
+            [find_atom_index(pdb, r, 'CA') for r in resSeqs])
+        c_iis = np.array(
+            [find_atom_index(pdb, r, 'C') for r in resSeqs])
+        n_iis = np.array(
+            [find_atom_index(pdb, r, 'N') for r in resSeqs])
+    ca_coords = pdb.xyz[0][ca_iis]
+    c_coords = pdb.xyz[0][c_iis]
+    n_coords = pdb.xyz[0][n_iis]
+    # determine the vector normal to the plane defined by the points CA, N, 
+    # and O.
+    norm_vec_1 = norm_vec(ca_coords - n_coords)
+    norm_vec_2 = norm_vec(ca_coords - c_coords)
+    normed_vec = norm_vec(np.cross(norm_vec_1, norm_vec_2))
+    # determine the vector that points out from the CA (perpendicular to the
+    # above vector.
+    ca_vec = norm_vec(ca_coords - ((n_coords+c_coords)/2.))
+    # get point along vector towards CB with length l
+    theta = np.pi/6.
+    ca_dist = np.sin(theta)*l
+    norm_dist = np.cos(theta)*l
+    cb_coordinates = ca_coords + (ca_dist * ca_vec) + (norm_dist * normed_vec)
+    return cb_coordinates
+
+
+def rodrigues_rotation(v, k, theta, centers=None):
+    """Applies Rodrigues' rotation on a coordinate trajectory.
+    Vrot = v*cos(theta) + (k x v)sin(theta) + k(k.v)(1-cos(theta))
+
+    Parameters
+    ----------
+    v : array, shape [n_frames, n_coordinates, dim_coordinate]
+        The coordinates to rotate around a vector. Primarily used
+        to rotate a trajectory of coordinates.
+    k : array, shape [n_frames, dim_coordinate]
+        A list of vectors to rotate each frame by individually.
+    theta : float
+        The angle to rotate by.
+    centers : array, shape [n_frames, dim_coordinate]
+        The center coordinate to rotate around.
+
+    Returns
+    ----------
+    new_coords : array, shape [n_frames, n_coordinates, dim_coordinate]
+        Updated coordinates: `v`, rotated around `k`, centered at
+        `centers`, by `theta`.
+    """
+    if centers is None:
+        centers = np.array([0,0,0])
+    else:
+        centers = centers[:, None, :]
+    # center coordinates to prep for rotation
+    v_centered = v - centers
+    # calculate each of the three terms in the rodrigues rotation
+    first_terms = v_centered * np.cos(theta)
+    second_terms = np.cross(k[:, None, :], v_centered)*np.sin(theta)
+    k_dot_vs = np.einsum('ijk,ijk->ij', k[:, None, :], v_centered)
+    ang = 1- np.cos(theta)
+    third_terms = np.array(
+        [k[i]*k_dot_vs[i][:, None]*ang for i in range(len(k_dot_vs))])
+    new_coords = (first_terms + second_terms + third_terms) + centers
+    return new_coords
+
+
+def _remove_touches_protein(coords, pdb, probe_radius=0.17):
+    """Helper function for removing coordinates that are too close to a
+    protein atom
+    """
+    # get distance cutoffs
+    atomic_radii = np.array([a.element.radius for a in pdb.top.atoms])
+    dist_cutoffs = (atomic_radii + probe_radius)
+    # extract pdb coordinates
+    pdb_xyz = pdb.xyz[0]
+    # get all pairwise distances
+    dists = scipy.spatial.distance.cdist(pdb_xyz, coords)
+    # slice distances that are not near protein
+    reduced_coords = coords[np.all(dists > dist_cutoffs[:,None], axis=0)]
+    return reduced_coords
+
+
+def remove_touches_protein(coords, pdb, probe_radius=0.17):
+    """Remove coordinates that are too close to the protein.
+    
+    Attributes
+    ----------
+    coords : array, shape=(n_coordinates, 3),
+        The coordinates to determine if touches protein.
+    pdb : md.Trajectory,
+        MDTraj trajectory object of the protein.
+    probe_radius : float, default=0.17,
+        Radius (in nm) for coordinate being too close to a protein atom's
+        van der Waals radius. Default is 0.17, the radius of water.
+    """
+    # pairwise distances can add up! Chunks calculation if there would be
+    # too many pairwise distances.
+    # Set maximum number pairwise distances before deciding to chunk data
+    max_dist_points = 5E7
+    # if too many pairwise distances, chunk data
+    if coords.shape[0]*pdb.xyz[0].shape[0] > max_dist_points:
+        reduced_coords = np.zeros((0,3))
+        # set chunking size
+        chunk_size = 2048
+        # chunk coordinate set
+        coords_chunked = divide_chunks(coords, chunk_size)
+        # obtain chunked histograms
+        for coords_chunk in coords_chunked:
+            # append chunked results
+            reduced_coords = np.vstack(
+                [
+                    reduced_coords,
+                    _remove_touches_protein(
+                        coords_chunk, pdb, probe_radius=probe_radius)])
+    else:
+        # if no chunking requires, computes all at once
+        reduced_coords = _remove_touches_protein(
+            coords, pdb, probe_radius=probe_radius)
+    return reduced_coords
+
+
+def cluster_grids(point_cloud, spacing, n_clouds=all):
+    """Clusters grid points and returns top volume clouds.
+
+    Attributes
+    ----------
+    point_cloud : nd.array, shape=(n_coordinates, 3),
+        The point cloud to cluster.
+    spacing : float,
+        Distance between points to consider within a cluster.
+    n_clouds : int, default=all,
+        The number of clusters to return.
+
+    Returns
+    ----------
+    contiguous_clouds : nd.array, shape=(n_coordinates, 3),
+        The coordinates of points within the top n_clouds
+        after clustering.
+    """
+    # cluster using scipy hierarchical clustering
+    orig_cluster_mapping = scipy.cluster.hierarchy.fclusterdata(
+        point_cloud, t=spacing, criterion='distance')
+    # sort based on number of points in cluster
+    orig_cluster_mapping -= orig_cluster_mapping.min()
+    largest_labels = np.argsort(-np.bincount(orig_cluster_mapping))
+    # extract top n_clouds
+    if n_clouds is all:
+        n_clouds = np.unique(orig_cluster_mapping).shape[0]
+    contiguous_iis = np.hstack(
+        [
+            np.where(
+                orig_cluster_mapping==label)[0]
+            for label in largest_labels[:n_clouds]])
+    contiguous_clouds = point_cloud[contiguous_iis]
+    return contiguous_clouds
+
+
+def align_dye_to_res(pdb, dye_coords, resSeq):
+    """Aligns dye point cloud to a residue.
+
+    Attributes
+    ----------
+    pdb : md.Trajectory,
+        The pdb to use for alignment.
+    dye_coords : nd.array, shape=(n_coords, 3),
+        The coordinates of the dye or dye point cloud to align.
+    resSeq : int,
+        The residue sequence number that dye will be aligned to.
+
+    Returns
+    ----------
+    algined_coords : nd.array, shape=(n_coords, 3),
+        The aligned coordinates.
+    """
+    M, t = determine_rot_mat(pdb, resSeq)
+    aligned_coords = np.matmul(dye_coords, M) + t
+    return aligned_coords
+
+
+def bincount_dists(dists, bin_width=0.1):
+    """Generates a histogram with a specific bin width
+    """
+    nbins = int(dists.max() / bin_width) + 2
+    max_bin = nbins * bin_width
+    counts, bin_edges = np.histogram(dists, bins=nbins, range=[0, max_bin])
+    return counts, bin_edges
+
+
+def pairwise_distance_distribution(coords1, coords2, bin_width=0.1):
+    """Generate a probability distribution of all pairwise distances within
+    two sets of coordinates. Returns distribution as a normalized histogram.
+
+    Attributes
+    ----------
+    coords1 : nd.array, shape=(n_coords1, 3),
+        The first set of coordinates to calculate pairwise distances.
+    coords2 : nd.array, shape=(n_coords1, 3),
+        The second set of coordinates to calculate pairwise distances.
+    bin_width : float, default=0.1,
+        The bin width for the resultant histogram.
+
+    Returns
+    ----------
+    probs : array, shape=(n_bins, ),
+        The probability of having a distance within each bin.
+    bin_edges : array, shape=(n_bins + 1, ),
+        The edges of each bin in the resultant histogram.
+    """
+    # pairwise distances can add up! Chunks calculation if there would be
+    # too many pairwise distances.
+    # determine maximum pairwise distances before deciding to chunk data
+    max_dist_points = 5E7
+    # determine if need to chunk
+    if coords1.shape[0]*coords2.shape[0] > max_dist_points:
+        # set chunking size
+        chunk_size = 2048
+        # determine which coords to chunk
+        if coords1.shape[0] > coords2.shape[0]:
+            max_coords = coords1
+            min_coords = coords2
+        else:
+            max_coords = coords2
+            min_coords = coords1
+        # chunk larger coordinate set
+        coords_chunked = divide_chunks(max_coords, chunk_size)
+        # initialize histograms
+        counts = []
+        bin_edges = []
+        # obtain chunked histograms
+        for coords in coords_chunked:
+            dists = scipy.spatial.distance.cdist(min_coords, coords)
+            counts_tmp, bin_edges_tmp = bincount_dists(dists, bin_width)
+            counts.append(counts_tmp)
+            bin_edges.append(bin_edges_tmp)
+        # combine histogram counts
+        tot_counts, bin_edges = _merge_histograms(counts, bin_edges)
+    else:
+        # don't worry about chunking and just calculate distances and make
+        # single histogram
+        dists = scipy.spatial.distance.cdist(coords1, coords2)
+        tot_counts, bin_edges = bincount_dists(dists, bin_width)
+    # normalize counts
+    probs = int_norm(bin_edges, tot_counts)
+    return probs, bin_edges
+
+
+def _merge_histograms(counts, bin_edges, weights=None):
+    """Merges histograms into a single histogram. Only supported
+    for histograms with uniform bin-widths that start from zero.
+
+    Attributes
+    ----------
+    counts : list, shape=(n_histograms, ),
+        A list of histogram counts.
+    bin_edges : list, shape=(n_histograms, ),
+        A list of histogram bin-edges.
+    weights : list, shape=(n_histograms, ), default=None,
+        A list of weights to use for combining histograms.
+
+    Returns
+    ----------
+    tot_counts : nd.array, shape=(n_bins, ),
+        The counts of each bin in the resultant histogram.
+    tot_bin_edges : nd.array, shape=(n_bins + 1, ),
+        The edges of each bin in the resultant histogram.
+    """
+    # equal weight everything is weights are not supplied
+    if weights is None:
+        weights = np.ones(len(counts))
+    else:
+        weights = np.array(weights).reshape(-1)
+    # determine number of bins in each histogram and pad to largest length
+    lens = [c.shape[0] for c in counts]
+    n_pads = np.max(lens) - lens
+    padded_counts = np.array(
+            [
+                np.hstack([counts[n], np.zeros(n_pads[n], dtype=int)])
+                for n in np.arange(n_pads.shape[0])])
+    # weight counts and sum down rows to get total number of counts
+    weighted_counts = padded_counts*weights[:, None]
+    tot_counts = np.sum(weighted_counts, axis=0)
+    # bin edges should be histogram with the maximum number of bins
+    tot_bin_edges = bin_edges[np.argmax(lens)]
+    return tot_counts, tot_bin_edges
+
+
+def _dye_distance_distribution(
+        pdb, dye1, dye2, resSeq_list, cluster_grid_points=False):
+    """Obtains a probability distribution of all pairwise distances between
+    FRET dye labeling positions.
+
+    Attributes
+    ----------
+    pdb : md.Trajectory,
+        PDB of protein conformation.
+    dye1 : md.Trajectory,
+        PDB of first FRET dye coordinates.
+    dye2 : md.Trajectory,
+        PDB of second FRET dye coordinates.
+    resSeq_list : list, shape=(2, ),
+        List of resSeq pair, (i.e. [45, 204])
+    cluster_grid_points : bool, default=False,
+        Optionally cluster dye point clouds and return largest cloud.
+
+    Returns
+    ----------
+    probs : nd.array, shape=(n_bins, ),
+        The probability of observing a specific distances between FRET dyes.
+    bin_edges : nd.array, shape=(n_bins + 1, ),
+        The edges of each bin in the resultant histogram.
+    """
+    resSeq1, resSeq2 = resSeq_list[0], resSeq_list[1]
+    # rotate and translate dye point clouds to residues
+    d1_r1 = align_dye_to_res(pdb, dye1.xyz[0], resSeq1)
+    d1_r2 = align_dye_to_res(pdb, dye1.xyz[0], resSeq2)
+    d2_r1 = align_dye_to_res(pdb, dye2.xyz[0], resSeq1)
+    d2_r2 = align_dye_to_res(pdb, dye2.xyz[0], resSeq2)
+    # remove the points that touch a protein
+    d1_r1 = remove_touches_protein(d1_r1, pdb, probe_radius=0.2)
+    d1_r2 = remove_touches_protein(d1_r2, pdb, probe_radius=0.2)
+    d2_r1 = remove_touches_protein(d2_r1, pdb, probe_radius=0.2)
+    d2_r2 = remove_touches_protein(d2_r2, pdb, probe_radius=0.2)
+    # optionally cluster the grid points
+    if cluster_grid_points:
+        d1_r1 = cluster_grids(d1_r1, spacing=0.25, n_clouds=1)
+        d1_r2 = cluster_grids(d1_r2, spacing=0.25, n_clouds=1)
+        d2_r1 = cluster_grids(d2_r1, spacing=0.25, n_clouds=1)
+        d2_r2 = cluster_grids(d2_r2, spacing=0.25, n_clouds=1)
+    # histogram the pairwise distances
+    probs1, bin_edges1 = pairwise_distance_distribution(d1_r1, d2_r2)
+    probs2, bin_edges2 = pairwise_distance_distribution(d1_r2, d2_r1)
+    # average the two histograms
+    probs, bin_edges = _merge_histograms(
+        [probs1, probs2], [bin_edges1, bin_edges2], weights=[0.5, 0.5])
+    return probs, bin_edges
+
+
+def dye_distance_distribution(
+        trj, dye1, dye2, resSeq_list, cluster_grid_points=False,
+        n_procs=1):
+    """Obtains a probability distribution of all pairwise distances between
+    FRET dye labeling positions over a trajectory.
+
+    Attributes
+    ----------
+    trj : md.Trajectory,
+        Trajectory of protein conformations.
+    dye1 : md.Trajectory,
+        PDB of first FRET dye coordinates.
+    dye2 : md.Trajectory,
+        PDB of second FRET dye coordinates.
+    resSeq_list : list, shape=(2, ),
+        List of resSeq pair, (i.e. [45, 204])
+    cluster_grid_points : bool, default=False,
+        Optionally cluster dye point clouds and return largest cloud.
+    n_procs : int, default=1,
+        The number of cores to use for calculation. Parallel over the number
+        of frames in supplied trajectory.
+
+    Returns
+    ----------
+    probs : nd.array, shape=(n_frames, ),
+        The probability of observing a specific distances between FRET dyes.
+    bin_edges : nd.array, shape=(n_frames, ),
+        The edges of each bin in the resultant histogram.
+    """
+    func = partial(
+        _dye_distance_distribution, dye1=dye1, dye2=dye2,
+        resSeq_list=resSeq_list, cluster_grid_points=cluster_grid_points)
+    pool = Pool(processes=n_procs)
+    outputs = pool.map(func, trj)
+    pool.terminate()
+    probs = ra.RaggedArray([output[0] for output in outputs])
+    bin_edges = ra.RaggedArray([output[1] for output in outputs])
+    return probs, bin_edges
+
+
+def _sample_FRET(
+        n_sample, T, populations, FE_per_state, photon_distribution,
+        burst_length, lagtime):
+    """Helper function for sampling FRET distributions. Proceeds as 
+    follows:
+    1) generate a trajectory of n_frames, determined by the specified
+       burst length.
+    2) determine when photons are emitted by sampling the photon_distribution
+    3) use the FRET efficiencies per state to color the photons as either
+       acceptor or donor fluorescence
+    4) average acceptor fluorescence to obtain total FRET efficiency for
+       the window
+    """
+
+    # determine number of frames to sample MSM
+    n_frames = int(burst_length // lagtime)
+
+    # sample transition matrix for trajectory
+    initial_state = np.random.choice(np.arange(T.shape[0]), p=populations)
+    trj = synthetic_trajectory(T, initial_state, n_frames)
+    
+    # get photon times
+    photon_time = photon_distribution(size=1)[0]
+    trj_length_estimate = int(burst_length // photon_time)
+    ps = photon_distribution(size=trj_length_estimate)
+    while ps.sum() < burst_length:
+        ps = np.hstack(
+            [ps, photon_distribution(size=trj_length_estimate)])
+    photon_times = np.hstack([[0.0], np.cumsum(ps)])
+    photon_times = photon_times[np.where(photon_times < burst_length)]
+    
+    # determine frame of photon bursts
+    photon_frames = np.array(photon_times // lagtime, dtype=int)
+    
+    # get FRET efficiencies for each excited state
+    FRET_probs = FE_per_state[trj[photon_frames]]
+    
+    # flip coin for donor or acceptor emisions
+    acceptor_emissions = np.random.random(FRET_probs.shape[0]) <= FRET_probs
+    
+    # average for final observed FRET
+    FRET_val = np.mean(acceptor_emissions)
+
+    return FRET_val
+
+def sample_FRET(
+        T, populations, FE_per_state, photon_distribution,
+        burst_length, lagtime, n_samples=1, n_procs=1):
+    """samples a MSM to regenerate experimental FRET distributions
+
+    T : array, shape=(n_states, n_states),
+        Transition probability matrix.
+    populations : array, shape=(n_states, )
+        State populations.
+    FE_per_state : array, shape=(n_states, )
+        The calculated FRET efficiency for each state in the MSM.
+    photon_distribution : func,
+        A callable function that samples from a distribution of
+        photon wait-times, i.e. 'np.random.exponential'
+    burst_length : float,
+        The length of time to sample a trajectory in nanoseconds.
+    lagtime : float,
+        MSM lagtime used to construct the transition probability
+        matrix in nanoseconds.
+
+    """
+    sample_func = partial(
+        _sample_FRET, T=T, populations=populations,
+        FE_per_state=FE_per_state, photon_distribution=photon_distribution,
+        burst_length=burst_length, lagtime=lagtime)
+    pool = Pool(processes=n_procs)
+    FEs = pool.map(sample_func, np.arange(n_samples))
+    pool.terminate()
+    return FEs
