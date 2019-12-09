@@ -1,5 +1,6 @@
 """Information theory calculations (entropy, divergence, joint counts etc.)
 """
 
-from .entropy import *
-from .mutual_info import *
+from . import entropy
+from . import mutual_info
+from . import exposons

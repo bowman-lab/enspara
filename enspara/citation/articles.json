@@ -1,0 +1,43 @@
+{
+	"exposons": {
+		"title": "Cooperative changes in solvent exposure identify cryptic pockets, switches, and allosteric coupling",
+		"authors": ["Porter Justin, R",
+					"Moeder, Katelyn E",
+					"Sibbald, Carrie A",
+					"Zimmerman, Maxwell I",
+					"Hart, Kathryn M",
+					"Greenberg, Michael J",
+					"Bowman, Gregory R"],
+		"journal": "Biophys. J",
+		"year": 2019,
+		"doi": "10.1016/j.bpj.2018.11.3144"
+	},
+	"cards": {
+		"title": "Quantifying allosteric communication via both concerted structural changes and conformational disorder with CARDS",
+		"authors": ["Singh, Sukrit",
+					"Bowman, Gregory R"],
+		"journal": "JCTC",
+		"year": 2017,
+		"doi": "10.1021/acs.jctc.6b01181"
+	},
+	"enspara": {
+		"title": "Enspara: Modeling molecular ensembles with scalable data structures and parallel computing",
+		"authors": ["Porter Justin, R",
+					"Zimmerman, Maxwell I",
+					"Bowman, Gregory R"],
+		"journal": "JCP",
+		"year": 2019,
+		"doi": "10.1063/1.5063794@jcp.2019.MMMK.issue-1"
+	},
+	"state-discovery": {
+		"title": "Choice of adaptive sampling strategy impacts state discovery, transition probabilities, and the apparent mechanism of conformational changes",
+		"authors": ["Zimmerman, Maxwell I",
+					"Porter Justin, R",
+					"Sun, Xianqiang",
+					"Silva, Roseane R",
+					"Bowman, Gregory R"],
+		"journal": "JCTC",
+		"year": 2018,
+		"doi": "10.1021/acs.jctc.8b00500"
+	}
+}
