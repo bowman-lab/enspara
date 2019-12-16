@@ -55,10 +55,10 @@ install_requires = [
 ]
 
 # this code checks for OS. If OS is OSx then it checks for GCC as default compiler
-#if GCC is the default compiler adds -fopenmp to linker and compiler args. 
+#if GCC is the default compiler adds -fopenmp to linker and compiler args.
 if 'darwin' in platform.system().lower():
     if 'gcc' in  distutils.ccompiler.get_default_compiler():
-        use_openmp() 
+        use_openmp()
     else:
         use_openmp = False
 else:
@@ -113,10 +113,13 @@ setup(
             'nose',
         ],
         'docs': [
-            'Sphinx>=1.6.4',
-            'sphinx-rtd-theme>=0.2.4',
-            'sphinxcontrib-websupport>=1.0.1',
-            'numpydoc>=0.7.0',
+            'Sphinx>=2.3.0',
+            'sphinx-rtd-theme>=0.4.3',
+            'sphinxcontrib-websupport>=1.1.2',
+            'numpydoc>=0.9.1',
+        ],
+        'mpi': [
+            'mpi4py>=2.0.0'
         ]
     },
     zip_safe=False
