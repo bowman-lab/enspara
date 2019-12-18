@@ -15,7 +15,7 @@ jobs:
         update-conda: true
         python-version: 3.x
         conda-channels: anaconda, conda-forge
-        activate-conda: 
+        #activate-conda: 
     - run: conda --version
     - run: which python
     #- name: Build and publish
