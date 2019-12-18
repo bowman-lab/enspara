@@ -11,9 +11,9 @@ jobs:
     - uses: actions/checkout@master
     - name: Setup conda
     uses: s-weigand/setup-conda@master
-    with:
-        update-conda: true
-        python-version: 3.x
+    #with:
+        #update-conda: true
+        #python-version: 3.x
         #conda-channels: anaconda, conda-forge
     - run: conda --version
     - run: which python
