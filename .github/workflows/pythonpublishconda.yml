@@ -14,7 +14,7 @@ jobs:
     with:
         update-conda: true
         python-version: 3.x
-        conda-channels: anaconda, conda-forge 
+        #conda-channels: anaconda, conda-forge
     - run: conda --version
     - run: which python
    
