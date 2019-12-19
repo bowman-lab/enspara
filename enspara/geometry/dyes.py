@@ -535,52 +535,6 @@ def dye_distance_distribution(
     return probs, bin_edges
 
 
-def _sample_FRET(
-        n_sample, T, populations, FE_per_state, photon_distribution,
-        burst_length, lagtime):
-    """Helper function for sampling FRET distributions. Proceeds as 
-    follows:
-    1) generate a trajectory of n_frames, determined by the specified
-       burst length.
-    2) determine when photons are emitted by sampling the photon_distribution
-    3) use the FRET efficiencies per state to color the photons as either
-       acceptor or donor fluorescence
-    4) average acceptor fluorescence to obtain total FRET efficiency for
-       the window
-    """
-
-    # determine number of frames to sample MSM
-    n_frames = int(burst_length // lagtime)
-
-    # sample transition matrix for trajectory
-    initial_state = np.random.choice(np.arange(T.shape[0]), p=populations)
-    trj = synthetic_trajectory(T, initial_state, n_frames)
-    
-    # get photon times
-    photon_time = photon_distribution(size=1)[0]
-    trj_length_estimate = int(burst_length // photon_time)
-    ps = photon_distribution(size=trj_length_estimate)
-    while ps.sum() < burst_length:
-        ps = np.hstack(
-            [ps, photon_distribution(size=trj_length_estimate)])
-    photon_times = np.hstack([[0.0], np.cumsum(ps)])
-    photon_times = photon_times[np.where(photon_times < burst_length)]
-    
-    # determine frame of photon bursts
-    photon_frames = np.array(photon_times // lagtime, dtype=int)
-    
-    # get FRET efficiencies for each excited state
-    FRET_probs = FE_per_state[trj[photon_frames]]
-    
-    # flip coin for donor or acceptor emisions
-    acceptor_emissions = np.random.random(FRET_probs.shape[0]) <= FRET_probs
-    
-    # average for final observed FRET
-    FRET_val = np.mean(acceptor_emissions)
-
-    return FRET_val
-
-
 def sample_FE_probs(dist_distribution, states):
     dists = []
     bin_width = dist_distribution[0][1,0] - dist_distribution[0][0,0]
@@ -595,7 +549,7 @@ def sample_FE_probs(dist_distribution, states):
 
 def _sample_FRET_histograms(
         n_sample, T, populations, dist_distribution, photon_distribution,
-        burst_length, lagtime):
+        burst_length, lagtime, n_photon_std):
     """Helper function for sampling FRET distributions. Proceeds as 
     follows:
     1) generate a trajectory of n_frames, determined by the specified
@@ -607,43 +561,45 @@ def _sample_FRET_histograms(
        the window
     """
 
+    # obtain frames that a photon is emitted
+    photon_times = np.cumsum(
+        photon_distribution(size=n_photons))
+    photon_frames = np.array(photon_times // lagtime, dtype=int)
+
     # determine number of frames to sample MSM
-    n_frames = int(burst_length // lagtime)
+    n_frames = photon_frames.max() + 1
 
     # sample transition matrix for trajectory
     initial_state = np.random.choice(np.arange(T.shape[0]), p=populations)
     trj = synthetic_trajectory(T, initial_state, n_frames)
-    
-    # get photon times
-    photon_time = photon_distribution(size=1)[0]
-    trj_length_estimate = int(burst_length // photon_time)
-    ps = photon_distribution(size=trj_length_estimate)
-    while ps.sum() < burst_length:
-        ps = np.hstack(
-            [ps, photon_distribution(size=trj_length_estimate)])
-    photon_times = np.hstack([[0.0], np.cumsum(ps)])
-    photon_times = photon_times[np.where(photon_times < burst_length)]
-    
-    # determine frame of photon bursts
-    photon_frames = np.array(photon_times // lagtime, dtype=int)
-    
-    # get FRET efficiencies for each excited state
+
+    # get FRET probabilities for each excited state
     FRET_probs = sample_FE_probs(dist_distribution, trj[photon_frames])
-    
+
     # flip coin for donor or acceptor emisions
     acceptor_emissions = np.random.random(FRET_probs.shape[0]) <= FRET_probs
-    
-    # average for final observed FRET
-    FRET_val = np.mean(acceptor_emissions)
 
-    return FRET_val
+    # average for final observed FRET
+    if n_photon_std is None:
+        FRET_val = np.mean(acceptor_emissions)
+        FRET_std = None
+    else:
+        # optionally chunk emissions and assess intraburst variation
+        FRET_subsets = divide_chunks(acceptor_emissions, n_photon_std)
+        FRET_chunks = [np.mean(subset) for subset in FRET_subsets]
+        FRET_std = np.std(FRET_chunks)
+        FRET_val = np.mean(FRET_chunks)
+
+    return FRET_val, FRET_std
 
 
 def sample_FRET_histograms(
         T, populations, dist_distribution, photon_distribution,
-        burst_length, lagtime, n_samples=1, n_procs=1):
+        n_photons, lagtime, n_photon_std=None, n_samples=1, n_procs=1):
     """samples a MSM to regenerate experimental FRET distributions
 
+    Attritbues
+    ----------
     T : array, shape=(n_states, n_states),
         Transition probability matrix.
     populations : array, shape=(n_states, )
@@ -653,50 +609,42 @@ def sample_FRET_histograms(
     photon_distribution : func,
         A callable function that samples from a distribution of
         photon wait-times, i.e. 'np.random.exponential'
-    burst_length : float,
-        The length of time to sample a trajectory in nanoseconds.
+    n_photons : int,
+        The number of photons in a burst.
     lagtime : float,
         MSM lagtime used to construct the transition probability
         matrix in nanoseconds.
+    n_photon_std : int, default=None,
+        The number of photons to chunk for assessing variation within a
+        burst. Must be less than n_photons. Default: None will not
+        assess the intraburst varaition.
+    n_samples : int, default=1,
+        The number of times to sample FRET distribution.
+    n_procs : int, default=1,
+        Number of cores to use for parallel processing.
 
+    Returns
+    ----------
+    FEs : nd.array, shape=(n_samples, 2),
+        A list containing a FRET efficiency and an intraburst standard
+        deviation for each drawing.
     """
+
+    # fill in function values
     sample_func = partial(
         _sample_FRET_histograms, T=T, populations=populations,
         dist_distribution=dist_distribution,
         photon_distribution=photon_distribution,
-        burst_length=burst_length, lagtime=lagtime)
+        burst_length=burst_length, lagtime=lagtime,
+        n_photon_std=n_photon_std)
+
+    # multiprocess
     pool = Pool(processes=n_procs)
     FEs = pool.map(sample_func, np.arange(n_samples))
     pool.terminate()
+
+    # numpy the output
+    FEs = np.array(FEs)
+
     return FEs
 
-
-def sample_FRET(
-        T, populations, FE_per_state, photon_distribution,
-        burst_length, lagtime, n_samples=1, n_procs=1):
-    """samples a MSM to regenerate experimental FRET distributions
-
-    T : array, shape=(n_states, n_states),
-        Transition probability matrix.
-    populations : array, shape=(n_states, )
-        State populations.
-    FE_per_state : array, shape=(n_states, )
-        The calculated FRET efficiency for each state in the MSM.
-    photon_distribution : func,
-        A callable function that samples from a distribution of
-        photon wait-times, i.e. 'np.random.exponential'
-    burst_length : float,
-        The length of time to sample a trajectory in nanoseconds.
-    lagtime : float,
-        MSM lagtime used to construct the transition probability
-        matrix in nanoseconds.
-
-    """
-    sample_func = partial(
-        _sample_FRET, T=T, populations=populations,
-        FE_per_state=FE_per_state, photon_distribution=photon_distribution,
-        burst_length=burst_length, lagtime=lagtime)
-    pool = Pool(processes=n_procs)
-    FEs = pool.map(sample_func, np.arange(n_samples))
-    pool.terminate()
-    return FEs
