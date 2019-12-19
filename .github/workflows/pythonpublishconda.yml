@@ -12,9 +12,9 @@ jobs:
     - name: Setup conda
       uses: s-weigand/setup-conda@master
       with:
-        update-conda: true
+        #update-conda: true
         python-version: 3.7
-        conda-channels: anaconda, conda-forge
+        #conda-channels: anaconda, conda-forge
     - run: conda --version
     - run: which python
    
