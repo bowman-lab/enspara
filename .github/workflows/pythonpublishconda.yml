@@ -1,22 +1,22 @@
-#name: Upload Python Package
+name: Upload Python Package
 
-#on:
-  #release:
-    #types: [created]
+on:
+  release:
+    types: [created]
 
-#jobs:
-  #deploy:
-    #runs-on: ubuntu-latest
-    #steps:
-    #- uses: actions/checkout@master
-    #- name: Setup conda
-      #uses: s-weigand/setup-conda@master
-      #with:
-        #update-conda: true
-        #python-version: 3.x
-        #conda-channels: anaconda, conda-forge
-    #- run: conda --version
-    #- run: which python
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@master
+    - name: Setup conda
+      uses: s-weigand/setup-conda@master
+      with:
+        update-conda: true
+        python-version: 3.7
+        conda-channels: anaconda, conda-forge
+    - run: conda --version
+    - run: which python
    
  
    
