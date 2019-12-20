@@ -9,16 +9,20 @@ on:
   push:
     branches:         # array of glob patterns matching against refs/heads. Optional; defaults to all
       - master          # triggers on pushes that contain changes in master
-
+strategy:
+  matrix:
+    os: [macos-latest, windows-latest, ubuntu-18.04]
+    python: [3.6, 3.7]
+    
 jobs:
   deploy:
-    runs-on: macos-latest
+    runs-on: ${{ matrix.os }}
     steps:
     - uses: actions/checkout@master
     - name: Set up Python
       uses: actions/setup-python@master
       with:
-        python-version: '3.x'
+        python-version: ${{ matrix.python }}
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
