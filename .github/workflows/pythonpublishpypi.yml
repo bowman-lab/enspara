@@ -15,8 +15,8 @@ jobs:
   deploy:
     strategy:
       matrix:
-        os: [macos-latest] # 
-        python: [3.6, 3.7]
+        os: [macos-latest] # , windows-latest, ubuntu-18.04
+        python: [3.6]
     runs-on: ${{ matrix.os }}
     steps:
     - uses: actions/checkout@master
