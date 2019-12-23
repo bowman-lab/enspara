@@ -17,9 +17,7 @@ jobs:
         #update-conda: true
         python-version: 3.7
         #conda-channels: anaconda, conda-forge
-    - run: conda --version
-    - run: which python
-    - run: python --version
+    - run: conda install conda-build
    
  
    
