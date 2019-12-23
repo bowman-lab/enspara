@@ -1,0 +1,24 @@
+name: Upload Python Package
+
+on:
+  pull_request:
+  push:
+    branches:         # array of glob patterns matching against refs/heads. Optional; defaults to all
+      - master          # triggers on pushes that contain changes in master
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@master
+    - name: Setup conda
+      uses: s-weigand/setup-conda@master
+      with:
+        #update-conda: true
+        python-version: 3.7
+        #conda-channels: anaconda, conda-forge
+    - run: conda --version
+    - run: which python
+   
+ 
+   
