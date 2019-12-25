@@ -36,6 +36,5 @@ jobs:
         TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
       run: |
         pip install numpy cython mdtraj
-        python setup.py sdist bdist_wheel
-        dir /s /b /o:n /ad
+        python setup.py sdist bdist_wheel --plat-name=win-amd64
         twine upload dist/* --verbose
