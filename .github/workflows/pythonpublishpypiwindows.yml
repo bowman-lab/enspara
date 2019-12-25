@@ -35,6 +35,7 @@ jobs:
         TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
         TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
       run: |
+        pip install numpy cython mdtraj
         python setup.py sdist bdist_wheel
         dir /s /b /o:n /ad
         twine upload dist/* --verbose
