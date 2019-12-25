@@ -29,7 +29,7 @@ jobs:
         python -m pip install --upgrade pip
         pip install numpy cython mdtraj
         pip install setuptools wheel twine
-        #python --version
+        python --version
     - name: Build and publish
       env:
         TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
