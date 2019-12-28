@@ -35,5 +35,6 @@ jobs:
         TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
       run: |
         python setup.py sdist bdist_wheel
-        ls -al
+        ls -al build
+        ls -al dist
         twine upload dist/* --verbose
