@@ -26,7 +26,7 @@ jobs:
         python-version: ${{ matrix.python }}
     - name: Install dependencies
       run: |
-        sudo apt-get install build-essential
+        sudo apt-get install build-essential libgomp1
         python -m pip install --upgrade pip
         pip install numpy cython mdtraj
         pip install cffi setuptools wheel==0.31.1 twine auditwheel==2.1.0
