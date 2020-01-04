@@ -26,7 +26,7 @@ jobs:
         python-version: ${{ matrix.python }}
     - name: Install dependencies
       run: |
-        sudo apt-get install build-essential libgomp1 gcc-multilib patchelf
+        sudo apt-get install build-essential libgomp1 libstdc++6 gcc-multilib patchelf 
         python -m pip install --upgrade pip
         pip install numpy cython mdtraj
         pip install cffi setuptools wheel==0.31.1 twine auditwheel
