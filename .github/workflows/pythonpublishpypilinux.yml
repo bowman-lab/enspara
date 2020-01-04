@@ -35,6 +35,7 @@ jobs:
         TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
         TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
       run: |
+        docker run -i -t -v `pwd`:/io quay.io/pypa/manylinux1_x86_64 /bin/bash
         python setup.py sdist bdist_wheel
         echo 'separator'
         auditwheel show dist/*.whl
