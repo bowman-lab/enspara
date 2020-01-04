@@ -29,15 +29,19 @@ jobs:
         sudo apt-get install build-essential libgomp1 libstdc++6 gcc-multilib patchelf 
         python -m pip install --upgrade pip
         pip install numpy cython mdtraj
-        pip install cffi setuptools wheel==0.29.0 twine auditwheel==2.1
+    - name: Lint with flake8 for syntax errors
+      run: |
+        pip install flake8
+        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+        flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+    - name: Build manylinux Python wheels
+      uses: RalfG/python-wheels-manylinux-build@v0.1
+      with:
+        python-versions: 'cp36-cp36m cp37-cp37m'
+        build-requirements: 'setuptools numpy cython mdtraj'
     - name: Build and publish
       env:
         TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
         TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
       run: |
-        python setup.py sdist bdist_wheel
-        docker run -i -t -v `pwd`:/io quay.io/pypa/manylinux1_x86_64 /bin/bash
-        echo 'separator'
-        auditwheel show dist/*.whl
-        auditwheel repair dist/*.whl
-        twine upload dist/* --verbose
+        twine upload wheelhouse/*-manylinux1_x86_64.whl --verbose
