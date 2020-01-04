@@ -29,7 +29,7 @@ jobs:
         sudo apt-get install build-essential libgomp1 libstdc++6 gcc-multilib patchelf 
         python -m pip install --upgrade pip
         pip install numpy cython mdtraj
-        pip install cffi setuptools wheel==0.33.1 twine auditwheel
+        pip install cffi setuptools wheel==0.26.0 twine auditwheel
     - name: Build and publish
       env:
         TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
