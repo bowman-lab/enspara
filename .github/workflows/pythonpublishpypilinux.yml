@@ -28,7 +28,7 @@ jobs:
       run: |
         sudo apt-get install build-essential libgomp1 libstdc++6 gcc-multilib patchelf 
         python -m pip install --upgrade pip
-        pip install numpy cython mdtraj
+        pip install numpy cython mdtraj twine
     - name: Build manylinux Python wheels
       uses: Longbowman/python-wheels-manylinux-build@v0.1.5
       with:
@@ -39,4 +39,4 @@ jobs:
         TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
         TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
       run: |
-        twine upload wheelhouse/*-manylinux1_x86_64.whl --verbose
+        twine upload wheelhouse/enspara-*-manylinux1_x86_64.whl --verbose
