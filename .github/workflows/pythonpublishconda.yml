@@ -17,7 +17,12 @@ jobs:
         #update-conda: true
         python-version: 3.7
         #conda-channels: anaconda, conda-forge
-    - run: conda install conda-build
+    - name: publish-to-conda
+      uses: m0nhawk/conda-package-publish-action@master
+      with:
+        subDir: '.'
+        AnacondaUsername: ${{ secrets.CONDA_USERNAME }}
+        AnacondaPassword: ${{ secrets.CONDA_PASSWORD }}
    
  
    
