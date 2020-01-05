@@ -19,7 +19,7 @@ requirements:
     - pip
     - numpy==1.16.5
     - cython
-    - mdtraj
+    #- mdtraj
   run:
     - python
 
