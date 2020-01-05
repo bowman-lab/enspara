@@ -1,0 +1,44 @@
+{% set version = "0.1.0" %}
+
+package:
+  name: enspara
+  version: {{ version }}
+
+source:
+  url: https://pypi.io/packages/source/i/imagesize/imagesize-{{ version }}.tar.gz
+  sha256: f3832918bc3c66617f92e35f5d70729187676313caa60c187eb0f28b8fe5e3b5
+
+build:
+  noarch: python
+  number: 0
+  script: python -m pip install --no-deps --ignore-installed .
+
+requirements:
+  host:
+    - python
+    - pip
+    - numpy
+    - cython
+    - mdtraj
+  run:
+    - python
+
+#test:
+  #imports:
+    #- imagesize
+
+about:
+  home: https://github.com/bowman-lab/enspara
+  license: GPLv3
+  summary: 'MSMs at Scale'
+  description: |
+    Enspara is primarily a python library, but it also contains a few applications for very common Markov-state model related tasks.
+
+    MSM estimation and manipulation
+    Turn-key applications for clustering and analysis
+    Transition path theory
+    Information theory
+    Ragged ndarrays
+  dev_url: https://github.com/bowman-lab/enspara
+  doc_url: https://pypi.org/project/enspara/
+  doc_source_url: https://enspara.readthedocs.io/en/latest/index.html
