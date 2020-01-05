@@ -33,7 +33,7 @@ jobs:
       uses: RalfG/python-wheels-manylinux-build@v0.1
       with:
         python-versions: 'cp36-cp36m cp37-cp37m'
-        build-requirements: 'gcc setuptools numpy cython mdtraj'
+        build-requirements: 'setuptools numpy cython mdtraj'
     - name: Build and publish
       env:
         TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
