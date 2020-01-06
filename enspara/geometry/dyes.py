@@ -549,7 +549,7 @@ def sample_FE_probs(dist_distribution, states):
 
 def _sample_FRET_histograms(
         n_sample, T, populations, dist_distribution, photon_distribution,
-        burst_length, lagtime, n_photon_std):
+        n_photons, lagtime, n_photon_std):
     """Helper function for sampling FRET distributions. Proceeds as 
     follows:
     1) generate a trajectory of n_frames, determined by the specified
@@ -635,7 +635,7 @@ def sample_FRET_histograms(
         _sample_FRET_histograms, T=T, populations=populations,
         dist_distribution=dist_distribution,
         photon_distribution=photon_distribution,
-        burst_length=burst_length, lagtime=lagtime,
+        n_photons=n_photons, lagtime=lagtime,
         n_photon_std=n_photon_std)
 
     # multiprocess
