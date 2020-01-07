@@ -5,7 +5,7 @@ package:
   version: {{ version }}
 
 source:
-  url: https://pypi.io/packages/source/i/imagesize/imagesize-{{ version }}.tar.gz
+  url: https://files.pythonhosted.org/packages/d8/04/8c9ba5d5c987d5ba7ee8a2994baa46a0257e4c7fe75f772851b14d6998bc/enspara-0.1.0.tar.gz
   sha256: f3832918bc3c66617f92e35f5d70729187676313caa60c187eb0f28b8fe5e3b5
 
 build:
@@ -19,7 +19,7 @@ requirements:
     - pip
     - numpy==1.16.5
     - cython
-    #- mdtraj
+    - mdtraj
   run:
     - python
 
