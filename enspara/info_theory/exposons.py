@@ -112,11 +112,13 @@ def exposons_from_sasas(sasas, damping, weights, threshold):
         share the same number in this array.
     """
 
-    # print(sasas)
     sasa_mi = weighted_mi(sasas > threshold, weights)
-    # print(sasa_mi)
-    # assert False
-    c = AffinityPropagation(damping=damping)
+
+    c = AffinityPropagation(
+        damping=damping,
+        affinity='precomputed',
+        preference=0,
+        max_iter=10000)
     c.fit(sasa_mi)
 
     return sasa_mi, c.labels_
