@@ -18,7 +18,7 @@ jobs:
         python-version: 3.6
         #conda-channels: anaconda, conda-forge
     - name: publish-to-conda
-      uses: m0nhawk/conda-package-publish-action@master
+      uses: Longbowman/conda-package-publish-action@master
       with:
         subDir: '.'
         AnacondaUsername: ${{ secrets.CONDA_USERNAME }}
