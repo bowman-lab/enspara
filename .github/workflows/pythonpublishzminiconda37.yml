@@ -10,10 +10,10 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-    - name: Sleep for 30 seconds
+    - name: Sleep for 5 minutes
       uses: jakejarvis/wait-action@master
       with:
-        time: '3m'
+        time: '5m'
     - uses: actions/checkout@master
     - name: Setup conda
       uses: s-weigand/setup-conda@master

@@ -11,10 +11,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@master
-    - name: Sleep for 30 seconds
+    - name: Sleep for 5 minutes
       uses: jakejarvis/wait-action@master
       with:
-        time: '3m'
+        time: '5m'
     - name: Setup conda
       uses: s-weigand/setup-conda@master
       with:
