@@ -31,7 +31,7 @@ jobs:
         python-version: 3.7
         #conda-channels: anaconda, conda-forge
     - name: publish-to-conda
-      uses: Longbowman/conda-package-publish-action@0.3.9
+      uses: Longbowman/conda-package-publish-action@0.3.10
       with:
         subDir: '.'
         AnacondaUsername: ${{ secrets.CONDA_USERNAME }}
