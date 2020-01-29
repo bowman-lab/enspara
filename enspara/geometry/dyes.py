@@ -400,7 +400,7 @@ def pairwise_distance_distribution(coords1, coords2, bin_width=0.1):
         dists = scipy.spatial.distance.cdist(coords1, coords2)
         tot_counts, bin_edges = bincount_dists(dists, bin_width)
     # normalize counts
-    probs = int_norm(bin_edges, tot_counts)
+    probs = int_norm_hist(bin_edges, tot_counts)
     return probs, bin_edges
 
 
@@ -741,9 +741,12 @@ def shot_noise(Em, NT):
     return sig_sn
 
 
-def int_norm(xs, ys):
+def int_norm_hist(xs, ys):
     """simple integration normalization"""
-    heights = (ys[1:] + ys[:-1]) / 2.
+    if ys.shape[0] == xs.shape[0] - 1:
+        heights = ys
+    elif ys.shape[0] == xs.shape[0]:
+        heights = (ys[1:] + ys[:-1]) / 2.
     dx = xs[1:] - xs[:-1]
     I = np.sum(heights*dx)
     return ys/I
