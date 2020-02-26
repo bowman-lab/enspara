@@ -449,8 +449,7 @@ def get_pockets(
         min_cluster_size=min_cluster_size)
 
     # make pool
-    pool = Pool(processes=n_procs)
-    traj_pockets = pool.map(pocket_function, traj)
-    pool.terminate()
+    with Pool(processes=n_procs) as pool:
+        traj_pockets = pool.map(pocket_function, traj)
 
     return traj_pockets
