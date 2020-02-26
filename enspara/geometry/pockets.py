@@ -10,7 +10,7 @@ import numpy as np
 import scipy.cluster.hierarchy
 from functools import partial
 from multiprocessing import Pool
-
+from ..util import parallel
 
 def _grid_to_xyz(grid):
     """Convert a grid object (grid[x_ind,y_ind,z_ind]=[x,y,z])
@@ -399,7 +399,7 @@ def _get_pockets_helper(
 
 def get_pockets(
         traj, grid_spacing=0.1, probe_radius=0.14, min_rank=5,
-        min_cluster_size=0, n_procs=1):
+        min_cluster_size=0, n_procs=None):
     """Finds the pockets in each frame of a trajectory.
 
     The algorithm lays a grid over the protein. All cells within the
@@ -422,10 +422,10 @@ def get_pockets(
         The default comes from the radius of water (0.14 nm).
     min_rank : int, default=5
         The minimum rank a cell has to have to be considered part of a pocket.
-    min_cluster_size : int, default=5
+    min_cluster_size : int, default=0
         Only read every stride-th frame.
-    n_procs : int, default=1
-        Number of processors to use.
+    n_procs : int, default=None
+        Number of processors to use. If None, will use all availble cpus.
 
     Returns
     -------
@@ -437,6 +437,10 @@ def get_pockets(
         of these residues are given the name POK. The pockets are listed from
         largest to smallest.
     """
+
+    # determine n_procs
+    if n_procs is None:
+        n_procs = parallel.auto_nprocs()
 
     # initialize pocket helper with partial
     pocket_function = partial(
