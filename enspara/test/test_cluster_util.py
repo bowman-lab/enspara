@@ -110,8 +110,8 @@ def test_assign_to_nearest_center_many_centers():
     # assign_to_nearest_center takes two code paths, one for
     # n_centers > n_frames and one for n_frames > n_centers. This tests
     # the former.
-    trj = md.load(get_fn('frame0.xtc'), top=get_fn('native.pdb'))
-    center_frames = list(range(len(trj)))*2
+    trj = md.load(get_fn('frame0.xtc'), top=get_fn('native.pdb'))[::10]
+    center_frames = list(range(len(trj))) + list(range(len(trj) // 2))
 
     assigns, distances = util.assign_to_nearest_center(
         trj, trj[center_frames], md.rmsd)
