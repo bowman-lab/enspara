@@ -55,10 +55,10 @@ install_requires = [
 ]
 
 # this code checks for OS. If OS is OSx then it checks for GCC as default compiler
-#if GCC is the default compiler adds -fopenmp to linker and compiler args. 
+#if GCC is the default compiler adds -fopenmp to linker and compiler args.
 if 'darwin' in platform.system().lower():
     if 'gcc' in  distutils.ccompiler.get_default_compiler():
-        use_openmp() 
+        use_openmp()
     else:
         use_openmp = False
 else:
@@ -108,6 +108,8 @@ setup(
     entry_points={'console_scripts': ['enspara = enspara.apps.main:main']},
     setup_requires=['Cython>=0.24', 'numpy>=1.13'],
     install_requires=install_requires,
+    package_data={'': ['articles.json']},
+    include_package_data=True,
     extras_require={
         'dev': [
             'nose',

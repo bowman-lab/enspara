@@ -1,23 +1,23 @@
-"""High-level routines crucial for Correlation of All Rotameric and Dynamical States.
+"""High-level routines for Correlation of All Rotameric and Dynamical States.
 """
 
 import logging
 
-from .. import info_theory
+from ..info_theory import mutual_info
 
 from . import disorder
 from .featurizers import RotamerFeaturizer
+from ..citation import cite
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 
+@cite('cards')
 def cards(trajectories, buffer_width=15, n_procs=1):
     """Compute ordered, disordered and ordered-disordered mutual
     information matrices for the correlation between rotameric states
     across a set of trajectories.
-
-    Protocol is described in [1]_.
 
     Parameters
     ----------
@@ -46,13 +46,6 @@ def cards(trajectories, buffer_width=15, n_procs=1):
         communication between dihedrals i and j.
     atom_inds: ndarray, shape=(n_dihedrals, 4)
         The atom indicies defining each dihedral
-
-    References
-    ----------
-    .. [1] Sukrit Singh and Gregory R. Bowman, "Quantifying allosteric communication via 
-        both concerted structural changes and conformational disorder with CARDS".
-        Journal of Chemical Theory and Computation 2017 13 (4), 1509-1517
-        DOI: 10.1021/acs.jctc.6b01181 
     """
 
     logger.debug("Assigning to rotameric states")
@@ -64,6 +57,7 @@ def cards(trajectories, buffer_width=15, n_procs=1):
                           r.n_feature_states_, n_procs) + (r.atom_indices_,)
 
 
+@cite('cards')
 def cards_matrices(feature_trajs, n_feature_states, n_procs=None):
     """Compute ordered, disordered and ordered-disordered mutual
     infrmation matrices for a set of trajectories of state assignments.
@@ -98,22 +92,22 @@ def cards_matrices(feature_trajs, n_feature_states, n_procs=None):
         feature_trajs)
 
     logger.debug("Calculating structural mutual information")
-    structural_mi = info_theory.mi_matrix(
+    structural_mi = mutual_info.mi_matrix(
         feature_trajs, feature_trajs,
         n_feature_states, n_feature_states)
 
     logger.debug("Calculating disorder mutual information")
-    disorder_mi = info_theory.mi_matrix(
+    disorder_mi = mutual_info.mi_matrix(
         disordered_trajs, disordered_trajs,
         disorder_n_states, disorder_n_states)
 
     logger.debug("Calculating structure-disorder mutual information")
-    struct_to_disorder_mi = info_theory.mi_matrix(
+    struct_to_disorder_mi = mutual_info.mi_matrix(
         feature_trajs, disordered_trajs,
         n_feature_states, disorder_n_states)
 
     logger.debug("Calculating disorder-structure mutual information")
-    disorder_to_struct_mi = info_theory.mi_matrix(
+    disorder_to_struct_mi = mutual_info.mi_matrix(
         disordered_trajs, feature_trajs,
         disorder_n_states, n_feature_states)
 
