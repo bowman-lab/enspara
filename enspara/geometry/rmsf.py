@@ -3,7 +3,7 @@ import numpy as np
 import mdtraj as md
 
 
-def rmsf_calc(centers, populations=None, ref_frame=0):
+def rmsf_calc(centers, populations=None, ref_frame=0, per_residue=True):
     """Calculated the population weighted RMSF from a frame in a MSM
 
     Attributes
@@ -16,6 +16,9 @@ def rmsf_calc(centers, populations=None, ref_frame=0):
     ref_frame : int, default=0,
         The reference state in the MSM to use for calculation
         deviations from. If not supplied, first frame is used.
+    per_residue : bool, default=True,
+        Optionally returns rmsf averaged over residues. If False, will
+        return the rmsf per atom.
 
     Returns
     ----------
@@ -35,18 +38,23 @@ def rmsf_calc(centers, populations=None, ref_frame=0):
     # dot product differences
     dists_per_atom_sq = np.einsum('ijk,ijk->ij', diffs, diffs)
 
-    # obtain indices of all atoms partitioned by residues
-    atom_iis_per_resi = np.array(
-        [[a.index for a in r.atoms] for r in centers.top.residues])
+    if per_residue:
+        # obtain indices of all atoms partitioned by residues
+        atom_iis_per_resi = np.array(
+            [[a.index for a in r.atoms] for r in centers.top.residues])
 
-    # average the dot products within each residue
-    avg_resi_dists = np.array(
-        [
-            np.mean(dists_per_atom_sq[:, iis], axis=1)
-            for iis in atom_iis_per_resi])
+        # average the dot products within each residue
+        avg_resi_dists = np.array(
+            [
+                np.mean(dists_per_atom_sq[:, iis], axis=1)
+                for iis in atom_iis_per_resi])
 
-    # population weight the RMSFs
-    rmsfs = np.sqrt((avg_resi_dists*populations).sum(axis=1))
+        # population weight the RMSFs
+        rmsfs = np.sqrt((avg_resi_dists*populations).sum(axis=1))
+    else:
+        # population weight rmsfs per atom
+        rmsfs = np.sqrt((dists_per_atom_sq*populations[:,None]).sum(axis=0))
+
     return rmsfs
 
 
