@@ -22,7 +22,7 @@ jobs:
         python-version: 3.6
         #conda-channels: anaconda, conda-forge
     - name: publish-to-conda
-      uses: Longbowman/conda-package-publish-action@0.3.32
+      uses: Longbowman/conda-package-publish-action@0.3.33
       with:
         subDir: '.'
         AnacondaUsername: ${{ secrets.CONDA_USERNAME }}
