@@ -15,10 +15,6 @@ jobs:
       with:
         time: '5m'
     - uses: actions/checkout@master
-    - name: Set up Python
-      uses: actions/setup-python@master
-      with:
-        python-version: 3.7
     - name: Setup conda
       uses: s-weigand/setup-conda@master
       with:
@@ -26,7 +22,7 @@ jobs:
         python-version: 3.7
         #conda-channels: anaconda, conda-forge
     - name: publish-to-conda
-      uses: Longbowman/conda-package-publish-action@0.3.27
+      uses: Longbowman/conda-package-publish-action@0.3.28
       with:
         subDir: '.'
         AnacondaUsername: ${{ secrets.CONDA_USERNAME }}
