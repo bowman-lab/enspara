@@ -10,11 +10,11 @@ jobs:
   deploy:
     runs-on: ubuntu-18.04
     steps:
+    - uses: actions/checkout@master
     - name: Sleep for 5 minutes
       uses: jakejarvis/wait-action@master
       with:
         time: '5m'
-    - uses: actions/checkout@master
     - name: Setup conda
       uses: s-weigand/setup-conda@master
       with:
@@ -22,7 +22,7 @@ jobs:
         python-version: 3.7
         #conda-channels: anaconda, conda-forge
     - name: publish-to-conda
-      uses: Longbowman/conda-package-publish-action@0.3.35
+      uses: Longbowman/conda-package-publish-action@0.3.36
       with:
         subDir: '.'
         AnacondaUsername: ${{ secrets.CONDA_USERNAME }}
