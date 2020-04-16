@@ -1,13 +1,13 @@
-{% set version = "0.1.1rc62" %}
-{% set script="pip install --progress-bar off .[dev] 
-          python setup.py build_ext --inplace
-          python -m pip install --no-deps --ignore-installed . " %}
+{% set version = "0.1.1rc63" %}
+{% set script = "pip install --progress-bar off .[dev] 
+python setup.py build_ext --inplace
+python -m pip install --no-deps --ignore-installed . " %}
 package:
   name: enspara
   version: {{ version }}
 
 source:
-  url: https://files.pythonhosted.org/packages/source/e/enspara/enspara-0.1.1rc62.tar.gz
+  url: https://files.pythonhosted.org/packages/source/e/enspara/enspara-0.1.1rc63.tar.gz
 
 build:
   noarch: python
