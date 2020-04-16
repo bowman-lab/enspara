@@ -1,5 +1,5 @@
-{% set version = "0.1.1rc64" %}
-{% set script = "pip install --progress-bar off .[dev] 
+{% set version = "0.1.1rc65" %}
+{% set conda-script = " pip install --progress-bar off .[dev] 
 python setup.py build_ext --inplace
 python -m pip install --no-deps --ignore-installed . " %}
 package:
@@ -7,12 +7,12 @@ package:
   version: {{ version }}
 
 source:
-  url: https://files.pythonhosted.org/packages/source/e/enspara/enspara-0.1.1rc64.tar.gz
+  url: https://files.pythonhosted.org/packages/source/e/enspara/enspara-0.1.1rc65.tar.gz
 
 build:
   noarch: python
   number: 0
-  script: {{ script }}
+  script: {{ conda-script }}
 
 requirements:
   host:
