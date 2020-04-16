@@ -1,7 +1,7 @@
 {% set version = "0.1.1rc65" %}
-{% set conda-script = " pip install --progress-bar off .[dev] 
-python setup.py build_ext --inplace
-python -m pip install --no-deps --ignore-installed . " %}
+{% set conda-script = "pip install --progress-bar off .[dev] 
+                       python setup.py build_ext --inplace
+                       python -m pip install --no-deps --ignore-installed . " %}
 package:
   name: enspara
   version: {{ version }}
