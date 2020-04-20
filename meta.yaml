@@ -1,18 +1,17 @@
-{% set version = "0.1.1rc81" %}
+{% set version = "0.1.1rc82" %}
 package:
   name: enspara
   version: {{ version }}
 
 source:
-  url: https://files.pythonhosted.org/packages/source/e/enspara/enspara-0.1.1rc81.tar.gz
+  url: https://files.pythonhosted.org/packages/source/e/enspara/enspara-0.1.1rc82.tar.gz
 
 build:
   noarch: python
   number: 0
   script: pip install --progress-bar off .[dev] 
           python setup.py build_ext --inplace
-          python setup.py develop
-          python setup.py install
+          python -m pip install --no-deps --ignore-installed .
 
 requirements:
   host:
