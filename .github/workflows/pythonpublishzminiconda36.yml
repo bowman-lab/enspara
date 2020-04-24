@@ -15,6 +15,9 @@ jobs:
       uses: jakejarvis/wait-action@master
       with:
         time: '5m'
+    - name: Install essential libraries 
+      script: apt-get update
+              apt-get install -y libmpich12 libmpich-dev build-essential ca-certificates 
     - name: Setup conda
       uses: s-weigand/setup-conda@master
       with:
