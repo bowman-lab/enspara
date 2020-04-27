@@ -9,9 +9,9 @@ source:
 build:
   noarch: python
   number: 0
-  script: pip install --progress-bar off .[dev] 
-          python setup.py build_ext --inplace
-          python setup.py install
+  #script: pip install --progress-bar off .[dev] 
+          #python setup.py build_ext --inplace
+          #python setup.py install
 
 requirements:
   #host:
