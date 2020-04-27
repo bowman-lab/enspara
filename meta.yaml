@@ -1,10 +1,10 @@
-{% set version = "0.1.1rc96" %}
+{% set version = "0.1.1rc97" %}
 package:
   name: enspara
   version: {{ version }}
 
 source:
-  url: https://files.pythonhosted.org/packages/source/e/enspara/enspara-0.1.1rc96.tar.gz
+  url: https://files.pythonhosted.org/packages/source/e/enspara/enspara-0.1.1rc97.tar.gz
 
 build:
   noarch: python
@@ -14,19 +14,19 @@ build:
           #python setup.py install
 
 requirements:
-  #host:
-    #- python
-    #- pip
-    #- nose
-    #- mdtraj
-    #- numpy==1.16.5
-    #- cython
-  build:
+  host:
+    - python
     - pip
     - nose
     - mdtraj
     - numpy==1.16.5
     - cython
+  #build:
+    #- pip
+    #- nose
+    #- mdtraj
+    #- numpy==1.16.5
+    #- cython
   run:
     - python
 
