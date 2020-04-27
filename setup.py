@@ -5,7 +5,7 @@ from setuptools import find_packages
 from distutils.core import setup
 from distutils.extension import Extension
 import distutils.ccompiler
-__version__ = '0.1.1rc95'
+__version__ = '0.1.1rc96'
 
 CLASSIFIERS = [
     "Development Status :: 3 - Alpha",
