@@ -1,20 +1,25 @@
-{% set version = "0.1.1rc90" %}
+{% set version = "0.1.1rc92" %}
 package:
   name: enspara
   version: {{ version }}
 
 source:
-  url: https://files.pythonhosted.org/packages/source/e/enspara/enspara-0.1.1rc90.tar.gz
+  url: https://files.pythonhosted.org/packages/source/e/enspara/enspara-0.1.1rc92.tar.gz
 
 build:
   noarch: python
   number: 0
   script: pip install --progress-bar off .[dev] 
           python setup.py build_ext --inplace
-          python setup.py bdist_conda
+          python setup.py install
 
 requirements:
   host:
+    - python
+    - pip
+    - numpy==1.16.5
+    - cython
+  build:
     - python
     - pip
     - numpy==1.16.5
@@ -31,9 +36,6 @@ test:
     - mdtraj
     - cython
   imports:
-    - numpy
-    - mdtraj
-    - cython
     - enspara
 
 about:
