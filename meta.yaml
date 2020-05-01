@@ -1,12 +1,11 @@
-{% set version = "0.1.1rc116" %}
+{% set version = "0.1.1rc117" %}
 package:
   name: enspara
   version: {{ version }}
 
 source:
-  git_url: https://github.com/bowman-lab/enspara.git
-  branch: Archil-actions 
-
+  path: ../
+  
 build:
   noarch: python
   number: 0
