@@ -1,10 +1,10 @@
-{% set version = "0.1.1rc109" %}
+{% set version = "0.1.1rc110" %}
 package:
   name: enspara
   version: {{ version }}
 
 source:
-  git_url: .
+  path: .
 
 build:
   noarch: python
