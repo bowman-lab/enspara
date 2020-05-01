@@ -18,7 +18,7 @@ jobs:
     - name: Sleep for 5 minutes
       uses: jakejarvis/wait-action@master
       with:
-        time: '5m'
+        time: '10m'
     - name: Setup conda
       uses: s-weigand/setup-conda@master
       with:
