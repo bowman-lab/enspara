@@ -1,10 +1,10 @@
-{% set version = "0.1.1rc106" %}
+{% set version = "0.1.1rc107" %}
 package:
   name: enspara
   version: {{ version }}
 
 source:
-  url: https://files.pythonhosted.org/packages/source/e/enspara/enspara-0.1.1rc105.tar.gz
+  git_url: ..
 
 build:
   noarch: python

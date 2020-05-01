@@ -10,7 +10,7 @@ jobs:
   deploy:
     runs-on: ubuntu-18.04
     steps:
-    - uses: actions/checkout@Archil-actions
+    - uses: actions/checkout@master
     - name: Install essential libraries 
       run: |
         sudo apt-get update
