@@ -1,17 +1,16 @@
-{% set version = "0.1.1rc113" %}
+{% set version = "0.1.1rc114" %}
 package:
   name: enspara
   version: {{ version }}
 
 source:
-  path: .
+  git_url: https://github.com/bowman-lab/enspara.git
+  revision: 
 
 build:
   noarch: python
   number: 0
-  script: pip install --progress-bar off .[dev] 
-          python setup.py build_ext --inplace
-          python -m pip install . -vv
+  script: pip install --progress-bar off .[dev] \n python setup.py build_ext --inplace \n python -m pip install . -vv
 
 requirements:
   host:
