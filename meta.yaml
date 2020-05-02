@@ -1,4 +1,4 @@
-{% set version = "0.1.1rc120" %}
+{% set version = "0.1.1rc121" %}
 package:
   name: enspara
   version: {{ version }}
@@ -12,7 +12,7 @@ build:
   script: | 
             pip install --progress-bar off .[dev]
             python setup.py build_ext --inplace
-            python -m pip install . -vv
+            python -m pip install . -vv --no-deps --ignore-installed
 
 requirements:
   host:
