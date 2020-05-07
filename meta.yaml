@@ -1,4 +1,4 @@
-{% set version = "0.1.1rc125" %}
+{% set version = "0.1.1rc126" %}
 package:
   name: enspara
   version: {{ version }}
