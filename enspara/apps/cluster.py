@@ -229,6 +229,9 @@ def process_command_line(argv):
     elif args.algorithm == 'khybrid':
         args.Clusterer = KHybrid
 
+    elif args.algorithm == 'kmedoids':
+        args.Clusterer = KMedoids   
+
     if args.no_reassign and args.subsample == 1:
         logger.warn("When subsampling is 1 (or unspecified), "
                     "--no-reassign has no effect.")
