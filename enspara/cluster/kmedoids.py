@@ -2,6 +2,7 @@ import logging
 
 import numpy as np
 
+from sklearn.base import BaseEstimator, ClusterMixin
 from sklearn.utils import check_random_state
 
 from .. import mpi
@@ -12,6 +13,40 @@ from ..util.log import timed
 from . import util
 
 logger = logging.getLogger(__name__)
+
+
+class KMedoids(BaseEstimator, ClusterMixin, util.MolecularClusterMixin):
+
+    def __init__(
+            self, metric, n_clusters, kmedoids_updates=5)
+        
+        self.metric = util._get_distance_method(metric)
+
+        self.n_clusters = n_clusters
+        self.n_iters = kmedoids_updates
+
+    def fit(self, X, assignments=None,
+            distances=None, clust_center_inds=None):
+        
+        t0 = time.clock()
+
+        if all([assignments,distances,clust_center_inds]):
+            self.result_ = kmedoids_warm_start(
+                X,
+                distance_method=self.metric,
+                n_iters=self.n_iters,
+                cluster_center_inds=cluster_center_inds,
+                assignments=assignments,
+                distances=distances)
+        else:
+            self.result_ = kmedoids(
+                X,
+                distance_method=self.metric,
+                n_clusters=self.n_clusters,
+                n_iters=self.n_iters)
+
+        self.runtime_ = time.clock() - t0
+        return self
 
 
 def kmedoids(X, distance_method, n_clusters, n_iters=5):
@@ -60,6 +95,14 @@ def kmedoids(X, distance_method, n_clusters, n_iters=5):
         X, X[cluster_center_inds], distance_method)
     cluster_center_inds = util.find_cluster_centers(assignments, distances)
 
+    return kmedoids_warm_start(
+               X, distance_method, n_iters, 
+               cluster_center_inds, assignments, distances)
+
+def kmedoids_warm_start(
+        X, distance_method, n_iters, cluster_center_inds,
+        assignments, distances):
+    
     for i in range(n_iters):
         cluster_center_inds, distances, assignments, centers = \
             _kmedoids_pam_update(X, distance_method, cluster_center_inds,
@@ -71,7 +114,6 @@ def kmedoids(X, distance_method, n_clusters, n_iters=5):
         assignments=assignments,
         distances=distances,
         centers=centers)
-
 
 def _msq(x):
     return mpi.ops.striped_array_mean(np.square(x))

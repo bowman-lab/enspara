@@ -50,7 +50,7 @@ from enspara.apps.reassign import reassign
 from enspara.apps.util import readable_dir
 
 from enspara import mpi
-from enspara.cluster import KHybrid, KCenters
+from enspara.cluster import KHybrid, KCenters, KMedoids
 from enspara.util import array as ra
 from enspara.util import load_as_concatenated
 from enspara.util.log import timed
@@ -99,7 +99,7 @@ def process_command_line(argv):
     # PARAMETERS
     cluster_args = parser.add_argument_group("Clustering Settings")
     cluster_args.add_argument(
-        '--algorithm', required=True, choices=["khybrid", "kcenters"],
+        '--algorithm', required=True, choices=["khybrid", "kcenters","kmedoids"],
         help="The clustering algorithm to use.")
     cluster_args.add_argument(
         '--atoms', action="append",
@@ -458,11 +458,14 @@ def main(argv=None):
     if args.cluster_iterations is not None:
         kwargs['kmedoids_updates'] = int(args.cluster_iterations)
 
+    #kmedoids doesn't need a cluster radius, but kcenters does
+    if args.cluster_radius is not None:
+        kwargs['cluster_radius']=args.cluster_radius
+        kwargs['mpi_mode']=mpi_mode
+
     clustering = args.Clusterer(
         metric=args.cluster_distance,
         n_clusters=args.cluster_number,
-        cluster_radius=args.cluster_radius,
-        mpi_mode=mpi_mode,
         **kwargs)
 
     clustering.fit(data)
