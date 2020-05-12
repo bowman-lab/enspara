@@ -1,4 +1,4 @@
-{% set version = "0.1.1rc131" %}
+{% set version = "0.1.1rc132" %}
 package:
   name: enspara
   version: {{ version }}
@@ -25,10 +25,14 @@ requirements:
   run:
     - python
     - pip
-    - nose
-    - numpy==1.16.5
-    - mdtraj
-    - cython
+    - numpy>=1.13
+    - mdtraj>=1.7
+    - cython>=0.24
+    - tables>=3.2
+    - matplotlib>=1.5.1
+    - psutil>=5.2.2
+    - pandas
+    - scikit-learn>=0.21.0
 
 test:
   requires:
