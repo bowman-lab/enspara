@@ -1,4 +1,4 @@
-{% set version = "0.1.1rc135" %}
+{% set version = "0.1.1rc136" %}
 package:
   name: enspara
   version: {{ version }}
@@ -28,6 +28,7 @@ requirements:
     - pandas
     - scikit-learn>=0.21.0
   run:
+    - python_abi=3.7
     - numpy>=1.13
     - mdtraj>=1.7
     - cython>=0.24
