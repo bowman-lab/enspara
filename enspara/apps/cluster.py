@@ -71,6 +71,11 @@ def process_command_line(argv):
 
     FEATURE_DISTANCES = ['euclidean', 'manhattan']
     TRAJECTORY_DISTANCES = ['rmsd']
+    ALGORITHMS = {
+                  'kcenters': KCenters,
+                  'khybrid': KHybrid,
+                  'kmedoids': KMedoids
+}
 
     parser = argparse.ArgumentParser(
         prog='cluster',
@@ -125,7 +130,18 @@ def process_command_line(argv):
         "--cluster-iterations", default=None, type=int,
         help="The number of refinement iterations to perform. This is only "
              "relevant to khybrid clustering.")
-
+    cluster_args.add_argument(
+        "--init-center-inds", default=None, type=str,
+        help="Path to a .npy file that is a list giving the position of "
+             "each cluster center in traj. Useful for restarting clustering."
+    cluster_args.add_argument(
+        "--init-assignments", default=None, type=str,
+        help="Path to an .h5 file that indicates which cluster center each "
+             "data point is closest to. Useful for restarting clustering"
+    cluster_args.add_argument(
+        "--init-distances", default=None, type=str,
+        help="Path to an .h5 file that indicates how far each data point is"
+             "to its cluster center. Useful for restarting clustering"
     cluster_args.add_argument(
         '--subsample', default=1, type=int,
         help="Take only every nth frame when loading trajectories. "
@@ -220,17 +236,22 @@ def process_command_line(argv):
             "At least one of --cluster-radius and --cluster-number is "
             "required to cluster.")
 
-    if args.algorithm == 'kcenters':
-        args.Clusterer = KCenters
+    args.Clusterer = ALGORITHMS[args.algorithm]
+    if args.Clusterer == KCenters:
         if args.cluster_iterations is not None:
             raise exception.ImproperlyConfigured(
                 "--cluster-iterations only has an effect when using an "
                 "interative clustering scheme (e.g. khybrid).")
-    elif args.algorithm == 'khybrid':
-        args.Clusterer = KHybrid
-
-    elif args.algorithm == 'kmedoids':
-        args.Clusterer = KMedoids   
+    if args.Clusterer == KMedoids:
+        if args.cluster_radius is not None:
+            raise exception.ImproperlyConfigured(
+                "--cluster_radius only has an effect when using kcenters"
+                " or khybrid.")
+    else:
+        if any([args.init_center_inds,args.init_distances,
+                args.init_assignments]):
+            raise exception.ImproperlyConfigured(
+                "Restarts are only currently implemented for KMedoids")
 
     if args.no_reassign and args.subsample == 1:
         logger.warn("When subsampling is 1 (or unspecified), "
@@ -459,7 +480,10 @@ def main(argv=None):
 
     kwargs = {}
     if args.cluster_iterations is not None:
-        kwargs['kmedoids_updates'] = int(args.cluster_iterations)
+        if args.Clusterer == KHybrid:
+            kwargs['kmedoids_updates'] = int(args.cluster_iterations)
+        elif args.Clusterer == KMedoids:
+            kwargs['n_iters'] = int(args.cluster_iterations)
 
     #kmedoids doesn't need a cluster radius, but kcenters does
     if args.cluster_radius is not None:
@@ -470,8 +494,19 @@ def main(argv=None):
         metric=args.cluster_distance,
         n_clusters=args.cluster_number,
         **kwargs)
-
-    clustering.fit(data)
+    
+    # Need to implement restarts for KCenters as well
+    kwargs_restart = {}
+    if args.Clusterer == KMedoids:
+        if args.init_distances:
+            kwargs_restart['distances'] = md.load(args.init_distances)
+        if args.init_assignments:
+            kwargs_restart['assignments'] = md.load(args.init_assignments)
+        if args.init_center_inds:
+            kwargs_restart['cluster_center_inds'] = np.load(args.init_center_inds) 
+        clustering.fit(data,**kwargs_restart)
+    else:
+        clustering.fit(data)
     # release the RAM held by the trajectories (we don't need it anymore)
     del data
 

@@ -27,7 +27,10 @@ class KMedoids(BaseEstimator, ClusterMixin, util.MolecularClusterMixin):
 
     def fit(self, X, assignments=None,
             distances=None, cluster_center_inds=None):
-        
+
+        if cluster_center_inds:
+            assert len(self.n_clusters) == len(cluster_center_inds)
+
         t0 = time.clock()
 
         self.result_ = kmedoids(
@@ -75,10 +78,16 @@ def kmedoids(X, distance_method, n_clusters, n_iters=5, assignments=None,
         and center indices for this function.
     """
 
+    if any([assignments,distances]) and not all([assignments,distances]):
+        raise ImproperlyConfigured(
+            "Must include both assignments and distances, or neither")
+
     distance_method = util._get_distance_method(distance_method)
 
     n_frames = len(X)
 
+    # If no cluster center indices were given, we need to infer them
+    # from assignments and distances, or randomly generate them
     if not cluster_center_inds:
         if all([assignments,distances]):
             cluster_center_inds = \ 
@@ -92,6 +101,8 @@ def kmedoids(X, distance_method, n_clusters, n_iters=5, assignments=None,
                 cluster_center_inds = \ 
                     np.random.randint(0,n_frames,n_clusters)
 
+    # Now, we need assignments and distances for kmedoids updates
+    # If we already have them, move along, otherwise obtain them
     if not all([assignments,distances]):
         assignments, distances = \
             util.assign_to_nearest_center(X,
@@ -105,7 +116,7 @@ def kmedoids(X, distance_method, n_clusters, n_iters=5, assignments=None,
 def _kmedoids_iterations(
         X, distance_method, n_iters, cluster_center_inds,
         assignments, distances):
-    
+
     for i in range(n_iters):
         cluster_center_inds, distances, assignments, centers = \
             _kmedoids_pam_update(X, distance_method, cluster_center_inds,
