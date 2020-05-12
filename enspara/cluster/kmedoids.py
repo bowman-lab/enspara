@@ -26,30 +26,25 @@ class KMedoids(BaseEstimator, ClusterMixin, util.MolecularClusterMixin):
         self.n_iters = kmedoids_updates
 
     def fit(self, X, assignments=None,
-            distances=None, clust_center_inds=None):
+            distances=None, cluster_center_inds=None):
         
         t0 = time.clock()
 
-        if all([assignments,distances,clust_center_inds]):
-            self.result_ = kmedoids_warm_start(
-                X,
-                distance_method=self.metric,
-                n_iters=self.n_iters,
-                cluster_center_inds=cluster_center_inds,
-                assignments=assignments,
-                distances=distances)
-        else:
-            self.result_ = kmedoids(
-                X,
-                distance_method=self.metric,
-                n_clusters=self.n_clusters,
-                n_iters=self.n_iters)
+        self.result_ = kmedoids(
+            X,
+            distance_method=self.metric,
+            n_clusters=self.n_clusters,
+            n_iters=self.n_iters
+            assignments=assignments,
+            distances=distances,
+            cluster_center_inds=cluster_center_inds)
 
         self.runtime_ = time.clock() - t0
         return self
 
 
-def kmedoids(X, distance_method, n_clusters, n_iters=5):
+def kmedoids(X, distance_method, n_clusters, n_iters=5, assignments=None,
+             distances=None, cluster_center_inds=None):
     """K-Medoids clustering.
 
     K-Medoids is a clustering algorithm similar to the k-means algorithm
@@ -84,22 +79,30 @@ def kmedoids(X, distance_method, n_clusters, n_iters=5):
 
     n_frames = len(X)
 
-    # for short lists, np.random.random_integers sometimes forgets to assign
-    # something to each cluster. This will simply repeat the assignments if
-    # that is the case.
-    cluster_center_inds = np.array([])
-    while len(np.unique(cluster_center_inds)) < n_clusters:
-        cluster_center_inds = np.random.randint(0, n_frames, n_clusters)
+    if not cluster_center_inds:
+        if all([assignments,distances]):
+            cluster_center_inds = \ 
+                util.find_cluster_centers(assignments,distances)
+        else:
+            # for short lists, np.random.random_integers sometimes forgets
+            # to assign something to each cluster. This will simply repeat 
+            # the assignments if that is the case.
+            cluster_center_inds = np.array([])
+            while len(np.unique(cluster_center_inds)) < n_clusters:
+                cluster_center_inds = \ 
+                    np.random.randint(0,n_frames,n_clusters)
 
-    assignments, distances = util.assign_to_nearest_center(
-        X, X[cluster_center_inds], distance_method)
-    cluster_center_inds = util.find_cluster_centers(assignments, distances)
+    if not all([assignments,distances]):
+        assignments, distances = \
+            util.assign_to_nearest_center(X,
+                                          X[cluster_center_inds],
+                                          distance_method)
 
-    return kmedoids_warm_start(
+    return _kmedoids_iterations(
                X, distance_method, n_iters, 
                cluster_center_inds, assignments, distances)
 
-def kmedoids_warm_start(
+def _kmedoids_iterations(
         X, distance_method, n_iters, cluster_center_inds,
         assignments, distances):
     

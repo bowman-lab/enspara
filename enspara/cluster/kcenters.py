@@ -204,6 +204,8 @@ def kcenters(traj, distance_method, n_clusters=np.inf, dist_cutoff=0,
             traj, centers, distance_method)
         ctr_inds = list(
             util.find_cluster_centers(assignments, distances))
+    #elif all(clust_cent_inds,distances,assignments):
+        #ctr_inds = clust_cent_inds
 
     if mpi_mode:
         iteration = _kcenters_iteration_mpi
