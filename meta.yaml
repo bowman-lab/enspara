@@ -19,9 +19,14 @@ requirements:
     - python
     - pip
     - nose
-    - mdtraj
-    - numpy==1.16.5
-    - cython
+    - numpy>=1.13
+    - mdtraj>=1.7
+    - cython>=0.24
+    - pytables>=3.2
+    - matplotlib>=1.5.1
+    - psutil>=5.2.2
+    - pandas
+    - scikit-learn>=0.21.0
   run:
     - python
     - pip
@@ -39,9 +44,14 @@ test:
     - python
     - pip
     - nose
-    - numpy==1.16.5
-    - mdtraj
-    - cython
+    - numpy>=1.13
+    - mdtraj>=1.7
+    - cython>=0.24
+    - pytables>=3.2
+    - matplotlib>=1.5.1
+    - psutil>=5.2.2
+    - pandas
+    - scikit-learn>=0.21.0
     - enspara
   imports:
     - enspara
