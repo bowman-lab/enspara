@@ -1,4 +1,4 @@
-{% set version = "0.1.1rc130" %}
+{% set version = "0.1.1rc131" %}
 package:
   name: enspara
   version: {{ version }}
@@ -29,7 +29,6 @@ requirements:
     - numpy==1.16.5
     - mdtraj
     - cython
-    - enspara
 
 test:
   requires:
