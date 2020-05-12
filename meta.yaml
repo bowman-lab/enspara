@@ -1,4 +1,4 @@
-{% set version = "0.1.1rc132" %}
+{% set version = "0.1.1rc133" %}
 package:
   name: enspara
   version: {{ version }}
@@ -28,7 +28,7 @@ requirements:
     - numpy>=1.13
     - mdtraj>=1.7
     - cython>=0.24
-    - tables>=3.2
+    - pytables>=3.2
     - matplotlib>=1.5.1
     - psutil>=5.2.2
     - pandas
