@@ -104,7 +104,8 @@ def process_command_line(argv):
     # PARAMETERS
     cluster_args = parser.add_argument_group("Clustering Settings")
     cluster_args.add_argument(
-        '--algorithm', required=True, choices=["khybrid", "kcenters","kmedoids"],
+        '--algorithm', required=True,
+        choices=["khybrid", "kcenters", "kmedoids"],
         help="The clustering algorithm to use.")
     cluster_args.add_argument(
         '--atoms', action="append",
@@ -237,21 +238,24 @@ def process_command_line(argv):
             "required to cluster.")
 
     args.Clusterer = ALGORITHMS[args.algorithm]
-    if args.Clusterer == KCenters:
+    if args.Clusterer is KCenters:
         if args.cluster_iterations is not None:
             raise exception.ImproperlyConfigured(
                 "--cluster-iterations only has an effect when using an "
                 "interative clustering scheme (e.g. khybrid).")
-    if args.Clusterer == KMedoids:
+    if args.Clusterer is KMedoids:
         if args.cluster_radius is not None:
             raise exception.ImproperlyConfigured(
-                "--cluster_radius only has an effect when using kcenters"
+                "--cluster-radius only has an effect when using kcenters"
                 " or khybrid.")
     else:
-        if any([args.init_center_inds,args.init_distances,
-                args.init_assignments]):
-            raise exception.ImproperlyConfigured(
-                "Restarts are only currently implemented for KMedoids")
+        restart_arg_names = ["init_center_inds","init_distance",
+            "init_assignments"]
+        for name in restart_arg_names:
+            if hasattr(arg,name):
+                raise exception.ImproperlyConfigured(
+                    "--%s is only implemented for kmedoids"
+
 
     if args.no_reassign and args.subsample == 1:
         logger.warn("When subsampling is 1 (or unspecified), "
@@ -480,9 +484,9 @@ def main(argv=None):
 
     kwargs = {}
     if args.cluster_iterations is not None:
-        if args.Clusterer == KHybrid:
+        if args.Clusterer is KHybrid:
             kwargs['kmedoids_updates'] = int(args.cluster_iterations)
-        elif args.Clusterer == KMedoids:
+        elif args.Clusterer is KMedoids:
             kwargs['n_iters'] = int(args.cluster_iterations)
 
     #kmedoids doesn't need a cluster radius, but kcenters does
@@ -497,13 +501,16 @@ def main(argv=None):
     
     # Need to implement restarts for KCenters as well
     kwargs_restart = {}
-    if args.Clusterer == KMedoids:
+    if args.Clusterer is KMedoids:
         if args.init_distances:
-            kwargs_restart['distances'] = md.load(args.init_distances)
+            kwargs_restart['distances'] = \ 
+                mpi.io.load_h5_as_striped(args.init_distances)
         if args.init_assignments:
-            kwargs_restart['assignments'] = md.load(args.init_assignments)
+            kwargs_restart['assignments'] = \
+                mpi.io.load_h5_as_striped(args.init_assignments)
         if args.init_center_inds:
-            kwargs_restart['cluster_center_inds'] = np.load(args.init_center_inds) 
+            kwargs_restart['cluster_center_inds'] = \ 
+                mpi.io.load_npy_as_striped(args.init_center_inds) 
         clustering.fit(data,**kwargs_restart)
     else:
         clustering.fit(data)

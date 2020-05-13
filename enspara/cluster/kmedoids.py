@@ -18,15 +18,19 @@ logger = logging.getLogger(__name__)
 class KMedoids(BaseEstimator, ClusterMixin, util.MolecularClusterMixin):
 
     def __init__(
-            self, metric, n_clusters, kmedoids_updates=5)
+            self, metric, n_clusters=None, n_iters=5)
         
         self.metric = util._get_distance_method(metric)
 
         self.n_clusters = n_clusters
-        self.n_iters = kmedoids_updates
+        self.n_iters = n_iters
 
     def fit(self, X, assignments=None,
             distances=None, cluster_center_inds=None):
+
+        if not cluster_center_inds and not n_clusters:
+            raise ImproperlyConfigured(
+            "Must provide n_clusters or cluster_center_inds for KMedoids")
 
         if cluster_center_inds:
             assert len(self.n_clusters) == len(cluster_center_inds)
