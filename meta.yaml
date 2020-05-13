@@ -1,4 +1,4 @@
-{% set version = "0.1.1rc138" %}
+{% set version = "0.1.1rc139" %}
 package:
   name: enspara
   version: {{ version }}
@@ -15,6 +15,9 @@ build:
             python -m pip install . -vv
 
 requirements:
+  channels:
+    - defaults
+    - conda-forge
   host:
     - python
     - pip
