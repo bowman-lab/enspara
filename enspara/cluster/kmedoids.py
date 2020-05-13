@@ -51,7 +51,7 @@ class KMedoids(BaseEstimator, ClusterMixin, util.MolecularClusterMixin):
 
 
 def kmedoids(X, distance_method, n_clusters, n_iters=5, assignments=None,
-             distances=None, cluster_center_inds=None):
+             distances=None, cluster_center_inds=None, proposals=None):
     """K-Medoids clustering.
 
     K-Medoids is a clustering algorithm similar to the k-means algorithm
@@ -114,17 +114,17 @@ def kmedoids(X, distance_method, n_clusters, n_iters=5, assignments=None,
                                           distance_method)
 
     return _kmedoids_iterations(
-               X, distance_method, n_iters, 
-               cluster_center_inds, assignments, distances)
+               X, distance_method, n_iters, cluster_center_inds,
+               assignments, distances, proposals=proposals)
 
 def _kmedoids_iterations(
         X, distance_method, n_iters, cluster_center_inds,
-        assignments, distances):
+        assignments, distances, proposals=None):
 
     for i in range(n_iters):
         cluster_center_inds, distances, assignments, centers = \
             _kmedoids_pam_update(X, distance_method, cluster_center_inds,
-                                 assignments, distances)
+                                 assignments, distances, proposals=proposals)
         logger.info("KMedoids update %s", i)
 
     return util.ClusterResult(

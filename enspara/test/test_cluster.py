@@ -137,6 +137,42 @@ class TestTrajClustering(unittest.TestCase):
         self.assertAlmostEqual(
             np.std(result.distances), 0.019, delta=0.005)
 
+    def test_kmedoids_warm_start(self):
+        '''
+        Check that kmedoid clustering is behaving as expected when
+        given initial assignments, distances, and cluster_cent_inds
+        '''
+
+        n_iters = 1
+        n_clusters = 5
+        proposals = np.rand.randint(0,len(self.trj),n_clusters)
+
+        distance_method = util._get_distance_method('rmsd')
+
+        #This is basically KHybrid with 1 Kmedoids update
+        result = kcenters.kcenters(
+            self.trj, distance_method, n_clusters=n_clusters
+            init_centers=init_centers)
+
+        cluster_center_inds, assignments, distances, centers = (
+            result.center_indices, result.assignments, result.distances,
+            result.centers)
+
+        cluster_center_inds2, distances2, assignments2, centers2 = \
+            _kmedoids_pam_update(self.trj, distance_method, 
+                                 cluster_center_inds, assignments,
+                                 distances, proposals=proposals)
+
+        # Do we get the same answer if we just start kmedoids with the
+        # results from kcenters (i.e init assignments, center_inds, distances
+        r = kmedoids.kmedoids(self.trj, distance_method, n_clusters,
+            n_iters=n_iters, assignments=assignments, distances=distances,
+            cluster_center_inds=cluster_center_inds, proposals=proposals)
+
+        assert_array_equal(assignments2, r.assignments)
+        assert_array_equal(distances2, r.distances)
+        assert_array_equal(cluster_center_inds2, r.center_indices)
+        
     def test_hybrid(self):
         '''
         Clustering works on md.Trajectories.
