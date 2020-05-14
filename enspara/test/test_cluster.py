@@ -1,6 +1,7 @@
 import unittest
 import os
 import tempfile
+import copy
 
 import numpy as np
 import mdtraj as md
@@ -145,32 +146,36 @@ class TestTrajClustering(unittest.TestCase):
 
         n_iters = 1
         n_clusters = 5
-        proposals = np.rand.randint(0,len(self.trj),n_clusters)
+        proposals = np.random.randint(0,len(self.trj),n_clusters)
 
         distance_method = util._get_distance_method('rmsd')
 
         #This is basically KHybrid with 1 Kmedoids update
         result = kcenters.kcenters(
-            self.trj, distance_method, n_clusters=n_clusters
-            init_centers=init_centers)
+            self.trj, distance_method, n_clusters=n_clusters)
 
         cluster_center_inds, assignments, distances, centers = (
             result.center_indices, result.assignments, result.distances,
             result.centers)
 
+        cluster_center_inds_x = copy.deepcopy(cluster_center_inds)
+        assignments_x = copy.deepcopy(assignments)
+        distances_x = copy.deepcopy(distances)
+
         cluster_center_inds2, distances2, assignments2, centers2 = \
-            _kmedoids_pam_update(self.trj, distance_method, 
+            kmedoids._kmedoids_pam_update(self.trj, distance_method, 
                                  cluster_center_inds, assignments,
                                  distances, proposals=proposals)
+
 
         # Do we get the same answer if we just start kmedoids with the
         # results from kcenters (i.e init assignments, center_inds, distances
         r = kmedoids.kmedoids(self.trj, distance_method, n_clusters,
-            n_iters=n_iters, assignments=assignments, distances=distances,
-            cluster_center_inds=cluster_center_inds, proposals=proposals)
+            n_iters=n_iters, assignments=assignments_x, distances=distances_x,
+            cluster_center_inds=cluster_center_inds_x, proposals=proposals)
 
+        assert_allclose(distances2, r.distances, atol=1e-04)
         assert_array_equal(assignments2, r.assignments)
-        assert_array_equal(distances2, r.distances)
         assert_array_equal(cluster_center_inds2, r.center_indices)
         
     def test_hybrid(self):

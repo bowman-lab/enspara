@@ -113,7 +113,14 @@ def hybrid(
         result.center_indices, result.assignments, result.distances,
         result.centers)
 
-    return kmedoids._kmedoids_iterations(
-        X, distance_method, n_iters, cluster_center_inds, assignments,
-        distances)
+    if n_iters > 0:
+        return kmedoids._kmedoids_iterations(
+            X, distance_method, n_iters, cluster_center_inds, assignments,
+            distances)
+    else:
+        return util.ClusterResult(
+            center_indices=cluster_center_inds,
+            assignments=assignments,
+            distances=distances,
+            centers=centers)
 

@@ -134,15 +134,15 @@ def process_command_line(argv):
     cluster_args.add_argument(
         "--init-center-inds", default=None, type=str,
         help="Path to a .npy file that is a list giving the position of "
-             "each cluster center in traj. Useful for restarting clustering."
+             "each cluster center in traj. Useful for restarting clustering.")
     cluster_args.add_argument(
         "--init-assignments", default=None, type=str,
         help="Path to an .h5 file that indicates which cluster center each "
-             "data point is closest to. Useful for restarting clustering"
+             "data point is closest to. Useful for restarting clustering")
     cluster_args.add_argument(
         "--init-distances", default=None, type=str,
         help="Path to an .h5 file that indicates how far each data point is"
-             "to its cluster center. Useful for restarting clustering"
+             "to its cluster center. Useful for restarting clustering")
     cluster_args.add_argument(
         '--subsample', default=1, type=int,
         help="Take only every nth frame when loading trajectories. "
@@ -249,12 +249,13 @@ def process_command_line(argv):
                 "--cluster-radius only has an effect when using kcenters"
                 " or khybrid.")
     else:
-        restart_arg_names = ["init_center_inds","init_distance",
-            "init_assignments"]
+        restart_arg_names = [args.init_center_inds, args.init_distances,
+            args.init_assignments]
         for name in restart_arg_names:
-            if hasattr(arg,name):
+            if name:
                 raise exception.ImproperlyConfigured(
-                    "--%s is only implemented for kmedoids"
+                    "--init-center-inds, --init-distances, and"
+                    "--init-assignments are only implemented for kmedoids")
 
 
     if args.no_reassign and args.subsample == 1:
@@ -503,13 +504,13 @@ def main(argv=None):
     kwargs_restart = {}
     if args.Clusterer is KMedoids:
         if args.init_distances:
-            kwargs_restart['distances'] = \ 
-                mpi.io.load_h5_as_striped(args.init_distances)
+            kwargs_restart['distances'] = \
+                 mpi.io.load_h5_as_striped(args.init_distances)
         if args.init_assignments:
             kwargs_restart['assignments'] = \
                 mpi.io.load_h5_as_striped(args.init_assignments)
         if args.init_center_inds:
-            kwargs_restart['cluster_center_inds'] = \ 
+            kwargs_restart['cluster_center_inds'] = \
                 mpi.io.load_npy_as_striped(args.init_center_inds) 
         clustering.fit(data,**kwargs_restart)
     else:

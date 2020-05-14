@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 class KMedoids(BaseEstimator, ClusterMixin, util.MolecularClusterMixin):
 
     def __init__(
-            self, metric, n_clusters=None, n_iters=5)
+            self, metric, n_clusters=None, n_iters=5):
         
         self.metric = util._get_distance_method(metric)
 
@@ -41,7 +41,7 @@ class KMedoids(BaseEstimator, ClusterMixin, util.MolecularClusterMixin):
             X,
             distance_method=self.metric,
             n_clusters=self.n_clusters,
-            n_iters=self.n_iters
+            n_iters=self.n_iters,
             assignments=assignments,
             distances=distances,
             cluster_center_inds=cluster_center_inds)
@@ -82,7 +82,8 @@ def kmedoids(X, distance_method, n_clusters, n_iters=5, assignments=None,
         and center indices for this function.
     """
 
-    if any([assignments,distances]) and not all([assignments,distances]):
+    if ((assignments is None and distances is not None)
+         or (assignments is not None and distances is None)):
         raise ImproperlyConfigured(
             "Must include both assignments and distances, or neither")
 
@@ -93,8 +94,8 @@ def kmedoids(X, distance_method, n_clusters, n_iters=5, assignments=None,
     # If no cluster center indices were given, we need to infer them
     # from assignments and distances, or randomly generate them
     if not cluster_center_inds:
-        if all([assignments,distances]):
-            cluster_center_inds = \ 
+        if assignments is not None and distances is not None:
+            cluster_center_inds = \
                 util.find_cluster_centers(assignments,distances)
         else:
             # for short lists, np.random.random_integers sometimes forgets
@@ -102,12 +103,12 @@ def kmedoids(X, distance_method, n_clusters, n_iters=5, assignments=None,
             # the assignments if that is the case.
             cluster_center_inds = np.array([])
             while len(np.unique(cluster_center_inds)) < n_clusters:
-                cluster_center_inds = \ 
+                cluster_center_inds = \
                     np.random.randint(0,n_frames,n_clusters)
 
     # Now, we need assignments and distances for kmedoids updates
     # If we already have them, move along, otherwise obtain them
-    if not all([assignments,distances]):
+    if not (assignments is not None and distances is not None):
         assignments, distances = \
             util.assign_to_nearest_center(X,
                                           X[cluster_center_inds],
