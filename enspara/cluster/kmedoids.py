@@ -1,3 +1,4 @@
+import time
 import logging
 
 import numpy as np
@@ -28,12 +29,12 @@ class KMedoids(BaseEstimator, ClusterMixin, util.MolecularClusterMixin):
     def fit(self, X, assignments=None,
             distances=None, cluster_center_inds=None):
 
-        if not cluster_center_inds and not n_clusters:
+        if cluster_center_inds is None and n_clusters is None:
             raise ImproperlyConfigured(
             "Must provide n_clusters or cluster_center_inds for KMedoids")
 
-        if cluster_center_inds:
-            assert len(self.n_clusters) == len(cluster_center_inds)
+        if cluster_center_inds is not None and self.n_clusters is not None:
+            assert self.n_clusters == len(cluster_center_inds)
 
         t0 = time.clock()
 
@@ -50,7 +51,7 @@ class KMedoids(BaseEstimator, ClusterMixin, util.MolecularClusterMixin):
         return self
 
 
-def kmedoids(X, distance_method, n_clusters, n_iters=5, assignments=None,
+def kmedoids(X, distance_method, n_clusters=None, n_iters=5, assignments=None,
              distances=None, cluster_center_inds=None, proposals=None):
     """K-Medoids clustering.
 
@@ -93,11 +94,15 @@ def kmedoids(X, distance_method, n_clusters, n_iters=5, assignments=None,
 
     # If no cluster center indices were given, we need to infer them
     # from assignments and distances, or randomly generate them
-    if not cluster_center_inds:
+    if cluster_center_inds is None:
         if assignments is not None and distances is not None:
             cluster_center_inds = \
                 util.find_cluster_centers(assignments,distances)
         else:
+            if n_clusters is None:
+                raise ImproperlyConfigured(
+                    "Must provide n_clusters since no cluster_center_inds"
+                     "have been supplied")
             # for short lists, np.random.random_integers sometimes forgets
             # to assign something to each cluster. This will simply repeat 
             # the assignments if that is the case.

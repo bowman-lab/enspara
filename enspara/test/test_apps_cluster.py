@@ -15,6 +15,7 @@ from sklearn.datasets import make_blobs
 from .. import exception
 from ..util import array as ra
 
+from ..cluster import kcenters, kmedoids, util
 from ..apps import cluster
 
 TEST_DIR = os.path.dirname(__file__)
@@ -545,3 +546,63 @@ def test_feature_cluster_number_khybrid_npy_input_zero_iterations():
     assert_array_equal(y, assignments)
 
     assert_array_equal(kc.distances_, distances.flatten())
+
+def test_kmedoids_warm_start():
+
+    expected_size = (3, (50, 30, 20))
+
+    X, y = make_blobs(
+        n_samples=100, n_features=3, centers=3, center_box=(0, 100),
+        random_state=3)
+
+    #Run kcenters and save output to temp dir
+    result = kcenters.kcenters(
+        X, 'euclidean', n_clusters=3)
+
+    cluster_center_inds, assignments, distances, centers = (
+        result.center_indices, result.assignments, result.distances,
+        result.centers)
+    
+    with tempfile.TemporaryDirectory() as d:
+        a = ra.RaggedArray(array=X, lengths=[50, 30, 20])
+
+        pathnames = []
+        for row_i in range(len(a.lengths)):
+            pathname = os.path.join(d, "%s.npy" % row_i)
+            np.save(pathname, a[row_i])
+            pathnames.append(pathname)
+
+        pathname1 = os.path.join(d, "init_assignments.h5")
+        ra.save(pathname1, assignments)
+        pathname2 = os.path.join(d, "init_distances.h5")
+        ra.save(pathname2, distances)
+        pathname3 = os.path.join(d, "init_cluster_center_inds.npy")
+        np.save(pathname3, cluster_center_inds)
+
+        distances2, assignments2 = runhelper([
+            '--features', pathnames[0], pathnames[1], pathnames[2],
+            '--cluster-number', '3',
+            '--algorithm', 'kmedoids',
+            '--cluster-iterations', '1',
+            '--cluster-distance', 'euclidean',
+            '--init-assignments', pathname1,
+            '--init-distances', pathname2,
+            '--init-center-inds', pathname3],
+            expected_size=expected_size,
+            centers_format='npy')
+    
+    distances2 = np.concatenate(distances2)
+    assignments2 = np.concatenate(assignments2)
+    #Run kmedoids with output files from kcenters 
+    old_cost = kmedoids._msq(distances)
+    new_cost = kmedoids._msq(distances2)
+    #KMedoids should decrease the total distances
+    assert new_cost < old_cost
+
+    #Every cluster center chosen from kmedoids should be the cluster center
+    #of the cluster it was assigned to at the end of KCenters
+    #Only true when we do 1 iteration of KMedoids
+    #This verifies we're really using cluster center info from KCenters
+    cluster_center_inds2 = util.find_cluster_centers(assignments2, distances2)
+    assert_array_equal(assignments[cluster_center_inds2],
+                       np.arange(len(cluster_center_inds2)))

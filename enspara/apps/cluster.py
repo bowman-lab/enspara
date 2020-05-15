@@ -504,14 +504,14 @@ def main(argv=None):
     kwargs_restart = {}
     if args.Clusterer is KMedoids:
         if args.init_distances:
-            kwargs_restart['distances'] = \
+            l, kwargs_restart['distances'] = \
                  mpi.io.load_h5_as_striped(args.init_distances)
         if args.init_assignments:
-            kwargs_restart['assignments'] = \
+            l, kwargs_restart['assignments'] = \
                 mpi.io.load_h5_as_striped(args.init_assignments)
         if args.init_center_inds:
-            kwargs_restart['cluster_center_inds'] = \
-                mpi.io.load_npy_as_striped(args.init_center_inds) 
+            l, kwargs_restart['cluster_center_inds'] = \
+                mpi.io.load_npy_as_striped([args.init_center_inds]) 
         clustering.fit(data,**kwargs_restart)
     else:
         clustering.fit(data)
