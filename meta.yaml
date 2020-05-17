@@ -71,5 +71,5 @@ about:
     Information theory
     Ragged ndarrays
   dev_url: https://github.com/bowman-lab/enspara
-  doc_url: https://pypi.org/project/enspara/
-  doc_source_url: https://enspara.readthedocs.io/en/latest/index.html
+  doc_url: https://enspara.readthedocs.io/en/latest/
+  doc_source_url: https://github.com/bowman-lab/enspara/tree/master/docs

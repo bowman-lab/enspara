@@ -3,19 +3,12 @@ name: Upload Python Package
 on:
   release:
     types: [created]
-    
-#on:
-  #pull_request:
-  #push:
-    #branches:         # array of glob patterns matching against refs/heads. Optional; defaults to all
-      #- master          # triggers on pushes that contain changes in master
-
-    
+        
 jobs:
   deploy:
     strategy:
       matrix:
-        os: [macos-latest] # macos-latest , windows-latest, ubuntu-18.04
+        os: [macos-latest]
         python: [3.7]
     runs-on: ${{ matrix.os }}
     steps:

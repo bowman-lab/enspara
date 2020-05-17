@@ -4,11 +4,6 @@ on:
   release:
     types: [created]
 
-#on:
-  #pull_request:
-  #push:
-    #branches:         # array of glob patterns matching against refs/heads. Optional; defaults to all
-      #- master          # triggers on pushes that contain changes in master
 
 jobs:
   deploy:
@@ -19,16 +14,10 @@ jobs:
       run: |
         sudo apt-get update
         sudo apt-get install -y libmpich12 libmpich-dev build-essential ca-certificates 
-    #- name: Sleep for 5 minutes
-      #uses: jakejarvis/wait-action@master
-      #with:
-        #time: '5m'
     - name: Setup conda
       uses: s-weigand/setup-conda@master
       with:
-        #update-conda: true
         python-version: 3.7
-        #conda-channels: anaconda, conda-forge
     - name: publish-to-conda
       uses: Longbowman/conda-package-publish-action@0.3.44
       with:
