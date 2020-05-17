@@ -6,6 +6,7 @@ from sklearn.utils import check_random_state
 from ..exception import ImproperlyConfigured, DataInvalid
 from ..util import array as ra
 from .. import mpi
+from ..cluster import util
 
 logger = logging.getLogger(__name__)
 
@@ -269,3 +270,15 @@ def randind(local_array, random_state=None):
     assert local_index >= 0
 
     return (owner_rank, local_index)
+
+#def infer_cluster_center_inds(assignments,distances,n_clusters):
+#    #Assumes distance will == 0
+#    cluster_center_inds = [0] * n_clusters
+#    local_inds = np.where(distances==0)[0]
+#    assig_vals = assignments[local_inds] 
+#    for i,val in enumerate(assig_vals):
+#        cluster_center_inds[val] = (mpi.rank(),local_inds[i])
+#
+#    #Stitch together across ranks
+   
+    

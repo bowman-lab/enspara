@@ -500,17 +500,17 @@ def main(argv=None):
         n_clusters=args.cluster_number,
         **kwargs)
     
-    # Need to implement restarts for KCenters as well
+    # Note to self: Need to implement restarts for KCenters as well
     kwargs_restart = {}
     if args.Clusterer is KMedoids:
         if args.init_distances:
-            l, kwargs_restart['distances'] = \
+            _, kwargs_restart['distances'] = \
                  mpi.io.load_h5_as_striped(args.init_distances)
         if args.init_assignments:
-            l, kwargs_restart['assignments'] = \
+            kwargs_restart['X_lengths'], kwargs_restart['assignments'] = \
                 mpi.io.load_h5_as_striped(args.init_assignments)
         if args.init_center_inds:
-            l, kwargs_restart['cluster_center_inds'] = \
+            _, kwargs_restart['cluster_center_inds'] = \
                 mpi.io.load_npy_as_striped([args.init_center_inds]) 
         clustering.fit(data,**kwargs_restart)
     else:
