@@ -1,14 +1,14 @@
 name: Upload Python Package
 
-#on:
-  #release:
-    #types: [created]
-    
 on:
-  pull_request:
-  push:
-    branches:         # array of glob patterns matching against refs/heads. Optional; defaults to all
-      - master          # triggers on pushes that contain changes in master
+  release:
+    types: [created]
+    
+#on:
+  #pull_request:
+  #push:
+    #branches:         # array of glob patterns matching against refs/heads. Optional; defaults to all
+      #- master          # triggers on pushes that contain changes in master
 
     
 jobs:
