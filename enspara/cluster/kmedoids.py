@@ -359,20 +359,11 @@ def ctr_ids_mpi(cluster_center_inds, lengths):
     global_inds = ra.RaggedArray(np.arange(sum(lengths)),lengths=lengths)
 
     if not hasattr(cluster_center_inds[0], '__len__'):
-        #converted_ccis = [(np.where(global_inds == c)[0][0], \
-        #                   np.where(global_inds == c)[1][0] for c in
-        #                   cluster_center_inds]
-
         # Convert from [global_frame_ind, ...] to 
         # [[global_traj_id, local_frame_id],...]
-        converted_ccis = []
-        for init_ind in cluster_center_inds:
-            for glob_trj, global_ind in enumerate(global_inds):
-                local_ind = np.where(global_ind==init_ind)[0]
-                if len(local_ind) == 1:
-                    converted_ccis.append([glob_trj,local_ind])
-                    break
-        cluster_center_inds = converted_ccis
+        cluster_center_inds = [[np.where(global_inds == c)[0][0], \
+                           np.where(global_inds == c)[1][0]] for c in \
+                           cluster_center_inds]
 
     # Converting from [[global_traj_id, local_frame_id],...] to 
     # [(mpi_rank, local_frame_ind), ...]
