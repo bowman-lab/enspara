@@ -9,6 +9,7 @@ from enspara.ra import ra
 
 from .. import mpi
 from .. import exception
+from ..exception import ImproperlyConfigured
 
 from ..util.log import timed
 
@@ -140,18 +141,18 @@ def kmedoids(X, distance_method, n_clusters=None, n_iters=5, assignments=None,
         Subclass of NamedTuple containing assignments, distances,
         and center indices for this function.
     """
-    #sanity checks like cluster center inds should have distances 0
 
-    if hasattr(cluster_center_inds, '__len__') and X_lengths=None:
-        raise ImproperlyConfigured(
-        "If cluster_center_inds is given as [[global_traj_id, frame_id],...]"
-        "then X_lengths also needs to be supplied"
+    if cluster_center_inds is not None:
+        if hasattr(cluster_center_inds[0], '__len__') and X_lengths==None:
+            raise ImproperlyConfigured(
+            "If cluster_center_inds is given as [[global_traj_id, frame_id],...]"
+            "then X_lengths also needs to be supplied")
 
-    if cluster_center_inds is None and self.n_clusters is None:
+    if cluster_center_inds is None and n_clusters is None:
         if mpi.size() > 1:
             raise ImproperlyConfigured(
             "Must provide n_clusters or cluster_center_inds, assignments,"
-            "and distances for KMedoids in MPI mode."
+            "and distances for KMedoids in MPI mode.")
         elif assignments is None and distances is None:
             raise ImproperlyConfigured(
             "Must provide n_clusters or cluster_center_inds or "
@@ -162,13 +163,25 @@ def kmedoids(X, distance_method, n_clusters=None, n_iters=5, assignments=None,
     n_frames = len(X)
 
     if mpi.size() > 1:
-       assignments, distances, cluster_center_inds = \
+        assignments, distances, cluster_center_inds = \
          _kmedoids_inputs_tree_mpi(X, distance_method, n_clusters, assignments,
                                distances, cluster_center_inds, X_lengths) 
+        
+        #Check that the cluster_center_inds on this ranks corresponed to
+        # distances with value 0.
+        local_ctr_inds = [pair[1] for pair in cluster_center_inds \
+                          if pair[0] == mpi.rank()]
+        assert np.all(distances[local_ctr_inds] < 0.001)
+
     else:
         assignments, distances, cluster_center_inds = \
             _kmedoids_inputs_tree(X, distance_method, n_clusters, assignments,
                                   distances, cluster_center_inds, X_lengths)
+        ctr_ids = util.find_cluster_centers(assignments, distances)
+        
+        #Should be all 0s, but machine precision issues means they might
+        # be very close to 0 but not eactly 0.
+        assert np.all(distances[cluster_center_inds] < 0.001)
 
     return _kmedoids_iterations(
                X, distance_method, n_iters, cluster_center_inds,
@@ -240,9 +253,9 @@ def _kmedoids_inputs_tree_mpi(X, distance_method, n_clusters, assignments,
         
     # If we are given a warm start, we have to translate cluster_center_inds
     # into the form that is appropriate for MPI communication
-    elif (cluster_center_inds is not None and distance is not None
-         and assignments is not None)
-        cluster_center_inds = ctr_inds_mpi(cluster_center_inds, X_lengths)
+    elif (cluster_center_inds is not None and distances is not None
+         and assignments is not None):
+        cluster_center_inds = ctr_ids_mpi(cluster_center_inds, X_lengths)
 
     else:
         raise ImproperlyConfigured(
@@ -307,7 +320,7 @@ def _kmedoids_inputs_tree(
             cluster_center_inds = np.array([])
             while len(np.unique(cluster_center_inds)) < n_clusters:
                 cluster_center_inds = \
-                    np.random.randint(0,n_frames,n_clusters)
+                    np.random.randint(0,len(X),n_clusters)
     
     # If cluster_center_inds is given as [(trj id, frame id), ...]
     elif hasattr(cluster_center_inds[0], '__len__'):

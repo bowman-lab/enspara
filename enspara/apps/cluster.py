@@ -510,8 +510,8 @@ def main(argv=None):
             kwargs_restart['X_lengths'], kwargs_restart['assignments'] = \
                 mpi.io.load_h5_as_striped(args.init_assignments)
         if args.init_center_inds:
-            _, kwargs_restart['cluster_center_inds'] = \
-                mpi.io.load_npy_as_striped([args.init_center_inds]) 
+            kwargs_restart['cluster_center_inds'] = \
+                np.load(args.init_center_inds) 
         clustering.fit(data,**kwargs_restart)
     else:
         clustering.fit(data)
