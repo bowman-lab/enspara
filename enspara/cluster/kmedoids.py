@@ -125,7 +125,7 @@ def kmedoids(X, distance_method, n_clusters=None, n_iters=5, assignments=None,
         Array giving the distance between this observation/frame and the
         relevant cluster center.
     cluster_center_inds :
-        list, [(global_traj_id, frame_id), ...] or [index, ...], default=None
+        list, [[global_traj_id, frame_id], ...] or [index, ...], default=None
         A list of the locations of center indices with respect to all data
         not just the data on a single MPI rank.
     proposals : array-like, default=None
@@ -306,6 +306,12 @@ def _kmedoids_inputs_tree(
     cluster_center_inds : list, [index, ...]
         A list of the locations of center indices.
     """
+
+    if ((assignments is not None and distances is None) or 
+        (assignments is None and distances is not None)):
+        raise ImproperlyConfigured(
+            "Assignments and distances need to both be supplied, "
+            "or neither supplied.")
 
     # If no cluster center indices were given, we need to infer them
     # from assignments and distances, or randomly generate them
