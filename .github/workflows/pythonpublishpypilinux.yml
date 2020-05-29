@@ -1,0 +1,34 @@
+name: Upload Python Package
+
+on:
+  release:
+    types: [created]
+    
+jobs:
+  deploy:
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+        python: [ 3.7]
+    runs-on: ${{ matrix.os }}
+    steps:
+    - uses: actions/checkout@master
+    - name: Set up Python
+      uses: actions/setup-python@master
+      with:
+        python-version: ${{ matrix.python }}
+    - name: Install dependencies
+      run: | 
+        python -m pip install --upgrade pip
+        pip install numpy cython mdtraj twine
+    - name: Build manylinux Python wheels
+      uses: Longbowman/python-wheels-manylinux-build@v0.1.5
+      with:
+        python-versions: 'cp36-cp36m cp37-cp37m'
+        build-requirements: 'setuptools numpy cython mdtraj'
+    - name: Build and publish
+      env:
+        TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
+        TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
+      run: |
+        twine upload wheelhouse/enspara-*-manylinux1_x86_64.whl --verbose
