@@ -412,11 +412,18 @@ def write_centers_indices(path, indices):
 
 
 def write_centers(result, args):
+    center_features = args.center_features
     if args.features:
-        np.save(args.center_features, result.centers)
+        np.save(center_features, result.centers)
     else:
-        outdir = os.path.dirname(args.center_features)
-        logger.info("Saving cluster centers at %s", outdir)
+        # If the center_features path is absolute, the pickle file ought to
+        # be written to the abs path, else relative to the current dir
+        if os.path.isabs(center_features):
+            outdir = os.path.dirname(center_features)
+        else:
+            outdir = os.path.relpath(center_features, '.')
+
+        logger.info("Saving cluster centers at %s", center_features)
 
         try:
             os.makedirs(outdir)
@@ -425,7 +432,7 @@ def write_centers(result, args):
 
         centers = load_asymm_frames(result.center_indices, args.trajectories,
                                     args.topologies, args.subsample)
-        with open(args.center_features, 'wb') as f:
+        with open(center_features, 'wb') as f:
             pickle.dump(centers, f)
 
 
