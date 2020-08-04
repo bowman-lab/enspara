@@ -1,0 +1,75 @@
+{% set version = "0.1.1" %}
+package:
+  name: enspara
+  version: {{ version }}
+
+source:
+  path: .
+  
+build:
+  noarch: python
+  number: 0
+  script: | 
+            pip install --progress-bar off .[dev]
+            python setup.py build_ext --inplace
+            python -m pip install . -vv
+
+requirements:
+  channels:
+    - defaults
+    - conda-forge
+  host:
+    - python
+    - pip
+    - nose
+    - numpy>=1.13
+    - mdtraj>=1.7
+    - cython>=0.24
+    - pytables>=3.2
+    - matplotlib>=1.5.1
+    - psutil>=5.2.2
+    - pandas
+    - scikit-learn>=0.21.0
+  run:
+    - python>=3.7
+    - numpy>=1.13
+    - mdtraj>=1.7
+    - cython>=0.24
+    - pytables>=3.2
+    - matplotlib>=1.5.1
+    - psutil>=5.2.2
+    - pandas
+    - scikit-learn>=0.21.0
+
+test:
+  requires:
+    - python
+    - pip
+    - nose
+    - numpy>=1.13
+    - mdtraj>=1.7
+    - cython>=0.24
+    - pytables>=3.2
+    - matplotlib>=1.5.1
+    - psutil>=5.2.2
+    - pandas
+    - scikit-learn>=0.21.0
+    - enspara
+  imports:
+    - enspara
+
+about:
+  home: https://github.com/bowman-lab/enspara
+  license: GPLv3
+  summary: 'MSMs at Scale'
+  description: |
+    Enspara is primarily a python library, but it also contains a few applications for very common Markov-state model related tasks.
+
+    MSM estimation and manipulation
+    Turn-key applications for clustering and analysis
+    Transition path theory
+    Information theory
+    Ragged ndarrays
+  dev_url: https://github.com/bowman-lab/enspara
+  doc_url: https://enspara.readthedocs.io/en/latest/
+  doc_source_url: https://github.com/bowman-lab/enspara/tree/master/docs

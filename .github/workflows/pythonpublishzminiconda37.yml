@@ -1,0 +1,29 @@
+name: Upload Python Package
+
+on:
+  release:
+    types: [created]
+
+
+jobs:
+  deploy:
+    runs-on: ubuntu-18.04
+    steps:
+    - uses: actions/checkout@master
+    - name: Install essential libraries 
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libmpich12 libmpich-dev build-essential ca-certificates 
+    - name: Setup conda
+      uses: s-weigand/setup-conda@master
+      with:
+        python-version: 3.7
+    - name: publish-to-conda
+      uses: Longbowman/conda-package-publish-action@0.3.44
+      with:
+        subDir: '.'
+        AnacondaUsername: ${{ secrets.CONDA_USERNAME }}
+        AnacondaPassword: ${{ secrets.CONDA_PASSWORD }}
+   
+ 
+   
