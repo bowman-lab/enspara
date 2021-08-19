@@ -72,6 +72,8 @@ the ``eq_probs_`` parameter fit by the MSM.
     plt.xlabel("State Index")
     plt.ylabel("Equilibrium Probability")
 
+.. warning:: Different MSM matrix builders in ``enspara`` output slightly different types. Specifically, some output a numpy ``ndarray`` and others output a scipy sparse matrix. If you get an error calling ``m.tprobs_.toarray()``, check which type you are using.
+
 
 .. figure:: eq-prob-per-state.svg
    :alt: The equilibrium probability of each state plotted as a bar chart.
