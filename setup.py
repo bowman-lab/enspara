@@ -5,7 +5,7 @@ from setuptools import find_packages
 from distutils.core import setup
 from distutils.extension import Extension
 import distutils.ccompiler
-__version__ = '0.1.0'
+__version__ = '0.1.1'
 
 CLASSIFIERS = [
     "Development Status :: 3 - Alpha",
@@ -108,6 +108,8 @@ setup(
     entry_points={'console_scripts': ['enspara = enspara.apps.main:main']},
     setup_requires=['Cython>=0.24', 'numpy>=1.13'],
     install_requires=install_requires,
+    package_data={'': ['articles.json']},
+    include_package_data=True,
     extras_require={
         'dev': [
             'nose',

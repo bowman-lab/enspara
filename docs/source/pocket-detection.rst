@@ -21,7 +21,7 @@ Finding pockets with LIGSITE
     pdb = md.load('reagents/m182t-a243-exposon-open.pdb')
 
     # run ligsite
-    pockets_xyz = enspara.geometry.get_pocket_cells(struct=pdb)
+    pockets_xyz = enspara.geometry.pockets.get_pocket_cells(struct=pdb)
 
     # build a pdb of hydrogen atoms for each grid point so it can be
     # examined in a visualization program (e.g. pymol)
