@@ -25,6 +25,7 @@ Contents:
    CARDS <cards>
    cli
    clustering
+   exposons
    cookbook
    pocket-detection
    transition-path-theory
