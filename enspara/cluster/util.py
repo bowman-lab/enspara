@@ -21,6 +21,9 @@ from ..util import array as ra
 
 logger = logging.getLogger(__name__)
 
+msmbuilder_libdistance_metrics = ["euclidean", "sqeuclidean", "cityblock",
+                                  "chebyshev", "canberra", "braycurtis",
+                                  "hamming", "jaccard", "cityblock"]
 
 class MolecularClusterMixin:
     """Additional logic for clusterers in enspara that cluster molecular
@@ -270,13 +273,14 @@ def _get_distance_method(metric):
         return md.rmsd
     if metric == 'euclidean':
         return euclidean
-    elif isinstance(metric, str):
+    elif metric in msmbuilder_libdistance_metrics:
         try:
             import msmbuilder.libdistance as libdistance
         except ImportError:
             raise ImproperlyConfigured(
-                "To use '{}' as a clustering metric, STAG ".format(metric) +
-                "uses MSMBuilder3's libdistance, but we weren't able to " +
+                "Enspara needs the optional MSMBuilder dependency installed " +
+                "to use '{}' as a clustering metric.".format(metric) +
+                "It uses MSMBuilder3's libdistance, but we weren't able to " +
                 "import msmbuilder.libdistance.")
 
         def f(X, Y):

@@ -85,7 +85,7 @@ class KCenters(BaseEstimator, ClusterMixin, util.MolecularClusterMixin):
             Begin clustring with these centers as cluster centers.
         """
 
-        t0 = time.perf_counter()()
+        t0 = time.clock()
 
         self.result_ = kcenters(
             X,
