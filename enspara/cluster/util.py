@@ -13,7 +13,7 @@ from collections import namedtuple
 import mdtraj as md
 import numpy as np
 
-from ..geometry.libdist import euclidean
+from ..geometry.libdist import euclidean, manhattan
 
 from ..exception import ImproperlyConfigured, DataInvalid
 from ..util import partition_list, partition_indices
@@ -273,6 +273,8 @@ def _get_distance_method(metric):
         return md.rmsd
     if metric == 'euclidean':
         return euclidean
+    elif metric in ['cityblock', 'manhattan']:
+        return manhattan
     elif metric in msmbuilder_libdistance_metrics:
         try:
             import msmbuilder.libdistance as libdistance
