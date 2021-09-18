@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 
 msmbuilder_libdistance_metrics = ["euclidean", "sqeuclidean", "cityblock",
                                   "chebyshev", "canberra", "braycurtis",
-                                  "hamming", "jaccard", "cityblock"]
+                                  "hamming", "jaccard"]
 
 class MolecularClusterMixin:
     """Additional logic for clusterers in enspara that cluster molecular
