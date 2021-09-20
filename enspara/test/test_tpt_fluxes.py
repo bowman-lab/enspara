@@ -158,5 +158,4 @@ def test_paths():
 
         for i in range(len(paths)):
             npt.assert_array_equal(paths[i], ref_paths[i])
-
 # END absorbed block.

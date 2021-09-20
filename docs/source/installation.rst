@@ -3,33 +3,73 @@ Installation
 
 Enspara can be installed from our github repository in the following way:
 
-1. Confirm Anaconda is installed on local machine and create/activate environment.
+1. Create a pip/anaconda environment for enspara. For anaconda,
 
-2. Clone enspara from github to local machine:
+.. code-block:: bash
+
+	conda create --name enspara
+
+or with pip,
+
+.. code-block:: bash
+
+	python3 -m pip install --user virtualenv
+	python3 -m venv enspara
+	source enspara/bin/activate
+
+2. Install enspara's build-time dependencies:
+
+.. code-block:: bash
+
+	pip install mdtraj cython
+
+or, if you prefer anaconda,
+
+.. code-block:: bash
+
+	conda install mdtraj cython
+
+3. Use pip to clone and install enspara:
+
+.. code-block:: bash
+
+	pip install git+https://github.com/bowman-lab/enspara
+
+4. If you need MPI support, you can pip install mpi4py as well:
+
+.. code-block:: bash
+
+	pip install mpi4py
+
+
+Developing
+----------
+
+To install enspara for development
+
+1. Set up a virtual/anaconda environment, for example,
+
+.. code-block:: bash
+
+	python3 -m pip install --user virtualenv
+	python3 -m venv enspara
+	source enspara/bin/activate
+
+2. Clone the git repository,
 
 .. code-block:: bash
 
 	git clone https://github.com/bowman-lab/enspara
 
-3. Install compiled dependecies of enspara (one frequently runs into problems compiling these locally via `pip`, but if you prefer you can just run `setup.py` and `pip` will try to download an compile these packages):
+3. Install build-time dependecies,
 
 .. code-block:: bash
 
-        conda install -c conda-forge mdtraj=1.8.0
-	conda install numpy==1.14
-	conda install cython
-	conda install mpi4py -c conda-forge
+	pip install mdtraj cython
 
-4. Enter enspara from home directory and:
+4. Build and install enspara in development mode
 
 .. code-block:: bash
 
-	python setup.py install
+	cd enspara && pip install -e .[dev]
 
-If setup failed, `conda install` necessary packages and rerun setup command. 
-
-5. Check that you've been successful:
-
-.. code-block:: bash
-
-	cd && python -c 'import enspara'
