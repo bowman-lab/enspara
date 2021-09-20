@@ -25,6 +25,7 @@ msmbuilder_libdistance_metrics = ["euclidean", "sqeuclidean", "cityblock",
                                   "chebyshev", "canberra", "braycurtis",
                                   "hamming", "jaccard"]
 
+
 class MolecularClusterMixin:
     """Additional logic for clusterers in enspara that cluster molecular
     trajectories.
