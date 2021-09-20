@@ -100,3 +100,6 @@ ENV/
 
 # Mac file caches
 .DS_Store
+
+# PyCharm project settings
+.idea/

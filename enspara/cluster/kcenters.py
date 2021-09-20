@@ -96,7 +96,7 @@ class KCenters(BaseEstimator, ClusterMixin, util.MolecularClusterMixin):
             random_first_center=self.random_first_center,
             mpi_mode=self.mpi_mode)
 
-        self.runtime_ = time.clock() - t0
+        self.runtime_ = time.perf_counter()() - t0
         return self
 
 
