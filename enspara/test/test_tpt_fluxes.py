@@ -131,6 +131,7 @@ def test_mfpts():
         mfpts(T_test)*5.0,
         mfpts(T_test, lagtime=5), 5)
 
+
 # NOTE: block absorbed from MSMBuilder test_tpt.py
 def test_paths():
     net_flux = np.array([[0.0, 0.5, 0.5, 0.0, 0.0, 0.0],
@@ -152,10 +153,10 @@ def test_paths():
     res_bottle = paths(sources, sinks, net_flux, remove_path='bottleneck')
     res_subtract = paths(sources, sinks, net_flux, remove_path='subtract')
 
-    for paths, fluxes in [res_bottle, res_subtract]:
+    for found_paths, fluxes in [res_bottle, res_subtract]:
         assert_array_almost_equal(fluxes, ref_fluxes)
-        assert len(paths) == len(ref_paths)
+        assert len(found_paths) == len(ref_paths)
 
-        for i in range(len(paths)):
-            assert_array_equal(paths[i], ref_paths[i])
+        for i in range(len(found_paths)):
+            assert_array_equal(found_paths[i], ref_paths[i])
 # END absorbed block.
