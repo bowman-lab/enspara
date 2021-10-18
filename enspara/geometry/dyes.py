@@ -546,7 +546,6 @@ def sample_FE_probs(dist_distribution, states):
     FEs = FRET_efficiency(np.array(dists))
     return FEs
 
-
 def _sample_FRET_histograms(
         n_sample, T, populations, dist_distribution, photon_distribution,
         n_photons, lagtime, n_photon_std):
@@ -554,16 +553,20 @@ def _sample_FRET_histograms(
     follows:
     1) generate a trajectory of n_frames, determined by the specified
        burst length.
-    2) determine when photons are emitted by sampling the photon_distribution
+    2) determine when photons are emitted by sampling the photon_distribution 
     3) use the FRET efficiencies per state to color the photons as either
        acceptor or donor fluorescence
     4) average acceptor fluorescence to obtain total FRET efficiency for
        the window
     """
 
+    #Define the number of photon events observed
+    photon_event_distribution=np.random.exponential(size=1, scale=50).astype(int)
+    photon_events_observed=photon_event_distribution+n_photons
+
     # obtain frames that a photon is emitted
     photon_times = np.cumsum(
-        photon_distribution(size=n_photons))
+        photon_distribution(size=photon_events_observed))
     photon_frames = np.array(photon_times // lagtime, dtype=int)
 
     # determine number of frames to sample MSM
