@@ -592,7 +592,7 @@ def _sample_FRET_histograms(
         FRET_subsets = divide_chunks(acceptor_emissions, n_photon_std)
         FRET_chunks = [np.mean(subset) for subset in FRET_subsets]
         FRET_std = np.std(FRET_chunks)
-        FRET_val = np.mean(FRET_chunks)
+        FRET_val = np.mean(acceptor_emissions)#np.mean(FRET_chunks)
 
     return FRET_val, FRET_std
 
