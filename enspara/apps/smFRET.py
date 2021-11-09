@@ -7,7 +7,7 @@ times, and minimum number of binned photons. The app will return a list of
 FRET efficiencies that is n_bursts long. See the apps tab for more information.
 """
 
-import sys
+from sys import argv
 import argparse
 import os
 import logging
@@ -32,7 +32,9 @@ import mdtraj as md
 # n_procs (defualt to 1)
 
 
-
+argv = [
+    ""
+]
 
 def process_command_line(argv):
 
@@ -53,7 +55,7 @@ def process_command_line(argv):
         help="transition probabilities from the MSM"
              "Should be of file type .npy")
         input_data_group.add_argument(
-        '--lagtime', nargs="+", action='append',
+        '--lagtime', nargs="+", action='append', type=int,
         help="lag time used to construct the MSM (in ns)"
              "Should be type float or int")        
         input_data_group.add_argument(
@@ -201,3 +203,7 @@ def process_command_line(argv):
                 os.path.basename(args.center_features))
 
     return args
+
+args = process_command_line(argv)
+for arg in args:
+    print(arg)
