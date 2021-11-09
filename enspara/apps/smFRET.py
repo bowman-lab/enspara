@@ -15,22 +15,12 @@ import itertools
 import pickle
 import json
 from glob import glob
+from functools import partial
+from enspara import ra
+from enspara.geometry import dyes
 
 import numpy as np
 import mdtraj as md
-
-
-#EXPECTED inputs: 
-# list of dye pairs
-# n_photon_bursts
-# min_photons_in_burst
-# n_chunks (optional, default to false)
-# photon_time
-# eq_probs from MSM
-# t_probs from MSM
-# lagtime from MSM
-# n_procs (defualt to 1)
-
 
 def process_command_line(argv):
 ##Need to check whether these arguments are in fact parsed correctly, I took a first pass stab at this.
@@ -62,31 +52,42 @@ def process_command_line(argv):
 
     # PARAMETERS
     FRET_args = parser.add_argument_group("FRET Settings")
-    cluster_args.add_argument(
-        '--n_photon_bursts', required=False, type=int, default=25000
+    FRET_args.add_argument(
+        '--n_photon_bursts', required=False, type=int, default=25000,
         help="Number of photon bursts to observe in total")
-    cluster_args.add_argument(
-        '--min_photons', required=False, type=int,  default=30
+    FRET_args.add_argument(
+        '--min_photons', required=False, type=int,  default=30,
         help="Minimum number of photons in a photon burst")
-    cluster_args.add_argument(
-        '--n_chunks', required=False, type=int, default=0
+    FRET_args.add_argument(
+        '--n_chunks', required=False, type=int, default=0,
         help="Enables you to assess intraburst variation."
         	"How many chunks would you like a given burst broken into?")
-    cluster_args.add_argument(
-        '--photon_time', required=False, type=int, default=4
+    FRET_args.add_argument(
+        '--photon_time', required=False, type=int, default=4,
         help="This defines the distribution of photon arrival times"
         	"Currently implemented using np.random.exponential with scale of photon_time")
-    cluster_args.add_argument(
-        '--n_procs', required=False, type=int, default=1
+    FRET_args.add_argument(
+        '--n_procs', required=False, type=int, default=1,
         help="Number of cores to use for parallel processing"
         	"Generally parallel over number of frames in supplied trajectory/MSM state")
-    cluster_args.add_argument(
+    FRET_args.add_argument(
         '--trj', nargs="+", required=False, action=readable_dir,
         help="Path to cluster centers from the MSM"
              "should be of type .xtc. Not needed if supplying FRET dye distributions")
-    cluster_args.add_argument(
+    FRET_args.add_argument(
         '--FRET_dye_dist', nargs="+", required=False, action=readable_dir,
         help="Path to FRET dye distributions")
+    FRET_args.add_argument(
+        '--R0', nargs="+", required=False, type=float, default=5.4,
+        help="R0 value for FRET dye pair of interest")
+    FRET_args.add_argument(
+        '--FRETdye1', nargs="+", required=False, action=readable_dir,
+        help="Path to point cloud of FRET dye pair 2")
+    FRET_args.add_argument(
+        '--FRETdye2', nargs = "+", required = False, action = readable_dir,
+        help = "Path to point cloud of FRET dye pair 2")
+##Is there a way to make this automatically point to /enspara/data/dyes/AF488 and 494.pdb?
+
 
     # OUTPUT
     output_args = parser.add_argument_group("Output Settings")
@@ -200,4 +201,42 @@ def process_command_line(argv):
 
     return args
 
+def _run_command(cmd_info):
+    """Helper function for submitting commands parallelized."""
+    cmd, supress = cmd_info
+    p = sp.Popen(cmd, shell=True, stdout=sp.PIPE, stderr=sp.PIPE)
+    output, err = p.communicate()
+    if convert_to_string(err) != '' and not supress:
+        print("\nERROR: " + convert_to_string(err))
+        raise
+    output = convert_to_string(output)
+    p.terminate()
+    return output
 
+def run_commands(cmds, supress=False, n_procs=1):
+    """Wrapper for submitting commands to shell"""
+    if type(cmds) is str:
+        cmds = [cmds]
+    if n_procs == 1:
+        outputs = []
+        for cmd in cmds:
+            outputs.append(_run_command((cmd, supress)))
+    else:
+        cmd_info = list(zip(cmds, itertools.repeat(supress)))
+        pool = Pool(processes = n_procs)
+        outputs = pool.map(_run_command, cmd_info)
+        pool.terminate()
+    return outputs
+
+def main(argv=None):
+
+    args = process_command_line(argv)
+    #Check to see if we need to calculate FRET dye distributions
+    #If true, enter calculation of FRET dye distributions
+
+    #Calculate the FRET efficiencies
+    t_probabilties= np.load('####ARGPARSE FOR T_probs')
+    populations=np.load('#####ARGPARSE FOR EQ PROBS')
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv))
