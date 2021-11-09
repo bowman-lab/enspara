@@ -96,7 +96,8 @@ def process_command_line(argv):
         '--FRETdye2', nargs = "+", required = False, action = readable_dir,
         help = "Path to point cloud of FRET dye pair 2")
 ##Is there a way to make this automatically point to /enspara/data/dyes/AF488 and 494.pdb?
-
+    FRET_args.add_argument(
+        '--PlotOutput', nargs = "+", required = False, type=bool)
 
     # OUTPUT
     output_args = parser.add_argument_group("Output Settings")
@@ -240,6 +241,21 @@ def run_commands(cmds, supress=False, n_procs=1):
         pool.terminate()
     return outputs
 
+def plot_fig(FE_samplings, title, output_folder)
+    plt.figure(figsize=(9, 4))
+    ax.tick_params(direction='out', length=10, width=3, colors='black')
+    plt.xlabel('E')
+    plt.ylabel('probability')
+    counts, bin_edges = np.histogram(FE_samplings[:, 0], range=[-0.2, 1.2], bins=47)
+    x_vals = (bin_edges[1:] + bin_edges[:-1]) / 2.
+    bin_widths = bin_edges[1:] - bin_edges[:-1]
+    probs = counts / counts.sum()
+    plt.bar(x_vals, probs, width=bin_widths, edgecolor='black')
+    apoE4_FEs_mcmc_plot.append(x_vals)
+    apoE4_probs_mcmc_plot.append(probs)
+    plt.savefig("%s/%s.png" % (output_folder, title), dpi=300)
+
+
 def main(argv=None):
 
     args = process_command_line(argv)
@@ -279,19 +295,10 @@ def main(argv=None):
         np.save("%s/FE_mcmc_histogram_%s.npy" % (output_folder, title), FEs_sampling)
 
         #Also plot the output!
-        plt.figure(figsize=(9, 4))
-        ax.tick_params(direction='out', length=10, width=3, colors='black')
-        plt.xlabel('E')
-        plt.ylabel('probability')
-        counts, bin_edges = np.histogram(FE_samplings[:, 0], range=[-0.2, 1.2], bins=47)
-        x_vals = (bin_edges[1:] + bin_edges[:-1])/2.
-        bin_widths = bin_edges[1:] - bin_edges[:-1]
-        probs = counts / counts.sum()
-        plt.bar(x_vals, probs, width=bin_widths, edgecolor='black')
-        apoE4_FEs_mcmc_plot.append(x_vals)
-        apoE4_probs_mcmc_plot.append(probs)
-        plt.savefig("%s/%s.png" %(output_folder, title),dpi=300)
+        if ###ARGPARSE plot_fig == True:
+            plot_fig(FE_samplings, title, output_folder)
 
+        logger.info("Success! Calculated FRET distributions for ")
 
 if __name__ == "__main__":
     sys.exit(main(sys.argv))
