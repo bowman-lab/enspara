@@ -7,7 +7,7 @@ times, and minimum number of binned photons. The app will return a list of
 FRET efficiencies that is n_bursts long. See the apps tab for more information.
 """
 
-from sys import argv
+import sys
 import argparse
 import os
 import logging
@@ -32,10 +32,6 @@ import mdtraj as md
 # n_procs (defualt to 1)
 
 
-argv = [
-    ""
-]
-
 def process_command_line(argv):
 
     parser = argparse.ArgumentParser(
@@ -55,7 +51,7 @@ def process_command_line(argv):
         help="transition probabilities from the MSM"
              "Should be of file type .npy")
         input_data_group.add_argument(
-        '--lagtime', nargs="+", action='append', type=int,
+        '--lagtime', nargs="+", action='append',
         help="lag time used to construct the MSM (in ns)"
              "Should be type float or int")        
         input_data_group.add_argument(
@@ -67,10 +63,10 @@ def process_command_line(argv):
     # PARAMETERS
     FRET_args = parser.add_argument_group("FRET Settings")
     cluster_args.add_argument(
-        '--n_photon_bursts', required=True, type=int,
+        '--n_photon_bursts', required=False, type=int, default=25000
         help="Number of photon bursts to observe in total")
     cluster_args.add_argument(
-        '--min_photons', required=True, type=int,
+        '--min_photons', required=False, type=int,  default=30
         help="Minimum number of photons in a photon burst")
     cluster_args.add_argument(
         '--n_chunks', required=False, type=int, default=0
@@ -85,7 +81,7 @@ def process_command_line(argv):
         help="Number of cores to use for parallel processing"
         	"Generally parallel over number of frames in supplied trajectory/MSM state")
     cluster_args.add_argument(
-        '--trj', nargs="+", required=False action=readable_dir,
+        '--trj', nargs="+", required=False, action=readable_dir,
         help="Path to cluster centers from the MSM"
              "should be of type .xtc. Not needed if supplying FRET dye distributions")       
     cluster_args.add_argument(
@@ -203,7 +199,3 @@ def process_command_line(argv):
                 os.path.basename(args.center_features))
 
     return args
-
-args = process_command_line(argv)
-for arg in args:
-    print(arg)
