@@ -6,6 +6,12 @@ to modify the number of bursts observed, distribution of photon arrival
 times, and minimum number of binned photons. The app will return a list of 
 FRET efficiencies that is n_bursts long. See the apps tab for more information.
 """
+# Author: Maxwell I. Zimmerman <mizimmer@wustl.edu>
+# Contributors: Justin J Miller <jjmiller@wustl.edu>
+# All rights reserved.
+# Unauthorized copying of this file, via any medium, is strictly prohibited
+# Proprietary and confidential
+
 
 import sys
 import argparse
@@ -15,6 +21,8 @@ import itertools
 import pickle
 import json
 from glob import glob
+import subprocess as sp
+from multiprocessing import Pool
 from functools import partial
 from enspara import ra
 from enspara.geometry import dyes
@@ -24,6 +32,7 @@ import mdtraj as md
 
 def process_command_line(argv):
 ##Need to check whether these arguments are in fact parsed correctly, I took a first pass stab at this.
+##Better to make a flag that lets you stop after calculating FRET dye distributions?
     parser = argparse.ArgumentParser(
         prog='FRET',
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
@@ -236,10 +245,53 @@ def main(argv=None):
     args = process_command_line(argv)
     #Check to see if we need to calculate FRET dye distributions
     #If true, enter calculation of FRET dye distributions
+    for n in np.arange(len(resSeq_pairs)):
+        logger.info("Calculating distance distribution for residues %s", resSeq_pairs[n])
+        probs, bin_edges = dyes.dye_distance_distribution(
+            trj, AF488, AF594, resSeq_pairs[n], n_procs=n_procs)
+        probs_output = '%s/probs_%sC_%sC.h5' % (base_name, resSeq_pairs[n][0], resSeq_pairs[n][1])
+        bin_edges_output = '%s/bin_edges_%sC_%sC.h5' % (base_name, resSeq_pairs[n][0], resSeq_pairs[n][1])
+        ra.save(probs_output, probs)
+        ra.save(bin_edges_output, bin_edges)
+
+
 
     #Calculate the FRET efficiencies
     t_probabilties= np.load('####ARGPARSE FOR T_probs')
+    logger.info("Loaded t_probs from %s" ##ARGPARSE for t_probs)
     populations=np.load('#####ARGPARSE FOR EQ PROBS')
+    logger.info("Loaded eq_probs from %s" ##ARGPARSE for eq_probs)
+
+
+#Probably should parallelize this?
+    for n in np.arange(resSeq_pairs.shape[0]):
+        title = '%sC_%sC' % (resSeq_pairs[n,0], resSeq_pairs[n,1])
+        probs_file = "%s/probs_%s.h5" % (FRET_ensemble_folder, title)
+        bin_edges_file = "%s/bin_edges_%s.h5" % (FRET_ensemble_folder, title)
+        probs = ra.load(probs_file)
+        bin_edges = ra.load(bin_edges_file)
+        dist_distribution = make_distribution(probs, bin_edges)
+        FEs_sampling = dyes.sample_FRET_histograms(
+            t_probabilties, populations=populations, dist_distribution=dist_distribution,
+            photon_distribution=photon_distribution, n_photons=n_photons,
+            lagtime=lagtime, n_photon_std=n_photon_std, n_samples=n_samples,
+            n_procs=n_procs)
+        np.save("%s/FE_mcmc_histogram_%s.npy" % (output_folder, title), FEs_sampling)
+
+        #Also plot the output!
+        plt.figure(figsize=(9, 4))
+        ax.tick_params(direction='out', length=10, width=3, colors='black')
+        plt.xlabel('E')
+        plt.ylabel('probability')
+        counts, bin_edges = np.histogram(FE_samplings[:, 0], range=[-0.2, 1.2], bins=47)
+        x_vals = (bin_edges[1:] + bin_edges[:-1])/2.
+        bin_widths = bin_edges[1:] - bin_edges[:-1]
+        probs = counts / counts.sum()
+        plt.bar(x_vals, probs, width=bin_widths, edgecolor='black')
+        apoE4_FEs_mcmc_plot.append(x_vals)
+        apoE4_probs_mcmc_plot.append(probs)
+        plt.savefig("%s/%s.png" %(output_folder, title),dpi=300)
+
 
 if __name__ == "__main__":
     sys.exit(main(sys.argv))
