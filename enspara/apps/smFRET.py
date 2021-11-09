@@ -201,6 +201,9 @@ def process_command_line(argv):
 
     return args
 
+def convert_to_string(binary):
+    return binary.decode('utf-8')
+
 def _run_command(cmd_info):
     """Helper function for submitting commands parallelized."""
     cmd, supress = cmd_info
