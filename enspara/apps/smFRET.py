@@ -62,8 +62,9 @@ def process_command_line(argv):
     # PARAMETERS
     FRET_args = parser.add_argument_group("FRET Settings")
     FRET_args.add_argument(
-        '--n_photon_bursts', required=False, type=int, default=25000,
-        help="Number of photon bursts to observe in total")
+        '--n_photon_bursts', required=False, type=int, default=40000,
+        help="Number of photon bursts to observe in total"
+                "default is reasonably well sampled for multi-ensemble protein")
     FRET_args.add_argument(
         '--min_photons', required=False, type=int,  default=30,
         help="Minimum number of photons in a photon burst")
@@ -90,10 +91,10 @@ def process_command_line(argv):
         '--R0', nargs="+", required=False, type=float, default=5.4,
         help="R0 value for FRET dye pair of interest")
     FRET_args.add_argument(
-        '--FRETdye1', nargs="+", required=False, action=readable_dir,
+        '--FRETdye1', nargs="+", required=False, type=str, action=readable_dir,
         help="Path to point cloud of FRET dye pair 2")
     FRET_args.add_argument(
-        '--FRETdye2', nargs = "+", required = False, action = readable_dir,
+        '--FRETdye2', nargs = "+", required = False, type=str, action = readable_dir,
         help = "Path to point cloud of FRET dye pair 2")
 ##Is there a way to make this automatically point to /enspara/data/dyes/AF488 and 494.pdb?
     FRET_args.add_argument(
@@ -110,10 +111,7 @@ def process_command_line(argv):
         help="The location to write the predicted FRET efficiencies for each residue pair.")
 
     # Work greatly needed below! This is all just copy+paste from cluster.py's argparse
-    # args = parser.parse_args(argv[1:])
-    #
-    # if args.features:
-    #     args.features = expand_files([args.features])[0]
+    args = parser.parse_args(argv[1:])
     #
     #     if args.cluster_distance in FEATURE_DISTANCES:
     #         args.cluster_distance = getattr(libdist, args.cluster_distance)
@@ -126,7 +124,7 @@ def process_command_line(argv):
     #             raise exception.ImproperlyConfigured(
     #                 "Subsampling is not supported for h5 inputs.")
     #
-    #     # TODO: not necessary if mutually exclusvie above works
+    #     #TODO: not necessary if mutually exclusive above works
     #     if args.trajectories:
     #         raise exception.ImproperlyConfigured(
     #             "--features and --trajectories are mutually exclusive. "
@@ -298,7 +296,9 @@ def main(argv=None):
         if ###ARGPARSE plot_fig == True:
             plot_fig(FE_samplings, title, output_folder)
 
-        logger.info("Success! Calculated FRET distributions for ")
+    logger.info("Success! Calculated FRET distributions your input parameters can be found here: %s" % (output_folder + jobname))
+    print(json.dumps(args.__dict__,  output_folder+jobname,indent=4))
+
 
 if __name__ == "__main__":
     sys.exit(main(sys.argv))
