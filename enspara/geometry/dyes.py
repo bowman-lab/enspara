@@ -539,6 +539,8 @@ def sample_FE_probs(dist_distribution, states):
     dists = []
     bin_width = dist_distribution[0][1,0] - dist_distribution[0][0,0]
     for state in states:
+        #Introduce a new random seed in each location otherwise pool with end up with the same seeds.
+        np.random.seed()
         dist = np.random.choice(
             dist_distribution[state][:,0], p=dist_distribution[state][:,1])
         dist += (np.random.random()*bin_width) - (bin_width/2.)
@@ -559,6 +561,10 @@ def _sample_FRET_histograms(
     4) average acceptor fluorescence to obtain total FRET efficiency for
        the window
     """
+
+
+    #Introduce a new random seed in each location otherwise pool with end up with the same seeds.
+    np.random.seed()
 
     #Define the number of photon events observed
     photon_events_observed=np.random.exponential(size=1, scale=50).astype(int)
