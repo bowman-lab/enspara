@@ -1,5 +1,6 @@
 sftp-config.json
 enspara.sublime-workspace
+.idea
 
 # nose cache
 .noseids
