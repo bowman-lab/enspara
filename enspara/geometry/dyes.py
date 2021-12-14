@@ -598,8 +598,8 @@ def _sample_FRET_histograms(
 
 
 def sample_FRET_histograms(
-        T, populations, dist_distribution, photon_distribution,
-        n_photons, lagtime, n_photon_std=None, n_samples=1, n_procs=1):
+            T, populations, dist_distribution, photon_distribution,
+            n_photons, lagtime, n_photon_std=None, n_samples=1, n_procs=1):
     """samples a MSM to regenerate experimental FRET distributions
 
     Attritbues
@@ -609,7 +609,7 @@ def sample_FRET_histograms(
     populations : array, shape=(n_states, )
         State populations.
     dist_distribution : ra.RaggedArray, shape=(n_states, None, 2)
-        The probability of a fluorophore-fluorophoe distance.
+        The probability of a fluorophore-fluorophore distance.
     photon_distribution : func,
         A callable function that samples from a distribution of
         photon wait-times, i.e. 'np.random.exponential'
