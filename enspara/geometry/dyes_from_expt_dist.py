@@ -557,8 +557,7 @@ def sample_FE_probs(dist_distribution, states):
 
 
 def _sample_FRET_histograms(
-        MSM_frames, T, populations, dist_distribution, photon_distribution,
-        n_photons, lagtime, n_photon_std):
+        MSM_frames, T, populations, dist_distribution, n_photon_std):
     """Helper function for sampling FRET distributions. Proceeds as 
     follows:
     1) generate a trajectory of n_frames, determined by the specified
@@ -572,22 +571,13 @@ def _sample_FRET_histograms(
 
 
     #Introduce a new random seed in each location otherwise pool with end up with the same seeds.
-    np.random.seed()
-
-    #alternatively
-    #rng=np.random.default_rng()
-
-    #Alternatively
-    # photon_events_observed=rng.exponential(size=1, scale=50).astype(int)
-    # while photon_events_observed < n_photons:
-    #     photon_events_observed=rng.exponential(size=1, scale=50).astype(int)
+    rng=np.random.default_rng()
 
     # determine number of frames to sample MSM
     n_frames = np.amax(MSM_frames) + 1
 
     # sample transition matrix for trajectory
-    initial_state = np.random.choice(np.arange(T.shape[0]), p=populations)
-    # initial_state = rng.choice(np.arange(T.shape[0]), p=populations)    
+    initial_state = rng.choice(np.arange(T.shape[0]), p=populations)    
 
     trj = synthetic_trajectory(T, initial_state, n_frames)
 
@@ -595,8 +585,7 @@ def _sample_FRET_histograms(
     FRET_probs = sample_FE_probs(dist_distribution, trj[MSM_frames])
 
     # flip coin for donor or acceptor emisions
-    acceptor_emissions = np.random.random(FRET_probs.shape[0]) <= FRET_probs
-    # acceptor_emissions = rng.random(FRET_probs.shape[0]) <= FRET_probs
+    acceptor_emissions = rng.random(FRET_probs.shape[0]) <= FRET_probs
 
     # average for final observed FRET
     if n_photon_std is None:
@@ -613,8 +602,8 @@ def _sample_FRET_histograms(
 
 
 def sample_FRET_histograms(
-    T, populations, dist_distribution, photon_distribution, n_photons, 
-    lagtime, MSM_frames, n_photon_std=None, n_samples=1, n_procs=1):
+    T, populations, dist_distribution, 
+    MSM_frames, n_photon_std=None, n_procs=1):
     """samples a MSM to regenerate experimental FRET distributions
 
     Attritbues
@@ -625,11 +614,9 @@ def sample_FRET_histograms(
         State populations.
     dist_distribution : ra.RaggedArray, shape=(n_states, None, 2)
         The probability of a fluorophore-fluorophore distance.
-    photon_distribution : func,
-        A callable function that samples from a distribution of
-        photon wait-times, i.e. 'np.random.exponential'
-    n_photons : int,
-        The number of photons in a burst.
+    MSM_frames : list of lists,
+        A list of lists of times between photons in a given burst. Each list should be it's own burst.
+        Default timing is microseconds.
     lagtime : float,
         MSM lagtime used to construct the transition probability
         matrix in nanoseconds.
@@ -637,8 +624,6 @@ def sample_FRET_histograms(
         The number of photons to chunk for assessing variation within a
         burst. Must be less than n_photons. Default: None will not
         assess the intraburst varaition.
-    n_samples : int, default=1,
-        The number of times to sample FRET distribution.
     n_procs : int, default=1,
         Number of cores to use for parallel processing.
 
@@ -652,10 +637,7 @@ def sample_FRET_histograms(
     # fill in function values
     sample_func = partial(
         _sample_FRET_histograms, T=T, populations=populations,
-        dist_distribution=dist_distribution,
-        photon_distribution=photon_distribution,
-        n_photons=n_photons, lagtime=lagtime,
-        n_photon_std=n_photon_std)
+        dist_distribution=dist_distribution, n_photon_std=n_photon_std)
 
     # multiprocess
     pool = Pool(processes=n_procs)
