@@ -592,7 +592,7 @@ def _sample_FRET_histograms(
     trj = synthetic_trajectory(T, initial_state, n_frames)
 
     # get FRET probabilities for each excited state
-    FRET_probs = sample_FE_probs(dist_distribution, trj[photon_frames])
+    FRET_probs = sample_FE_probs(dist_distribution, trj[MSM_frames])
 
     # flip coin for donor or acceptor emisions
     acceptor_emissions = np.random.random(FRET_probs.shape[0]) <= FRET_probs
