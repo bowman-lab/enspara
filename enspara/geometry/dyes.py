@@ -540,16 +540,16 @@ def sample_FE_probs(dist_distribution, states):
     bin_width = dist_distribution[0][1,0] - dist_distribution[0][0,0]
     for state in states:
         #Introduce a new random seed in each location otherwise pool with end up with the same seeds.
-        np.random.seed()
-        dist = np.random.choice(
-            dist_distribution[state][:,0], p=dist_distribution[state][:,1])
-        dist += (np.random.random()*bin_width) - (bin_width/2.)
+        # np.random.seed()
+        # dist = np.random.choice(
+        #     dist_distribution[state][:,0], p=dist_distribution[state][:,1])
+        # dist += (np.random.random()*bin_width) - (bin_width/2.)
 
         #alternatively:
-        #rng=np.random.default_rng()
-        # dist = rng.choice(
-        #     dist_distribution[state][:,0], p=dist_distribution[state][:,1])
-        # dist += (rng.random()*bin_width) - (bin_width/2.)
+        rng=np.random.default_rng()
+        dist = rng.choice(
+            dist_distribution[state][:,0], p=dist_distribution[state][:,1])
+        dist += (rng.random()*bin_width) - (bin_width/2.)
 
         dists.append(dist)
     FEs = FRET_efficiency(np.array(dists))
@@ -571,21 +571,21 @@ def _sample_FRET_histograms(
 
 
     #Introduce a new random seed in each location otherwise pool with end up with the same seeds.
-    np.random.seed()
+    # np.random.seed()
 
     #alternatively
-    #rng=np.random.default_rng()
+    rng=np.random.default_rng()
 
     #Define the number of photon events observed
-    photon_events_observed=np.random.exponential(size=1, scale=50).astype(int)
-    while photon_events_observed < n_photons:
-        photon_events_observed=np.random.exponential(size=1, scale=50).astype(int)
+    # photon_events_observed=np.random.exponential(size=1, scale=50).astype(int)
+    # while photon_events_observed < n_photons:
+    #     photon_events_observed=np.random.exponential(size=1, scale=50).astype(int)
 
 
     #Alternatively
-    # photon_events_observed=rng.exponential(size=1, scale=50).astype(int)
-    # while photon_events_observed < n_photons:
-    #     photon_events_observed=rng.exponential(size=1, scale=50).astype(int)
+    photon_events_observed=rng.exponential(size=1, scale=50).astype(int)
+    while photon_events_observed < n_photons:
+        photon_events_observed=rng.exponential(size=1, scale=50).astype(int)
 
     # obtain frames that a photon is emitted
     photon_times = np.cumsum(
@@ -596,8 +596,8 @@ def _sample_FRET_histograms(
     n_frames = photon_frames.max() + 1
 
     # sample transition matrix for trajectory
-    initial_state = np.random.choice(np.arange(T.shape[0]), p=populations)
-    # initial_state = rng.choice(np.arange(T.shape[0]), p=populations)    
+    # initial_state = np.random.choice(np.arange(T.shape[0]), p=populations)
+    initial_state = rng.choice(np.arange(T.shape[0]), p=populations)    
 
     trj = synthetic_trajectory(T, initial_state, n_frames)
 
@@ -605,8 +605,8 @@ def _sample_FRET_histograms(
     FRET_probs = sample_FE_probs(dist_distribution, trj[photon_frames])
 
     # flip coin for donor or acceptor emisions
-    acceptor_emissions = np.random.random(FRET_probs.shape[0]) <= FRET_probs
-    # acceptor_emissions = rng.random(FRET_probs.shape[0]) <= FRET_probs
+    # acceptor_emissions = np.random.random(FRET_probs.shape[0]) <= FRET_probs
+    acceptor_emissions = rng.random(FRET_probs.shape[0]) <= FRET_probs
 
     # average for final observed FRET
     if n_photon_std is None:
