@@ -33,16 +33,16 @@ def synthetic_trajectory(T, start_state, n_steps):
     """
     traj = -1*np.ones(n_steps, dtype=int)
     traj[0] = start_state
-
-    for i in range(n_steps-1):
-        current_state = traj[i]
-        if scipy.sparse.isspmatrix(T):
-            p = T[current_state, :].toarray()[0]
-        else:
-            p = T[current_state, :]
-        new_state = np.where(scipy.random.multinomial(1, p) == 1)[0][0]
-        traj[i+1] = new_state
-
+    states = T.shape[0]
+    rng = np.random.default_rng()
+    if scipy.sparse.isspmatrix(T):
+        for i in range(n_steps-1):
+            p = T[traj[i], :].toarray()[0]
+            traj[i + 1] = rng.choice(states, 1, p=p)
+    else:
+        for i in range(n_steps - 1):
+            p = T[traj[i], :]
+            traj[i+1] = rng.choice(states, 1, p=p)
     return traj
 
 
