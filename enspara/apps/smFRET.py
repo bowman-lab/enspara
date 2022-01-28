@@ -18,6 +18,7 @@ import argparse
 import os
 import logging
 import itertools
+import inspect
 import pickle
 import json
 from glob import glob
@@ -25,7 +26,7 @@ import subprocess as sp
 from multiprocessing import Pool
 from functools import partial
 from enspara import ra
-from enspara.geometry import dyes
+from enspara.geometry import dyes_from_expt_dist
 from enspara.apps.util import readable_dir
 
 
@@ -41,18 +42,19 @@ def process_command_line(argv):
         description="Convert an MSM and a series of FRET dye residue pairs"
                     "into the predicted FRET efficiency for each pair")
 
+#Add additional input to say "calc distributions, calc FEs, or both"
     # INPUTS
     input_args = parser.add_argument_group("Input Settings")
     input_args.add_argument(
-        '--eq_probs', nargs="+", action='append',
+        '--eq_probs', nargs="+",
         help="equilibrium probabilities from the MSM"
              "Should be of file type .npy")
     input_args.add_argument(
-        '--t_probs', nargs="+", action='append',
+        '--t_probs', nargs="+",
         help="transition probabilities from the MSM"
              "Should be of file type .npy")
     input_args.add_argument(
-        '--lagtime', nargs="+", action='append', type=float,
+        '--lagtime', nargs="+", type=float,
         help="lag time used to construct the MSM (in ns)"
              "Should be type float")
     input_args.add_argument(
@@ -72,20 +74,22 @@ def process_command_line(argv):
         help="Enables you to assess intraburst variation."
         	"How many chunks would you like a given burst broken into?")
     FRET_args.add_argument(
-        '--centers', nargs="+", required=False, action='append',
+        '--centers', nargs="+", required=False, 
         help="Path to cluster centers from the MSM"
              "should be of type .xtc. Not needed if supplying FRET dye distributions")
     FRET_args.add_argument(
         '--topology', required=False, action='append',
         help="topology file for supplied trajectory")
     FRET_args.add_argument(
-        '--FRET_dye_dist', nargs="+", required=False, action='append',
+        '--FRET_dye_dist', nargs="+", required=False,
         help="Path to FRET dye distributions")
     FRET_args.add_argument(
-        '--FRETdye1', nargs="+", required=False,  action='append',
+        '--FRETdye1', nargs="+", required=False,
+        default=os.path.dirname(inspect.getfile(ra))+'/../data/dyes/AF488.pdb',
         help="Path to point cloud of FRET dye pair 2")
     FRET_args.add_argument(
-        '--FRETdye2', nargs = "+", required = False,  action = 'append',
+        '--FRETdye2', nargs = "+", required = False,
+        default=os.path.dirname(inspect.getfile(ra))+'/../data/dyes/AF594.pdb',
         help = "Path to point cloud of FRET dye pair 2")
     FRET_args.add_argument(
         '--R0', nargs="+", required=False, type=float, default=5.4,
@@ -106,7 +110,15 @@ def process_command_line(argv):
         help="The location to write the predicted FRET efficiencies for each residue pair.")
 
     # Work greatly needed below! This is all just copy+paste from cluster.py's argparse
+    # Ideally should have some checks (e.g. can't supply only centers.xtc and not top)
     args = parser.parse_args(argv[1:])
+
+    #Minimum checks- 
+    #see if need to do FRET_dye modeling, FE, or both
+    #Check to make sure all arguments are provided
+    #Return helpful errors?
+
+
     #
     #     if args.cluster_distance in FEATURE_DISTANCES:
     #         args.cluster_distance = getattr(libdist, args.cluster_distance)
@@ -203,51 +215,6 @@ def process_command_line(argv):
     #             os.path.basename(args.center_features))
 
     return args
-
-def convert_to_string(binary):
-    return binary.decode('utf-8')
-
-def _run_command(cmd_info):
-    """Helper function for submitting commands parallelized."""
-    cmd, supress = cmd_info
-    p = sp.Popen(cmd, shell=True, stdout=sp.PIPE, stderr=sp.PIPE)
-    output, err = p.communicate()
-    if convert_to_string(err) != '' and not supress:
-        print("\nERROR: " + convert_to_string(err))
-        raise
-    output = convert_to_string(output)
-    p.terminate()
-    return output
-
-def run_commands(cmds, supress=False, n_procs=1):
-    """Wrapper for submitting commands to shell"""
-    if type(cmds) is str:
-        cmds = [cmds]
-    if n_procs == 1:
-        outputs = []
-        for cmd in cmds:
-            outputs.append(_run_command((cmd, supress)))
-    else:
-        cmd_info = list(zip(cmds, itertools.repeat(supress)))
-        pool = Pool(processes = n_procs)
-        outputs = pool.map(_run_command, cmd_info)
-        pool.terminate()
-    return outputs
-
-def plot_fig(FE_samplings, title, output_folder):
-    plt.figure(figsize=(9, 4))
-    ax.tick_params(direction='out', length=10, width=3, colors='black')
-    plt.xlabel('E')
-    plt.ylabel('probability')
-    counts, bin_edges = np.histogram(FE_samplings[:, 0], range=[-0.2, 1.2], bins=47)
-    x_vals = (bin_edges[1:] + bin_edges[:-1]) / 2.
-    bin_widths = bin_edges[1:] - bin_edges[:-1]
-    probs = counts / counts.sum()
-    plt.bar(x_vals, probs, width=bin_widths, edgecolor='black')
-    apoE4_FEs_mcmc_plot.append(x_vals)
-    apoE4_probs_mcmc_plot.append(probs)
-    plt.savefig("%s/%s.png" % (output_folder, title), dpi=300)
-    return
 
 
 def main(argv=None):
