@@ -1,13 +1,16 @@
 """The smFRET app allows you to convert your MSM into a single-molecule
-FRET histogram based on the residue pairs of interest. Parameters such 
-as the dye identities and dye positions must be specified. This code also
-enables adaptation to specific smFRET experimental setups enabling users 
-to modify the number of bursts observed, distribution of photon arrival
-times, and minimum number of binned photons. The app will return a list of 
-FRET efficiencies that is n_bursts long. See the apps tab for more information.
+FRET histogram based on the residue pairs of interest. Users specify
+MSM structure centers and the transition probabilities between each center.
+Parameters such as the dye identities can be changed if you have your own point clouds.
+Dyes may be mapped to any amino acid in the protein. As single-molecule FRET is 
+highly dependent on true-to-experiment simulation timescales, you can also rescale the 
+speed of your trajectories within an MSM. This code also enables adaptation to specific
+smFRET experimental setups as users provide their own experimental FRET bursts. 
+See the apps tab for more information.
 """
 # Author: Maxwell I. Zimmerman <mizimmer@wustl.edu>
 # Contributors: Justin J Miller <jjmiller@wustl.edu>
+# Contributors: Louis Smith!
 # All rights reserved.
 # Unauthorized copying of this file, via any medium, is strictly prohibited
 # Proprietary and confidential
@@ -94,7 +97,6 @@ def process_command_line(argv):
     FRET_args.add_argument(
         '--R0', nargs="+", required=False, type=float, default=5.4,
         help="R0 value for FRET dye pair of interest")
-##Is there a way to make this automatically point to /enspara/data/dyes/AF488 and 494.pdb?
     FRET_args.add_argument(
         '--slowing_factor', required=False, type=int, default=1,
         help= "factor to slow your trajcetories by")
