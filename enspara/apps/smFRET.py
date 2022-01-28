@@ -36,6 +36,9 @@ from enspara.apps.util import readable_dir
 import numpy as np
 import mdtraj as md
 
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+
 def process_command_line(argv):
 ##Need to check whether these arguments are in fact parsed correctly, I took a first pass stab at this.
 ##Better to make a flag that lets you stop after calculating FRET dye distributions?
@@ -49,21 +52,26 @@ def process_command_line(argv):
     # INPUTS
     input_args = parser.add_argument_group("Input Settings")
     input_args.add_argument(
-        '--eq_probs', nargs="+",
+        '--eq_probs', required= True,
         help="equilibrium probabilities from the MSM"
              "Should be of file type .npy")
     input_args.add_argument(
-        '--t_probs', nargs="+",
+        '--t_probs', required=True,
         help="transition probabilities from the MSM"
              "Should be of file type .npy")
     input_args.add_argument(
-        '--lagtime', nargs="+", type=float,
+        '--lagtime', type=float, required=True,
         help="lag time used to construct the MSM (in ns)"
              "Should be type float")
     input_args.add_argument(
-        '--resid_pairs', nargs="+", action='append',
-        help="list of lists of residue pairs to sample, uses supplied PDB numbering"
-             "e.g.: [[[1],[2]],[[2],[52]]]")
+        '--resid_pairs', nargs="+", action='append', required=True, type=int,
+        help="residues to model FRET dyes on. Pass 2 residue pairs, same numbering as"
+             "in the topology file. Pass multiple times to model multiple residue pairs"
+             "e.g. --resid_pairs 1 5"
+             "--resid_pairs 5 86"
+    input_args.add_argument(
+        '--FRET_dye_dists', nargs="+", required=False,
+        help="Path to FRET dye distributions")    
 
 
     # PARAMETERS
@@ -76,24 +84,6 @@ def process_command_line(argv):
         '--n_chunks', required=False, type=int, default=0,
         help="Enables you to assess intraburst variation."
         	"How many chunks would you like a given burst broken into?")
-    FRET_args.add_argument(
-        '--centers', nargs="+", required=False, 
-        help="Path to cluster centers from the MSM"
-             "should be of type .xtc. Not needed if supplying FRET dye distributions")
-    FRET_args.add_argument(
-        '--topology', required=False, action='append',
-        help="topology file for supplied trajectory")
-    FRET_args.add_argument(
-        '--FRET_dye_dist', nargs="+", required=False,
-        help="Path to FRET dye distributions")
-    FRET_args.add_argument(
-        '--FRETdye1', nargs="+", required=False,
-        default=os.path.dirname(inspect.getfile(ra))+'/../data/dyes/AF488.pdb',
-        help="Path to point cloud of FRET dye pair 2")
-    FRET_args.add_argument(
-        '--FRETdye2', nargs = "+", required = False,
-        default=os.path.dirname(inspect.getfile(ra))+'/../data/dyes/AF594.pdb',
-        help = "Path to point cloud of FRET dye pair 2")
     FRET_args.add_argument(
         '--R0', nargs="+", required=False, type=float, default=5.4,
         help="R0 value for FRET dye pair of interest")
@@ -108,8 +98,11 @@ def process_command_line(argv):
         '--FRET_dye_distributions', required=False, action=readable_dir,
         help="The location to write the FRET dye distributions.")
     output_args.add_argument(
-        '--FRET_output', required=True, action=readable_dir,
-        help="The location to write the predicted FRET efficiencies for each residue pair.")
+        '--FRET_output_dir', required=False, action=readable_dir, default='./',
+        help="The location to write the FRET dye distributions.")
+    output_args.add_argument(
+        '--FRET_output_names', required=True,
+        help="Naming pattern for output FRET values.")
 
     # Work greatly needed below! This is all just copy+paste from cluster.py's argparse
     # Ideally should have some checks (e.g. can't supply only centers.xtc and not top)
@@ -223,19 +216,6 @@ def main(argv=None):
 
     args = process_command_line(argv)
     print(args)
-    #Check to see if we need to calculate FRET dye distributions
-    #If true, enter calculation of FRET dye distributions
-#     for n in np.arange(len(resSeq_pairs)):
-#         logger.info("Calculating distance distribution for residues %s", resSeq_pairs[n])
-#         probs, bin_edges = dyes.dye_distance_distribution(
-#             trj, AF488, AF594, resSeq_pairs[n], n_procs=n_procs)
-#         probs_output = '%s/probs_%sC_%sC.h5' % (base_name, resSeq_pairs[n][0], resSeq_pairs[n][1])
-#         bin_edges_output = '%s/bin_edges_%sC_%sC.h5' % (base_name, resSeq_pairs[n][0], resSeq_pairs[n][1])
-#         ra.save(probs_output, probs)
-#         ra.save(bin_edges_output, bin_edges)
-
-
-
 #     #Calculate the FRET efficiencies
 #     t_probabilties= np.load('####ARGPARSE FOR T_probs')
 #     logger.info("Loaded t_probs from %s" ##ARGPARSE for t_probs)
@@ -256,8 +236,8 @@ def main(argv=None):
     #     np.save("%s/FE_mcmc_histogram_%s_time_tuner_%d.npy" % (output_folder, title, Slowing_factor), FEs_sampling)
 
 
-#     logger.info("Success! Calculated FRET distributions your input parameters can be found here: %s" % (output_folder + jobname))
-#     print(json.dumps(args.__dict__,  output_folder+jobname,indent=4))
+    # logger.info("Success! Calculated FRET distributions your input parameters can be found here: %s" % (output_folder + 'FRET_from_exp.json'))
+    # print(json.dumps(args.__dict__,  output_folder+'FRET_from_expt.json',indent=4))
 
 
 if __name__ == "__main__":
