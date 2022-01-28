@@ -1,4 +1,4 @@
-      """The smFRET app allows you to convert your MSM into a single-molecule
+"""The smFRET app allows you to convert your MSM into a single-molecule
 FRET histogram based on the residue pairs of interest. Parameters such 
 as the dye identities and dye positions must be specified. This code also
 enables adaptation to specific smFRET experimental setups enabling users 
@@ -26,6 +26,8 @@ from multiprocessing import Pool
 from functools import partial
 from enspara import ra
 from enspara.geometry import dyes
+from enspara.apps.util import readable_dir
+
 
 import numpy as np
 import mdtraj as md
@@ -41,19 +43,19 @@ def process_command_line(argv):
 
     # INPUTS
     input_args = parser.add_argument_group("Input Settings")
-    input_data_group.add_argument(
+    input_args.add_argument(
         '--eq_probs', nargs="+", action='append',
         help="equilibrium probabilities from the MSM"
              "Should be of file type .npy")
-        input_data_group.add_argument(
+    input_args.add_argument(
         '--t_probs', nargs="+", action='append',
         help="transition probabilities from the MSM"
              "Should be of file type .npy")
-        input_data_group.add_argument(
-        '--lagtime', nargs="+", action='append', type=float
+    input_args.add_argument(
+        '--lagtime', nargs="+", action='append', type=float,
         help="lag time used to construct the MSM (in ns)"
              "Should be type float")
-        input_data_group.add_argument(
+    input_args.add_argument(
         '--resid_pairs', nargs="+", action='append',
         help="list of lists of residue pairs to sample, uses supplied PDB numbering"
              "e.g.: [[[1],[2]],[[2],[52]]]")
@@ -70,20 +72,20 @@ def process_command_line(argv):
         help="Enables you to assess intraburst variation."
         	"How many chunks would you like a given burst broken into?")
     FRET_args.add_argument(
-        '--trj', nargs="+", required=False, action=readable_dir,
+        '--centers', nargs="+", required=False, action='append',
         help="Path to cluster centers from the MSM"
              "should be of type .xtc. Not needed if supplying FRET dye distributions")
     FRET_args.add_argument(
-        '--topology', required=False, type=readable_dir,
+        '--topology', required=False, action='append',
         help="topology file for supplied trajectory")
     FRET_args.add_argument(
-        '--FRET_dye_dist', nargs="+", required=False, action=readable_dir,
+        '--FRET_dye_dist', nargs="+", required=False, action='append',
         help="Path to FRET dye distributions")
     FRET_args.add_argument(
-        '--FRETdye1', nargs="+", required=False, type=str, action=readable_dir,
+        '--FRETdye1', nargs="+", required=False,  action='append',
         help="Path to point cloud of FRET dye pair 2")
     FRET_args.add_argument(
-        '--FRETdye2', nargs = "+", required = False, type=str, action = readable_dir,
+        '--FRETdye2', nargs = "+", required = False,  action = 'append',
         help = "Path to point cloud of FRET dye pair 2")
     FRET_args.add_argument(
         '--R0', nargs="+", required=False, type=float, default=5.4,
@@ -100,7 +102,7 @@ def process_command_line(argv):
         '--FRET_dye_distributions', required=False, action=readable_dir,
         help="The location to write the FRET dye distributions.")
     output_args.add_argument(
-        '--FRET_efficiencies', required=True, action=readable_dir,
+        '--FRET_output', required=True, action=readable_dir,
         help="The location to write the predicted FRET efficiencies for each residue pair.")
 
     # Work greatly needed below! This is all just copy+paste from cluster.py's argparse
@@ -232,7 +234,7 @@ def run_commands(cmds, supress=False, n_procs=1):
         pool.terminate()
     return outputs
 
-def plot_fig(FE_samplings, title, output_folder)
+def plot_fig(FE_samplings, title, output_folder):
     plt.figure(figsize=(9, 4))
     ax.tick_params(direction='out', length=10, width=3, colors='black')
     plt.xlabel('E')
@@ -245,6 +247,7 @@ def plot_fig(FE_samplings, title, output_folder)
     apoE4_FEs_mcmc_plot.append(x_vals)
     apoE4_probs_mcmc_plot.append(probs)
     plt.savefig("%s/%s.png" % (output_folder, title), dpi=300)
+    return
 
 
 def main(argv=None):
@@ -271,17 +274,17 @@ def main(argv=None):
 #     logger.info("Loaded eq_probs from %s" ##ARGPARSE for eq_probs)
 
 
-    for n in np.arange(resSeq_pairs.shape[0]):
-        title = '%sC_%sC' % (resSeq_pairs[n,0], resSeq_pairs[n,1])
-        probs_file = "%s/probs_%s.h5" % (FRET_ensemble_folder, title) 
-        bin_edges_file = "%s/bin_edges_%s.h5" % (FRET_ensemble_folder, title)
-        probs = ra.load(probs_file)
-        bin_edges = ra.load(bin_edges_file)
-        dist_distribution = make_distribution(probs, bin_edges)
-        FEs_sampling = dyes_from_expt_dist.sample_FRET_histograms(
-            T=T, populations=populations, dist_distribution=dist_distribution,
-            MSM_frames=MSM_frames, n_photon_std=n_photon_std, n_procs=n_procs)
-        np.save("%s/FE_mcmc_histogram_%s_time_tuner_%d.npy" % (output_folder, title, Slowing_factor), FEs_sampling)
+    # for n in np.arange(resSeq_pairs.shape[0]):
+    #     title = '%sC_%sC' % (resSeq_pairs[n,0], resSeq_pairs[n,1])
+    #     probs_file = "%s/probs_%s.h5" % (FRET_ensemble_folder, title) 
+    #     bin_edges_file = "%s/bin_edges_%s.h5" % (FRET_ensemble_folder, title)
+    #     probs = ra.load(probs_file)
+    #     bin_edges = ra.load(bin_edges_file)
+    #     dist_distribution = make_distribution(probs, bin_edges)
+    #     FEs_sampling = dyes_from_expt_dist.sample_FRET_histograms(
+    #         T=T, populations=populations, dist_distribution=dist_distribution,
+    #         MSM_frames=MSM_frames, n_photon_std=n_photon_std, n_procs=n_procs)
+    #     np.save("%s/FE_mcmc_histogram_%s_time_tuner_%d.npy" % (output_folder, title, Slowing_factor), FEs_sampling)
 
 
 #     logger.info("Success! Calculated FRET distributions your input parameters can be found here: %s" % (output_folder + jobname))
