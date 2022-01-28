@@ -1,4 +1,4 @@
-"""The smFRET app allows you to convert your MSM into a single-molecule
+      """The smFRET app allows you to convert your MSM into a single-molecule
 FRET histogram based on the residue pairs of interest. Parameters such 
 as the dye identities and dye positions must be specified. This code also
 enables adaptation to specific smFRET experimental setups enabling users 
@@ -55,50 +55,43 @@ def process_command_line(argv):
              "Should be type float")
         input_data_group.add_argument(
         '--resid_pairs', nargs="+", action='append',
-        help="list of lists of residue pairs to sample, 1 indexed"
+        help="list of lists of residue pairs to sample, uses supplied PDB numbering"
              "e.g.: [[[1],[2]],[[2],[52]]]")
 
 
     # PARAMETERS
     FRET_args = parser.add_argument_group("FRET Settings")
     FRET_args.add_argument(
-        '--n_photon_bursts', required=False, type=int, default=40000,
-        help="Number of photon bursts to observe in total"
-                "default is reasonably well sampled for multi-ensemble protein")
-    FRET_args.add_argument(
-        '--min_photons', required=False, type=int,  default=30,
-        help="Minimum number of photons in a photon burst")
+        '--n_procs', required=False, type=int, default=1,
+        help="Number of cores to use for parallel processing"
+            "Generally parallel over number of frames in supplied trajectory/MSM state")    
     FRET_args.add_argument(
         '--n_chunks', required=False, type=int, default=0,
         help="Enables you to assess intraburst variation."
         	"How many chunks would you like a given burst broken into?")
     FRET_args.add_argument(
-        '--photon_time', required=False, type=int, default=4,
-        help="This defines the distribution of photon arrival times"
-        	"Currently implemented using np.random.exponential with scale of photon_time")
-    FRET_args.add_argument(
-        '--n_procs', required=False, type=int, default=1,
-        help="Number of cores to use for parallel processing"
-        	"Generally parallel over number of frames in supplied trajectory/MSM state")
-    FRET_args.add_argument(
         '--trj', nargs="+", required=False, action=readable_dir,
         help="Path to cluster centers from the MSM"
              "should be of type .xtc. Not needed if supplying FRET dye distributions")
     FRET_args.add_argument(
+        '--topology', required=False, type=readable_dir,
+        help="topology file for supplied trajectory")
+    FRET_args.add_argument(
         '--FRET_dye_dist', nargs="+", required=False, action=readable_dir,
         help="Path to FRET dye distributions")
-    FRET_args.add_argument(
-        '--R0', nargs="+", required=False, type=float, default=5.4,
-        help="R0 value for FRET dye pair of interest")
     FRET_args.add_argument(
         '--FRETdye1', nargs="+", required=False, type=str, action=readable_dir,
         help="Path to point cloud of FRET dye pair 2")
     FRET_args.add_argument(
         '--FRETdye2', nargs = "+", required = False, type=str, action = readable_dir,
         help = "Path to point cloud of FRET dye pair 2")
+    FRET_args.add_argument(
+        '--R0', nargs="+", required=False, type=float, default=5.4,
+        help="R0 value for FRET dye pair of interest")
 ##Is there a way to make this automatically point to /enspara/data/dyes/AF488 and 494.pdb?
     FRET_args.add_argument(
-        '--PlotOutput', nargs = "+", required = False, type=bool)
+        '--slowing_factor', required=False, type=int, default=1,
+        help= "factor to slow your trajcetories by")
 
     # OUTPUT
     output_args = parser.add_argument_group("Output Settings")
@@ -257,47 +250,42 @@ def plot_fig(FE_samplings, title, output_folder)
 def main(argv=None):
 
     args = process_command_line(argv)
+    print(args)
     #Check to see if we need to calculate FRET dye distributions
     #If true, enter calculation of FRET dye distributions
-    for n in np.arange(len(resSeq_pairs)):
-        logger.info("Calculating distance distribution for residues %s", resSeq_pairs[n])
-        probs, bin_edges = dyes.dye_distance_distribution(
-            trj, AF488, AF594, resSeq_pairs[n], n_procs=n_procs)
-        probs_output = '%s/probs_%sC_%sC.h5' % (base_name, resSeq_pairs[n][0], resSeq_pairs[n][1])
-        bin_edges_output = '%s/bin_edges_%sC_%sC.h5' % (base_name, resSeq_pairs[n][0], resSeq_pairs[n][1])
-        ra.save(probs_output, probs)
-        ra.save(bin_edges_output, bin_edges)
+#     for n in np.arange(len(resSeq_pairs)):
+#         logger.info("Calculating distance distribution for residues %s", resSeq_pairs[n])
+#         probs, bin_edges = dyes.dye_distance_distribution(
+#             trj, AF488, AF594, resSeq_pairs[n], n_procs=n_procs)
+#         probs_output = '%s/probs_%sC_%sC.h5' % (base_name, resSeq_pairs[n][0], resSeq_pairs[n][1])
+#         bin_edges_output = '%s/bin_edges_%sC_%sC.h5' % (base_name, resSeq_pairs[n][0], resSeq_pairs[n][1])
+#         ra.save(probs_output, probs)
+#         ra.save(bin_edges_output, bin_edges)
 
 
 
-    #Calculate the FRET efficiencies
-    t_probabilties= np.load('####ARGPARSE FOR T_probs')
-    logger.info("Loaded t_probs from %s" ##ARGPARSE for t_probs)
-    populations=np.load('#####ARGPARSE FOR EQ PROBS')
-    logger.info("Loaded eq_probs from %s" ##ARGPARSE for eq_probs)
+#     #Calculate the FRET efficiencies
+#     t_probabilties= np.load('####ARGPARSE FOR T_probs')
+#     logger.info("Loaded t_probs from %s" ##ARGPARSE for t_probs)
+#     populations=np.load('#####ARGPARSE FOR EQ PROBS')
+#     logger.info("Loaded eq_probs from %s" ##ARGPARSE for eq_probs)
 
 
-#Probably should parallelize this?
     for n in np.arange(resSeq_pairs.shape[0]):
         title = '%sC_%sC' % (resSeq_pairs[n,0], resSeq_pairs[n,1])
-        probs_file = "%s/probs_%s.h5" % (FRET_ensemble_folder, title)
+        probs_file = "%s/probs_%s.h5" % (FRET_ensemble_folder, title) 
         bin_edges_file = "%s/bin_edges_%s.h5" % (FRET_ensemble_folder, title)
         probs = ra.load(probs_file)
         bin_edges = ra.load(bin_edges_file)
         dist_distribution = make_distribution(probs, bin_edges)
-        FEs_sampling = dyes.sample_FRET_histograms(
-            t_probabilties, populations=populations, dist_distribution=dist_distribution,
-            photon_distribution=photon_distribution, n_photons=n_photons,
-            lagtime=lagtime, n_photon_std=n_photon_std, n_samples=n_samples,
-            n_procs=n_procs)
-        np.save("%s/FE_mcmc_histogram_%s.npy" % (output_folder, title), FEs_sampling)
+        FEs_sampling = dyes_from_expt_dist.sample_FRET_histograms(
+            T=T, populations=populations, dist_distribution=dist_distribution,
+            MSM_frames=MSM_frames, n_photon_std=n_photon_std, n_procs=n_procs)
+        np.save("%s/FE_mcmc_histogram_%s_time_tuner_%d.npy" % (output_folder, title, Slowing_factor), FEs_sampling)
 
-        #Also plot the output!
-        if ###ARGPARSE plot_fig == True:
-            plot_fig(FE_samplings, title, output_folder)
 
-    logger.info("Success! Calculated FRET distributions your input parameters can be found here: %s" % (output_folder + jobname))
-    print(json.dumps(args.__dict__,  output_folder+jobname,indent=4))
+#     logger.info("Success! Calculated FRET distributions your input parameters can be found here: %s" % (output_folder + jobname))
+#     print(json.dumps(args.__dict__,  output_folder+jobname,indent=4))
 
 
 if __name__ == "__main__":
