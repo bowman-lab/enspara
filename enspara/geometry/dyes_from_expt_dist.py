@@ -610,7 +610,7 @@ def _sample_FRET_histograms(
 
 def sample_FRET_histograms(
     T, populations, dist_distribution, 
-    MSM_frames, n_photon_std=None, n_procs=1, R0):
+    MSM_frames, n_photon_std=None, n_procs=1, R0=5.4):
     """samples a MSM to regenerate experimental FRET distributions
 
     Attributes
@@ -644,7 +644,7 @@ def sample_FRET_histograms(
     # fill in function values
     sample_func = partial(
         _sample_FRET_histograms, T=T, populations=populations,
-        dist_distribution=dist_distribution, n_photon_std=n_photon_std, R0)
+        dist_distribution=dist_distribution, n_photon_std=n_photon_std, R0=R0)
 
     # multiprocess
     pool = Pool(processes=n_procs)
