@@ -96,8 +96,8 @@ def main(argv=None):
 
     #Load Centers and dyes
     trj=md.load(args.centers, top=args.topology)   
-    dye1=dyes_from_expt_dist.load_dye('args.FRETdye1')
-    dye2=dyes_from_expt_dist.load_dye('args.FRETdye2')
+    dye1=dyes_from_expt_dist.load_dye(args.FRETdye1)
+    dye2=dyes_from_expt_dist.load_dye(args.FRETdye2)
 
     resSeq_pairs=np.array(args.resid_pairs)
 
