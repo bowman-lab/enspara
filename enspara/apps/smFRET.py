@@ -112,6 +112,7 @@ def process_command_line(argv):
 def main(argv=None):
 
     args = process_command_line(argv)
+    print(args)
 
     #Load necessary data
     t_probabilties= np.load(args.t_probs)
