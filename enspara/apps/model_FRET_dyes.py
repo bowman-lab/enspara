@@ -113,7 +113,7 @@ def main(argv=None):
         ra.save(bin_edges_output, bin_edges)
 
     # logger.info(f"Success! Calculated FRET dye distance distributions your input parameters can be found here: {args.FRET_output_dir}/FRET_from_exp.json")
-    logger.info(f"Success! FRET dye distance distributions may be found here: {args.FRET_output_dir}.")
+    logger.info(f"Success! FRET dye distance distributions may be found here: {args.FRET_output_dir}")
     # print(json.dumps(args.__dict__,  args.FRET_output_dir+'FRET_from_expt.json',indent=4))
 
 
