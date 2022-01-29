@@ -112,7 +112,6 @@ def process_command_line(argv):
 def main(argv=None):
 
     args = process_command_line(argv)
-    print(args)
 
     #Load necessary data
     t_probabilties= np.load(args.t_probs)
@@ -127,6 +126,8 @@ def main(argv=None):
 
     #Calculate the FRET efficiencies
     for n in np.arange(resSeq_pairs.shape[0]):
+        logger.info(f"Calculating FRET Efficiences for residues {resSeq_pairs[n]}")
+
         title = f'{resSeq_pairs[n,0]}_{resSeq_pairs[n,1]}'
         probs_file = f"{args.FRET_dye_dists}/probs_{title}.h5"
         bin_edges_file = f"{args.FRET_dye_dists}/bin_edges_{title}.h5"
@@ -136,10 +137,10 @@ def main(argv=None):
         FEs_sampling = dyes_from_expt_dist.sample_FRET_histograms(
             T=t_probabilties, populations=populations, dist_distribution=dist_distribution,
             MSM_frames=MSM_frames, n_photon_std=args.n_chunks, n_procs=args.n_procs, R0=args.R0)
-        np.save(f"{FRET_output_dir}/{FRET_output_names}_{title}_time_factor_{args.slowing_factor}.npy", FEs_sampling)
+        np.save(f"{args.FRET_output_dir}/FRET_efficiencies_{title}_time_factor_{args.slowing_factor}.npy", FEs_sampling)
 
 
-    logger.info(f"Success! Your FRET data can be found here: {FRET_output_dir}")
+    logger.info(f"Success! Your FRET data can be found here: {args.FRET_output_dir}")
     # print(json.dumps(args.__dict__,  output_folder+'FRET_inputs.json',indent=4))
 
 
