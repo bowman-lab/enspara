@@ -15,6 +15,13 @@ def FRET_efficiency(dists, offset=0, r0=5.4):
     return r06 / (r06 + ((dists + offset)**6))
 
 
+def make_distribution(probs, bin_edges):
+    probs_norm = ra.RaggedArray([l/l.sum() for l in probs])
+    dist_vals = (bin_edges[:,1:] + bin_edges[:,:-1]) / 2.
+    dist_distribution = ra.RaggedArray(
+        np.vstack([dist_vals._data, probs_norm._data]).T, lengths=probs_norm.lengths)
+    return dist_distribution
+
 def load_dye(dye):
     """Loads a FRET dye point cloud.
 
@@ -535,7 +542,7 @@ def dye_distance_distribution(
     return probs, bin_edges
 
 
-def sample_FE_probs(dist_distribution, states):
+def sample_FE_probs(dist_distribution, states, R0):
     dists = []
     bin_width = dist_distribution[0][1,0] - dist_distribution[0][0,0]
     for state in states:
@@ -552,12 +559,12 @@ def sample_FE_probs(dist_distribution, states):
         # dist += (rng.random()*bin_width) - (bin_width/2.)
 
         dists.append(dist)
-    FEs = FRET_efficiency(np.array(dists))
+    FEs = FRET_efficiency(np.array(dists), R0)
     return FEs
 
 
 def _sample_FRET_histograms(
-        MSM_frames, T, populations, dist_distribution, n_photon_std):
+        MSM_frames, T, populations, dist_distribution, n_photon_std, R0):
     """Helper function for sampling FRET distributions. Proceeds as 
     follows:
     1) generate a trajectory of n_frames, determined by the specified
@@ -582,7 +589,7 @@ def _sample_FRET_histograms(
     trj = synthetic_trajectory(T, initial_state, n_frames)
 
     # get FRET probabilities for each excited state
-    FRET_probs = sample_FE_probs(dist_distribution, trj[MSM_frames])
+    FRET_probs = sample_FE_probs(dist_distribution, trj[MSM_frames], R0)
 
     # flip coin for donor or acceptor emisions
     acceptor_emissions = rng.random(FRET_probs.shape[0]) <= FRET_probs
@@ -603,7 +610,7 @@ def _sample_FRET_histograms(
 
 def sample_FRET_histograms(
     T, populations, dist_distribution, 
-    MSM_frames, n_photon_std=None, n_procs=1):
+    MSM_frames, n_photon_std=None, n_procs=1, R0):
     """samples a MSM to regenerate experimental FRET distributions
 
     Attributes
@@ -637,7 +644,7 @@ def sample_FRET_histograms(
     # fill in function values
     sample_func = partial(
         _sample_FRET_histograms, T=T, populations=populations,
-        dist_distribution=dist_distribution, n_photon_std=n_photon_std)
+        dist_distribution=dist_distribution, n_photon_std=n_photon_std, R0)
 
     # multiprocess
     pool = Pool(processes=n_procs)
@@ -648,6 +655,18 @@ def sample_FRET_histograms(
     FEs = np.array(FEs)
 
     return FEs
+
+def convert_photon_times(cumulative_times, lagtime, slowing_factor):
+    conversion_factor=1000/(lagtime*slowing_factor) #Multiply experimental wait times by this to get MSM steps.
+    MSM_frames=np.array([np.multiply(cumulative_times[i], conversion_factor).astype(int) for i in range(len(cumulative_times))])
+    return MSM_frames
+
+def make_distribution(probs, bin_edges):
+    probs_norm = ra.RaggedArray([l/l.sum() for l in probs])
+    dist_vals = (bin_edges[:,1:] + bin_edges[:,:-1]) / 2.
+    dist_distribution = ra.RaggedArray(
+        np.vstack([dist_vals._data, probs_norm._data]).T, lengths=probs_norm.lengths)
+    return dist_distribution
 
 
 def int_norm_hist(xs, ys):
