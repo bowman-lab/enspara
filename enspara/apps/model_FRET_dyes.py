@@ -14,7 +14,7 @@ length the number of structures provided.
 
 
 import sys
-import argpars
+import argparse
 import os
 import logging
 import itertools
@@ -53,7 +53,7 @@ def process_command_line(argv):
         help="Path to cluster centers from the MSM"
              "should be of type .xtc. Not needed if supplying FRET dye distributions")
     input_args.add_argument(
-        '--topology', required=True, action='append',
+        '--topology', required=True,
         help="topology file for supplied trajectory")
     input_args.add_argument(
         '--resid_pairs', nargs="+", action='append', required=True, type=int,
@@ -82,14 +82,8 @@ def process_command_line(argv):
     # OUTPUT
     output_args = parser.add_argument_group("Output Settings")
     output_args.add_argument(
-        '--FRET_dye_distributions', required=False, action=readable_dir,
-        help="The location to write the FRET dye distributions.")
-    output_args.add_argument(
         '--FRET_output_dir', required=False, action=readable_dir, default='./',
         help="The location to write the FRET dye distributions.")
-    output_args.add_argument(
-        '--FRET_output_names', required=True,
-        help="Naming pattern for output FRET values.")
 
     args = parser.parse_args(argv[1:])
     #Need to add error checks?
@@ -99,21 +93,28 @@ def process_command_line(argv):
 def main(argv=None):
 
     args = process_command_line(argv)
-    print(args)
+
+    #Load Centers and dyes
+    trj=md.load(args.centers, top=args.topology)   
+    dye1=dyes_from_expt_dist.load_dye('args.FRETdye1')
+    dye2=dyes_from_expt_dist.load_dye('args.FRETdye2')
 
     resSeq_pairs=np.array(args.resid_pairs)
 
+
+    #Calculate the FRET dye distance distributions for each residue pair
     for n in np.arange(len(resSeq_pairs)):
         logger.info(f"Calculating distance distribution for residues {resSeq_pairs[n]}")
-        probs, bin_edges = dyes.dye_distance_distribution(
-            trj, AF488, AF594, resSeq_pairs[n], n_procs=n_procs)
-        probs_output = '%s/probs_%s_%s.h5' % (base_name, resSeq_pairs[n][0], resSeq_pairs[n][1])
-        bin_edges_output = '%s/bin_edges_%s_%s.h5' % (base_name, resSeq_pairs[n][0], resSeq_pairs[n][1])
+        probs, bin_edges = dyes_from_expt_dist.dye_distance_distribution(
+            trj, dye1, dye2, resSeq_pairs[n], n_procs=args.n_procs)
+        probs_output = f'{args.FRET_output_dir}/probs_{resSeq_pairs[n][0]}_{resSeq_pairs[n][1]}.h5'
+        bin_edges_output = f'{args.FRET_output_dir}/bin_edges_{resSeq_pairs[n][0]}_{resSeq_pairs[n][1]}.h5'
         ra.save(probs_output, probs)
         ra.save(bin_edges_output, bin_edges)
 
-    logger.info("Success! Calculated FRET dye distance distributions your input parameters can be found here: %s" % (output_folder + 'FRET_from_exp.json'))
-    print(json.dumps(args.__dict__,  output_folder+'FRET_from_expt.json',indent=4))
+    # logger.info(f"Success! Calculated FRET dye distance distributions your input parameters can be found here: {args.FRET_output_dir}/FRET_from_exp.json")
+    logger.info(f"Success! FRET dye distance distributions may be found here: {args.FRET_output_dir}.")
+    # print(json.dumps(args.__dict__,  args.FRET_output_dir+'FRET_from_expt.json',indent=4))
 
 
 if __name__ == "__main__":
