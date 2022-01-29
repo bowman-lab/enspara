@@ -76,7 +76,7 @@ def process_command_line(argv):
              "e.g. --resid_pairs 1 5"
              "--resid_pairs 5 86")
     input_args.add_argument(
-        '--FRET_dye_dists', nargs="+", required=False, action=readable_dir,
+        '--FRET_dye_dists', required=True, action=readable_dir,
         help="Path to FRET dye distributions")    
 
 
@@ -139,7 +139,7 @@ def main(argv=None):
         np.save(f"{FRET_output_dir}/{FRET_output_names}_{title}_time_factor_{args.slowing_factor}.npy", FEs_sampling)
 
 
-    logger.info(f"Success! Your FRET data can be found here: {FRET_output_dir}"
+    logger.info(f"Success! Your FRET data can be found here: {FRET_output_dir}")
     # print(json.dumps(args.__dict__,  output_folder+'FRET_inputs.json',indent=4))
 
 
