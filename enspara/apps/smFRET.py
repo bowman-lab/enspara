@@ -112,7 +112,8 @@ def process_command_line(argv):
 def main(argv=None):
 
     args = process_command_line(argv)
-    #Calculate the FRET efficiencies
+
+    #Load necessary data
     t_probabilties= np.load(args.t_probs)
     logger.info(f"Loaded t_probs from {args.t_probs}")
     populations=np.load(args.eq_probs)
@@ -120,25 +121,25 @@ def main(argv=None):
     resSeq_pairs=np.array(args.resid_pairs)
     cumulative_times=np.load(args.photon_times)
     
-    conversion_factor=1000/(args.lagtime*args.slowing_factor)#Multiply experimental wait times by this to get MSM steps.
-    MSM_frames=np.array([np.multiply(cumulative_times[i], conversion_factor).astype(int) for i in range(len(cumulative_times))])
+    #Convert Photon arrival times into MSM steps.
+    MSM_frames=dyes_from_expt_dist(cumulative_times, args.lagtime, args.slowing_factor)
 
-
+    #Calculate the FRET efficiencies
     for n in np.arange(resSeq_pairs.shape[0]):
         title = f'{resSeq_pairs[n,0]}_{resSeq_pairs[n,1]}'
         probs_file = f"{args.FRET_dye_dists}/probs_{title}.h5"
         bin_edges_file = f"{args.FRET_dye_dists}/bin_edges_{title}.h5"
         probs = ra.load(probs_file)
         bin_edges = ra.load(bin_edges_file)
-        dist_distribution = make_distribution(probs, bin_edges)
+        dist_distribution = dyes_from_expt_dist.make_distribution(probs, bin_edges)
         FEs_sampling = dyes_from_expt_dist.sample_FRET_histograms(
             T=t_probabilties, populations=populations, dist_distribution=dist_distribution,
-            MSM_frames=MSM_frames, n_photon_std=args.n_chunks, n_procs=args.n_procs)
+            MSM_frames=MSM_frames, n_photon_std=args.n_chunks, n_procs=args.n_procs, R0=args.R0)
         np.save(f"{FRET_output_dir}/{FRET_output_names}_{title}_time_factor_{args.slowing_factor}.npy", FEs_sampling)
 
 
-    logger.info(f"Success! Calculated FRET distributions your input parameters can be found here: {FRET_output_dir}_FRET_inputs.json"
-    print(json.dumps(args.__dict__,  output_folder+'FRET_inputs.json',indent=4))
+    logger.info(f"Success! Your FRET data can be found here: {FRET_output_dir}"
+    # print(json.dumps(args.__dict__,  output_folder+'FRET_inputs.json',indent=4))
 
 
 if __name__ == "__main__":
