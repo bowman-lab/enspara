@@ -120,10 +120,10 @@ def main(argv=None):
     populations=np.load(args.eq_probs)
     logger.info(f"Loaded eq_probs from {args.eq_probs}")
     resSeq_pairs=np.array(args.resid_pairs)
-    cumulative_times=np.load(args.photon_times)
+    cumulative_times=np.load(args.photon_times, allow_pickle=True)
     
     #Convert Photon arrival times into MSM steps.
-    MSM_frames=dyes_from_expt_dist(cumulative_times, args.lagtime, args.slowing_factor)
+    MSM_frames=dyes_from_expt_dist.convert_photon_times(cumulative_times, args.lagtime, args.slowing_factor)
 
     #Calculate the FRET efficiencies
     for n in np.arange(resSeq_pairs.shape[0]):
