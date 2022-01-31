@@ -660,7 +660,8 @@ def sample_FRET_histograms(
 
 def convert_photon_times(cumulative_times, lagtime, slowing_factor):
     conversion_factor=1000/(lagtime*slowing_factor) #Multiply experimental wait times by this to get MSM steps.
-    MSM_frames=np.array([np.multiply(cumulative_times[i], conversion_factor).astype(int) for i in range(len(cumulative_times))])
+    MSM_frames=np.array([np.cumsum(np.multiply(cumulative_times[i], conversion_factor), dtype=int) for i in range(len(cumulative_times))])
+    #MSM_frames=np.array([np.multiply(cumulative_times[i], conversion_factor).astype(int) for i in range(len(cumulative_times))])
     return MSM_frames
 
 def make_distribution(probs, bin_edges):
