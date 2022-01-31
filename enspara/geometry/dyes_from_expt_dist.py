@@ -9,7 +9,6 @@ from ..msm.synthetic_data import synthetic_trajectory
 from .. import ra
 from ..exception import DataInvalid
 
-#Positioning of R0 was off in all of these.
 def FRET_efficiency(dists, r0, offset=0):
     r06 = r0**6
     return r06 / (r06 + ((dists + offset)**6))
@@ -622,7 +621,8 @@ def sample_FRET_histograms(
     dist_distribution : ra.RaggedArray, shape=(n_states, None, 2)
         The probability of a fluorophore-fluorophore distance.
     MSM_frames : list of lists,
-        A list of lists of times between photons in a given burst. Each list should be it's own burst.
+        A list of lists of times between photons in a given burst. 
+        Each list should be it's own burst.
         Provide in microseconds.
     lagtime : float,
         MSM lagtime used to construct the transition probability
@@ -658,10 +658,16 @@ def sample_FRET_histograms(
 
     return FEs
 
-def convert_photon_times(cumulative_times, lagtime, slowing_factor):
-    conversion_factor=1000/(lagtime*slowing_factor) #Multiply experimental wait times by this to get MSM steps.
-    MSM_frames=np.array([np.cumsum(np.multiply(cumulative_times[i], conversion_factor), dtype=int) for i in range(len(cumulative_times))])
-    #MSM_frames=np.array([np.multiply(cumulative_times[i], conversion_factor).astype(int) for i in range(len(cumulative_times))])
+def convert_photon_times(inter_photon_times, lagtime, slowing_factor):
+    #Take the inter_photon times (in us) and convert to MSM frame steps
+    #Accounting for a slowing factor for the MSM.
+    #Lagtime should be in ns.
+    conversion_factor=1000/(lagtime*slowing_factor)
+
+    #Multiply experimental wait times by this to get MSM steps.
+    inter_photon_times*=conversion_factor
+    MSM_frames=np.array([np.cumsum(inter_photon_times[i], dtype=int) 
+        for i in range(len(inter_photon_times))])
     return MSM_frames
 
 def make_distribution(probs, bin_edges):
