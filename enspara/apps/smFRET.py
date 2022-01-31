@@ -61,9 +61,8 @@ def process_command_line(argv):
              "Should be of file type .npy")
     input_args.add_argument(
         '--photon_times', required=True,
-        help="List of lists of photon arrival times."
-             "each list is an individual photon burst"
-             "with cumulative arrival times (in us) for each burst"
+        help="List of lists of inter photon times. Each list is an individual photon burst"
+             "with arrival times (in us) for each burst. Size (n_bursts, nphotons in burst)"
              "Should be of file type .npy")    
     input_args.add_argument(
         '--lagtime', type=int, required=True,
