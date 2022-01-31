@@ -106,6 +106,7 @@ def process_command_line(argv):
 
     args = parser.parse_args(argv[1:])
     #Add error checkers?? None come to mind at the moment...
+    #Maybe notifications that user is falling back to defaults?
     return args
 
 
