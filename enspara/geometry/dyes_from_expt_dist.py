@@ -623,7 +623,7 @@ def sample_FRET_histograms(
         The probability of a fluorophore-fluorophore distance.
     MSM_frames : list of lists,
         A list of lists of times between photons in a given burst. Each list should be it's own burst.
-        Default timing is microseconds.
+        Provide in microseconds.
     lagtime : float,
         MSM lagtime used to construct the transition probability
         matrix in nanoseconds.
@@ -633,6 +633,8 @@ def sample_FRET_histograms(
         assess the intraburst varaition.
     n_procs : int, default=1,
         Number of cores to use for parallel processing.
+    R0: float, default=5.4,
+        Forster radius for specified dyes
 
     Returns
     ----------
