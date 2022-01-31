@@ -137,7 +137,7 @@ def main(argv=None):
         dist_distribution = dyes_from_expt_dist.make_distribution(probs, bin_edges)
         FEs_sampling = dyes_from_expt_dist.sample_FRET_histograms(
             T=t_probabilties, populations=populations, dist_distribution=dist_distribution,
-            MSM_frames=MSM_frames, n_photon_std=args.n_chunks, n_procs=args.n_procs, R0=args.R0)
+            MSM_frames=MSM_frames, R0=args.R0, n_procs=args.n_procs, n_photon_std=args.n_chunks)
         np.save(f"{args.FRET_output_dir}/FRET_efficiencies_{title}_time_factor_{args.slowing_factor}.npy", FEs_sampling)
 
 
