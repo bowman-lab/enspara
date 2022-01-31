@@ -9,8 +9,8 @@ from ..msm.synthetic_data import synthetic_trajectory
 from .. import ra
 from ..exception import DataInvalid
 
-
-def FRET_efficiency(dists, offset=0, r0=5.4):
+#Positioning of R0 was off in all of these.
+def FRET_efficiency(dists, r0, offset=0):
     r06 = r0**6
     return r06 / (r06 + ((dists + offset)**6))
 
@@ -55,8 +55,8 @@ def load_dye(dye):
                 os.path.split(p)[-1].split('.pdb')[0]
                 for p in dye_path_names]) 
         raise DataInvalid(
-            '%s is not a path to a pdb, nor does it exist in enspara. '
-            'Consider using one of the following: %s' % (dye, dye_names))
+            '%s is not a path to a pdb, have you tried using an ENSPARA provided dye?')
+            #User should never see this error when using the app.
     return dye_pdb
 
 def norm_vec(vec):
@@ -564,7 +564,7 @@ def sample_FE_probs(dist_distribution, states, R0):
 
 
 def _sample_FRET_histograms(
-        MSM_frames, T, populations, dist_distribution, n_photon_std, R0):
+        MSM_frames, T, populations, dist_distribution, R0, n_photon_std):
     """Helper function for sampling FRET distributions. Proceeds as 
     follows:
     1) generate a trajectory of n_frames, determined by the specified
@@ -610,7 +610,7 @@ def _sample_FRET_histograms(
 
 def sample_FRET_histograms(
     T, populations, dist_distribution, 
-    MSM_frames, n_photon_std=None, n_procs=1, R0=5.4):
+    MSM_frames, R0, n_procs=1, n_photon_std=None):
     """samples a MSM to regenerate experimental FRET distributions
 
     Attributes
@@ -646,7 +646,7 @@ def sample_FRET_histograms(
     # fill in function values
     sample_func = partial(
         _sample_FRET_histograms, T=T, populations=populations,
-        dist_distribution=dist_distribution, n_photon_std=n_photon_std, R0=R0)
+        dist_distribution=dist_distribution, R0=R0, n_photon_std=n_photon_std)
 
     # multiprocess
     pool = Pool(processes=n_procs)
