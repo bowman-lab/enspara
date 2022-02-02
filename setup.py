@@ -115,10 +115,13 @@ setup(
             'nose',
         ],
         'docs': [
-            'Sphinx>=1.6.4',
-            'sphinx-rtd-theme>=0.2.4',
-            'sphinxcontrib-websupport>=1.0.1',
-            'numpydoc>=0.7.0',
+            'Sphinx>=2.3.0',
+            'sphinx-rtd-theme>=0.4.3',
+            'sphinxcontrib-websupport>=1.1.2',
+            'numpydoc>=0.9.1',
+        ],
+        'mpi': [
+            'mpi4py>=2.0.0'
         ]
     },
     zip_safe=False
