@@ -10,6 +10,7 @@ from .. import ra
 from ..exception import DataInvalid
 
 def FRET_efficiency(dists, r0, offset=0):
+    #Convert distance into FRET efficiency given a Forster radius (r0) and distance offset
     r06 = r0**6
     return r06 / (r06 + ((dists + offset)**6))
 
@@ -545,17 +546,12 @@ def sample_FE_probs(dist_distribution, states, R0):
     dists = []
     bin_width = dist_distribution[0][1,0] - dist_distribution[0][0,0]
     for state in states:
-        #Introduce a new random seed in each location otherwise pool with end up with the same seeds.
+        #Introduce a new random seed in each location
+        #otherwise pool with end up with the same seeds.
         np.random.seed()
         dist = np.random.choice(
             dist_distribution[state][:,0], p=dist_distribution[state][:,1])
         dist += (np.random.random()*bin_width) - (bin_width/2.)
-
-        #alternatively:
-        #rng=np.random.default_rng()
-        # dist = rng.choice(
-        #     dist_distribution[state][:,0], p=dist_distribution[state][:,1])
-        # dist += (rng.random()*bin_width) - (bin_width/2.)
 
         dists.append(dist)
     FEs = FRET_efficiency(np.array(dists), R0)
@@ -665,9 +661,8 @@ def convert_photon_times(inter_photon_times, lagtime, slowing_factor):
     conversion_factor=1000/(lagtime*slowing_factor)
 
     #Multiply experimental wait times by this to get MSM steps.
-    inter_photon_times*=conversion_factor
-    MSM_frames=np.array([np.cumsum(inter_photon_times[i], dtype=int) 
-        for i in range(len(inter_photon_times))])
+    MSM_frames=np.array([np.cumsum(np.multiply(inter_photon_times[i], conversion_factor), dtype=int)
+     for i in range(len(inter_photon_times))])
     return MSM_frames
 
 def make_distribution(probs, bin_edges):
