@@ -10,7 +10,7 @@ See the apps tab for more information.
 """
 # Author: Maxwell I. Zimmerman <mizimmer@wustl.edu>
 # Contributors: Justin J Miller <jjmiller@wustl.edu>
-# Contributors: Louis Smith!
+# Contributors: Louis Smith
 # All rights reserved.
 # Unauthorized copying of this file, via any medium, is strictly prohibited
 # Proprietary and confidential
@@ -40,8 +40,6 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 def process_command_line(argv):
-##Need to check whether these arguments are in fact parsed correctly, I took a first pass stab at this.
-##Better to make a flag that lets you stop after calculating FRET dye distributions?
     parser = argparse.ArgumentParser(
         prog='FRET',
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
@@ -72,11 +70,13 @@ def process_command_line(argv):
         '--resid_pairs', nargs="+", action='append', required=True, type=int,
         help="residues to model FRET dyes on. Pass 2 residue pairs, same numbering as"
              "in the topology file. Pass multiple times to model multiple residue pairs"
+             "Pass residues in the same order as you passed them for your dye_modeling" 
+             "as we use that to find the file"
              "e.g. --resid_pairs 1 5"
              "--resid_pairs 5 86")
     input_args.add_argument(
         '--FRET_dye_dists', required=True, action=readable_dir,
-        help="Path to FRET dye distributions")    
+        help="Path to FRET dye distributions (output of model_FRET_dyes.py")    
 
 
     # PARAMETERS
@@ -104,8 +104,6 @@ def process_command_line(argv):
         help="The location to write the FRET dye distributions.")
 
     args = parser.parse_args(argv[1:])
-    #Add error checkers?? None come to mind at the moment...
-    #Maybe notifications that user is falling back to defaults?
     return args
 
 
@@ -124,6 +122,8 @@ def main(argv=None):
     #Convert Photon arrival times into MSM steps.
     MSM_frames=dyes_from_expt_dist.convert_photon_times(cumulative_times, args.lagtime, args.slowing_factor)
 
+    logger.info(f"Using r0 of {args.R0}")
+    logger.info(f"Using slowing factor of {args.slowing_factor}")
     #Calculate the FRET efficiencies
     for n in np.arange(resSeq_pairs.shape[0]):
         logger.info(f"Calculating FRET Efficiences for residues {resSeq_pairs[n]}")
@@ -131,7 +131,10 @@ def main(argv=None):
         title = f'{resSeq_pairs[n,0]}_{resSeq_pairs[n,1]}'
         probs_file = f"{args.FRET_dye_dists}/probs_{title}.h5"
         bin_edges_file = f"{args.FRET_dye_dists}/bin_edges_{title}.h5"
+
+        logger.info(f"Loading probs file from {probs_file}")
         probs = ra.load(probs_file)
+        logger.info(f"Loading bins file from {bin_edges_file}")
         bin_edges = ra.load(bin_edges_file)
         dist_distribution = dyes_from_expt_dist.make_distribution(probs, bin_edges)
         FEs_sampling = dyes_from_expt_dist.sample_FRET_histograms(
@@ -141,7 +144,6 @@ def main(argv=None):
 
 
     logger.info(f"Success! Your FRET data can be found here: {args.FRET_output_dir}")
-    # print(json.dumps(args.__dict__,  output_folder+'FRET_inputs.json',indent=4))
 
 
 if __name__ == "__main__":
