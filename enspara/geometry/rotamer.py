@@ -53,8 +53,8 @@ def _rotamers(angles, hard_boundaries, buffer_width=15):
         contains the rotamer state assignment computed using the "angles"
         array.
 
-    See also
-    ---------
+    See Also
+    --------
     is_buffered_transition, get_gates
     """
     n_basins = len(hard_boundaries) - 1
@@ -125,8 +125,8 @@ def is_buffered_transition(cur_state, new_angle, hard_boundaries,
         buffer zone
 
 
-    See also:
-    ----------
+    See Also
+    --------
     _rotamers, get_gates
     """
 
@@ -182,8 +182,8 @@ def get_gates(cur_state, hard_boundaries, buffer_width):
     upper_bound : int
         Upper gate that must be crossed for a transition to occur
 
-    See also
-    ---------
+    See Also
+    --------
     _rotamers, is_buffered_transition
 
     """

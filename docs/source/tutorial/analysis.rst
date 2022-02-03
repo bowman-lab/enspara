@@ -17,7 +17,7 @@ First, let's load the representative centers from the clustering:
 
 The clustering application saves representative cluster centers as a pickle of
 mdtraj trajectory objects. In this case, they all have the same topology, so
-we can get away with ``md.join``ing them once pickle has loaded them. (Note,
+we can get away with using `md.join` once pickle has loaded them. (Note,
 though, that this can be pretty slow for large lists of trajectories.)
 
 Let's say we're interested in hydrogen bonding patterns in this protein. First,
@@ -124,6 +124,7 @@ entropy cost for its neighboring hydrogen bond to form.
 
 There are lots more things you can do with ``enspara``, including
 :doc:`transition path theory <../transition-path-theory>`,
+:doc:`exposons <../exposons>`,
 :doc:`CARDS <../cards>`, and
 :doc:`pocket detection <../pocket-detection>`, so make sure to explore our
 API documentation!
