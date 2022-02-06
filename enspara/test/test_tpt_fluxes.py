@@ -5,7 +5,8 @@ import scipy.sparse
 
 from numpy.testing import assert_array_equal, assert_array_almost_equal
 
-from ..tpt import committors, reactive_fluxes, mfpts
+from enspara import tpt
+from enspara.tpt import committors, reactive_fluxes, mfpts
 
 
 ARR_TYPES = [
@@ -153,9 +154,9 @@ def test_paths():
     res_subtract = tpt.paths(sources, sinks, net_flux, remove_path='subtract')
 
     for paths, fluxes in [res_bottle, res_subtract]:
-        npt.assert_array_almost_equal(fluxes, ref_fluxes)
+        assert_array_almost_equal(fluxes, ref_fluxes)
         assert len(paths) == len(ref_paths)
 
         for i in range(len(paths)):
-            npt.assert_array_equal(paths[i], ref_paths[i])
+            assert_array_equal(paths[i], ref_paths[i])
 # END absorbed block.
