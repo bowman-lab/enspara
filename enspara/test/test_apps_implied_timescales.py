@@ -35,8 +35,6 @@ def test_process_units():
         implied_timescales.process_units(infer_timestep=TRJ_PATH),
         (100, 'ns'))
 
-    print(get_fn('frame0.h5'))
-
     assert_equals(
         implied_timescales.process_units(infer_timestep=get_fn('frame0.h5')),
         (1000, 'ns'))
