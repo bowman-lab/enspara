@@ -149,7 +149,7 @@ def condense_sidechain_sasas(sasas, top):
                  'name HA or name H or name H1 or name H2 or name '
                  'H3 or name OXT)')
 
-    sc_ids = [top.select('resid %s and ( %s )' % (i, SELECTION))
+    sc_ids = [top.select(f'resid {i} and ( {SELECTION} )')
               for i in range(top.n_residues)]
 
     rsd_sasas = np.zeros((sasas.shape[0], len(sc_ids)), dtype='float32')
