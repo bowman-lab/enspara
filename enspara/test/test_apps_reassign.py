@@ -13,7 +13,7 @@ import mdtraj as md
 from nose.tools import assert_less, assert_equal, assert_is
 from numpy.testing import assert_array_equal, assert_allclose
 
-from ..util import array as ra
+from enspara import ra
 from ..apps import reassign
 
 from .util import get_fn

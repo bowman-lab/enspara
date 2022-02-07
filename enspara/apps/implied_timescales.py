@@ -13,7 +13,7 @@ from tables.exceptions import NoSuchNodeError
 
 from enspara import exception
 from enspara.msm import implied_timescales, builders
-from enspara.util import array as ra
+from enspara import ra
 
 
 def process_command_line(argv):

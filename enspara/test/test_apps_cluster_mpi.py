@@ -17,7 +17,7 @@ from numpy.testing import assert_array_equal, assert_allclose
 from ..import mpi
 from ..apps import cluster
 from ..cluster import util, kcenters
-from ..util import array as ra
+from enspara import ra
 
 from .util import fix_np_rng
 
