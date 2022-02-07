@@ -34,7 +34,8 @@ def test_mpi_max():
     endpt = 5 * (mpi.rank() + 2)
     expected_max = 14
     a = np.arange(endpt)
-    assert_equal(expected_max, mpi.ops.striped_array_max(a))
+    np.random.shuffle(a)
+    assert_equal(endpt-1, mpi.ops.striped_array_max(a))
 
     a = -np.arange(5 * (mpi.rank() + 1))
     assert_equal(0, mpi.ops.striped_array_max(a))
