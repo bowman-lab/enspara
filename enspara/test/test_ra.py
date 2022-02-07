@@ -40,7 +40,7 @@ class Test_RaggedArray(unittest.TestCase):
                             [1.1, 1.0, 0.9, 0.8]])
 
         assert_equals(len(a), 2)
-        assert_equals(a.dtype, np.float)
+        assert_equals(a.dtype, float)
         assert_array_equal(a.lengths, [3, 4])
         assert_array_equal(a.starts, [0, 3])
         assert_array_equal(
