@@ -124,6 +124,48 @@ def exposons_from_sasas(sasas, damping, weights, threshold):
     return sasa_mi, c.labels_
 
 
+def get_sidechain_atom_ids(top):
+    """Discover the atom IDs for atoms that are in sidechains.
+
+    Looks for atoms that are NOT named N, C, CA, O, HA, H, H1,
+    H2, H3 or OXT.
+
+    Parameters
+    ----------
+    top: md.Topology
+        Topology object that supplies names for each atom.
+
+    Returns
+    -------
+    sc_ids: list
+        List of np.ndarray objects, each containing the atom ids belonging
+        to each residue.
+    """
+
+    SELECTION = ('not (name N or name C or name CA or name O or '
+                 'name HA or name H or name H1 or name H2 or name '
+                 'H3 or name OXT)')
+
+    sc_ids = []
+    for i in range(top.n_residues):
+        sstr = f'resid {i} and {SELECTION}'
+        try:
+            ids = top.select(sstr)
+        except RecursionError:
+            print("Failed with RecursionError on residue index", i, "with querystring:")
+            print('"'+sstr+"'")
+            import pickle
+
+            with open('toppickle.top', 'wb') as f:
+                pickle.dump(top, f)
+
+            raise
+
+        sc_ids.append(ids)
+
+    return sc_ids
+
+
 @cite('exposons')
 def condense_sidechain_sasas(sasas, top):
     """Condense atomic SASAs into sidechain SASAs.
@@ -145,12 +187,7 @@ def condense_sidechain_sasas(sasas, top):
     assert top.n_residues > 1
     assert top.n_atoms == sasas.shape[1]
 
-    SELECTION = ('not (name N or name C or name CA or name O or '
-                 'name HA or name H or name H1 or name H2 or name '
-                 'H3 or name OXT)')
-
-    sc_ids = [top.select(f'resid {i} and ( {SELECTION} )')
-              for i in range(top.n_residues)]
+    sc_ids = get_sidechain_atom_ids(top)
 
     rsd_sasas = np.zeros((sasas.shape[0], len(sc_ids)), dtype='float32')
 
