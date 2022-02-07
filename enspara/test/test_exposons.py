@@ -18,7 +18,8 @@ def test_exposons_pipeline_weighting():
     unweighted_mi, unweighted_exp = exposons.exposons(
             repeat_trj, damping=0.9, threshold=1.0)
     weighted_mi, weighted_exp = exposons.exposons(
-            norepeat_trj, damping=0.9, threshold=1.0, weights=[2, 2, 2, 1, 1, 1])
+            norepeat_trj, damping=0.9, threshold=1.0,
+            weights=[2, 2, 2, 1, 1, 1])
 
     assert_allclose(unweighted_mi, weighted_mi, rtol=1e-14)
     assert_array_equal(weighted_exp, unweighted_exp)

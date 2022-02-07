@@ -50,7 +50,7 @@ install_requires = [
     'mdtraj>=1.7',
     'psutil>=5.2.2',
     'pandas',
-    'scikit-learn>=0.21.0',
+    'scikit-learn>=0.23.2',
     'scipy>=0.17'
 ]
 

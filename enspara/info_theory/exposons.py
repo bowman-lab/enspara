@@ -72,7 +72,10 @@ def exposons(trj, damping, weights=None, probe_radius=0.28, threshold=0.02):
     sasas = condense_sidechain_sasas(sasas, trj.top)
     sasa_mi = weighted_mi(sasas > threshold, weights)
 
-    c = AffinityPropagation(damping=damping)
+    # random state hard-coded as 0, since this was the behavior of
+    # scikit-learn at the time of exposons' publication. (It also
+    # makes the results deterministic.)
+    c = AffinityPropagation(damping=damping, random_state=0)
     c.fit(sasa_mi)
 
     return exposons_from_sasas(sasas, damping, weights, threshold)
@@ -114,11 +117,16 @@ def exposons_from_sasas(sasas, damping, weights, threshold):
 
     sasa_mi = weighted_mi(sasas > threshold, weights)
 
+    # random state hard-coded as 0, since this was the behavior of
+    # scikit-learn at the time of exposons' publication. (It also
+    # makes the results deterministic.)
     c = AffinityPropagation(
         damping=damping,
         affinity='precomputed',
         preference=0,
-        max_iter=10000)
+        max_iter=10000,
+        random_state=0
+    )
     c.fit(sasa_mi)
 
     return sasa_mi, c.labels_
