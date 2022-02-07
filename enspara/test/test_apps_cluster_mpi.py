@@ -166,7 +166,8 @@ def test_rmsd_kcenters_mpi_subsample():
                 '--cluster-number', '4',
                 '--subsample', str(SUBSAMPLE_FACTOR),
                 '--atoms', SELECTION,
-                '--algorithm', 'kcenters'],
+                '--algorithm', 'kcenters',
+                '--no-reassign'],
                 expected_size=expected_size,
                 expect_reassignment=False)
 
@@ -217,7 +218,7 @@ def test_rmsd_khybrid_mpi_basic():
     trj = md.load(TRJFILE, top=TOPFILE)
     trj_sele = trj.atom_slice(trj.top.select(SELECTION))
 
-    expected_s = md.join([trj[i[1]] for i in idx])
+    # expected_s = md.join([trj[i[1]] for i in idx])
     expected_i = [[0, 0],
                   [0, 55],
                   [1, 102],
@@ -263,7 +264,8 @@ def test_rmsd_khybrid_mpi_subsample():
                 '--cluster-radius', '0.1',
                 '--subsample', str(SUBSAMPLE_FACTOR),
                 '--atoms', SELECTION,
-                '--algorithm', 'khybrid'],
+                '--algorithm', 'khybrid',
+                '--no-reassign'],
                 expected_size=expected_size,
                 expect_reassignment=False)
 

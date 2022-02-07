@@ -93,7 +93,7 @@ cython_extensions = [
 
 setup(
     name='enspara',
-    packages=find_packages(exclude=["tests"],),
+    packages=find_packages(),
     version=__version__,
     project_urls={
         'Documentation': 'https://enspara.readthedocs.io',
