@@ -78,12 +78,10 @@ def process_command_line(argv):
         '--FRETdye2', required=False,
         default=os.path.dirname(inspect.getfile(ra)) + '/../data/dyes/AF594.pdb',
         help="Path to point cloud of FRET dye pair 2")
-
-    # Model Dyes OUTPUT
-    model_dyes_output_args = model_dyes_parser.add_argument_group("Output Settings")
-    model_dyes_output_args.add_argument(
+    model_parameter_args.add_argument(
         '--output_dir', required=False, action=readable_dir, default='./',
         help="The location to write the FRET dye distributions.")
+
 
     ###########################
     ### Calc_FRET subparser ###
@@ -136,12 +134,10 @@ def process_command_line(argv):
     fret_parameters.add_argument(
         '--slowing_factor', required=False, type=int, default=1,
         help="factor to slow your trajectories by")
-
-    # Calc FRET OUTPUT
-    fret_output_args = parser.add_argument_group("Output Settings")
-    fret_output_args.add_argument(
+    fret_parameters.add_argument(
         '--output_dir', required=False, action=readable_dir, default='./',
         help="The location to write the FRET dye distributions.")
+
 
     ##########################
     ### Fit_FRET subparser ###
@@ -175,12 +171,10 @@ def process_command_line(argv):
         choices=['True', 'False'],
         help="Return the minimum for a global fit?"
              "Won't work if you have different times calculated for each dye pair")
-
-    # Fit FRET OUTPUT
-    fit_FRET_output_args = fit_fret_parser.add_argument_group("Output Settings")
-    fit_FRET_output_args.add_argument(
+    fit_FRET_parameters.add_argument(
         '--output_dir', required=False, action=readable_dir, default='./',
         help="The location to write the residuals.")
+
 
     args = parser.parse_args(argv[1:])
     return args
@@ -193,6 +187,7 @@ def main(argv=None):
     for i, arg in enumerate(argv):
         # Provide helpful output to remind users their input
         print(i, arg)
+    print()
 
         # Make an output directory
     if args.output_dir != './':
@@ -209,8 +204,7 @@ def main(argv=None):
         dye1 = dyes_from_expt_dist.load_dye(args.FRETdye1)
         dye2 = dyes_from_expt_dist.load_dye(args.FRETdye2)
 
-        conf_file=np.loadtxt(args.resid_pairs)
-        resSeq_pairs = np.loadtxt(args.resid_pairs)
+        resSeq_pairs = np.loadtxt(args.resid_pairs, dtype=int)
 
         logger.info(f"Calculating dye distance distribution using dyes: {args.FRETdye1}")
         logger.info(f"and {args.FRETdye2}")
@@ -231,7 +225,7 @@ def main(argv=None):
         logger.info(f"Loaded t_probs from {args.t_probs}")
         populations = np.load(args.eq_probs)
         logger.info(f"Loaded eq_probs from {args.eq_probs}")
-        resSeq_pairs = np.loadtxt(args.resid_pairs)
+        resSeq_pairs = np.loadtxt(args.resid_pairs, dtype=int)
         cumulative_times = np.load(args.photon_times, allow_pickle=True)
 
         # Convert Photon arrival times into MSM steps.
