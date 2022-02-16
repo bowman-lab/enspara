@@ -255,7 +255,7 @@ def main(argv=None):
 
     elif args.command == 'fit_FRET':
         # Process the conf file
-        conf_file=np.loadtxt(args.fit_conf_file)
+        conf_file=np.loadtxt(args.fit_conf_file, dtype=str)
         expt_histogram_paths = conf_file[:, 0]
         predicted_histogram_paths = conf_file[:, 1]
 
@@ -292,7 +292,7 @@ def main(argv=None):
             expt_counts = np.loadtxt(f"{expt_histogram_paths[i]}")
             expt_probs = expt_counts[:, 1] / np.sum(expt_counts[:, 1])
             # Histogram the predicted FRET efficiencies according to experimental bins
-            predicted_histos = histogram_to_match_expt(predicted_FRET_histos[:, :, 0], expt_counts)
+            predicted_histos = dyes_from_expt_dist.histogram_to_match_expt(predicted_FRET_histos[:, :, 0], expt_counts)
 
             if args.method == 'sum_sq_residuals':
                 difference_array.append(Sum_sq_resid(expt_probs, predicted_histos))
@@ -300,14 +300,14 @@ def main(argv=None):
                 KL_divergence = [entropy(predicted_histos[i], expt_probs) for i in range(len(predicted_histos))]
                 difference_array.append(KL_divergence)
             elif args.method == '4_moments':
-                expt_moments = calc_4_moments(expt_probs)
-                pred_moments = calc_4_moments(predicted_histos)
-                diff = normalize_array((expt_moments - pred_moments) ** 2)
+                expt_moments = dyes_from_expt_dist.calc_4_moments(expt_probs)
+                pred_moments = dyes_from_expt_dist.calc_4_moments(predicted_histos)
+                diff = dyes_from_expt_dist.normalize_array((expt_moments - pred_moments) ** 2)
                 difference_array.append(np.sum(diff, axis=0))
             elif args.method == '2_3_4_moments':
-                expt_moments = calc_2_3_4_moments(expt_probs)
-                pred_moments = calc_2_3_4_moments(predicted_histos)
-                diff = normalize_array((expt_moments - pred_moments) ** 2)
+                expt_moments = dyes_from_expt_dist.calc_2_3_4_moments(expt_probs)
+                pred_moments = dyes_from_expt_dist.calc_2_3_4_moments(predicted_histos)
+                diff = dyes_from_expt_dist.normalize_array((expt_moments - pred_moments) ** 2)
                 difference_array.append(np.sum(diff, axis=0))
             print(
                 f"Minimum difference between experiment and prediction for {label_pair}"
@@ -315,12 +315,12 @@ def main(argv=None):
             output_array = np.vstack((np.array(time_scales), difference_array[i])).T
             np.save(f'{args.output_dir}/{label_pair}_{args.method}.npy', output_array)
             print("")
-        if args.Global_fit == True:
+        if args.Global_fit == 'True':
             # Calculate Global Minimums
             print("----Global Minimization----")
             difference_array = np.array(difference_array)
             abs_diff = np.sum(difference_array, axis=0)
-            normd_diff = np.sum(normalize_array(difference_array), axis=0)
+            normd_diff = np.sum(dyes_from_expt_dist.normalize_array(difference_array), axis=0)
             print(
                 f"Minimum across all dye pairs, normalizing dye-pair differences"
                 f" is at time factor: {time_scales[np.argmin(normd_diff)]}.")
