@@ -732,7 +732,6 @@ def calc_4_moments(histo_data):
         data_kurtosis=kurtosis(histo_data, axis=1, fisher=True)
         moments=np.vstack((data_mean,data_std,data_skew,data_kurtosis))
     return moments
-        #Should never reach this..
     
 def calc_2_3_4_moments(histo_data):
     #Calculates the 4 moments of a histogram
@@ -748,4 +747,3 @@ def calc_2_3_4_moments(histo_data):
         data_kurtosis=kurtosis(histo_data, axis=1, fisher=True)
         moments=np.vstack((data_std,data_skew,data_kurtosis))
     return moments
-        #Should never reach this..
