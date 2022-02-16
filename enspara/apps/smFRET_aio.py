@@ -127,7 +127,7 @@ def process_command_line(argv):
         help="Number of cores to use for parallel processing. "
              "Generally parallel over number of frames in supplied trajectory/MSM state")
     fret_parameters.add_argument(
-        '--n_chunks', required=False, type=int, default=0,
+        '--n_chunks', required=False, type=int, default=2,
         help="Enables you to assess intraburst variation. "
              "How many chunks would you like a given burst broken into?")
     fret_parameters.add_argument(
