@@ -249,9 +249,9 @@ def main(argv=None):
             FEs_sampling = dyes_from_expt_dist.sample_FRET_histograms(
                 T=t_probabilities, populations=populations, dist_distribution=dist_distribution,
                 MSM_frames=MSM_frames, R0=args.R0, n_procs=args.n_procs, n_photon_std=args.n_chunks)
-            np.save(f"{args.outputdir}/FRET_E_{title}_time_factor_{args.slowing_factor}.npy", FEs_sampling)
+            np.save(f"{args.output_dir}/FRET_E_{title}_time_factor_{args.slowing_factor}.npy", FEs_sampling)
 
-        logger.info(f"Success! Your FRET data can be found here: {args.outputdir}")
+        logger.info(f"Success! Your FRET data can be found here: {args.output_dir}")
 
     elif args.command == 'fit_FRET':
         # Process the conf file
@@ -259,7 +259,7 @@ def main(argv=None):
         expt_histogram_paths = conf_file[:, 0]
         predicted_histogram_paths = conf_file[:, 1]
 
-        labelpairs = np.loadtxt(args.resid_pairs)
+        labelpairs = np.loadtxt(args.resid_pairs, dtype=int)
 
         # Initialize a storage array
         difference_array = []
