@@ -59,11 +59,10 @@ def process_command_line(argv):
         'topology',
         help="topology file for supplied trajectory")
     model_input_args.add_argument(
-        '--resid_pairs', nargs="+", action='append', required=True, type=int,
-        help="residues to model FRET dyes on. Pass 2 residue pairs, same numbering as"
-             "in the topology file. Pass multiple times to model multiple residue pairs"
-             "e.g. --resid_pairs 1 5"
-             "--resid_pairs 5 86")
+        'resid_pairs',
+        help="Path to whitespace delimited file that is a list of residues to label. Pass in "
+             "pairs of residues with the same numbering as in the topology file."
+             "Pass multiple lines to model multiple residue pairs")
 
     # Model Dyes PARAMETERS
     model_parameter_args = model_dyes_parser.add_argument_group("Parameters")
@@ -116,13 +115,10 @@ def process_command_line(argv):
         'FRET_dye_dists', action=readable_dir,
         help="Path to FRET dye distributions (output of model_dyes)")
     fret_input_args.add_argument(
-        '--resid_pairs', nargs="+", action='append', required=True, type=int,
-        help="residues to model FRET dyes on. Pass 2 residue numbers, same numbering as "
-             "in the topology file. Pass multiple times to model multiple residue pairs "
-             "Pass residues in the same order as you passed them for your dye_modeling "
-             "as we use that to find the file."
-             "e.g. --resid_pairs 1 5"
-             "--resid_pairs 5 86")
+        'resid_pairs',
+        help="Path to whitespace delimited file that is a list of residues to label. Pass in "
+             "pairs of residues with the same numbering as in the topology file."
+             "Pass multiple lines to model multiple residue pairs")
 
     # Calc FRET PARAMETERS
     fret_parameters = calc_fret_parser.add_argument_group("Parameters")
@@ -159,7 +155,12 @@ def process_command_line(argv):
         'fit_conf_file',
         help="Whitespace delimited configuration file for Fit_FRET"
              "Col 1: path to experimental histograms, Col 2: path to output of calc_fret"
-             "Col 3: dye residue #1, Col4: dye residue #2")
+             "Repeat for each dye pair in residue file")
+    fit_FRET_input_args.add_argument(
+        'resid_pairs',
+        help="Path to whitespace delimited file that is a list of residues to label. Pass in "
+             "pairs of residues with the same numbering as in the topology file."
+             "Pass multiple lines to model multiple residue pairs")        
 
     # Fit FRET PARAMETERS
     fit_FRET_parameters = fit_fret_parser.add_argument_group("Parameters")
@@ -204,7 +205,8 @@ def main(argv=None):
         dye1 = dyes_from_expt_dist.load_dye(args.FRETdye1)
         dye2 = dyes_from_expt_dist.load_dye(args.FRETdye2)
 
-        resSeq_pairs = np.array(args.resid_pairs)
+        conf_file=np.loadtxt(args.resid_pairs)
+        resSeq_pairs = np.loadtxt(args.resid_pairs)
 
         logger.info(f"Calculating dye distance distribution using dyes: {args.FRETdye1}")
         logger.info(f"and {args.FRETdye2}")
@@ -225,7 +227,7 @@ def main(argv=None):
         logger.info(f"Loaded t_probs from {args.t_probs}")
         populations = np.load(args.eq_probs)
         logger.info(f"Loaded eq_probs from {args.eq_probs}")
-        resSeq_pairs = np.array(args.resid_pairs)
+        resSeq_pairs = np.loadtxt(args.resid_pairs)
         cumulative_times = np.load(args.photon_times, allow_pickle=True)
 
         # Convert Photon arrival times into MSM steps.
@@ -255,10 +257,11 @@ def main(argv=None):
 
     elif args.command == 'fit_FRET':
         # Process the conf file
-        expt_histogram_paths = args.fit_conf_file[:, 0]
-        predicted_histogram_paths = args.fit_conf_file[:, 1]
-        # Need to vstack with transpose to correctly order residue pairs, also convert to int
-        labelpairs = np.vstack((args.fit_conf_file[:, 2], args.fit_conf_file[:, 3])).astype(int).T
+        conf_file=np.loadtxt(args.fit_conf_file)
+        expt_histogram_paths = conf_file[:, 0]
+        predicted_histogram_paths = conf_file[:, 1]
+
+        labelpairs = np.loadtxt(args.resid_pairs)
 
         # Initialize a storage array
         difference_array = []
