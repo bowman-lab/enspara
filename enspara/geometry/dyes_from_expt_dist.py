@@ -8,6 +8,7 @@ from multiprocessing import Pool
 from ..msm.synthetic_data import synthetic_trajectory
 from .. import ra
 from ..exception import DataInvalid
+from scipy.stats import kurtosis, entropy, skew
 
 def FRET_efficiency(dists, r0, offset=0):
     #Convert distance into FRET efficiency given a Forster radius (r0) and distance offset
@@ -682,3 +683,69 @@ def int_norm_hist(xs, ys):
     dx = xs[1:] - xs[:-1]
     I = np.sum(heights*dx)
     return ys/I
+
+def histogram_to_match_expt(pred_data, expt_data):
+    #Histograms and normalizes a predicted 1D np array
+    #To match the experimental histogramming
+    bin_centers=expt_data[:,0]
+    bin_width=bin_centers[1]-bin_centers[0]
+    lower_range=bin_centers[0]-(bin_width/2)
+    upper_range=bin_centers[-1]+(bin_width/2)
+    nbins=len(bin_centers)
+    if np.ndim(pred_data)==1:
+        counts, bin_edges = np.histogram(pred_data, range=[lower_range, upper_range], bins=nbins)
+        probs=counts/counts.sum()
+    else:
+        probs=[]
+        for i in range(len(pred_data)):
+            temp_counts,bins=np.histogram(pred_data[i],range=[lower_range, upper_range], bins=nbins)
+            probs.append(temp_counts/temp_counts.sum())
+        probs=np.array(probs)
+    return probs
+
+def Sum_sq_resid(expt_data, pred_data):
+    RSS=np.sum((pred_data-expt_data)**2, axis=1)
+    return RSS
+
+def normalize_array(array):
+    if np.ndim(array)==1:
+        norm_array=(array-np.amin(array))/(np.amax(array)-np.amin(array))
+    else:
+        norm_array=[]
+        for i in range(len(array)):
+            norm_array.append((array[i]-np.amin(array[i]))/(np.amax(array[i])-np.amin(array[i])))
+    return norm_array
+
+def calc_4_moments(histo_data):
+    #Calculates the 4 moments of a histogram
+    #Works on 1D or 2D arrays, for 2D calculates on axis=1
+    if np.ndim(histo_data)==1:
+        data_mean=np.mean(histo_data)
+        data_std=np.std(histo_data)
+        data_skew=skew(histo_data)
+        data_kurtosis=kurtosis(histo_data, fisher=True)
+        moments=np.vstack((data_mean,data_std,data_skew,data_kurtosis))
+    else:
+        data_mean=np.mean(histo_data, axis=1)
+        data_std=np.std(histo_data, axis=1)
+        data_skew=skew(histo_data, axis=1)
+        data_kurtosis=kurtosis(histo_data, axis=1, fisher=True)
+        moments=np.vstack((data_mean,data_std,data_skew,data_kurtosis))
+    return moments
+        #Should never reach this..
+    
+def calc_2_3_4_moments(histo_data):
+    #Calculates the 4 moments of a histogram
+    #Works on 1D or 2D arrays, for 2D calculates on axis=1
+    if np.ndim(histo_data)==1:
+        data_std=np.std(histo_data)
+        data_skew=skew(histo_data)
+        data_kurtosis=kurtosis(histo_data, fisher=True)
+        moments=np.vstack((data_std,data_skew,data_kurtosis))
+    else:
+        data_std=np.std(histo_data, axis=1)
+        data_skew=skew(histo_data, axis=1)
+        data_kurtosis=kurtosis(histo_data, axis=1, fisher=True)
+        moments=np.vstack((data_std,data_skew,data_kurtosis))
+    return moments
+        #Should never reach this..
