@@ -1,11 +1,15 @@
+import time
 import logging
 
 import numpy as np
 
+from sklearn.base import BaseEstimator, ClusterMixin
 from sklearn.utils import check_random_state
+from enspara.ra import ra
 
 from .. import mpi
 from .. import exception
+from ..exception import ImproperlyConfigured
 
 from ..util.log import timed
 
@@ -14,7 +18,87 @@ from . import util
 logger = logging.getLogger(__name__)
 
 
-def kmedoids(X, distance_method, n_clusters, n_iters=5):
+class KMedoids(BaseEstimator, ClusterMixin, util.MolecularClusterMixin):
+    """SKlearn-style object for kmedoids clustering.
+
+    K-Medoids is a clustering algorithm similar to the k-means algorithm
+    but the center of each cluster is required to actually be an
+    observation in the input data.
+
+    Parameters
+    ----------
+    metric : required
+        Distance metric used while comparing data points.
+    n_clusters : int, default=None
+        The number of clusters to build using kmedoids. Only used if kmedoids
+        is run without initial assignments, distances, or cluster_center_inds.
+    n_iters : int, default=5
+        Number of rounds of new proposed centers to run.
+
+    Returns
+    -------
+    result : ClusterResult
+        Subclass of NamedTuple containing assignments, distances,
+        and center indices for this function.
+    """
+
+    def __init__(
+            self, metric, n_clusters=None, n_iters=5):
+        
+        self.metric = util._get_distance_method(metric)
+
+        self.n_clusters = n_clusters
+        self.n_iters = n_iters
+
+    def fit(self, X, assignments=None, distances=None,
+            cluster_center_inds=None, X_lengths=None):
+        """Takes trajectories, X, and performs KMedoids clustering.
+        Automatically determines whether or not to use the MPI version of this
+        algorithm. Can start from scratch or perform a warm start using inital
+        assignments, distances, and cluster_center_inds. In mpi mode, the warm
+        start requires initial assignments, distances, and cluster centers to be
+        supplied. If not in mpi mode, can start with either just
+        cluster_center_inds, or just assignments and distances, or all.
+
+        Parameters
+        ----------
+        X : array-like, shape=(n_observations, n_features(, n_atoms))
+            Data to cluster. In mpi mode, the user is responible for
+            pre-partitioning this data across nodes.
+        cluster_center_inds : 
+            list, [(global_traj_id, frame_id), ...] or [index, ...], default=None
+            A list of the locations of center indices with respect to all data
+            not just the data on a single MPI rank.
+        assignments : ndarray, shape=(X.shape[0],), default=None
+            Array indicating the assignment of each frame in `X` to a
+            cluster center.
+        distances : ndarray, shape=(X.shape[0],), default=None
+            Array giving the distance between this observation/frame and the
+            relevant cluster center.
+        X_lengths : list, [traj1_length, traj2_length, ...], default=None
+            List of the lengths of all trajectories with respect to all data
+            not just the data on a single MPI rank.
+        """
+
+        t0 = time.clock()
+
+        self.result_ = kmedoids(
+            X,
+            distance_method=self.metric,
+            n_clusters=self.n_clusters,
+            n_iters=self.n_iters,
+            assignments=assignments,
+            distances=distances,
+            cluster_center_inds=cluster_center_inds,
+            X_lengths=X_lengths)
+
+        self.runtime_ = time.clock() - t0
+        return self
+
+
+def kmedoids(X, distance_method, n_clusters=None, n_iters=5, assignments=None,
+             distances=None, cluster_center_inds=None, proposals=None,
+             X_lengths=None):
     """K-Medoids clustering.
 
     K-Medoids is a clustering algorithm similar to the k-means algorithm
@@ -29,14 +113,27 @@ def kmedoids(X, distance_method, n_clusters, n_iters=5):
     distance_method : callable
         Function that takes a parameter like `X` and a single frame
         of `X` (_i.e._ X.shape[1:]).
-    cluster_center_inds : list, [(owner_rank, world_index), ...]
-        A list of the locations of center indices in terms of the rank
-        of the node that owns them and the index within that world.
-    assignments : ndarray, shape=(X.shape[0],)
-        Array indicating the assignment of each frame in `X` to a
-        cluster center.
+    n_clusters : int, default=None
+        Number of kmedoids clusters. Only used if cluster_center_inds are
+        not supplied / can't be inferred from assignments and distances.
     n_iters : int, default=5
         Number of rounds of new proposed centers to run.
+    assignments : ndarray, shape=(X.shape[0],), default=None
+        Array indicating the assignment of each frame in `X` to a
+        cluster center.
+    distances : ndarray, shape=(X.shape[0],), default=None
+        Array giving the distance between this observation/frame and the
+        relevant cluster center.
+    cluster_center_inds :
+        list, [[global_traj_id, frame_id], ...] or [index, ...], default=None
+        A list of the locations of center indices with respect to all data
+        not just the data on a single MPI rank.
+    proposals : array-like, default=None
+        If specified, this list is a list of indices to propose as a
+        center (rather than choosing randomly).
+    X_lengths : list, [traj1_length, traj2_length, ...], default=None
+        List of the lengths of all trajectories with respect to all data
+        not just the data on a single MPI rank.
 
     Returns
     -------
@@ -45,25 +142,289 @@ def kmedoids(X, distance_method, n_clusters, n_iters=5):
         and center indices for this function.
     """
 
+    if cluster_center_inds is not None:
+        if hasattr(cluster_center_inds[0], '__len__') and X_lengths==None:
+            raise ImproperlyConfigured(
+            "If cluster_center_inds is given as [[global_traj_id, frame_id],...]"
+            "then X_lengths also needs to be supplied")
+
+    if cluster_center_inds is None and n_clusters is None:
+        if mpi.size() > 1:
+            raise ImproperlyConfigured(
+            "Must provide n_clusters or cluster_center_inds, assignments,"
+            "and distances for KMedoids in MPI mode.")
+        elif assignments is None and distances is None:
+            raise ImproperlyConfigured(
+            "Must provide n_clusters or cluster_center_inds or "
+            " (assignments and distances) for KMedoids")
+
     distance_method = util._get_distance_method(distance_method)
 
     n_frames = len(X)
 
-    # for short lists, np.random.random_integers sometimes forgets to assign
-    # something to each cluster. This will simply repeat the assignments if
-    # that is the case.
-    cluster_center_inds = np.array([])
-    while len(np.unique(cluster_center_inds)) < n_clusters:
-        cluster_center_inds = np.random.randint(0, n_frames, n_clusters)
+    if mpi.size() > 1:
+        assignments, distances, cluster_center_inds = \
+         _kmedoids_inputs_tree_mpi(X, distance_method, n_clusters, assignments,
+                               distances, cluster_center_inds, X_lengths) 
+        
+        #Check that the cluster_center_inds on this ranks corresponed to
+        # distances with value 0.
+        local_ctr_inds = [pair[1] for pair in cluster_center_inds \
+                          if pair[0] == mpi.rank()]
+        assert np.all(distances[local_ctr_inds] < 0.001)
 
-    assignments, distances = util.assign_to_nearest_center(
-        X, X[cluster_center_inds], distance_method)
-    cluster_center_inds = util.find_cluster_centers(assignments, distances)
+    else:
+        assignments, distances, cluster_center_inds = \
+            _kmedoids_inputs_tree(X, distance_method, n_clusters, assignments,
+                                  distances, cluster_center_inds, X_lengths)
+        ctr_ids = util.find_cluster_centers(assignments, distances)
+        
+        #Should be all 0s, but machine precision issues means they might
+        # be very close to 0 but not eactly 0.
+        assert np.all(distances[cluster_center_inds] < 0.001)
+
+    return _kmedoids_iterations(
+               X, distance_method, n_iters, cluster_center_inds,
+               assignments, distances, proposals=proposals)
+
+def _kmedoids_inputs_tree_mpi(X, distance_method, n_clusters, assignments,
+                              distances, cluster_center_inds, X_lengths):
+    """Helper function to process K-Medoids clustering inputs in mpi mode.
+
+    Parameters
+    ----------
+    X : array-like, shape=(n_observations, n_features, ``*``)
+        Data to cluster. The user is responsible for pre-partitioning
+        this data across nodes.
+    distance_method : callable
+        Function that takes a parameter like `X` and a single frame
+        of `X` (_i.e._ X.shape[1:]).
+    n_clusters : int
+        Number of kmedoids clusters. Only used if cluster_center_inds are
+        not supplied / can't be inferred from assignments and distances.
+    assignments : ndarray, shape=(X.shape[0],)
+        Array indicating the assignment of each frame in `X` to a
+        cluster center.
+    distances : ndarray, shape=(X.shape[0],)
+        Array giving the distance between this observation/frame and the
+        relevant cluster center.
+    cluster_center_inds :
+        list, [(global_traj_id, frame_id), ...] or [index, ...]
+        A list of the locations of center indices with respect to all data
+        not just the data on a single MPI rank.
+    X_lengths : list, [traj1_length, traj2_length, ...]
+        List of the lengths of all trajectories with respect to all data
+        not just the data on a single MPI rank.
+
+    Returns
+    -------
+    assignments : ndarray, shape=(X.shape[0],)
+        Array indicating the assignment of each frame in `X` to a
+        cluster center.
+    distances : ndarray, shape=(X.shape[0],)
+        Array giving the distance between this observation/frame and the
+        relevant cluster center.
+    cluster_center_inds : list, [(owner_rank, world_index), ...]
+        A list of the locations of center indices in terms of the rank
+        of the node that owns them and the index within that world.
+    """
+   
+    # If we're not given warm start, we need to randomly generate
+    # cluster_center_inds by communicating across ranks. Then, we
+    # can obtain center coordinates and calculate assignments and distances
+    # on each rank
+    if (cluster_center_inds is None and distances is None
+       and assignments is None):
+
+        for i in range(n_clusters):
+            r, idx = mpi.ops.randind(np.arange(X), check_random_state(None))
+            cluster_center_inds.append((r, idx))
+        
+        medoid_coords = []
+        assert len(cluster_center_inds[0]) == 2
+        for center_idx, (rank, frame_idx) in enumerate(cluster_center_inds):
+            assert rank < mpi.size()
+            new_center = mpi.ops.distribute_frame(
+                data=X, owner_rank=rank, world_index=frame_idx)
+            medoid_coords.append(new_center)
+
+        assignments, distances = util.assign_to_nearest_center(
+                X, medoid_coords, distance_method)
+        
+    # If we are given a warm start, we have to translate cluster_center_inds
+    # into the form that is appropriate for MPI communication
+    elif (cluster_center_inds is not None and distances is not None
+         and assignments is not None):
+        cluster_center_inds = ctr_ids_mpi(cluster_center_inds, X_lengths)
+
+    else:
+        raise ImproperlyConfigured(
+            "For KMedoids, MPI mode can start from scratch without "
+            "assignments, distances, or cluster_center_inds. "
+            "Or, it requires that all are supplied.")
+    
+    return assignments, distances, cluster_center_inds
+
+def _kmedoids_inputs_tree(
+        X, distance_method, n_clusters, assignments, distances,
+        cluster_center_inds, X_lengths):
+    """Helper function to process K-Medoids clustering inputs in mpi mode.
+
+    Parameters
+    ----------
+    X : array-like, shape=(n_observations, n_features, ``*``)
+        Data to cluster. The user is responsible for pre-partitioning
+        this data across nodes.
+    distance_method : callable
+        Function that takes a parameter like `X` and a single frame
+        of `X` (_i.e._ X.shape[1:]).
+    n_clusters : int
+        Number of kmedoids clusters. Only used if cluster_center_inds are
+        not supplied / can't be inferred from assignments and distances.
+    assignments : ndarray, shape=(X.shape[0],)
+        Array indicating the assignment of each frame in `X` to a
+        cluster center.
+    distances : ndarray, shape=(X.shape[0],)
+        Array giving the distance between this observation/frame and the
+        relevant cluster center.
+    cluster_center_inds :
+        list, [(global_traj_id, frame_id), ...] or [index, ...]
+        A list of the locations of center indices with respect to all data
+        not just the data on a single MPI rank.
+    X_lengths : list, [traj1_length, traj2_length, ...]
+        List of the lengths of all trajectories with respect to all data
+        not just the data on a single MPI rank.
+
+    Returns
+    -------
+    assignments : ndarray, shape=(X.shape[0],)
+        Array indicating the assignment of each frame in `X` to a
+        cluster center.
+    distances : ndarray, shape=(X.shape[0],)
+        Array giving the distance between this observation/frame and the
+        relevant cluster center.
+    cluster_center_inds : list, [index, ...]
+        A list of the locations of center indices.
+    """
+
+    if ((assignments is not None and distances is None) or 
+        (assignments is None and distances is not None)):
+        raise ImproperlyConfigured(
+            "Assignments and distances need to both be supplied, "
+            "or neither supplied.")
+
+    # If no cluster center indices were given, we need to infer them
+    # from assignments and distances, or randomly generate them
+    if cluster_center_inds is None:
+        if assignments is not None and distances is not None:
+            cluster_center_inds = \
+                util.find_cluster_centers(assignments,distances)
+        else:
+            # for short lists, np.random.random_integers sometimes forgets
+            # to assign something to each cluster. This will simply repeat
+            # the assignments if that is the case.
+            cluster_center_inds = np.array([])
+            while len(np.unique(cluster_center_inds)) < n_clusters:
+                cluster_center_inds = \
+                    np.random.randint(0,len(X),n_clusters)
+    
+    # If cluster_center_inds is given as [(trj id, frame id), ...]
+    elif hasattr(cluster_center_inds[0], '__len__'):
+        cluster_center_inds = [sum(X_lengths[:cluster_center_inds[i][0]]) \
+                               + cluster_center_inds[i][1] for i in \
+                               np.arange(len(cluster_center_inds))] 
+
+    # Now we need to make sure we have assignments and distances
+    if assignments is None and distances is None:
+        assignments, distances = util.assign_to_nearest_center(
+                X, X[cluster_center_inds], distance_method)
+
+    return assignments, distances, cluster_center_inds
+
+def ctr_ids_mpi(cluster_center_inds, lengths):
+    """Map cluster_center_inds to MPI compatible format
+   
+    Parameters
+    ----------
+    cluster_center_inds :
+        list, [(global_traj_id, frame_id), ...] or [index, ...]
+        A list of the locations of center indices with respect to all data
+        not just the data on a single MPI rank.
+    X_lengths : list, [traj1_length, traj2_length, ...]
+        List of the lengths of all trajectories with respect to all data
+        not just the data on a single MPI rank.
+
+    Returns
+    -------
+    updated_ctr_inds : list, [(rank, index), ...]
+        List of cluster center indices in format expected for MPI mode.
+"""
+
+    num_procs = mpi.size()
+    updated_ctr_inds = []
+    global_inds = ra.RaggedArray(np.arange(sum(lengths)),lengths=lengths)
+
+    if not hasattr(cluster_center_inds[0], '__len__'):
+        # Convert from [global_frame_ind, ...] to 
+        # [[global_traj_id, local_frame_id],...]
+        cluster_center_inds = [[np.where(global_inds == c)[0][0], \
+                           np.where(global_inds == c)[1][0]] for c in \
+                           cluster_center_inds]
+
+    # Converting from [[global_traj_id, local_frame_id],...] to 
+    # [(mpi_rank, local_frame_ind), ...]
+    for pair in cluster_center_inds:
+        global_traj_id, frame_id = pair
+        mpi_rank = global_traj_id % num_procs
+        trajs_owned = global_inds[np.arange(len(lengths))[mpi_rank::num_procs]]
+        trajs_owned_local_inds = \
+            ra.RaggedArray(np.arange(sum(trajs_owned.lengths)),
+                           lengths=trajs_owned.lengths)
+        local_trj_id = int(global_traj_id/num_procs)
+        concat_idx = trajs_owned_local_inds[local_trj_id][frame_id]
+        updated_ctr_inds.append((mpi_rank,concat_idx))
+
+    return updated_ctr_inds
+
+def _kmedoids_iterations(
+        X, distance_method, n_iters, cluster_center_inds,
+        assignments, distances, proposals=None):
+    """Inner loop performing kmedoids updates.
+
+    Parameters
+    ----------
+    X : array-like, shape=(n_observations, n_features, *)
+        Data to cluster. The user is responsible for pre-partitioning
+        this data across nodes.
+    disance_method : callable
+        Function that takes a parameter like `X` and a single frame
+        of `X` (_i.e._ X.shape[1:]).
+    n_iters : int
+        Number of rounds of new proposed centers to run.
+    cluster_center_inds : list, [(rank, index), ...] if MPI or [index, ...]
+        A list of the locations of center indices in terms of the rank
+        of the node that owns them and the index within that world.
+    assignments : ndarray, shape=(X.shape[0],)
+        Array indicating the assignment of each frame in `X` to a
+        cluster center.
+    distances : ndarray, shape=(X.shape[0],)
+        Array giving the distance between this observation/frame and the
+        relevant cluster center.
+    proposals : array-like, default=None
+        If specified, this list is a list of indices to propose as a
+        center (rather than choosing randomly).
+
+    Returns
+    -------
+    result : ClusterResult
+        Subclass of NamedTuple containing assignments, distances,
+        and center indices for this function.
+    """
 
     for i in range(n_iters):
         cluster_center_inds, distances, assignments, centers = \
             _kmedoids_pam_update(X, distance_method, cluster_center_inds,
-                                 assignments, distances)
+                                 assignments, distances, proposals=proposals)
         logger.info("KMedoids update %s", i)
 
     return util.ClusterResult(
@@ -71,7 +432,6 @@ def kmedoids(X, distance_method, n_clusters, n_iters=5):
         assignments=assignments,
         distances=distances,
         centers=centers)
-
 
 def _msq(x):
     return mpi.ops.striped_array_mean(np.square(x))
@@ -271,6 +631,7 @@ def _kmedoids_pam_update(
         assert np.all(new_assig >= 0)
         assert np.all(new_dist >= 0)
 
+        #In mpi mode, the cost function looks at distances across all nodes
         old_cost = cost(distances)
         new_cost = cost(new_dist)
 

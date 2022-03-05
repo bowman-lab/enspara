@@ -7,3 +7,4 @@ from . import kmedoids
 
 from .hybrid import KHybrid
 from .kcenters import KCenters
+from .kmedoids import KMedoids
