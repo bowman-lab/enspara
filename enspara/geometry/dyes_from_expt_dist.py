@@ -666,14 +666,6 @@ def convert_photon_times(inter_photon_times, lagtime, slowing_factor):
      for i in range(len(inter_photon_times))])
     return MSM_frames
 
-def make_distribution(probs, bin_edges):
-    probs_norm = ra.RaggedArray([l/l.sum() for l in probs])
-    dist_vals = (bin_edges[:,1:] + bin_edges[:,:-1]) / 2.
-    dist_distribution = ra.RaggedArray(
-        np.vstack([dist_vals._data, probs_norm._data]).T, lengths=probs_norm.lengths)
-    return dist_distribution
-
-
 def int_norm_hist(xs, ys):
     """simple integration normalization"""
     if ys.shape[0] == xs.shape[0] - 1:
