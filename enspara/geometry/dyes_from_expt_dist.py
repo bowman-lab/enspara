@@ -716,6 +716,25 @@ def normalize_array(array):
             norm_array.append((array[i]-np.amin(array[i]))/(np.amax(array[i])-np.amin(array[i])))
     return norm_array
 
+def remake_data_from_hist(histo_data):
+    #Converts histogrammed data back to raw data. Will cause some shifting
+    #Supply an array of shape [# bins, 2] where each subarray is [bin_center, bin_count]
+    bin_centers=histo_data[:,0]
+    bin_width=bin_centers[1]-bin_centers[0]
+    lower_range=bin_centers[0]-(bin_width/2)
+    upper_range=bin_centers[-1]+(bin_width/2)
+    bin_counts=histo_data[:,1].astype(int)
+
+    rebuilt_data=[]
+    for i, bin_count in enumerate(bin_counts):
+        rebuilt_data.append(np.random.uniform(
+            low=bin_centers[i]-(bin_width/2),
+            high=bin_centers[i]+bin_width/2, 
+            size=int(bin_count)))
+
+    rebuilt_data=np.array(list(np.concatenate(rebuilt_data).flat))
+    return rebuilt_data
+
 def calc_4_moments(histo_data):
     #Calculates the 4 moments of a histogram
     #Works on 1D or 2D arrays, for 2D calculates on axis=1

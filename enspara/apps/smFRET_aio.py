@@ -290,23 +290,32 @@ def main(argv=None):
                                               for n in range(len(time_scales))])
 
             expt_counts = np.loadtxt(f"{expt_histogram_paths[i]}")
-            expt_probs = expt_counts[:, 1] / np.sum(expt_counts[:, 1])
-            # Histogram the predicted FRET efficiencies according to experimental bins
-            predicted_histos = dyes_from_expt_dist.histogram_to_match_expt(predicted_FRET_histos[:, :, 0], expt_counts)
-
+            
             if args.method == 'sum_sq_residuals':
-                difference_array.append(Sum_sq_resid(expt_probs, predicted_histos))
-            elif args.method == 'KL_divergence':
-                KL_divergence = [entropy(predicted_histos[i], expt_probs) for i in range(len(predicted_histos))]
-                difference_array.append(KL_divergence)
+                # Can directly calculate this using histogrammed experimental
+                # Histogram the predicted FRET efficiencies according to experimental bins
+                expt_probs = expt_counts[:, 1] / np.sum(expt_counts[:, 1])
+                predicted_histos = dyes_from_expt_dist.histogram_to_match_expt(predicted_FRET_histos[:, :, 0], expt_counts)
+                difference_array.append(dyes_from_expt_dist.Sum_sq_resid(expt_probs, predicted_histos))
+            elif args.method == 'entropy':
+                # Can directly calculate this using histogrammed experimental
+                # Histogram the predicted FRET efficiencies according to experimental bins
+                expt_probs = expt_counts[:, 1] / np.sum(expt_counts[:, 1])
+                predicted_histos = dyes_from_expt_dist.histogram_to_match_expt(predicted_FRET_histos[:, :, 0], expt_counts)
+                ent = [entropy(predicted_histos[i], expt_probs) for i in range(len(predicted_histos))]
+                difference_array.append(ent)
             elif args.method == '4_moments':
+                #Easiest to calculate this using raw data. Regenerate experimental data
+                expt_probs = dyes_from_expt_dist.remake_data_from_hist(expt_counts)
                 expt_moments = dyes_from_expt_dist.calc_4_moments(expt_probs)
-                pred_moments = dyes_from_expt_dist.calc_4_moments(predicted_histos)
+                pred_moments = dyes_from_expt_dist.calc_4_moments(predicted_FRET_histos[:,0])
                 diff = dyes_from_expt_dist.normalize_array((expt_moments - pred_moments) ** 2)
                 difference_array.append(np.sum(diff, axis=0))
             elif args.method == '2_3_4_moments':
+                #Easiest to calculate this using raw data. Regenerate experimental data
+                expt_probs = dyes_from_expt_dist.remake_data_from_hist(expt_counts)
                 expt_moments = dyes_from_expt_dist.calc_2_3_4_moments(expt_probs)
-                pred_moments = dyes_from_expt_dist.calc_2_3_4_moments(predicted_histos)
+                pred_moments = dyes_from_expt_dist.calc_2_3_4_moments(predicted_FRET_histos[:,0])
                 diff = dyes_from_expt_dist.normalize_array((expt_moments - pred_moments) ** 2)
                 difference_array.append(np.sum(diff, axis=0))
             print(
@@ -326,7 +335,7 @@ def main(argv=None):
                 f" is at time factor: {time_scales[np.argmin(normd_diff)]}.")
             print(
                 f"Minimum across all dye pairs, no normalizing across dye-pairs"
-                f"is at time factor: {time_scales[np.argmin(abs_diff)]}.")
+                f" is at time factor: {time_scales[np.argmin(abs_diff)]}.")
 
 
 if __name__ == "__main__":
