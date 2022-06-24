@@ -45,7 +45,6 @@ def sound_trajectory(trj, stride=1, frame=None):
     ----------
     md.load
     """
-
     with md.open(trj) as f:
         n_frames = len(f)
 

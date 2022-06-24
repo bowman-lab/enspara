@@ -9,7 +9,7 @@ import mdtraj as md
 import numpy as np
 import scipy.cluster.hierarchy
 
-from sklearn.externals.joblib import Parallel, delayed
+from joblib import Parallel, delayed
 
 
 def _grid_to_xyz(grid):
@@ -47,6 +47,9 @@ def xyz_to_mdtraj(xyz, cluster_ids=None):
         specified x,y,z coordinates with residue numbers determined bye the
         cluster_ids, if specified.
     """
+    # case for when there are no pockets
+    if xyz.size == 0:
+        return None
 
     n_xyz = xyz.shape[0]
     element = md.element.carbon
@@ -348,8 +351,12 @@ def cluster_pocket_cells(pocket_cells, grid_spacing=0.1, min_cluster_size=0):
     # cluster into contiguous pockets by merging two cells if they are
     # neighbors use a cutoff distance between grid_spacing and
     # 2*grid_spacing to ensure pocket cells are contiguous
-    orig_cluster_mapping = scipy.cluster.hierarchy.fclusterdata(
-        pocket_cells, t=grid_spacing*1.5, criterion='distance')
+    # if there are no pocket cells, return empty arrays
+    if pocket_cells.size == 0:
+        return np.array([]), np.array([])
+    else:
+        orig_cluster_mapping = scipy.cluster.hierarchy.fclusterdata(
+            pocket_cells, t=grid_spacing*1.5, criterion='distance')
 
     # make sure numbered from 0, since seem to be numbered from 1
     if orig_cluster_mapping.min() > 0:
