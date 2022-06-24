@@ -18,8 +18,6 @@ Computing Mean First Passage Times (MFPTs)
 
 .. code-block:: python
 
-    import msmbuilder.tpt
-
     from enspara import tpt
     from enspara.msm import MSM, builders
 
@@ -47,4 +45,4 @@ Extracting maximum flux pathways
         source_state, sink_state,
         populations=msm.eq_probs_)
 
-    path, flux = msmbuilder.tpt.top_path(maximizer_ind, minimizer_ind, nfm.todense())
+    path, flux = tpt.top_path(maximizer_ind, minimizer_ind, nfm.todense())

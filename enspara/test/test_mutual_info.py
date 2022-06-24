@@ -118,6 +118,7 @@ def test_symmetrical_mi_zero():
         assert_allclose(mi, 0, atol=1e-3)
 
 
+@fix_np_rng(0)
 def test_asymmetrical_mi_zero():
 
     zero_mi_funcs = [zero_mi_np, zero_mi_ra, zero_mi_list]
@@ -152,6 +153,7 @@ def test_symmetrical_mi_nonzero():
         assert_allclose(mi, 0, atol=1e-3)
 
 
+@fix_np_rng(0)
 def test_symmetrical_mi_nonzero_int_shape_spec():
     # test that when we use an integer (rather than a list of integers)
     # that we correctly assume that the integer is just repeated for all

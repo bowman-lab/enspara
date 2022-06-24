@@ -7,8 +7,7 @@ like an active site, can help isolate the important regions within a protein.
 
 ``CARDS`` is a way of capturing this long-range communication from MD simulations, 
 measuring coupling between between every pair of dihedrals in an entire protein. 
-The CARDS methodology has been published in 
-`Singh and Bowman, JCTC, 2017. <https://pubs.acs.org/doi/abs/10.1021/acs.jctc.6b01181>`_
+The CARDS methodology has been published in [CARDS2017]_.
 
 Using CARDS is a two-step process: 
 
@@ -40,9 +39,9 @@ for large systems or datsets. Before you get started you will need to have the
 following: 
 
     1. A directory containing all your trajectory files, any format recognized by ``MDTraj`` is fine
-    2. A topology file that corresponds to your trajectory files (if it doesn't have 
-    the topology pre-written like in `.h5` files). Again, any format recognizable
-    by ``MDTraj`` is acceptable. 
+    2. A topology file that corresponds to your trajectory files (if it doesn't have
+       the topology pre-written like in `.h5` files). Again, any format recognizable
+       by ``MDTraj`` is acceptable.
 
 Once you have these two inputs, you must consider how big of a "buffer-zone" you want to use. 
 To prevent counting spurious transitions as part of the correlated motions of your system, 
@@ -51,8 +50,7 @@ each rotamer. Thus, a rotamer has only had a "true" transition if it enters a ne
 than the one it previously occupied. Generally we use buffer-zones that are ~15 degrees 
 on each side of the barrier. 
 
-You can read more about buffer zones in the publication 
-`desribing CARDS <https://pubs.acs.org/doi/abs/10.1021/acs.jctc.6b01181>`_
+You can read more about buffer zones in the publication [CARDS2017]_.
 
 Running CARDS 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -154,3 +152,6 @@ It also outputs the total Holistic communication matrix (``holistic_MI.csv``)
 
 This holistic communication matrix is what we can use to probe overall communication patterns in our system, 
 using techniques like *Target site analysis*, or other methods.  
+
+
+.. [CARDS2017] Singh, Sukrit, and Gregory R Bowman. “Quantifying Allosteric Communication via Both Concerted Structural Changes and Conformational Disorder with CARDS.” Journal of Chemical Theory and Computation, March 2017, acs.jctc.6b01181. https://doi.org/10.1021/acs.jctc.6b01181.

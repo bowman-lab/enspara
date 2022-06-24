@@ -15,18 +15,19 @@ from scipy.stats import pearsonr
 
 from .. import cards
 from ..cards import disorder
+from ..geometry.rotamer import all_rotamers
 
-from .. import geometry
+from .util import get_fn
 
 TEST_DATA_DIR = os.path.join(os.path.dirname(__file__), 'cards_data')
 
-TOP = md.load(os.path.join(TEST_DATA_DIR, "PROT_only.pdb")).top
-TRJ = md.load(os.path.join(TEST_DATA_DIR, "trj0.xtc"), top=TOP)
+TOP = md.load(get_fn('beta-peptide.pdb')).top
+TRJ = md.load(get_fn('beta-peptide.xtc'), top=TOP)
 
 TRJS = [TRJ, TRJ]
 BUFFER_WIDTH = 15
 
-ROTAMER_TRJS = [geometry.all_rotamers(t, buffer_width=BUFFER_WIDTH)[0]
+ROTAMER_TRJS = [all_rotamers(t, buffer_width=BUFFER_WIDTH)[0]
                 for t in TRJS]
 N_DIHEDRALS = ROTAMER_TRJS[0].shape[1]
 
@@ -172,9 +173,9 @@ def test_split_transition_times():
     trj_unsplit = [TRJ]
     trj_split = [TRJ[pivot:], TRJ[0:pivot]]
 
-    rotamer_trjs_unsp = [geometry.all_rotamers(t, buffer_width=BUFFER_WIDTH)[0]
+    rotamer_trjs_unsp = [all_rotamers(t, buffer_width=BUFFER_WIDTH)[0]
                          for t in trj_unsplit]
-    rotamer_trjs_spl = [geometry.all_rotamers(t, buffer_width=BUFFER_WIDTH)[0]
+    rotamer_trjs_spl = [all_rotamers(t, buffer_width=BUFFER_WIDTH)[0]
                         for t in trj_split]
 
     tt1, avg_ord_unsp, avg_dis_unsp = cards.transition_stats(rotamer_trjs_unsp)

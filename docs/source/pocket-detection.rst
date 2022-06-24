@@ -21,17 +21,17 @@ Finding pockets with LIGSITE
     pdb = md.load('reagents/m182t-a243-exposon-open.pdb')
 
     # run ligsite
-    pockets_xyz = enspara.geometry.get_pocket_cells(struct=pdb)
+    pockets_xyz = enspara.geometry.pockets.get_pocket_cells(struct=pdb)
 
     # build a pdb of hydrogen atoms for each grid point so it can be
     # examined in a visualization program (e.g. pymol)
     import pandas as pd
 
     top_df = pd.DataFrame()
-    top_df['serial'] = range(len(pockets_grid_points))
+    top_df['serial'] = list(range(pockets_xyz.shape[0]))
     top_df['name'] = 'PK'
     top_df['element'] = 'H'
-    top_df['resSeq'] = range(len(pockets_grid_points))
+    top_df['resSeq'] = list(range(pockets_xyz.shape[0]))
     top_df['resName'] = 'PCK'
     top_df['chainID'] = 0
 
