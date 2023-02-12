@@ -371,7 +371,7 @@ def partition_list(list_to_partition, partition_lengths):
 def _is_iterable(iterable):
     """Indicates if the input is iterable but not due to being a string or
        bytes. Returns a boolean value."""
-    iterable_bool = isinstance(iterable, collections.Iterable) and not \
+    iterable_bool = isinstance(iterable, collections.abc.Iterable) and not \
         isinstance(iterable, (str, bytes))
     return iterable_bool
 
