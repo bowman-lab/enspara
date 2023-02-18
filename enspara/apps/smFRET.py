@@ -103,7 +103,7 @@ def process_command_line(argv):
     fret_input_args.add_argument(
         'photon_times',
         help="File containing inter photon times. Each list is an individual photon burst "
-             "with arrival times (in us) for each burst. Size (n_bursts, nphotons in burst) "
+             "with photon wait times (in us) for each burst. Size (n_bursts, nphotons in burst) "
              "Should be of file type .npy")
     fret_input_args.add_argument(
         'lagtime', type=int,
@@ -205,6 +205,9 @@ def main(argv=None):
         dye2 = dyes_from_expt_dist.load_dye(args.FRETdye2)
 
         resSeq_pairs = np.loadtxt(args.resid_pairs, dtype=int)
+        #Handle case where only 1 dye pair
+        if resSeq_pairs.ndim==1:
+            resSeq_pairs=resSeq_pairs.reshape(-1,2)
 
         logger.info(f"Calculating dye distance distribution using dyes: {args.FRETdye1}")
         logger.info(f"and {args.FRETdye2}")
@@ -226,6 +229,10 @@ def main(argv=None):
         populations = np.load(args.eq_probs)
         logger.info(f"Loaded eq_probs from {args.eq_probs}")
         resSeq_pairs = np.loadtxt(args.resid_pairs, dtype=int)
+        #Handle case where only 1 dye pair
+        if resSeq_pairs.ndim==1:
+            resSeq_pairs=resSeq_pairs.reshape(-1,2)
+
         cumulative_times = np.load(args.photon_times, allow_pickle=True)
 
         # Convert Photon arrival times into MSM steps.
@@ -246,10 +253,11 @@ def main(argv=None):
             logger.info(f"Loading bins file from {bin_edges_file}")
             bin_edges = ra.load(bin_edges_file)
             dist_distribution = dyes_from_expt_dist.make_distribution(probs, bin_edges)
-            FEs_sampling = dyes_from_expt_dist.sample_FRET_histograms(
+            FEs_sampling, trajs = dyes_from_expt_dist.sample_FRET_histograms(
                 T=t_probabilities, populations=populations, dist_distribution=dist_distribution,
                 MSM_frames=MSM_frames, R0=args.R0, n_procs=args.n_procs, n_photon_std=args.n_chunks)
             np.save(f"{args.output_dir}/FRET_E_{title}_time_factor_{args.slowing_factor}.npy", FEs_sampling)
+            np.save(f'{args.output_dir}/syn-trjs-{title}.npy', trajs)
 
         logger.info(f"Success! Your FRET data can be found here: {args.output_dir}")
 
@@ -260,6 +268,9 @@ def main(argv=None):
         predicted_histogram_paths = conf_file[:, 1]
 
         labelpairs = np.loadtxt(args.resid_pairs, dtype=int)
+        #Handle case where only 1 dye pair
+        if labelpairs.ndim==1:
+            labelpairs=labelpairs.reshape(-1,2)
 
         # Initialize a storage array
         difference_array = []

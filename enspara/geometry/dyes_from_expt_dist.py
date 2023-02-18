@@ -601,7 +601,7 @@ def _sample_FRET_histograms(
         FRET_std = np.std(FRET_chunks)
         FRET_val = np.mean(acceptor_emissions)#np.mean(FRET_chunks)
 
-    return FRET_val, FRET_std
+    return FRET_val, FRET_std, trj
 
 
 def sample_FRET_histograms(
@@ -638,6 +638,9 @@ def sample_FRET_histograms(
     FEs : nd.array, shape=(n_samples, 2),
         A list containing a FRET efficiency and an intraburst standard
         deviation for each drawing.
+    E_Traj: ra.array, snape=(n_samples,2),
+        A list containing a FRET efficiency and the center indicies used
+        in the synthetic trajectory for each drawing.
     """
 
     # fill in function values
@@ -647,13 +650,14 @@ def sample_FRET_histograms(
 
     # multiprocess
     pool = Pool(processes=n_procs)
-    FEs = pool.map(sample_func, MSM_frames)
+    FE= pool.map(sample_func, MSM_frames)
     pool.terminate()
-
     # numpy the output
-    FEs = np.array(FEs)
+    FE= np.array(FE, dtype=object)
+    FEs=FE[:,0:2]
+    trajs=FE[:,2]
 
-    return FEs
+    return FEs, trajs
 
 def convert_photon_times(inter_photon_times, lagtime, slowing_factor):
     #Take the inter_photon times (in us) and convert to MSM frame steps
