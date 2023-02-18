@@ -1,4 +1,2 @@
 PDB files here are point clouds that represent the distribution of possible dye heads from different fluorophores.
 These are from several ns of simulation.
-
-expt_photon_timestamps_ns is a 14801 long numpy array containing the cumulative arrival times for photons during 14801 independent photon bursts in a single molecule FRET experiment. Times are in ns and each array element contains a variable number of photons.
