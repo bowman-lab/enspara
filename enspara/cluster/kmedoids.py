@@ -271,8 +271,11 @@ def _kmedoids_pam_update(
         assert np.all(new_assig >= 0)
         assert np.all(new_dist >= 0)
 
-        old_cost = cost(distances)
-        new_cost = cost(new_dist)
+        # Added timing to cost computation
+        with timed("Computed costs points in %.2f sec.",
+                   logger.debug):
+            old_cost = cost(distances)
+            new_cost = cost(new_dist)
 
         if new_cost < old_cost:
             logger.debug(
