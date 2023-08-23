@@ -106,7 +106,7 @@ def process_command_line(argv):
              "with photon wait times (in us) for each burst. Size (n_bursts, nphotons in burst) "
              "Should be of file type .npy")
     fret_input_args.add_argument(
-        'lagtime', type=int,
+        'lagtime', type=float,
         help="lag time used to construct the MSM (in ns) "
              "Should be type float")
     fret_input_args.add_argument(
@@ -137,6 +137,9 @@ def process_command_line(argv):
     fret_parameters.add_argument(
         '--output_dir', required=False, action=readable_dir, default='./',
         help="The location to write the FRET dye distributions.")
+    fret_parameters.add_argument(
+        '--save_burst_frames', required=False, choices=['True','False'], default='False',
+        help='Save a npy file of the frames that make up each burst and the efficiency? T/F')
 
 
     ##########################
@@ -257,7 +260,8 @@ def main(argv=None):
                 T=t_probabilities, populations=populations, dist_distribution=dist_distribution,
                 MSM_frames=MSM_frames, R0=args.R0, n_procs=args.n_procs, n_photon_std=args.n_chunks)
             np.save(f"{args.output_dir}/FRET_E_{title}_time_factor_{args.slowing_factor}.npy", FEs_sampling)
-            np.save(f'{args.output_dir}/syn-trjs-{title}.npy', trajs)
+            if args.save_burst_frames==True:
+                np.save(f'{args.output_dir}/syn-trjs-{title}.npy', trajs)
 
         logger.info(f"Success! Your FRET data can be found here: {args.output_dir}")
 
