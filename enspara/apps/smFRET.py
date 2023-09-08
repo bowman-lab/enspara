@@ -194,10 +194,7 @@ def main(argv=None):
 
         # Make an output directory
     if args.output_dir != './':
-        try:
-            os.system(f'mkdir {args.output_dir}')
-        except:
-            pass
+        os.makedirs(args.output_dir, exist_ok=True)
 
     # Process the input
     if args.command == 'model_dyes':
