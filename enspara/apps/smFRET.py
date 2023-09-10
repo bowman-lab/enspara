@@ -138,7 +138,7 @@ def process_command_line(argv):
         '--output_dir', required=False, action=readable_dir, default='./',
         help="The location to write the FRET dye distributions.")
     fret_parameters.add_argument(
-        '--save_burst_frames', required=False, choices=['True','False'], default='False',
+        '--save_burst_frames', required=False, default='False',type=bool,choices=[True,False],
         help='Save a npy file of the frames that make up each burst and the efficiency? T/F')
 
 
@@ -257,6 +257,7 @@ def main(argv=None):
                 T=t_probabilities, populations=populations, dist_distribution=dist_distribution,
                 MSM_frames=MSM_frames, R0=args.R0, n_procs=args.n_procs, n_photon_std=args.n_chunks)
             np.save(f"{args.output_dir}/FRET_E_{title}_time_factor_{args.slowing_factor}.npy", FEs_sampling)
+
             if args.save_burst_frames==True:
                 np.save(f'{args.output_dir}/syn-trjs-{title}.npy', trajs)
 
