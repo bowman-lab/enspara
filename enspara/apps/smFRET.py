@@ -138,7 +138,7 @@ def process_command_line(argv):
         '--output_dir', required=False, action=readable_dir, default='./',
         help="The location to write the FRET dye distributions.")
     fret_parameters.add_argument(
-        '--save_burst_frames', required=False, default='False',type=bool,choices=[True,False],
+        '--save_burst_frames', required=False, default=False,type=bool,choices=[True,False],
         help='Save a npy file of the frames that make up each burst and the efficiency? T/F')
 
 
