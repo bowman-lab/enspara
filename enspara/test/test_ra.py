@@ -400,6 +400,12 @@ class Test_RaggedArray(unittest.TestCase):
         with assert_raises(TypeError):
             a > 'asdfasdfasd'
 
+    def test_ra_null_slice(self):
+        a = ra.RaggedArray(np.arange(15), lengths=[2,3,15])
+        a[:] = 22
+        assert np.all(a._data == np.ones(15, dtype=int)*22)
+
+
 
 class TestParallelLoad(unittest.TestCase):
 
@@ -663,7 +669,7 @@ class TestConcatenateTrajs(unittest.TestCase):
         trjlist = [md.load(self.top_fname)] * 10
         trj = concatenate_trjs(trjlist, atoms=ATOMS)
 
-        assert_equals(len(trjlist), len(trj))
+        assertEqual(len(trjlist), len(trj))
 
         for trjframe, trjlist_item in zip(trj, trjlist):
             sliced_item = trjlist_item.atom_slice(

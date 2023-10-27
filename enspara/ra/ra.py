@@ -649,8 +649,12 @@ class RaggedArray(object):
             value = value._array
         # ints, slices, lists, and numpy objects are handled by numpy
         if isinstance(iis, (numbers.Integral, slice, list, np.ndarray)):
-            self._array[iis] = value
-            self.__init__(self._array)
+            if iis == slice(None, None, None):
+                self._data[iis] = value
+                self.__init__(self._data, lengths=self.lengths)
+            else:
+                self._array[iis] = value
+                self.__init__(self._array)
         # tuples get index conversion from 2d to 1d
         elif isinstance(iis, tuple):
             first_dimension, second_dimension = iis
