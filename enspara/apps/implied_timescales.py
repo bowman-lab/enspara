@@ -13,7 +13,7 @@ from tables.exceptions import NoSuchNodeError
 
 from enspara import exception
 from enspara.msm import implied_timescales, builders
-from enspara.util import array as ra
+from enspara import ra
 
 
 def process_command_line(argv):
@@ -109,7 +109,7 @@ def process_units(timestep=None, infer_timestep=None):
     elif infer_timestep:
         try:
             timestep = md.load(infer_timestep).timestep
-        except ValueError:
+        except (ValueError, OSError):
             if infer_timestep[-4:] != '.xtc':
                 raise exception.ImproperlyConfigured(
                     "Topologyless formats other than XTC are not supported.")

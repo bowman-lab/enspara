@@ -3,8 +3,9 @@ import logging
 import numpy as np
 import tables
 
+from enspara import ra
 from ..util.load import load_as_concatenated
-from .. import exception, ra
+from .. import exception
 
 from .. import mpi
 from .ops import assemble_striped_array

@@ -1,6 +1,6 @@
 import logging
 import numpy as np
-from ..util import array as ra
+from enspara import ra
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)

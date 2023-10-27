@@ -50,7 +50,7 @@ install_requires = [
     'mdtraj>=1.7',
     'psutil>=5.2.2',
     'pandas',
-    'scikit-learn>=0.21.0',
+    'scikit-learn>=0.23.2',
     'scipy>=0.17'
 ]
 
@@ -104,7 +104,7 @@ setup(
     classifiers=CLASSIFIERS,
     include_dirs=[np.get_include()],
     ext_modules=cythonize(cython_extensions),
-    python_requires='>=3.5,<3.8',  # cython is broken for 3.7
+    python_requires='>=3.5,<3.10', 
     entry_points={'console_scripts': ['enspara = enspara.apps.main:main']},
     setup_requires=['Cython>=0.24', 'numpy>=1.13'],
     install_requires=install_requires,

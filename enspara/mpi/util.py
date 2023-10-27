@@ -8,9 +8,28 @@ class DummyComm:
     def barrier():
         pass
 
+    def Barrier():
+        pass
+
     def bcast(v, root=0):
         assert root == 0, "Root for DummyComm op was %s, must be 1." % root
         return v
+    
+    def Bcast(v, root=0):
+        return DummyComm.bcast(v, root)
+
+
+    def allgather(v):
+        return [v]
+
+    def allreduce(v, op):
+        return v
+
+
+class dummy_mpi4py:
+
+    def MAX(*args):
+        return max(*args)
 
 
 def mpiabort_excepthook(type, value, traceback):

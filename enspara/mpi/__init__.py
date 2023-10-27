@@ -10,7 +10,7 @@ mpiexec_active = (
 
 try:
     from mpi4py import MPI as mpi4py
-except ImportError:  # ModuleNotFound error in python >=3.6
+except ImportError:
     import warnings
     warnings.warn(
         "mpi4py isn't installed! If you want to use MPI-based "
@@ -25,6 +25,7 @@ except ImportError:  # ModuleNotFound error in python >=3.6
     from . import ops
     from . import io
     from .util import DummyComm as comm
+    from .util import dummy_mpi4py as mpi4py
 
 else:
     import sys

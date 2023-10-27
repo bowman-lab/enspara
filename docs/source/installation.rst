@@ -42,8 +42,8 @@ or, if you prefer anaconda,
 	pip install mpi4py
 
 
-Developing
-----------
+Develoment Installation
+-----------------------
 
 To install enspara for development
 

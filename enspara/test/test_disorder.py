@@ -3,7 +3,7 @@ from numpy.testing import assert_array_equal
 
 import numpy as np
 
-from ..util import array as ra
+from enspara import ra
 from ..cards import disorder
 
 

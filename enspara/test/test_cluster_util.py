@@ -6,7 +6,7 @@ from nose.tools import assert_is, assert_is_not
 from numpy.testing import assert_array_equal, assert_allclose
 
 from enspara.cluster import util
-from enspara.util import array as ra
+from enspara import ra
 
 from ..cluster import save_states
 from .util import get_fn

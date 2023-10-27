@@ -12,10 +12,9 @@ from numpy.testing import assert_array_equal
 
 from sklearn.datasets import make_blobs
 
-from .. import exception
-from ..util import array as ra
+from enspara import exception, ra
+from enspara.apps import cluster
 
-from ..apps import cluster
 
 TEST_DIR = os.path.dirname(__file__)
 TRJFILE = os.path.join(os.path.dirname(__file__), 'data', 'frame0.xtc')

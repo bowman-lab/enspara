@@ -13,7 +13,7 @@ import mdtraj as md
 from nose.tools import assert_less, assert_equal, assert_is
 from numpy.testing import assert_array_equal, assert_allclose
 
-from ..util import array as ra
+from enspara import ra
 from ..apps import reassign
 
 from .util import get_fn
@@ -76,10 +76,12 @@ def test_reassign_script_multitop():
     topologies = [get_fn('native.pdb'), top2]
     trajectories = [
         [get_fn('frame0.xtc'), get_fn('frame0.xtc')],
-        [xtc2, xtc2]]
+        [xtc2, xtc2]
+    ]
+
 
     atoms = '(name N or name C or name CA or name H or name O) and (residue 2)'
-    centers = [c for c in md.load(trajectories[0], top=topologies[0])[::50]]
+    centers = [md.load(t, top=topologies[0])[::50] for t in trajectories[0]]
 
     with tempfile.NamedTemporaryFile(suffix='.pkl') as ctrs_f:
         pickle.dump(centers, ctrs_f)

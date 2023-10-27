@@ -9,7 +9,7 @@ from mdtraj import io
 from nose.tools import assert_raises, assert_equals, assert_is, assert_true
 from numpy.testing import assert_array_equal
 
-from ..util import array as ra
+from enspara import ra
 from ..util.load import load_as_concatenated, concatenate_trjs
 from ..exception import DataInvalid, ImproperlyConfigured
 
@@ -40,7 +40,7 @@ class Test_RaggedArray(unittest.TestCase):
                             [1.1, 1.0, 0.9, 0.8]])
 
         assert_equals(len(a), 2)
-        assert_equals(a.dtype, np.float)
+        assert_equals(a.dtype, float)
         assert_array_equal(a.lengths, [3, 4])
         assert_array_equal(a.starts, [0, 3])
         assert_array_equal(
