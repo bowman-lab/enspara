@@ -1,0 +1,12 @@
+AF488 and AF594 PDB files are point clouds that represent the distribution
+of possible dye heads from different fluorophores. These are from several 
+ns of simulation from:
+
+Stuchell-Brereton MD, Zimmerman MI, Miller JJ, Mallimadugula UL, Incicco JJ, 
+Roy D, Smith LG, Cubuk J, Baban B, DeKoster GT, Frieden C, Bowman GR, Soranno A. 
+Apolipoprotein E4 has extensive conformational heterogeneity in lipid-free and
+ lipid-bound forms. Proc Natl Acad Sci U S A. 2023 Feb 14;120(7):e2215371120. 
+doi: 10.1073/pnas.2215371120. Epub 2023 Feb 7. PMID: 36749730; PMCID: PMC9963066.
+
+Remaining dye pairs are from FRET Predict Library and generated using 
+make_point_clouds.py with the original trajectories.
