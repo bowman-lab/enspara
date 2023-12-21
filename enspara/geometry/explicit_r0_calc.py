@@ -131,6 +131,8 @@ def map_dye_on_protein(pdb, dyename, resseq, outpath, save_aligned_dyes=False, c
         
         dye_probs = dye_weights / sum(dye_weights)
     
+    #Stopping with returning dye_indicies for now, 
+    #this should eventually be a call to save numpy file of r and dipole vectors.
     return(dye_indicies)
 
 
