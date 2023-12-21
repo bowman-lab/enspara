@@ -1,17 +1,12 @@
 import mdtraj as md
 import yaml
 import enspara
-import os.path
+import os
 import pandas as pd
 import numpy as np
 from numpy.linalg import norm
 
-#Take input of dye name and the library
-#Consider adding flow control for user to add own info without adding dyes?
-
-def load_dye(dyename, dyelibrary):
-    #Set the dyes directory to enspara dyes (unless user provides)
-    dyes_dir=os.path.dirname(enspara.__file__)+'/data/dyes'
+def load_dye(dyename, dyelibrary, dyes_dir):
     dye_file=dyelibrary[dyename]["filename"].split("_cutoff")[0]
 
     #Load the dye and dye weights
@@ -80,3 +75,101 @@ def get_dye_overlap(donorname, acceptorname, dyelibrary):
              x=donor_spectrum['Wavelength']) / donor_spectra_integral
     
     return(J, QD)
+
+def map_dye_on_protein(pdb, dyename, resseq, outpath, save_aligned_dyes=False, centern='', weight_dyes=False):
+    '''
+    Aligns a dye trajectory onto a pdb file, removing any conformations 
+    that overlap with protein atoms.
+    
+    Attributes
+    --------------
+    pdb : md.Trajectory, 
+        PDB of protein conformation
+    dyename: string, 
+        Name of dye in dye library
+    resseq: int
+        residue to label (using PDB ID)
+    outpath: path, 
+        Where to write output to
+    save_aligned_dyes: bool, default=False
+        optionally save trajectory of aligned/pruned dyes
+    centern: int,
+        protein center number that you're aligning to (for output naming)
+    weights: bool, default=True
+        Weight conformation probability by conformation probability in dye traj?
+    
+    Returns
+    ---------------
+    
+    '''
+    
+    #Set the dyes directory to enspara dyes
+    dyes_dir=os.path.dirname(enspara.__file__)+'/data/dyes'
+    
+    #Load the dyelibrary to use for parsing etc.
+    with open(f'{dyes_dir}/libraries.yml','r') as yaml_file:
+        dyelibrary = yaml.load(yaml_file, Loader=yaml.FullLoader)
+        
+    dye = load_dye(dyename, dyelibrary,dyes_dir)
+  
+    #Align the dye to the supplied resseq and update xyzs
+    dye.xyz=dyefs.align_dye_to_res(top,dye.xyz,resseq)
+    
+    #Remove conformations that overlap with protein
+    dye_indicies = remove_touches_protein_dye_traj(pdb, dye, resseq)
+    
+    #Optionally, save the aligned 
+    if save_aligned_dyes:
+        os.makedirs(f'{outpath}/dye-alignments',exist_ok=True)
+        md.save_dcd(f'{outpath}/dye-alignments/{dyename}-center-{centern}-residue{resseq}.dcd')
+        
+    if weight_dyes:
+        dye_weights=np.loadtxt(
+            f'{dye_dir}/weights/{dyelibrary[dyename]["filename"].split("_cutoff")[0]}_cutoff10_weights.txt')
+        
+        dye_weights=dye_weights[dye_indicies]
+        
+        dye_probs = dye_weights / sum(dye_weights)
+    
+    return(dye_indicies)
+
+
+def remove_touches_protein_dye_traj(pdb, dye, resseq):
+    """
+    Takes a dye trajectory and aligns it to a protein PDB structure at resseq
+
+    
+    Attributes
+    --------------
+    pdb : md.Trajectory, 
+        PDB of protein conformation
+    dye: md.Trajectory, 
+        Trajectory of dye conformations
+    resseq: int,
+        Residue to label (using PDB ID)
+    
+    Returns
+    ---------------
+    whole_dye_indicies: np.ndarray,
+        Array of dye indicies that properly map on the protein
+    """
+    
+    #Subsection the topology to remove the replaced residue
+    pdb_sliced=pdb.atom_slice(pdb.top.select(f'not resSeq {resseq}'))
+    
+    # Send each dye frame to check if atoms overlaps with the protein. 
+    # If so, atoms are deleted. Overlap defined as any distance less than
+    # the distance between the edge of the protein elemental radii 
+    # + the dye elemental radii + probe radius (all in nm)
+    # 0.06 approximates a H-bond.
+    # This returns a list of atoms that are not touching protein
+    atoms_not_touching_protein=np.array(
+        [np.shape(
+            dyefs.remove_touches_protein(i, pdb_sliced, probe_radius=0.06))[0] 
+         for i in dye.xyz])
+    
+    #Select out the whole dyes, with a slight tolerance for backbone atom overlaps
+    whole_dye_indicies=np.where(
+        atoms_not_touching_protein>=len(dye.xyz[0])-6)[0]
+    
+    return whole_dye_indicies
