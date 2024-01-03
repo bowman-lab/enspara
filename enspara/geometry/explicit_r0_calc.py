@@ -4,45 +4,72 @@ import enspara
 import os
 import pandas as pd
 import numpy as np
+import scipy
 from numpy.linalg import norm
+from enspara.geometry import dyes_from_expt_dist as dyefs
+from functools import partial
+from multiprocessing import Pool
 
 def load_dye(dyename, dyelibrary, dyes_dir):
+    """
+    Helper function for loading dyes from the enspara dye library.
+    """
+    
     dye_file=dyelibrary[dyename]["filename"].split("_cutoff")[0]
 
     #Load the dye and dye weights
     dye=md.load(dyes_dir+f'/trajs/{dye_file}_cutoff10.dcd',top=dyes_dir+f'/structures/{dye_file}.pdb')
     return(dye)
-    
-def get_dipole_components(dye, dyename, dyelibrary):
-    '''
-    Takes input of a dye name in the enspara directory, loads the dye traj,
-    pulls the dipole atoms, and returns the dipole moments for all frames.
-    '''
-
-    #Pull the atom IDs that comprise the dipole moment
-    mu_atomids=dye.topology.select(
-        f'(name {dyelibrary[dyename]["mu"][0]}) or (name {dyelibrary[dyename]["mu"][1]})')
-
-    #Select the dipole atoms from the trajectory
-    mu_positions=dye.atom_slice(mu_atomids).xyz
-
-    #Make the dipole vector
-    mu_vectors=np.subtract(mu_positions[:,0,:],mu_positions[:,1,:])
-    return(mu_positions[:,0,:], mu_vectors)
 
 def calc_R0(k2, QD, J, n=1.333):
-    #n=1.333 is refractive index for water
+    """
+    Calculates R0 from dye parameters
+    
+    Attributes:
+    ------------
+    k2 : float,
+        Value of kappa squared
+    QD : float,
+        Quantum yield of donor dye
+    J : float,
+        Normalized Spectral overlap integral of donor
+        and acceptor dye-pairs
+    n : float, default = 1.333
+    refractive index. Defaults to water.
+    
+    Returns:
+    ----------
+    R0 : float,
+        Value for R0 in nm.
+    """
     R0constants= 0.02108 #for R0 in nm
     n4=n**4
     return(R0constants * np.power(k2 * QD * J / n4, 1 / 6))
 
-def get_dye_overlap(donorname, acceptorname, dyelibrary):
+def get_dye_overlap(donorname, acceptorname):
+    """
+    Calculates dye parameters for calculating R0
+    
+    Attributes
+    -------------
+    donorname : string,
+        name of donor dye found in enspara's dye library
+    acceptorname : string,
+        name of acceptor dye found in enspara's dye library   
+
+    Returns
+    -------------
+    J : float,
+        Normalized spectral overlap integral
+    QD : float,
+        Quantum yield of the donor dye
+    """
+    
     dyes_dir=os.path.dirname(enspara.__file__)+'/data/dyes'
     donor_fluor=donorname.split(" ")[0]
     donor_number=donorname.split(" ")[1]
     acceptor_fluor=acceptorname.split(" ")[0]
     acceptor_number=acceptorname.split(" ")[1]
-    
     
     #Load donor dye spectrum
     donor_spectrum = pd.read_csv(f'{dyes_dir}/R0/{donor_fluor}{donor_number}.csv')
@@ -76,15 +103,197 @@ def get_dye_overlap(donorname, acceptorname, dyelibrary):
     
     return(J, QD)
 
-def map_dye_on_protein(pdb, dyename, resseq, outpath, save_aligned_dyes=False, centern='', weight_dyes=False):
+def remove_touches_protein_dye_traj(pdb, dye, resseq, probe_radius=0.06):
+    """
+    Takes a dye trajectory and aligns it to a protein PDB structure at resseq
+
+    
+    Attributes
+    --------------
+    pdb : md.Trajectory, 
+        PDB of protein conformation
+    dye: md.Trajectory, 
+        Trajectory of dye conformations
+    resseq: int,
+        Residue to label (using PDB ID)
+    probe_radius: float,
+        radius of a probe to see whether residues are overlapping in nm.
+    
+    Returns
+    ---------------
+    whole_dye_indicies: np.ndarray,
+        Array of dye indicies that properly map on the protein
+    """
+    
+    #Subsection the topology to remove the replaced residue
+    pdb_sliced=pdb.atom_slice(pdb.top.select(f'not resSeq {resseq}'))
+
+    # Send each dye frame to check if atoms overlaps with the protein. 
+    # If so, atoms are deleted. Overlap defined as any distance less than
+    # the distance between the edge of the protein elemental radii 
+    # + the dye elemental radii + probe radius (all in nm)
+    # 0.06 approximates a H-bond.
+    # This returns a list of atoms that are not touching protein
+    atoms_not_touching_protein=np.array(
+        [np.shape(
+            dyefs.remove_touches_protein(i, pdb_sliced, probe_radius=probe_radius))[0] 
+         for i in dye.xyz])
+    
+    #Select out the whole dyes, with a slight tolerance for backbone atom overlaps
+    whole_dye_indicies=np.where(
+        atoms_not_touching_protein>=len(dye.xyz[0])-6)[0]
+    
+    return whole_dye_indicies
+    
+    
+def get_dipole_components(dye, dyename, dyelibrary):
+    '''
+    Takes input of a dye trajectory that exists in the the enspara library,
+    pulls the dipole atoms, and returns the dipole moments for all frames.
+    '''
+
+    #Pull the atom IDs that comprise the dipole moment
+    mu_atomids=dye.topology.select(
+        f'(name {dyelibrary[dyename]["mu"][0]}) or (name {dyelibrary[dyename]["mu"][1]})')
+
+    #Select the dipole atoms from the trajectory
+    mu_positions=dye.atom_slice(mu_atomids).xyz
+
+    #Make the dipole vector
+    mu_vectors=np.subtract(mu_positions[:,0,:],mu_positions[:,1,:])
+    
+    #Return the dipole origin and the dipole vector (not unit vector!)
+    return(mu_positions[:,0,:], mu_vectors)
+
+def get_dye_center(dye, dyename, dyelibrary):
+    '''
+    Takes input of a dye trajectory that exists in the the enspara library,
+    pulls the flurophore center position, and returns it for all frames.
+    '''
+    #Pull the atom IDs that comprise the dipole moment
+    r_atomids=dye.topology.select(
+        f'(name {dyelibrary[dyename]["r"][0]})')
+
+    #Select the dipole atoms from the trajectory
+    r_positions=dye.atom_slice(r_atomids).xyz
+    
+    return(r_positions.reshape((-1,3)))
+
+def assemble_dye_r_mu(dye, dyename, dyelibrary):
+    '''
+    Takes input of a dye trajectory that exists in the the enspara library,
+    exracts dye emission/excitation center and dipole moment for each frame in traj.
+    Assembles output to bundle as a h5 file for future use.
+    
+    Returns
+    dye_pos_params, nd.array, shape=(n_frames,6)
+    First 3 positions are the xyz of the dye_center
+    Second 3 give the unit vector of the dipole moment
+    '''
+    
+    dye_center_coords=get_dye_center(dye, dyename, dyelibrary)
+    
+    dipole_origin, dipole_vector = get_dipole_components(dye, dyename, dyelibrary)
+    
+    dye_pos_params=np.hstack((dye_center_coords,dipole_origin, dipole_vector))
+    return(dye_pos_params)
+
+def calc_k2(Donor_coords, Acceptor_coords):
+    """
+    Calculates k2 from acceptor and donor dye positions/vectors
+    
+    Attributes
+    --------------
+    Donor_coords, nd.array (9,)
+        numpy array specifying the xyz of the dye emission/excitation center,
+        the origin of the dipole moment, and the dipole vector
+    Acceptor_coords, nd.array (9,)
+        numpy array specifying the xyz of the dye emission/excitation center,
+        the origin of the dipole moment, and the dipole vector
+    
+    Returns
+    --------------
+    k2 : float,
+        kappa squared value for the specified donor/acceptor positions
+    """
+    
+    D_center, D_dip_ori, D_vec = np.split(Donor_coords, 3)
+    A_center, A_dip_ori, A_vec = np.split(Acceptor_coords, 3)
+
+    #Calculate the distance between dye emission/excitation centers
+    r=scipy.spatial.distance.cdist(D_center.reshape(1,3), A_center.reshape(1,3))[0,0]
+
+    #Define the vector joining donor and acceptor origins
+    rvec=np.subtract(D_dip_ori,A_dip_ori)
+
+    #Calculate the angles between dipole vectors
+    cos_theta_T=np.dot(A_vec,D_vec)/(norm(A_vec)*norm(D_vec))
+    cos_theta_D=np.dot(rvec,D_vec)/(norm(rvec)*norm(D_vec))
+    cos_theta_A=np.dot(A_vec,rvec)/(norm(A_vec)*norm(rvec))
+
+    #Calculate k2
+    k2=(cos_theta_T-(3*cos_theta_D*cos_theta_A))**2
+    return(k2)
+
+def _map_dye_on_protein(pdb, dye, resseq, dyename, outpath='.', save_aligned_dyes=False, dye_weights=None):
     '''
     Aligns a dye trajectory onto a pdb file, removing any conformations 
     that overlap with protein atoms.
     
     Attributes
     --------------
-    pdb : md.Trajectory, 
-        PDB of protein conformation
+    pdb : zip(md.Trajectory, state#) 
+        PDB of protein conformation, number to label your state for output
+    dye: md.Trajectory, 
+        Trajectory of dye conformations
+    resseq: int
+        residue to label (using PDB ID)
+    outpath: path, 
+        Where to write output to
+    save_aligned_dyes: bool, default=False
+        optionally save trajectory of aligned/pruned dyes
+    centern: int,
+        protein center number that you're aligning to (for output naming)
+    weights: bool, default=True
+        Weight conformation probability by conformation probability in dye traj?
+    
+    Returns
+    ---------------
+    
+    '''
+    pdb, centern = pdb
+    
+    #Align the dye to the supplied resseq and update xyzs
+    dye.xyz=dyefs.align_dye_to_res(pdb, dye.xyz, resseq)
+
+    #Remove conformations that overlap with protein
+    dye_indicies = remove_touches_protein_dye_traj(pdb, dye, resseq)
+    
+    #Optionally, weight the dye indicies
+    if len(dye_weights)>1:
+        dye_weights=dye_weights[dye_indicies]
+        dye_probs = dye_weights / sum(dye_weights)
+        
+    #Optionally, save the aligned dye structures
+    if save_aligned_dyes:
+        os.makedirs(f'{outpath}/dye-alignments',exist_ok=True)
+        dye[dye_indicies].save_dcd(
+            f'{outpath}/dye-alignments/{"".join(dyename.split(" "))}-center-{centern}-residue{resseq}.dcd')
+    
+    #Pull out the dye emission center and dipole moment for each frame
+    dye_r_mu=assemble_dye_r_mu(dye[dye_indicies], dyename, dyelibrary)
+    
+    return(dye_r_mu)
+
+def map_dye_on_protein(trj, dyename, resseq, outpath='.', save_aligned_dyes=False, weight_dyes=False, n_procs=1):
+    '''
+    Aligns a dye trajectory onto a pdb file, removing any conformations 
+    that overlap with protein atoms.
+    
+    Attributes
+    --------------
+    trj : md.Trajectory, 
+        Trajectory of protein conformations to map dyes on
     dyename: string, 
         Name of dye in dye library
     resseq: int
@@ -109,69 +318,26 @@ def map_dye_on_protein(pdb, dyename, resseq, outpath, save_aligned_dyes=False, c
     #Load the dyelibrary to use for parsing etc.
     with open(f'{dyes_dir}/libraries.yml','r') as yaml_file:
         dyelibrary = yaml.load(yaml_file, Loader=yaml.FullLoader)
-        
-    dye = load_dye(dyename, dyelibrary,dyes_dir)
-  
-    #Align the dye to the supplied resseq and update xyzs
-    dye.xyz=dyefs.align_dye_to_res(top,dye.xyz,resseq)
     
-    #Remove conformations that overlap with protein
-    dye_indicies = remove_touches_protein_dye_traj(pdb, dye, resseq)
+    #Load the dye trajectory
+    dye = load_dye(dyename, dyelibrary, dyes_dir)
     
-    #Optionally, save the aligned 
-    if save_aligned_dyes:
-        os.makedirs(f'{outpath}/dye-alignments',exist_ok=True)
-        md.save_dcd(f'{outpath}/dye-alignments/{dyename}-center-{centern}-residue{resseq}.dcd')
-        
+    #Load dye weights (if using)
     if weight_dyes:
         dye_weights=np.loadtxt(
             f'{dye_dir}/weights/{dyelibrary[dyename]["filename"].split("_cutoff")[0]}_cutoff10_weights.txt')
-        
-        dye_weights=dye_weights[dye_indicies]
-        
-        dye_probs = dye_weights / sum(dye_weights)
+    else:
+        dye_weights=[]
     
-    #Stopping with returning dye_indicies for now, 
-    #this should eventually be a call to save numpy file of r and dipole vectors.
-    return(dye_indicies)
-
-
-def remove_touches_protein_dye_traj(pdb, dye, resseq):
-    """
-    Takes a dye trajectory and aligns it to a protein PDB structure at resseq
-
+    #Map the dyes
+    func = partial(
+        _map_dye_on_protein, dye=dye, resseq=resseq, dyename=dyename, outpath=outpath, 
+        save_aligned_dyes=save_aligned_dyes, dye_weights=dye_weights)
     
-    Attributes
-    --------------
-    pdb : md.Trajectory, 
-        PDB of protein conformation
-    dye: md.Trajectory, 
-        Trajectory of dye conformations
-    resseq: int,
-        Residue to label (using PDB ID)
+    pool = Pool(processes=n_procs)
+    outputs = pool.map(func, zip(trj, np.arange(len(trj))))
+    pool.terminate()
     
-    Returns
-    ---------------
-    whole_dye_indicies: np.ndarray,
-        Array of dye indicies that properly map on the protein
-    """
+    dye_coords = enspara.ra.RaggedArray(outputs)
     
-    #Subsection the topology to remove the replaced residue
-    pdb_sliced=pdb.atom_slice(pdb.top.select(f'not resSeq {resseq}'))
-    
-    # Send each dye frame to check if atoms overlaps with the protein. 
-    # If so, atoms are deleted. Overlap defined as any distance less than
-    # the distance between the edge of the protein elemental radii 
-    # + the dye elemental radii + probe radius (all in nm)
-    # 0.06 approximates a H-bond.
-    # This returns a list of atoms that are not touching protein
-    atoms_not_touching_protein=np.array(
-        [np.shape(
-            dyefs.remove_touches_protein(i, pdb_sliced, probe_radius=0.06))[0] 
-         for i in dye.xyz])
-    
-    #Select out the whole dyes, with a slight tolerance for backbone atom overlaps
-    whole_dye_indicies=np.where(
-        atoms_not_touching_protein>=len(dye.xyz[0])-6)[0]
-    
-    return whole_dye_indicies
+    return(dye_coords)
