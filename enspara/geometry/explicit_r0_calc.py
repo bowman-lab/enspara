@@ -341,3 +341,116 @@ def map_dye_on_protein(trj, dyename, resseq, outpath='.', save_aligned_dyes=Fals
     dye_coords = enspara.ra.RaggedArray(outputs)
     
     return(dye_coords)
+
+def find_dyeless_states(dye_coords):
+    '''
+    Iterates through a ragged array finding empty lists
+    
+    Attributes
+    -----------
+    dye_coords, ra.array
+        ragged array of all mapped dye positions for
+        the cluster centers
+    
+    Returns
+    -----------
+    bad_states, np.array, int
+        indicies of states with no dye positions mapped
+    '''
+    
+    bad_states=[]
+    for i in range(len(dye_coords)):
+        if len(dye_coords[i])==0:
+            bad_states.append(i)
+    
+    return(np.array(bad_states))
+
+def remove_bad_states(bad_states, eq_probs, t_probs):
+    '''
+    Removes bad states from the MSM without re-normalizing.
+    
+    Crude function, probably better to check if states are
+    now disconnected and also re-normalize.
+    
+    Attributes
+    -----------
+    bad_states, np.array
+        indicies of bad states in the MSM
+    eq_probs, np.array
+        equilibrium probabilities for a MSM
+    t_probs, np.array
+        transition probabilities for a MSM
+    
+    Returns
+    -----------
+    eq_probs, np.array
+        eq_probs with bad state indicies 0'd
+    t_probs, np.array
+        t_probs, with bad states/state transitions 0'd
+    '''
+    
+    #Check to see if no bad states
+    if len(bad_states)==0:
+        return(eq_probs,t_probs)
+    
+    else:
+        eq_probs[bad_states]=0
+        t_probs[:,bad_states]=0
+        t_probs[bad_states,:]=0
+        return(eq_probs, t_probs)
+
+def remove_dyeless_msm_states(dye_coords1, dye_coords2, dyename1, dyename2, eq_probs, t_probs):
+    '''
+    Removes bad states from the MSM without re-normalizing.
+    
+    Crude function, probably better to check if states are
+    now disconnected and also re-normalize.
+    
+    Attributes
+    -----------
+    dye_coords1, ra.RaggedArray
+        Mapped dye coordinates/vectors for each state in MSM
+    dye_coords2, ra.RaggedArray
+        Mapped dye coordinates/vectors for each state in MSM
+    dyename1, string
+        Name of first dye (only used for notekeeping)
+    dyename2, string
+        Name of second dye (only used for notekeeping)
+    eq_probs, np.array
+        equilibrium probabilities for a MSM
+    t_probs, np.array
+        transition probabilities for a MSM
+    
+    Returns
+    -----------
+    eq_probs, np.array
+        eq_probs with bad state indicies 0'd
+    t_probs, np.array
+        t_probs, with bad states/state transitions 0'd
+    '''
+    
+    print(f'Removing states with no available dye-conformations for dye: {dyename1}')
+    
+    #Get bad_states
+    bad_states=find_dyeless_states(dye_coords1)
+
+    #Remove any states without dyes mapped (steric clashes)
+    eq_probs, t_probs=remove_bad_states(bad_states,eq_probs,t_probs)
+
+    print(f'{len(bad_states)} states had no availabile dye configuration for dye {dyename1}.')
+    print(f'Lost eq_probs of: {np.round(100*(1-eq_probs.sum()),3)}% \n')
+    
+
+    #Repeat for second dye pair.
+    print(f'Removing states with no available dye-conformations for dye: {dyename2}')
+    
+    Remaining_eq_probs=eq_probs.sum()
+    #Get bad_states
+    bad_states=find_dyeless_states(dye_coords2)
+    
+    #Remove states without dye mappings
+    eq_probs, t_probs=remove_bad_states(bad_states,eq_probs,t_probs)
+    print(f'{len(bad_states)} states had no availabile dye configuration for dye {dyename2}.')
+    print(f'Lost additional eq_probs of: {np.round(100*(Remaining_eq_probs-eq_probs.sum()),3)}%')
+    print(f'After pruning for both dyes, remaining eq probs is: {np.round(100*(eq_probs.sum()),3)} %.')
+    return(eq_probs, t_probs)
