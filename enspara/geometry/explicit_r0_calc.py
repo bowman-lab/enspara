@@ -235,7 +235,7 @@ def calc_k2(Donor_coords, Acceptor_coords):
     k2=(cos_theta_T-(3*cos_theta_D*cos_theta_A))**2
     return(k2)
 
-def _map_dye_on_protein(pdb, dye, resseq, dyename, 
+def _map_dye_on_protein(pdb, dye, resseq, dyename, dyelibrary,
     outpath='.', save_aligned_dyes=False, dye_weights=None):
     '''
     Aligns a dye trajectory onto a pdb file, removing any conformations 
@@ -332,7 +332,7 @@ def map_dye_on_protein(trj, dyename, resseq, outpath='.', save_aligned_dyes=Fals
     
     #Map the dyes
     func = partial(
-        _map_dye_on_protein, dye=dye, resseq=resseq, dyename=dyename, outpath=outpath, 
+        _map_dye_on_protein, dye=dye, resseq=resseq, dyename=dyename, dyelibrary=dyelibrary, outpath=outpath, 
         save_aligned_dyes=save_aligned_dyes, dye_weights=dye_weights)
     
     pool = Pool(processes=n_procs)
