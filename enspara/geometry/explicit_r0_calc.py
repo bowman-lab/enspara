@@ -235,7 +235,8 @@ def calc_k2(Donor_coords, Acceptor_coords):
     k2=(cos_theta_T-(3*cos_theta_D*cos_theta_A))**2
     return(k2)
 
-def _map_dye_on_protein(pdb, dye, resseq, dyename, outpath='.', save_aligned_dyes=False, dye_weights=None):
+def _map_dye_on_protein(pdb, dye, resseq, dyename, 
+    outpath='.', save_aligned_dyes=False, dye_weights=None):
     '''
     Aligns a dye trajectory onto a pdb file, removing any conformations 
     that overlap with protein atoms.
@@ -389,15 +390,18 @@ def remove_bad_states(bad_states, eq_probs, t_probs):
         t_probs, with bad states/state transitions 0'd
     '''
     
+    eprbs = np.copy(eq_probs)
+    tprbs = np.copy(t_probs)
+
     #Check to see if no bad states
     if len(bad_states)==0:
-        return(eq_probs,t_probs)
+        return(eprbs,tprbs)
     
     else:
-        eq_probs[bad_states]=0
-        t_probs[:,bad_states]=0
-        t_probs[bad_states,:]=0
-        return(eq_probs, t_probs)
+        eprbs[bad_states]=0
+        tprbs[:,bad_states]=0
+        tprbs[bad_states,:]=0
+        return(eprbs, tprbs)
 
 def remove_dyeless_msm_states(dye_coords1, dye_coords2, dyename1, dyename2, eq_probs, t_probs):
     '''
@@ -432,25 +436,25 @@ def remove_dyeless_msm_states(dye_coords1, dye_coords2, dyename1, dyename2, eq_p
     print(f'Removing states with no available dye-conformations for dye: {dyename1}')
     
     #Get bad_states
-    bad_states=find_dyeless_states(dye_coords1)
+    bad_states = find_dyeless_states(dye_coords1)
 
     #Remove any states without dyes mapped (steric clashes)
-    eq_probs, t_probs=remove_bad_states(bad_states,eq_probs,t_probs)
+    eprbs, tprbs = remove_bad_states(bad_states,eq_probs,t_probs)
 
     print(f'{len(bad_states)} states had no availabile dye configuration for dye {dyename1}.')
-    print(f'Lost eq_probs of: {np.round(100*(1-eq_probs.sum()),3)}% \n')
+    print(f'Lost eq_probs of: {np.round(100*(1-eprbs.sum()),3)}% \n')
     
 
     #Repeat for second dye pair.
     print(f'Removing states with no available dye-conformations for dye: {dyename2}')
     
-    Remaining_eq_probs=eq_probs.sum()
+    Remaining_eq_probs=eprbs.sum()
     #Get bad_states
     bad_states=find_dyeless_states(dye_coords2)
     
     #Remove states without dye mappings
-    eq_probs, t_probs=remove_bad_states(bad_states,eq_probs,t_probs)
+    eprbs, tprbs=remove_bad_states(bad_states,eprbs,tprbs)
     print(f'{len(bad_states)} states had no availabile dye configuration for dye {dyename2}.')
-    print(f'Lost additional eq_probs of: {np.round(100*(Remaining_eq_probs-eq_probs.sum()),3)}%')
-    print(f'After pruning for both dyes, remaining eq probs is: {np.round(100*(eq_probs.sum()),3)} %.')
-    return(eq_probs, t_probs)
+    print(f'Lost additional eq_probs of: {np.round(100*(Remaining_eq_probs-eprbs.sum()),3)}%')
+    print(f'After pruning for both dyes, remaining eq probs is: {np.round(100*(eprbs.sum()),3)} %.')
+    return(eprbs, tprbs)
