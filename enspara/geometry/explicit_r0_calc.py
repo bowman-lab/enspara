@@ -370,7 +370,7 @@ def remove_bad_states(bad_states, eq_probs, t_probs):
     '''
     Removes bad states from the MSM without re-normalizing.
     
-    Crude function, probably better to check if states are
+    Crude, probably better to check if states are
     now disconnected and also re-normalize.
     
     Attributes
@@ -436,12 +436,12 @@ def remove_dyeless_msm_states(dye_coords1, dye_coords2, dyename1, dyename2, eq_p
     print(f'Removing states with no available dye-conformations for dye: {dyename1}')
     
     #Get bad_states
-    bad_states = find_dyeless_states(dye_coords1)
+    bad_states1 = find_dyeless_states(dye_coords1)
 
     #Remove any states without dyes mapped (steric clashes)
-    eprbs, tprbs = remove_bad_states(bad_states,eq_probs,t_probs)
+    eprbs, tprbs = remove_bad_states(bad_states1,eq_probs,t_probs)
 
-    print(f'{len(bad_states)} states had no availabile dye configuration for dye {dyename1}.')
+    print(f'{len(bad_states1)} states had no availabile dye configuration for dye {dyename1}.')
     print(f'Lost eq_probs of: {np.round(100*(1-eprbs.sum()),3)}% \n')
     
 
@@ -450,11 +450,21 @@ def remove_dyeless_msm_states(dye_coords1, dye_coords2, dyename1, dyename2, eq_p
     
     Remaining_eq_probs=eprbs.sum()
     #Get bad_states
-    bad_states=find_dyeless_states(dye_coords2)
+    bad_states2 = find_dyeless_states(dye_coords2)
     
     #Remove states without dye mappings
-    eprbs, tprbs=remove_bad_states(bad_states,eprbs,tprbs)
-    print(f'{len(bad_states)} states had no availabile dye configuration for dye {dyename2}.')
+    eprbs, tprbs=remove_bad_states(bad_states2,eprbs,tprbs)
+    print(f'{len(bad_states2)} states had no availabile dye configuration for dye {dyename2}.')
     print(f'Lost additional eq_probs of: {np.round(100*(Remaining_eq_probs-eprbs.sum()),3)}%')
     print(f'After pruning for both dyes, remaining eq probs is: {np.round(100*(eprbs.sum()),3)} %.')
-    return(eprbs, tprbs)
+
+    #Also return modified dye_coordinates
+    bad_states = np.unique(np.concatenate([bad_states1,bad_states2]))
+    print(f'Total states removed: {len(bad_states)}/{len(eq_probs)}.')
+
+    for i in bad_states:
+        #Fill in all zeros so we keep the array intact but have an obvious mark.
+        dye_coords1[i]=[np.zeros(9)]
+        dye_coords2[i]=[np.zeros(9)]
+
+    return(eprbs, tprbs, dye_coords1, dye_coords2)
