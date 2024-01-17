@@ -204,10 +204,7 @@ def main(argv=None):
         dye1 = dyes_from_expt_dist.load_dye(args.FRETdye1)
         dye2 = dyes_from_expt_dist.load_dye(args.FRETdye2)
 
-        resSeq_pairs = np.loadtxt(args.resid_pairs, dtype=int)
-        #Handle case where only 1 dye pair
-        if resSeq_pairs.ndim==1:
-            resSeq_pairs=resSeq_pairs.reshape(-1,2)
+        resSeq_pairs = np.loadtxt(args.resid_pairs, dtype=int).reshape(-1,2)
 
         logger.info(f"Calculating dye distance distribution using dyes: {args.FRETdye1}")
         logger.info(f"and {args.FRETdye2}")
