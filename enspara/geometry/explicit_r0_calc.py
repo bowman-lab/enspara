@@ -552,9 +552,11 @@ def simulate_burst_k2(MSM_frames, T, populations, dye_coords1, dye_coords2,
         dye_coords1 = dye_coords1, dye_coords2 = dye_coords2, 
         J = J, QD = QD, n=n)
     
-    # multiprocess
+    # multiprocess, split into chunks to reduce communication overhead
     pool = Pool(processes=n_procs)
-    burst_info = pool.map(sample_func, MSM_frames)
+    burst_info = pool.map(sample_func, MSM_frames, 
+        chunksize = np.floor(len(MSM_frames)/n_procs))
+
     pool.terminate()
     
     #Numpy the output
