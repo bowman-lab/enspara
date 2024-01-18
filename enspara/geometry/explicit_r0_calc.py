@@ -6,6 +6,7 @@ import pandas as pd
 import numpy as np
 import scipy
 from numpy.linalg import norm
+from enspara.msm.synthetic_data import synthetic_trajectory
 from enspara.geometry import dyes_from_expt_dist as dyefs
 from functools import partial
 from multiprocessing import Pool
@@ -198,7 +199,40 @@ def assemble_dye_r_mu(dye, dyename, dyelibrary):
     dye_pos_params=np.hstack((dye_center_coords,dipole_origin, dipole_vector))
     return(dye_pos_params)
 
-def calc_k2(Donor_coords, Acceptor_coords):
+def sample_dye_coords(donor_coords, acceptor_coords, states):
+    """
+    Picks random dye coordinates for a trj, returns the corresponding k2 and r
+
+    Attributes
+    --------------
+    Donor_coords, nd.array (9,)
+        numpy array specifying the xyz of the dye emission/excitation center,
+        the origin of the dipole moment, and the dipole vector
+    Acceptor_coords, nd.array (9,)
+        numpy array specifying the xyz of the dye emission/excitation center,
+        the origin of the dipole moment, and the dipole vector
+    states, nd.array, int, (num_states)
+        numpy array specifying states to sample dye positions of.
+
+    Returns
+    --------------
+    k2s : nd.array, float (num_states)
+        kappa squared value for the sampled donor/acceptor positions
+    rs : nd.array, float (num_states)
+        distances between the dye-emission centers for the sampled positions.
+    """
+
+    rs, k2s = [], []
+    for state in states:
+        D_coords=donor_coords[state][np.random.choice(len(donor_coords[state]))]
+        A_coords=acceptor_coords[state][np.random.choice(len(acceptor_coords[state]))]
+        k2_r=calc_k2_r(D_coords,A_coords)
+        k2s.append(k2_r[0])
+        rs.append(k2_r[1])
+    return np.array(k2s), np.array(rs)
+
+
+def calc_k2_r(Donor_coords, Acceptor_coords):
     """
     Calculates k2 from acceptor and donor dye positions/vectors
     
@@ -233,7 +267,7 @@ def calc_k2(Donor_coords, Acceptor_coords):
 
     #Calculate k2
     k2=(cos_theta_T-(3*cos_theta_D*cos_theta_A))**2
-    return(k2)
+    return(k2, r)
 
 def _map_dye_on_protein(pdb, dye, resseq, dyename, dyelibrary,
     outpath='.', save_aligned_dyes=False, dye_weights=None):
@@ -464,3 +498,65 @@ def remove_dyeless_msm_states(dye_coords1, dye_coords2, dyename1, dyename2, eq_p
         dye_coords2[i]=[np.zeros(9)]
 
     return(eprbs, tprbs, dye_coords1, dye_coords2)
+
+def _simulate_burst_k2(MSM_frames, T, populations, dye_coords1, dye_coords2, J, QD, n=1.333):
+    """
+    Helper function for sampling FRET distributions. Proceeds as follows:
+    1) Generate a trajectory of n_frames determined by the burst length
+    2) Pick random dye positions for the states that correspond to photon emissions
+    3) Calculate the R0 for each instantaneous dye position given the k2 from the dye positions
+    4) Calculate the probability of photon transfer
+    5) Average acceptor fluorescence to obtain total FRET efficiency for the burst.
+    """
+    #Introduce a new random seed in each location otherwise pool with end up with the same seeds.
+    rng = np.random.default_rng()
+
+    # determine number of frames to sample MSM
+    n_frames = np.amax(MSM_frames) + 1
+
+    # sample transition matrix for trajectory
+    initial_state = rng.choice(np.arange(T.shape[0]), p=populations)
+    trj = synthetic_trajectory(T, initial_state, n_frames)
+
+    #Pull dye orientations for the synthetic trajectory
+    k2s, rs = sample_dye_coords(dye_coords1,dye_coords2,trj[MSM_frames])
+
+    #Calculate the corresponding R0
+    R0s = calc_R0(k2s, QD, J, n=n)
+
+    #Convert to FRET efficiencies
+    FRET_probs = dyefs.FRET_efficiency(rs, R0s)
+
+    # flip coin for donor or acceptor emisions
+    acceptor_emissions = rng.random(FRET_probs.shape[0]) <= FRET_probs
+
+    #Average for final observed FRET
+    FRET_val = np.mean(acceptor_emissions)
+    
+    return FRET_val, trj, k2s
+
+def simulate_burst_k2(MSM_frames, T, populations, dye_coords1, dye_coords2, 
+                      dyename1, dyename2, n=1.333, n_procs=1):
+    
+    #Calculate the dye-properties for the provided dyes.
+    J, QD = get_dye_overlap(dyename1, dyename2)
+    
+    # fill in function values
+    sample_func = partial(
+        _simulate_burst_k2, T = T, populations = populations, 
+        dye_coords1 = dye_coords1, dye_coords2 = dye_coords2, 
+        J = J, QD = QD, n=n)
+    
+    # multiprocess
+    pool = Pool(processes=n_procs)
+    burst_info = pool.map(sample_func, MSM_frames)
+    pool.terminate()
+    
+    #Numpy the output
+    burst_info = np.array(FEs, dtype=object)
+
+    #Separate things out
+    FEs = burst_info[:,0]
+    trajs = burst_info[:,1]
+    k2s = burst_info[:,2]
+    return(FEs, trajs, k2s)
