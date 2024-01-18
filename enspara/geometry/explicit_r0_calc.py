@@ -400,9 +400,9 @@ def find_dyeless_states(dye_coords):
     
     return(np.array(bad_states))
 
-def remove_bad_states(bad_states, eq_probs, t_probs):
+def remove_bad_states(bad_states, eq_probs, t_counts):
     '''
-    Removes bad states from the MSM without re-normalizing.
+    Removes bad states from the MSM with row re-normalizing.
     
     Crude, probably better to check if states are
     now disconnected and also re-normalize.
@@ -429,12 +429,13 @@ def remove_bad_states(bad_states, eq_probs, t_probs):
 
     #Check to see if no bad states
     if len(bad_states)==0:
+        tcounts, tprbs, eprbs = enspara.msm.builders.normalize(t_counts,calculate_eq_probs=True)
         return(eprbs,tprbs)
     
     else:
-        eprbs[bad_states]=0
-        tprbs[:,bad_states]=0
-        tprbs[bad_states,:]=0
+        tcounts[:,bad_states] = 0
+        tcounts[bad_states,:] = 0
+        tcounts, tprbs, eprbs = enspara.msm.builders.normalize(t_counts,calculate_eq_probs=True)
         return(eprbs, tprbs)
 
 def remove_dyeless_msm_states(dye_coords1, dye_coords2, dyename1, dyename2, eq_probs, t_probs):
