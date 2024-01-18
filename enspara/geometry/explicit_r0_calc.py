@@ -433,8 +433,6 @@ def remove_dyeless_msm_states(dye_coords1, dye_coords2, dyename1, dyename2, eq_p
         t_probs, with bad states/state transitions 0'd
     '''
     
-    print(f'Removing states with no available dye-conformations for dye: {dyename1}')
-    
     #Get bad_states
     bad_states1 = find_dyeless_states(dye_coords1)
 
@@ -446,8 +444,6 @@ def remove_dyeless_msm_states(dye_coords1, dye_coords2, dyename1, dyename2, eq_p
     
 
     #Repeat for second dye pair.
-    print(f'Removing states with no available dye-conformations for dye: {dyename2}')
-    
     Remaining_eq_probs=eprbs.sum()
     #Get bad_states
     bad_states2 = find_dyeless_states(dye_coords2)
@@ -455,7 +451,7 @@ def remove_dyeless_msm_states(dye_coords1, dye_coords2, dyename1, dyename2, eq_p
     #Remove states without dye mappings
     eprbs, tprbs=remove_bad_states(bad_states2,eprbs,tprbs)
     print(f'{len(bad_states2)} states had no availabile dye configuration for dye {dyename2}.')
-    print(f'Lost additional eq_probs of: {np.round(100*(Remaining_eq_probs-eprbs.sum()),3)}%')
+    print(f'Lost additional eq_probs of: {np.round(100*(Remaining_eq_probs-eprbs.sum()),3)}% \n')
     print(f'After pruning for both dyes, remaining eq probs is: {np.round(100*(eprbs.sum()),3)} %.')
 
     #Also return modified dye_coordinates
