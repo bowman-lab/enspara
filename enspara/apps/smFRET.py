@@ -264,10 +264,7 @@ def main(argv=None):
         expt_histogram_paths = conf_file[:, 0]
         predicted_histogram_paths = conf_file[:, 1]
 
-        labelpairs = np.loadtxt(args.resid_pairs, dtype=int)
-        #Handle case where only 1 dye pair
-        if labelpairs.ndim==1:
-            labelpairs=labelpairs.reshape(-1,2)
+        labelpairs = np.loadtxt(args.resid_pairs, dtype=int).reshape(-1,2)
 
         # Initialize a storage array
         difference_array = []
