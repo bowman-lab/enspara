@@ -225,10 +225,7 @@ def main(argv=None):
         logger.info(f"Loaded t_probs from {args.t_probs}")
         populations = np.load(args.eq_probs)
         logger.info(f"Loaded eq_probs from {args.eq_probs}")
-        resSeq_pairs = np.loadtxt(args.resid_pairs, dtype=int)
-        #Handle case where only 1 dye pair
-        if resSeq_pairs.ndim==1:
-            resSeq_pairs=resSeq_pairs.reshape(-1,2)
+        resSeq_pairs = np.loadtxt(args.resid_pairs, dtype=int).reshape(-1,2)
 
         cumulative_times = np.load(args.photon_times, allow_pickle=True)
 
