@@ -555,12 +555,12 @@ def simulate_burst_k2(MSM_frames, T, populations, dye_coords1, dye_coords2,
     # multiprocess, split into chunks to reduce communication overhead
     pool = Pool(processes=n_procs)
     burst_info = pool.map(sample_func, MSM_frames, 
-        chunksize = np.ceil(len(MSM_frames)/n_procs))
+        chunksize = int(np.ceil(len(MSM_frames)/n_procs)))
 
     pool.terminate()
     
     #Numpy the output
-    burst_info = np.array(FEs, dtype=object)
+    burst_info = np.array(burst_info, dtype=object)
 
     #Separate things out
     FEs = burst_info[:,0]
