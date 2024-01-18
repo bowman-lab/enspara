@@ -494,7 +494,7 @@ def remove_dyeless_msm_states(dye_coords1, dye_coords2, dyename1, dyename2, eq_p
     if len(bad_states)/len(t_counts) > 0.2:
         print('WARNING! Labeling resulted in lots of states lost from your MSM.')
 
-    if eq_probs[bad_states].sum() < 0.8:
+    if eq_probs[bad_states].sum() > 0.8:
         print('WARNING! Labeling at this position resulted in major probability loss.')
 
     for i in bad_states:
