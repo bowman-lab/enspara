@@ -400,7 +400,7 @@ def find_dyeless_states(dye_coords):
     
     return(np.array(bad_states))
 
-def remove_bad_states(bad_states, eq_probs, t_counts):
+def remove_bad_states(bad_states, t_counts):
     '''
     Removes bad states from the MSM with row re-normalizing.
     
@@ -424,21 +424,18 @@ def remove_bad_states(bad_states, eq_probs, t_counts):
         t_probs, with bad states/state transitions 0'd
     '''
     
-    eprbs = np.copy(eq_probs)
-    tprbs = np.copy(t_probs)
+    t_counts = np.copy(t_counts)
 
     #Check to see if no bad states
     if len(bad_states)==0:
-        tcounts, tprbs, eprbs = enspara.msm.builders.normalize(t_counts,calculate_eq_probs=True)
-        return(eprbs,tprbs)
+        return(t_counts)
     
     else:
-        tcounts[:,bad_states] = 0
-        tcounts[bad_states,:] = 0
-        tcounts, tprbs, eprbs = enspara.msm.builders.normalize(t_counts,calculate_eq_probs=True)
-        return(eprbs, tprbs)
+        t_counts[:,bad_states] = 0
+        t_counts[bad_states,:] = 0
+        return(t_counts)
 
-def remove_dyeless_msm_states(dye_coords1, dye_coords2, dyename1, dyename2, eq_probs, t_probs):
+def remove_dyeless_msm_states(dye_coords1, dye_coords2, dyename1, dyename2, t_counts):
     '''
     Removes bad states from the MSM without re-normalizing.
     
@@ -472,33 +469,37 @@ def remove_dyeless_msm_states(dye_coords1, dye_coords2, dyename1, dyename2, eq_p
     bad_states1 = find_dyeless_states(dye_coords1)
 
     #Remove any states without dyes mapped (steric clashes)
-    eprbs, tprbs = remove_bad_states(bad_states1,eq_probs,t_probs)
+    t_counts1 = remove_bad_states(bad_states1,t_counts)
 
     print(f'{len(bad_states1)} states had no availabile dye configuration for dye {dyename1}.')
-    print(f'Lost eq_probs of: {np.round(100*(1-eprbs.sum()),3)}% \n')
-    
 
     #Repeat for second dye pair.
-    Remaining_eq_probs=eprbs.sum()
     #Get bad_states
     bad_states2 = find_dyeless_states(dye_coords2)
     
     #Remove states without dye mappings
-    eprbs, tprbs=remove_bad_states(bad_states2,eprbs,tprbs)
+    t_counts2=remove_bad_states(bad_states2,t_counts)
     print(f'{len(bad_states2)} states had no availabile dye configuration for dye {dyename2}.')
-    print(f'Lost additional eq_probs of: {np.round(100*(Remaining_eq_probs-eprbs.sum()),3)}% \n')
-    print(f'After pruning for both dyes, remaining eq probs is: {np.round(100*(eprbs.sum()),3)} %.')
+    print('Rebuilding MSM using row-normalization')
+
+    counts, tprobs, eqs = enspara.msm.builders.normalize(t_counts2,calculate_eq_probs=True)
+
+    print(f'After pruning for both dyes, remaining eq probs is: {np.round(100*(eqs.sum()),3)} %.')
 
     #Also return modified dye_coordinates
     bad_states = np.unique(np.concatenate([bad_states1,bad_states2]))
-    print(f'Total states removed: {len(bad_states)}/{len(eq_probs)}.')
-
+    print(f'Total states removed: {len(bad_states)}/{len(t_counts)}.')
+    if len(bad_states)/len(t_counts) < 0.8:
+        print('WARNING! Lots of states lost from your MSM.')
+    if eqs.sum() < 0.8:
+        print('WARNING! Lots of probability lost with this labeling position.')
+        
     for i in bad_states:
         #Fill in all zeros so we keep the array intact but have an obvious mark.
         dye_coords1[i]=[np.zeros(9)]
         dye_coords2[i]=[np.zeros(9)]
 
-    return(eprbs, tprbs, dye_coords1, dye_coords2)
+    return(eqs, tprobs, dye_coords1, dye_coords2)
 
 def _simulate_burst_k2(MSM_frames, T, populations, dye_coords1, dye_coords2, J, QD, n=1.333):
     """
