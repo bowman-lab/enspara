@@ -158,6 +158,7 @@ def get_dipole_components(dye, dyename, dyelibrary):
         f'(name {dyelibrary[dyename]["mu"][0]}) or (name {dyelibrary[dyename]["mu"][1]})')
 
     #Select the dipole atoms from the trajectory
+    #xyz is in nm
     mu_positions=dye.atom_slice(mu_atomids).xyz
 
     #Make the dipole vector
@@ -249,6 +250,8 @@ def calc_k2_r(Donor_coords, Acceptor_coords):
     --------------
     k2 : float,
         kappa squared value for the specified donor/acceptor positions
+    r : float,
+        distance between the donor and acceptor emission centers (nm)
     """
     
     D_center, D_dip_ori, D_vec = np.split(Donor_coords, 3)
@@ -538,7 +541,7 @@ def _simulate_burst_k2(MSM_frames, T, populations, dye_coords1, dye_coords2, J, 
     #Average for final observed FRET
     FRET_val = np.mean(acceptor_emissions)
     
-    return FRET_val, trj, k2s
+    return FRET_val, trj, k2s, rs
 
 def simulate_burst_k2(MSM_frames, T, populations, dye_coords1, dye_coords2, 
                       dyename1, dyename2, n=1.333, n_procs=1):
@@ -566,4 +569,5 @@ def simulate_burst_k2(MSM_frames, T, populations, dye_coords1, dye_coords2,
     FEs = burst_info[:,0]
     trajs = burst_info[:,1]
     k2s = burst_info[:,2]
-    return(FEs, trajs, k2s)
+    rs = burst_info[:,3]
+    return(FEs, trajs, k2s, rs)
