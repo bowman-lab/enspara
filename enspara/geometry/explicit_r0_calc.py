@@ -272,6 +272,39 @@ def calc_k2_r(Donor_coords, Acceptor_coords):
     k2=(cos_theta_T-(3*cos_theta_D*cos_theta_A))**2
     return(k2, r)
 
+def align_full_dye_to_res(pdb, dye, resseq):
+    """
+    Aligns a dye trajectory to a pdb file.
+
+    Attributes
+    --------------
+    pdb : md.Trajectory 
+        MDtraj trajectory of protein conformation to align to
+    dye: md.Trajectory, 
+        MDtraj trajectory of dye conformations
+    resseq: int
+        residue to label (using PDB ID)
+
+    Returns
+    ---------------
+    dye.xyz : nd.array of aligned atom positions for trajectory
+    """
+
+
+
+    #Select atom indicies of backbone to align to.
+    #MDtraj doesn't recognize "backbone" for dye.
+    #Dye backbone atoms not necessarily in PDB order.
+    dye_ca = dye.top.select('name CA')
+    dye_n = dye.top.select('name N')
+    dye_c = dye.top.select('name C')
+    dye_o = dye.top.select('name O')
+    dye_sele = np.concatenate((dye_ca, dye_n, dye_c, dye_o))
+
+    prot_sele = pdb.top.select(f'resSeq {resseq} and backbone')
+    dye = dye.superpose(pdb, atom_indices = dye_sele, ref_atom_indices = prot_sele)
+    return(dye.xyz)
+
 def _map_dye_on_protein(pdb, dye, resseq, dyename, dyelibrary,
     outpath='.', save_aligned_dyes=False, dye_weights=None):
     '''
@@ -302,7 +335,7 @@ def _map_dye_on_protein(pdb, dye, resseq, dyename, dyelibrary,
     pdb, centern = pdb
     
     #Align the dye to the supplied resseq and update xyzs
-    dye.xyz=dyefs.align_dye_to_res(pdb, dye.xyz, resseq)
+    dye.xyz=align_full_dye_to_res(pdb, dye, resseq)
 
     #Remove conformations that overlap with protein
     dye_indicies = remove_touches_protein_dye_traj(pdb, dye, resseq)
