@@ -348,9 +348,10 @@ def _map_dye_on_protein(pdb, dye, resseq, dyename, dyelibrary,
         
     #Optionally, save the aligned dye structures
     if save_aligned_dyes:
-        os.makedirs(f'{outpath}/dye-alignments',exist_ok=True)
-        dye[dye_indicies].save_dcd(
-            f'{outpath}/dye-alignments/{"".join(dyename.split(" "))}-center-{centern}-residue{resseq}.dcd')
+        if len(dye_indicies)>0:
+            os.makedirs(f'{outpath}/dye-alignments',exist_ok=True)
+            dye[dye_indicies].save_dcd(
+                f'{outpath}/dye-alignments/{"".join(dyename.split(" "))}-center-{centern}-residue{resseq}.dcd')
     
     #Pull out the dye emission center and dipole moment for each frame
     dye_r_mu=assemble_dye_r_mu(dye[dye_indicies], dyename, dyelibrary)
