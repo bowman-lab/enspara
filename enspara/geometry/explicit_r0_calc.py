@@ -104,7 +104,7 @@ def get_dye_overlap(donorname, acceptorname):
     
     return(J, QD)
 
-def remove_touches_protein_dye_traj(pdb, dye, resseq, probe_radius=0.06):
+def remove_touches_protein_dye_traj(pdb, dye, resseq, probe_radius=0.04):
     """
     Takes a dye trajectory and aligns it to a protein PDB structure at resseq
 
@@ -118,7 +118,8 @@ def remove_touches_protein_dye_traj(pdb, dye, resseq, probe_radius=0.06):
     resseq: int,
         Residue to label (using PDB ID)
     probe_radius: float,
-        radius of a probe to see whether residues are overlapping in nm.
+        radius of a probe to fit between other atom shells to see 
+        whether residues are overlapping in nm.
     
     Returns
     ---------------
