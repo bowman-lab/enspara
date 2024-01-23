@@ -308,7 +308,7 @@ def align_full_dye_to_res(pdb, dye, resseq, dyename, dyelibrary):
         dye_n = dye.top.select('name N')
         dye_c = dye.top.select('name C')
         dye_o = dye.top.select('name O')
-        dye_cb = dye.top.select(dyelib[dyename]['CB'][0])
+        dye_cb = dye.top.select(dyelibrary[dyename]['CB'][0])
         dye_sele = np.concatenate((dye_n, dye_ca, dye_cb, dye_c, dye_o))
 
         prot_sele = pdb.top.select(f'resSeq {resseq} and (backbone or name CB)')
