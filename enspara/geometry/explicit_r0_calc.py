@@ -104,7 +104,7 @@ def get_dye_overlap(donorname, acceptorname):
     
     return(J, QD)
 
-def remove_touches_protein_dye_traj(pdb, dye, resseq, probe_radius=0.04):
+def remove_touches_protein_dye_traj(pdb, dye, resseq, probe_radius=0.04, atom_tol=6):
     """
     Takes a dye trajectory and aligns it to a protein PDB structure at resseq
 
@@ -120,6 +120,9 @@ def remove_touches_protein_dye_traj(pdb, dye, resseq, probe_radius=0.04):
     probe_radius: float,
         radius of a probe to fit between other atom shells to see 
         whether residues are overlapping in nm.
+    atom_tol: int,
+        Number of overlapping atoms tolerated before a dye is "too clashed"
+        to include. 
     
     Returns
     ---------------
@@ -143,7 +146,7 @@ def remove_touches_protein_dye_traj(pdb, dye, resseq, probe_radius=0.04):
     
     #Select out the whole dyes, with a slight tolerance for backbone atom overlaps
     whole_dye_indicies=np.where(
-        atoms_not_touching_protein>=len(dye.xyz[0])-6)[0]
+        atoms_not_touching_protein>=len(dye.xyz[0])-atom_tol)[0]
     
     return whole_dye_indicies
     
@@ -273,9 +276,9 @@ def calc_k2_r(Donor_coords, Acceptor_coords):
     k2=(cos_theta_T-(3*cos_theta_D*cos_theta_A))**2
     return(k2, r)
 
-def align_full_dye_to_res(pdb, dye, resseq):
+def align_full_dye_to_res(pdb, dye, resseq, dyename, dyelibrary):
     """
-    Aligns a dye trajectory to a pdb file.
+    Aligns a dye trajectory to a specific residue using backbone and CB.
 
     Attributes
     --------------
@@ -285,24 +288,41 @@ def align_full_dye_to_res(pdb, dye, resseq):
         MDtraj trajectory of dye conformations
     resseq: int
         residue to label (using PDB ID)
+    dyename: string
+        name of the dye being added
+    dyelibrary: dictionary of dyes
+        Must have entry for CB of the dye if you are labeling
+        a residue other than GLY or PRO.
 
     Returns
     ---------------
     dye.xyz : nd.array of aligned atom positions for trajectory
     """
 
+    #Get the residue name
+    resname = pdb.top.atom(pdb.top.select(f'resSeq {resseq}')[0]).residue.name
 
+    #If not gly or pro, align to backbone + CB
+    if resname != 'GLY' and resname != "PRO":
+        dye_ca = dye.top.select('name CA')
+        dye_n = dye.top.select('name N')
+        dye_c = dye.top.select('name C')
+        dye_o = dye.top.select('name O')
+        dye_cb = dye.top.select(dyelib[dyename]['CB'][0])
+        dye_sele = np.concatenate((dye_n, dye_ca, dye_cb, dye_c, dye_o))
 
-    #Select atom indicies of backbone to align to.
-    #MDtraj doesn't recognize "backbone" for dye.
-    #Dye backbone atoms not necessarily in PDB order.
-    dye_ca = dye.top.select('name CA')
-    dye_n = dye.top.select('name N')
-    dye_c = dye.top.select('name C')
-    dye_o = dye.top.select('name O')
-    dye_sele = np.concatenate((dye_ca, dye_n, dye_c, dye_o))
+        prot_sele = pdb.top.select(f'resSeq {resseq} and (backbone or name CB)')
 
-    prot_sele = pdb.top.select(f'resSeq {resseq} and backbone')
+    #If Gly / Pro just do backbone alignment.
+    else:
+        dye_ca = dye.top.select('name CA')
+        dye_n = dye.top.select('name N')
+        dye_c = dye.top.select('name C')
+        dye_o = dye.top.select('name O')
+        dye_sele = np.concatenate((dye_n, dye_ca, dye_c, dye_o))
+    
+        prot_sele = pdb.top.select(f'resSeq {resseq} and backbone')
+    
     dye = dye.superpose(pdb, atom_indices = dye_sele, ref_atom_indices = prot_sele)
     return(dye.xyz)
 
@@ -326,7 +346,7 @@ def _map_dye_on_protein(pdb, dye, resseq, dyename, dyelibrary,
         optionally save trajectory of aligned/pruned dyes
     centern: int,
         protein center number that you're aligning to (for output naming)
-    weights: bool, default=True
+    weights: bool, default=None
         Weight conformation probability by conformation probability in dye traj?
     
     Returns
@@ -336,7 +356,7 @@ def _map_dye_on_protein(pdb, dye, resseq, dyename, dyelibrary,
     pdb, centern = pdb
     
     #Align the dye to the supplied resseq and update xyzs
-    dye.xyz=align_full_dye_to_res(pdb, dye, resseq)
+    dye.xyz=align_full_dye_to_res(pdb, dye, resseq, dyename, dyelibrary)
 
     #Remove conformations that overlap with protein
     dye_indicies = remove_touches_protein_dye_traj(pdb, dye, resseq)
