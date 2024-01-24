@@ -525,36 +525,32 @@ def remove_dyeless_msm_states(dye_coords1, dye_coords2, dyename1, dyename2, eq_p
     
     #Get bad_states
     bad_states1 = find_dyeless_states(dye_coords1)
-
-    #Remove any states without dyes mapped (steric clashes)
-    t_counts1 = remove_bad_states(bad_states1,t_counts)
-
     print(f'{len(bad_states1)} states had no availabile dye configuration for dye {dyename1}.')
 
-    #Repeat for second dye pair.
-    #Get bad_states
     bad_states2 = find_dyeless_states(dye_coords2)
-    
-    #Remove states without dye mappings
-    t_counts2=remove_bad_states(bad_states2,t_counts)
     print(f'{len(bad_states2)} states had no availabile dye configuration for dye {dyename2}.')
+
+    #Remove any states without dyes mapped (steric clashes)
+    bad_states = np.unique(np.concatenate((bad_states1,bad_states2)))
+
+    #Remove states without dye_mappings
+    trimmed_t_counts = remove_bad_states(bad_states,t_counts)
+
+    #Rebuild the MSM
     print('Rebuilding MSM using row-normalization')
 
-    counts, tprobs, eqs = enspara.msm.builders.normalize(t_counts2,calculate_eq_probs=True)
+    counts, tprobs, eqs = enspara.msm.builders.normalize(trimmed_t_counts,calculate_eq_probs=True)
 
-
-
-    #Also return modified dye_coordinates
-    bad_states = np.unique(np.concatenate([bad_states1,bad_states2]))
     print(f'Total states removed: {len(bad_states)}/{len(t_counts)}.')
     print(f'During pruning for both dyes, lost total eq probs from original model of:')
     print(f'{np.round(100*(eq_probs[bad_states].sum()),3)} %. \n')
     if len(bad_states)/len(t_counts) > 0.2:
         print('WARNING! Labeling resulted in lots of states lost from your MSM.')
 
-    if eq_probs[bad_states].sum() > 0.8:
+    if eq_probs[bad_states].sum() > 0.2:
         print('WARNING! Labeling at this position resulted in major probability loss.')
 
+    #Also return modified dye_coordinates
     for i in bad_states:
         #Fill in all zeros so we keep the array intact but have an obvious mark.
         dye_coords1[i]=[np.zeros(9)]
