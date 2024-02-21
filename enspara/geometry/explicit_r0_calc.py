@@ -82,7 +82,7 @@ def get_dye_overlap(donorname, acceptorname):
     
     #Load chromophore data
     chromophore_data = pd.read_csv(f'{dyes_dir}/R0/Dyes_extinction_QD.csv',delimiter=',',
-                                   names=['Type', 'Chromophore', 'Ext_coeff', 'QD'])
+                                   names=['Type', 'Chromophore', 'Ext_coeff', 'QD', 'Td'])
     
     #Pull Quantum yield of the donor absent acceptor
     QD = chromophore_data['QD'].loc[(chromophore_data['Chromophore'] == donor_number) &
