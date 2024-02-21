@@ -66,7 +66,7 @@ def get_dye_overlap(donorname, acceptorname):
     QD : float,
         Quantum yield of the donor dye
     Td : float,
-        Lifetime of the donor dye in the absence of acceptor
+        Lifetime of the donor dye in the absence of acceptor (ns)
     """
     
     dyes_dir=os.path.dirname(enspara.__file__)+'/data/dyes'
@@ -89,6 +89,10 @@ def get_dye_overlap(donorname, acceptorname):
     
     #Pull Quantum yield of the donor absent acceptor
     QD = chromophore_data['QD'].loc[(chromophore_data['Chromophore'] == donor_number) &
+                            (chromophore_data['Type'] == donor_fluor)].values.astype(float)
+
+    #Pull donor lifetime in the absence of acceptor
+    Td = chromophore_data['Td'].loc[(chromophore_data['Chromophore'] == donor_number) &
                             (chromophore_data['Type'] == donor_fluor)].values.astype(float)
     
     #Pull max extinction coefficient for the acceptor
