@@ -10,6 +10,7 @@ from enspara.msm.synthetic_data import synthetic_trajectory
 from enspara.geometry import dyes_from_expt_dist as dyefs
 from functools import partial
 from multiprocessing import Pool
+from multiprocessing import get_context
 
 def load_dye(dyename, dyelibrary, dyes_dir):
     """
@@ -423,15 +424,22 @@ def map_dye_on_protein(trj, dyename, resseq, outpath='.', save_aligned_dyes=Fals
             f'{dye_dir}/weights/{dyelibrary[dyename]["filename"].split("_cutoff")[0]}_cutoff10_weights.txt')
     else:
         dye_weights=[]
-    
+    st = False
     #Map the dyes
-    func = partial(
-        _map_dye_on_protein, dye=dye, resseq=resseq, dyename=dyename, dyelibrary=dyelibrary, outpath=outpath, 
-        save_aligned_dyes=save_aligned_dyes, dye_weights=dye_weights)
-    
-    pool = Pool(processes=n_procs)
-    outputs = pool.map(func, zip(trj, np.arange(len(trj))))
-    pool.terminate()
+    if st == True:
+        for i in zip(trj, np.arange(len(trj))):
+            _map_dye_on_protein(i, dye=dye, resseq=resseq, dyename=dyename, dyelibrary=dyelibrary, outpath=outpath,
+                    save_aligned_dyes=save_aligned_dyes, dye_weights=dye_weights)
+    else:
+        func = partial(
+            _map_dye_on_protein, dye=dye, resseq=resseq, dyename=dyename, dyelibrary=dyelibrary, outpath=outpath, 
+            save_aligned_dyes=save_aligned_dyes, dye_weights=dye_weights)
+        with get_context("spawn").Pool(processes=n_procs) as pool:
+#    pool = Pool(processes=n_procs)
+            outputs = pool.map(func, zip(trj, np.arange(len(trj))))
+            #pool.close()
+            #pool.join()
+            pool.terminate()
     
     dye_coords = enspara.ra.RaggedArray(outputs)
     
@@ -624,3 +632,6 @@ def simulate_burst_k2(MSM_frames, T, populations, dye_coords1, dye_coords2,
     k2s = burst_info[:,2]
     rs = burst_info[:,3]
     return(FEs, trajs, k2s, rs)
+
+if __name__ == '__main__':
+    pass

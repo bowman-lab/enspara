@@ -106,7 +106,7 @@ def process_command_line(argv):
              "with photon wait times (in us) for each burst. Size (n_bursts, nphotons in burst) "
              "Should be of file type .npy")
     fret_input_args.add_argument(
-        'lagtime', type=int,
+        'lagtime', type=float,
         help="lag time used to construct the MSM (in ns) "
              "Should be type float")
     fret_input_args.add_argument(
