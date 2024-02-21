@@ -64,6 +64,8 @@ def get_dye_overlap(donorname, acceptorname):
         Normalized spectral overlap integral
     QD : float,
         Quantum yield of the donor dye
+    Td : float,
+        Lifetime of the donor dye in the absence of acceptor
     """
     
     dyes_dir=os.path.dirname(enspara.__file__)+'/data/dyes'
@@ -102,7 +104,7 @@ def get_dye_overlap(donorname, acceptorname):
     J = np.trapz(donor_spectrum['Emission'] * ext_coeff_acceptor * donor_spectrum['Wavelength'] ** 4,
              x=donor_spectrum['Wavelength']) / donor_spectra_integral
     
-    return(J, QD)
+    return(J, QD, Td)
 
 def remove_touches_protein_dye_traj(pdb, dye, resseq, probe_radius=0.04, atom_tol=6):
     """
@@ -598,7 +600,7 @@ def simulate_burst_k2(MSM_frames, T, populations, dye_coords1, dye_coords2,
                       dyename1, dyename2, n=1.333, n_procs=1):
     
     #Calculate the dye-properties for the provided dyes.
-    J, QD = get_dye_overlap(dyename1, dyename2)
+    J, QD, Td = get_dye_overlap(dyename1, dyename2)
     
     # fill in function values
     sample_func = partial(
