@@ -439,10 +439,7 @@ def map_dye_on_protein(trj, dyename, resseq, outpath='.', save_aligned_dyes=Fals
             _map_dye_on_protein, dye=dye, resseq=resseq, dyename=dyename, dyelibrary=dyelibrary, outpath=outpath, 
             save_aligned_dyes=save_aligned_dyes, dye_weights=dye_weights)
         with get_context("spawn").Pool(processes=n_procs) as pool:
-#    pool = Pool(processes=n_procs)
             outputs = pool.map(func, zip(trj, np.arange(len(trj))))
-            #pool.close()
-            #pool.join()
             pool.terminate()
     
     dye_coords = enspara.ra.RaggedArray(outputs)
