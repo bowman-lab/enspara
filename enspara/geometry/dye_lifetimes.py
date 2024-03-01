@@ -1,5 +1,4 @@
 import numpy as np
-from enspara.msm.synthetic_data import synthetic_trajectory
 from enspara.geometry import explicit_r0_calc as r0c
 
 
@@ -66,22 +65,27 @@ def calc_energy_transfer_prob(krad, k_non_rad, kEET, dt):
 
     Returns
     ---------------
-    Probabilities of occupying any of the decay states or remaining excited.
+    all_probs : np.array (4,)
+        Probabilities of occupying any of the decay states or remaining excited.
     """
+    
     p_rad = 1 - np.exp(-krad * dt)
     p_nonrad = 1 - np.exp(-k_non_rad * dt)
     p_EET = 1 - np.exp(-kEET * dt)
     p_remain_excited = 1 - p_rad - p_nonrad - p_EET
-    all_probs = np.concatenate((p_rad, p_nonrad, p_EET, p_remain_excited))
-    
+    all_probs = np.array([p_rad, p_nonrad, p_EET, p_remain_excited])
+
     # If dyes are very close can get 100% transfer efficiency
     if p_remain_excited < 0:
-        
-        p_remain_excited == 0
-        
+
+        p_remain_excited = np.zeros(1)
+
+        all_probs = np.array([p_rad, p_nonrad, p_EET, p_remain_excited])
+
         all_probs = all_probs / all_probs.sum()
         
-    return(np.concatenate((p_rad, p_nonrad, p_EET, p_remain_excited)))
+    return(all_probs.flatten())
+
 
 def resolve_excitation(d_name, a_name, d_tprobs, a_tprobs, d_eqs, a_eqs, 
                         d_centers, a_centers, dye_params,dye_lagtime):
@@ -135,22 +139,19 @@ def resolve_excitation(d_name, a_name, d_tprobs, a_tprobs, d_eqs, a_eqs,
     krad = Qd/Td #Constant
     k_non_rad = (1/Td) - krad #Constant
     
-    # Avoid repeated calls to synthetic trajectory (expensive) so ask for
-    # somewhat long chunks of frames. 0.1 x dye lifetime emperically seems
-    # to be the best balance between # of frames to generate and repeated calls.
-    n_frames = int( Td * 0.1 / dye_lagtime )
-    
-    # sample transition matrix for trajectory
-    dinitial_state = rng.choice(np.arange(d_tprobs.shape[0]), p=d_eqs)    
-    ainitial_state = rng.choice(np.arange(a_tprobs.shape[0]), p=a_eqs)
+    # Choose a random starting state
+    dtrj,atrj =[],[]
+    dtrj.append(rng.choice(np.arange(d_tprobs.shape[0]), p=d_eqs))
+    atrj.append(rng.choice(np.arange(a_tprobs.shape[0]), p=a_eqs))
 
-    dtrj = synthetic_trajectory(d_tprobs, dinitial_state, n_frames)
-    atrj = synthetic_trajectory(a_tprobs, ainitial_state, n_frames)
-
+    # Convert centers to dye vectors
     d_coords = r0c.assemble_dye_r_mu(d_centers, d_name, dyelibrary)
     a_coords = r0c.assemble_dye_r_mu(a_centers, a_name, dyelibrary)
+    
+    n_dcenters = len(d_centers)
+    n_acenters = len(a_centers)
 
-
+    # Define potential donor resolution pathways
     dye_outcomes = np.array(['radiative','non_radiative','energy_transfer','excited'])
 
     #Start up the markov chain
@@ -161,23 +162,23 @@ def resolve_excitation(d_name, a_name, d_tprobs, a_tprobs, d_eqs, a_eqs,
     #Run the markov chain
     while d_state == 'excited':
         #Calculate k2, r, R0, and kEET for new dye position
-
-        k2, r = r0c.calc_k2_r(d_coords[steps],a_coords[steps])
+        k2, r = r0c.calc_k2_r(d_coords[dtrj[steps]],a_coords[atrj[steps]])
         R0 = r0c.calc_R0(k2, Qd, J)
         kEET = FRET_rate(r, k2, R0, Td)
 
         #Calculate probability of each decay mechanism
         transfer_probs = calc_energy_transfer_prob(krad, k_non_rad, kEET, dye_lagtime)
-
+        
+        #Pick a decay mechanism according to probabilities
         d_state = rng.choice(dye_outcomes, p=transfer_probs)
 
-        steps+=1
+        #Pick new dye positions based on probability of hopping MSM states
+        dtrj.append(
+            rng.choice(n_dcenters,p=d_tprobs[dtrj[-1],:]))
+        atrj.append(
+            rng.choice(n_dcenters,p=a_tprobs[dtrj[-1],:]))
         
-        #If we run out of steps, re-pull new dye coordinates
-        if steps % n_frames == 0:
-            dtrj = np.concatenate((
-                dtrj,synthetic_trajectory(d_tprobs, dtrj[-1], n_frames)))
-            atrj = np.concatenate((
-                atrj,synthetic_trajectory(a_tprobs, atrj[-1], n_frames)))
+        #Add a new step to our counter
+        steps+=1        
             
-    return([steps, d_state, dtrj[:steps], atrj[:steps]])
+    return([steps, d_state, np.array(dtrj), np.array(atrj)])
