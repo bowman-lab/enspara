@@ -176,7 +176,7 @@ def resolve_excitation(d_name, a_name, d_tprobs, a_tprobs, d_eqs, a_eqs,
         dtrj.append(
             rng.choice(n_dcenters,p=d_tprobs[dtrj[-1],:]))
         atrj.append(
-            rng.choice(n_dcenters,p=a_tprobs[dtrj[-1],:]))
+            rng.choice(n_acenters,p=a_tprobs[atrj[-1],:]))
         
         #Add a new step to our counter
         steps+=1        
