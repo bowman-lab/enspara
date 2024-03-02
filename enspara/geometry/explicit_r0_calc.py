@@ -404,8 +404,9 @@ def map_dye_on_protein(trj, dyename, resseq, outpath='.', save_aligned_dyes=Fals
         optionally save trajectory of aligned/pruned dyes
     centern: int,
         protein center number that you're aligning to (for output naming)
-    weights: bool, default=True
+    weights: bool, default=False
         Weight conformation probability by conformation probability in dye traj?
+        Not yet implemented
     
     Returns
     ---------------
@@ -424,8 +425,9 @@ def map_dye_on_protein(trj, dyename, resseq, outpath='.', save_aligned_dyes=Fals
     
     #Load dye weights (if using)
     if weight_dyes:
-        dye_weights=np.loadtxt(
-            f'{dye_dir}/weights/{dyelibrary[dyename]["filename"].split("_cutoff")[0]}_cutoff10_weights.txt')
+        raise Exception("Dye-weighting not yet implemented")
+        # dye_weights=np.loadtxt(
+        #     f'{dye_dir}/weights/{dyelibrary[dyename]["filename"].split("_cutoff")[0]}_cutoff10_weights.txt')
     else:
         dye_weights=[]
     st = False
@@ -508,8 +510,7 @@ def remove_dyeless_msm_states(dye_coords1, dye_coords2, dyename1, dyename2, eq_p
     '''
     Removes bad states from the MSM without re-normalizing.
     
-    Crude function, probably better to check if states are
-    now disconnected and also re-normalize.
+    Crude, probably better to check if states are now disconnected.
     
     Attributes
     -----------
