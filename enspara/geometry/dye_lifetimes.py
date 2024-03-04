@@ -1,5 +1,6 @@
 import numpy as np
 from enspara.geometry import explicit_r0_calc as r0c
+from enspara.msm import builders
 
 
 def FRET_rate(r, R0, Td):
@@ -86,7 +87,7 @@ def calc_energy_transfer_prob(krad, k_non_rad, kRET, dt):
 
 
 def resolve_excitation(d_name, a_name, d_tprobs, a_tprobs, d_eqs, a_eqs, 
-                        d_centers, a_centers, dye_params,dye_lagtime):
+                        d_centers, a_centers, dye_params, dye_lagtime, dyelibrary):
 
     """
     Runs a Monte Carlo to watch for dye decay and reports back the dye lifetime
@@ -223,7 +224,7 @@ def make_dye_msm(centers, t_counts, pdb, resseq, dyename, dyelibrary, outdir='./
         return np.array([0]),np.array([0])
     
     if save_dye_xtc:
-        centers[dye_indicies].save_xtc(f'{outdir}/{resseq}-{dyename}.xtc')
+        centers[dye_indicies].save_xtc(f'{outdir}/{resseq}-{"".join(dyename.split(" "))}.xtc')
     
     #Reverse the indicies to get the bad ones
     all_indicies = np.arange(len(centers))
@@ -233,7 +234,7 @@ def make_dye_msm(centers, t_counts, pdb, resseq, dyename, dyelibrary, outdir='./
     new_tcounts = r0c.remove_bad_states(bad_indicies, t_counts)
     
     #Rebuild the dye MSM
-    counts, tprobs, eqs = enspara.msm.builders.normalize(new_tcounts,calculate_eq_probs=True)
+    counts, tprobs, eqs = builders.normalize(new_tcounts,calculate_eq_probs=True)
     
     return(tprobs, eqs)
 
@@ -241,12 +242,11 @@ def make_dye_msm(centers, t_counts, pdb, resseq, dyename, dyelibrary, outdir='./
 def calc_lifetimes(pdb_center_num, d_centers, d_tcounts, a_centers, a_tcounts, resSeqs, dyenames, 
                    dye_lagtime, n_samples=1000, outdir='./', save_dye_trj=False, save_dye_msm=False):
     
-    dyelibrary=r0c.load_library()
+    dyelibrary = r0c.load_library()
     dye_params = r0c.get_dye_overlap(dyenames[0], dyenames[1])
     
     pdb, center_n = pdb_center_num
     
-    print(center_n)
     #Model dye onto residue of interest and remake MSM. Repeat per labeling position
     d_tprobs, d_mod_eqs = make_dye_msm(d_centers,d_tcounts, pdb[0], resSeqs[0], dyenames[0], dyelibrary)
     a_tprobs, a_mod_eqs = make_dye_msm(a_centers,a_tcounts, pdb[0], resSeqs[1], dyenames[1], dyelibrary)
@@ -257,14 +257,14 @@ def calc_lifetimes(pdb_center_num, d_centers, d_tcounts, a_centers, a_tcounts, r
         return [],[]
     
     if save_dye_msm:
-        np.save(f'{outdir}/center{center_n[0][0]}-{dyenames[0]}-eqs.npy',d_mod_eqs)
-        np.save(f'{outdir}/center{center_n[0][0]}-{dyenames[1]}-eqs.npy',a_mod_eqs)
-        np.save(f'{outdir}/center{center_n[0][0]}-{dyenames[0]}-tps.npy',d_tprobs)
-        np.save(f'{outdir}/center{center_n[0][0]}-{dyenames[0]}-tps.npy',a_tprobs)
+        np.save(f'{outdir}/center{center_n[0][0]}-{"".join(dyenames[0].split(" "))}-eqs.npy',d_mod_eqs)
+        np.save(f'{outdir}/center{center_n[0][0]}-{"".join(dyenames[1].split(" "))}-eqs.npy',a_mod_eqs)
+        np.save(f'{outdir}/center{center_n[0][0]}-{"".join(dyenames[0].split(" "))}-tps.npy',d_tprobs)
+        np.save(f'{outdir}/center{center_n[0][0]}-{"".join(dyenames[1].split(" "))}-tps.npy',a_tprobs)
 
     
     events = np.array([resolve_excitation(dyenames[0], dyenames[1], d_tprobs, a_tprobs, d_mod_eqs, a_mod_eqs, 
-                        d_centers, a_centers, dye_params, dye_lagtime) for i in range(n_samples)])
+                        d_centers, a_centers, dye_params, dye_lagtime, dyelibrary) for i in range(n_samples)])
     
     if save_dye_trj:
         dtrj = events[:,2]
@@ -277,13 +277,13 @@ def calc_lifetimes(pdb_center_num, d_centers, d_tcounts, a_centers, a_tcounts, r
     
     return lifetimes, outcomes
 
-def sample_lifetimes(states, lifetimes, outcomes):
+def sample_lifetimes_guarenteed_photon(states, lifetimes, outcomes):
     """
 
     """
     rng=np.random.default_rng()
 
-    FE, lifetime = [],[]
+    photons, lifetime = [],[]
     for state in states:
         event_n = rng.choice(len(lifetimes[state]))
 
@@ -291,13 +291,13 @@ def sample_lifetimes(states, lifetimes, outcomes):
         while outcomes[state][event_n]=='non_radiative':
             event_n = rng.choice(len(lifetimes[state]))
         if outcomes[state][event_n]=='energy_transfer':
-            FE.append(1)
+            photons.append(1)
             #Acceptor event
         else:
-            FE.append(0)
+            photons.append(0)
             #Donor event
         lifetime.append(lifetimes[state][event_n])
 
-    FE = np.array(FE)
+    photons = np.array(photons)
     lifetime = np.array(lifetime)
     return(photons, lifetime)
