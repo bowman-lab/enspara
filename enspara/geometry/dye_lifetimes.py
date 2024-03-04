@@ -164,7 +164,7 @@ def resolve_excitation(d_name, a_name, d_tprobs, a_tprobs, d_eqs, a_eqs,
         R0 = r0c.calc_R0(k2, Qd, J)
         kEET = FRET_rate(r, R0, Td)
 
-        #Calculate probability of each decay mechanism
+        #Calculate probability of each decay  mechanism
         transfer_probs = calc_energy_transfer_prob(krad, k_non_rad, kEET, dye_lagtime)
         
         #Pick a decay mechanism according to probabilities
