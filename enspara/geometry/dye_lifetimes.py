@@ -17,7 +17,7 @@ def FRET_rate(r, R0, Td):
     
     Returns
     ---------------
-    kEET : float,
+    kRET : float,
     rate of FRET transfer 1/ns
     """
     return((1/Td)*((R0/r)**6))
@@ -46,7 +46,7 @@ def calc_dye_radiative_rates(Qd, Td):
     
     return(krad, k_non_rad)
 
-def calc_energy_transfer_prob(krad, k_non_rad, kEET, dt):
+def calc_energy_transfer_prob(krad, k_non_rad, kRET, dt):
     """
     Calculates probability of energy transfers given a timestep.
     
@@ -56,7 +56,7 @@ def calc_energy_transfer_prob(krad, k_non_rad, kEET, dt):
         Rate  of radiative decay, 1/ns
     k_non_rad : float,
         Rate of non-radiative decay, 1/ns
-    kEET : float,
+    kRET : float,
         Rate of energy transfer to acceptor, 1/ns
     dt : float,
         Timestep to evaluate probability over, ns
@@ -69,16 +69,16 @@ def calc_energy_transfer_prob(krad, k_non_rad, kEET, dt):
     
     p_rad = 1 - np.exp(-krad * dt)
     p_nonrad = 1 - np.exp(-k_non_rad * dt)
-    p_EET = 1 - np.exp(-kEET * dt)
-    p_remain_excited = 1 - p_rad - p_nonrad - p_EET
-    all_probs = np.array([p_rad, p_nonrad, p_EET, p_remain_excited])
+    p_RET = 1 - np.exp(-kRET * dt)
+    p_remain_excited = 1 - p_rad - p_nonrad - p_RET
+    all_probs = np.array([p_rad, p_nonrad, p_RET, p_remain_excited])
 
     # If dyes are very close can get 100% transfer efficiency
     if p_remain_excited < 0:
 
         p_remain_excited = np.zeros(1)
 
-        all_probs = np.array([p_rad, p_nonrad, p_EET, p_remain_excited])
+        all_probs = np.array([p_rad, p_nonrad, p_RET, p_remain_excited])
 
         all_probs = all_probs / all_probs.sum()
         
@@ -159,13 +159,13 @@ def resolve_excitation(d_name, a_name, d_tprobs, a_tprobs, d_eqs, a_eqs,
 
     #Run the markov chain
     while d_state == 'excited':
-        #Calculate k2, r, R0, and kEET for new dye position
+        #Calculate k2, r, R0, and kRET for new dye position
         k2, r = r0c.calc_k2_r(d_coords[dtrj[steps]],a_coords[atrj[steps]])
         R0 = r0c.calc_R0(k2, Qd, J)
-        kEET = FRET_rate(r, R0, Td)
+        kRET = FRET_rate(r, R0, Td)
 
         #Calculate probability of each decay  mechanism
-        transfer_probs = calc_energy_transfer_prob(krad, k_non_rad, kEET, dye_lagtime)
+        transfer_probs = calc_energy_transfer_prob(krad, k_non_rad, kRET, dye_lagtime)
         
         #Pick a decay mechanism according to probabilities
         d_state = rng.choice(dye_outcomes, p=transfer_probs)
