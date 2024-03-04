@@ -2,7 +2,7 @@ import numpy as np
 from enspara.geometry import explicit_r0_calc as r0c
 
 
-def FRET_rate(r, k2, R0, Td):
+def FRET_rate(r, R0, Td):
     """
     Calculate the rate of FRET energy transfer as a function of flurophore parameters
 
@@ -10,8 +10,6 @@ def FRET_rate(r, k2, R0, Td):
     --------------    
     r : float, 
         Distance between donor and acceptor flurophore, nm
-    k2 : float,
-        Dipole moment between donor and acceptor flurophore
     R0 : float,
         Forster radius, nm
     Td : float,
@@ -22,7 +20,7 @@ def FRET_rate(r, k2, R0, Td):
     kEET : float,
     rate of FRET transfer 1/ns
     """
-    return((1/Td)*(k2)*(R0/r)**6)
+    return((1/Td)*((R0/r)**6))
 
 def calc_dye_radiative_rates(Qd, Td):
     """
@@ -164,7 +162,7 @@ def resolve_excitation(d_name, a_name, d_tprobs, a_tprobs, d_eqs, a_eqs,
         #Calculate k2, r, R0, and kEET for new dye position
         k2, r = r0c.calc_k2_r(d_coords[dtrj[steps]],a_coords[atrj[steps]])
         R0 = r0c.calc_R0(k2, Qd, J)
-        kEET = FRET_rate(r, k2, R0, Td)
+        kEET = FRET_rate(r, R0, Td)
 
         #Calculate probability of each decay mechanism
         transfer_probs = calc_energy_transfer_prob(krad, k_non_rad, kEET, dye_lagtime)
