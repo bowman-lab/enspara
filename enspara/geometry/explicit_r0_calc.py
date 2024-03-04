@@ -23,6 +23,14 @@ def load_dye(dyename, dyelibrary, dyes_dir):
     dye=md.load(dyes_dir+f'/trajs/{dye_file}_cutoff10.dcd',top=dyes_dir+f'/structures/{dye_file}.pdb')
     return(dye)
 
+def load_library():
+    dyes_dir=os.path.dirname(enspara.__file__)+'/data/dyes'
+
+    with open(f'{dyes_dir}/libraries.yml','r') as yaml_file:
+        dyelibrary = yaml.load(yaml_file, Loader=yaml.FullLoader)
+
+    return dyelibrary
+
 def calc_R0(k2, QD, J, n=1.333):
     """
     Calculates R0 from dye parameters
