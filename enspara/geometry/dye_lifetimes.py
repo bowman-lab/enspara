@@ -180,3 +180,124 @@ def resolve_excitation(d_name, a_name, d_tprobs, a_tprobs, d_eqs, a_eqs,
         steps+=1        
             
     return([steps, d_state, np.array(dtrj), np.array(atrj)])
+
+def make_dye_msm(centers, t_counts, pdb, resseq, dyename, dyelibrary, outdir='./', save_dye_xtc = False):
+    """
+    Labels a protein residue with a given dye and returns a new dye MSM
+    Attributes
+    -----------
+    centers, md.Trajectory
+        Trajectory of dye centers
+    t_counts, np.array (n_centers, n_centers)
+        transition counts from dye MSM
+    pdb, md.Trajectory
+        structure of protein to label
+    resseq, int
+        ResSeq number to label of pdb
+    dyename, string
+        name of dye in enspara dye library
+    dyelibrary, dictionary
+        enspara dye library
+    outdir, path
+        where to save output
+    save_dye_xtc, bool default = False
+        Save an XTC of the dye positions?
+    
+    Returns
+    -----------
+    tprobs, np.array (n_centers, n_centers)
+        Transition probabilities for the dye MSM
+    eqs, np.array (n_centers,)
+        Equilibrium probabilities for the dye MSM
+    """
+    
+    # Align dye to PDB structure
+    centers.xyz = r0c.align_full_dye_to_res(pdb, centers, resseq, dyename, dyelibrary)
+    
+    # Remove steric clashes
+    dye_indicies = r0c.remove_touches_protein_dye_traj(pdb, centers, resseq)
+    
+    if len(dye_indicies)==0:
+        #No non-clashing label positions
+        #Need to think about what to return so we can rebuild the protein MSM correctly.
+        return np.array([0]),np.array([0])
+    
+    if save_dye_xtc:
+        centers[dye_indicies].save_xtc(f'{outdir}/{resseq}-{dyename}.xtc')
+    
+    #Reverse the indicies to get the bad ones
+    all_indicies = np.arange(len(centers))
+    bad_indicies = all_indicies[~np.isin(all_indicies,dye_indicies,assume_unique=True)]
+    
+    #Purge the t_counts of the bad indicies
+    new_tcounts = r0c.remove_bad_states(bad_indicies, t_counts)
+    
+    #Rebuild the dye MSM
+    counts, tprobs, eqs = enspara.msm.builders.normalize(new_tcounts,calculate_eq_probs=True)
+    
+    return(tprobs, eqs)
+
+
+def calc_lifetimes(pdb_center_num, d_centers, d_tcounts, a_centers, a_tcounts, resSeqs, dyenames, 
+                   dye_lagtime, n_samples=1000, outdir='./', save_dye_trj=False, save_dye_msm=False):
+    
+    dyelibrary=r0c.load_library()
+    dye_params = r0c.get_dye_overlap(dyenames[0], dyenames[1])
+    
+    pdb, center_n = pdb_center_num
+    
+    print(center_n)
+    #Model dye onto residue of interest and remake MSM. Repeat per labeling position
+    d_tprobs, d_mod_eqs = make_dye_msm(d_centers,d_tcounts, pdb[0], resSeqs[0], dyenames[0], dyelibrary)
+    a_tprobs, a_mod_eqs = make_dye_msm(a_centers,a_tcounts, pdb[0], resSeqs[1], dyenames[1], dyelibrary)
+    
+    #Check if no feasible labeling positions
+    if np.sum(a_mod_eqs) == 0 or np.sum(d_mod_eqs) == 0:
+        #return an empty list, could not label
+        return [],[]
+    
+    if save_dye_msm:
+        np.save(f'{outdir}/center{center_n[0][0]}-{dyenames[0]}-eqs.npy',d_mod_eqs)
+        np.save(f'{outdir}/center{center_n[0][0]}-{dyenames[1]}-eqs.npy',a_mod_eqs)
+        np.save(f'{outdir}/center{center_n[0][0]}-{dyenames[0]}-tps.npy',d_tprobs)
+        np.save(f'{outdir}/center{center_n[0][0]}-{dyenames[0]}-tps.npy',a_tprobs)
+
+    
+    events = np.array([resolve_excitation(dyenames[0], dyenames[1], d_tprobs, a_tprobs, d_mod_eqs, a_mod_eqs, 
+                        d_centers, a_centers, dye_params, dye_lagtime) for i in range(n_samples)])
+    
+    if save_dye_trj:
+        dtrj = events[:,2]
+        atrj = events[:,3]
+        np.save(f'{outdir}/center{center_n[0][0]}-{dyenames[0]}-dtrj.npy',dtrj)
+        np.save(f'{outdir}/center{center_n[0][0]}-{dyenames[0]}-atrj.npy',atrj)
+
+    lifetimes = events[:,0].astype(float)*dye_lagtime #ns
+    outcomes = events[:,1]
+    
+    return lifetimes, outcomes
+
+def sample_lifetimes(states, lifetimes, outcomes):
+    """
+
+    """
+    rng=np.random.default_rng()
+
+    FE, lifetime = [],[]
+    for state in states:
+        event_n = rng.choice(len(lifetimes[state]))
+
+        #If non-radiative, redraw since we're using experimental photon arrival times
+        while outcomes[state][event_n]=='non_radiative':
+            event_n = rng.choice(len(lifetimes[state]))
+        if outcomes[state][event_n]=='energy_transfer':
+            FE.append(1)
+            #Acceptor event
+        else:
+            FE.append(0)
+            #Donor event
+        lifetime.append(lifetimes[state][event_n])
+
+    FE = np.array(FE)
+    lifetime = np.array(lifetime)
+    return(photons, lifetime)

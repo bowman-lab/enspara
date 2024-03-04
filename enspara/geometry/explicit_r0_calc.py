@@ -421,12 +421,7 @@ def map_dye_on_protein(trj, dyename, resseq, outpath='.', save_aligned_dyes=Fals
     
     '''
     
-    #Set the dyes directory to enspara dyes
-    dyes_dir=os.path.dirname(enspara.__file__)+'/data/dyes'
-    
-    #Load the dyelibrary to use for parsing etc.
-    with open(f'{dyes_dir}/libraries.yml','r') as yaml_file:
-        dyelibrary = yaml.load(yaml_file, Loader=yaml.FullLoader)
+    dyelibrary = load_library()
     
     #Load the dye trajectory
     dye = load_dye(dyename, dyelibrary, dyes_dir)
