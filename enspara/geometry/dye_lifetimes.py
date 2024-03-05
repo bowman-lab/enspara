@@ -1,7 +1,7 @@
 import numpy as np
 from enspara.geometry import explicit_r0_calc as r0c
 from enspara.msm import builders
-
+from enspara.msm import synthetic_data
 
 def FRET_rate(r, R0, Td):
     """
@@ -322,7 +322,7 @@ def calc_lifetimes(pdb_center_num, d_centers, d_tcounts, a_centers, a_tcounts, r
     
     return lifetimes, outcomes
 
-def sample_lifetimes_guarenteed_photon(states, lifetimes, outcomes):
+def _sample_lifetimes_guarenteed_photon(states, lifetimes, outcomes):
     """
     Samples dye lifetimes/outcomes such as outputs of calc_lifetimes at specific MSM states.
     Returns random, observed lifetime/outcome for that MSM state.
@@ -372,7 +372,51 @@ def sample_lifetimes_guarenteed_photon(states, lifetimes, outcomes):
     lifetime = np.array(lifetime)
     return(photons, lifetime)
 
-def remake_prot_MSM_from_lifetimes(lifetimes, prot_tcounts, outdir='./', prot_eqs=None):
+def sample_lifetimes_guarenteed_photon(frames, t_probs, eqs, lifetimes, outcomes):
+
+    """
+    Samples dye lifetimes and excitation outcomes given protein MSM frames and a protein MSM.
+    Guarentees observation of a photon, non-radiative decay events ignored.
+
+    Attributes
+    -----------
+    frames, np.array shape (n_frames,)
+        Steps through MSM when photons are observed
+    t_probs, np.array, shape (n_states, n_states)
+        Transition probabilities of the protein MSM
+    eqs, np.array, shape (n_states,)
+        Equilibirum probabilities of the protein MSM
+    lifetimes, ragged np.array (n_centers, n_samples (or 0))
+        Lifetimes of photon excitement for each protein MSM center
+    outcomes, ragged np.array (n_centers, n_samples (or 0))
+        Outcome of dye excitation (matched with lifetimes, above).
+
+    Returns
+    -----------
+    photons, np.array (n_states)
+        Observations of acceptor photon (1) or donor photon (0)
+    lifetime, np.array (n_states)
+        Time since excitation that photon was observed
+    """
+
+    #Introduce a new random seed in each location otherwise pool with end up with the same seeds.
+    rng=np.random.default_rng()
+
+    # determine number of frames to sample MSM
+    n_frames = np.amax(frames) + 1
+
+    # sample transition matrix for trajectory
+    initial_state = rng.choice(np.arange(t_probs.shape[0]), p=eqs)    
+
+    #Build a synthetic trajectory from the MSM
+    trj = synthetic_data.synthetic_trajectory(t_probs, initial_state, n_frames)
+
+    #Pull lifetimes and outcomes for each MSM frame
+    photons, lifetimes = _sample_lifetimes_guarenteed_photon(trj[frames],lifetimes,outcomes)
+
+    return photons, lifetimes
+
+def remake_prot_MSM_from_lifetimes(lifetimes, prot_tcounts, resSeqs, dyenames, outdir='./', prot_eqs=None):
     """
     Rebuilds protein MSM removing states that had steric clashes with dyes.
     Attributes
@@ -398,12 +442,12 @@ def remake_prot_MSM_from_lifetimes(lifetimes, prot_tcounts, outdir='./', prot_eq
     # Find which states couldn't be labeled:
     bad_states = r0c.find_dyeless_states(lifetimes)
 
-    print(f'{len(bad_states)} of {len(prot_traj)} protein states had steric clashes.')
+    print(f'{len(bad_states)} of {len(prot_tcounts)} protein states had steric clashes.')
 
     if len(bad_states)/len(prot_tcounts) > 0.2:
         print(f'WARNING! Labeling resulted in loss of {np.round(100*len(bad_states)/len(prot_tcounts))}% of your MSM states. \n')
 
-    if prot_eqs:
+    if prot_eqs is not None:
         print(f'\nThis was {np.round(100*np.sum(prot_eqs[bad_states]),2)}% of the original equilibirum probability.')
 
         if np.sum(prot_eqs[bad_states]) > 0.2:
