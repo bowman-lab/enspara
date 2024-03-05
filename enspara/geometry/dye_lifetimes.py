@@ -241,7 +241,52 @@ def make_dye_msm(centers, t_counts, pdb, resseq, dyename, dyelibrary, outdir='./
 
 def calc_lifetimes(pdb_center_num, d_centers, d_tcounts, a_centers, a_tcounts, resSeqs, dyenames, 
                    dye_lagtime, n_samples=1000, outdir='./', save_dye_trj=False, save_dye_msm=False):
-    
+
+    """
+    Takes a protein pdb structure, dye trajectories/MSM, and labeling positions and calculates expected
+    dye-emission event and lifetime for n_samples. Dye is allowed to move during the monte-carlo according
+    to the MSM probabilities and transfer probabilities are iteratively updated.
+
+    Attributes
+    -----------
+    pdb_center_num, zip(md.Trajectory, int)
+        PDB to model dyes on. Int is the center number for book keeping.
+    d_centers, md.Trajectory, size(n_states)
+        MSM centers for the donor dye.
+    d_tcounts, np.array (n_centers, n_centers)
+        T_counts for donor dye msm.
+    a_centers, md.Trajectory, size(n_states)
+        MSM centers for the acceptor dye.
+    a_tcounts, np.array (n_centers, n_centers)
+        T_counts for acceptor dye msm.
+    resSeqs, list of ints, len(2)
+        resSeqs to label. Donor will go on first residue and acceptor on second.
+    dyenames, list of strings, len(2)
+        names of dyes to label residues with. Donor is the first dyename and acceptor the second.
+        Should be in the enspara dye library.
+    dye_lagtime, float
+        Lagtime used to build the dye MSMs.
+    n_samples, int. Default = 1000
+        Number of monte carlo simulations to run.
+        Warning- this can get expensive if very large. 1000 takes ~ 5 minutes to run on my computer.
+    outdir, path. Default = './'
+        Where to save things to.
+    save_dye_trj, bool, default=False
+        Save a trajectory of the dye conformations that didn't have steric clashes?
+    save_dye_msm, bool, default=False
+        Save the rebuilt MSM of the dye conformations that didn't have steric clashes?
+
+    Returns
+    -----------
+    lifetimes, np.array (n_states)
+        How long did it take for decay to occur?
+    outcomes, np.array (n_states)
+        How did the decay occcur? 
+        Radiative = donor flurophore emission
+        non-radiative = no observed emission
+        energy_transfer = acceptor flurophore emission
+    """
+
     dyelibrary = r0c.load_library()
     dye_params = r0c.get_dye_overlap(dyenames[0], dyenames[1])
     
@@ -279,8 +324,27 @@ def calc_lifetimes(pdb_center_num, d_centers, d_tcounts, a_centers, a_tcounts, r
 
 def sample_lifetimes_guarenteed_photon(states, lifetimes, outcomes):
     """
+    Samples dye lifetimes/outcomes such as outputs of calc_lifetimes at specific MSM states.
+    Returns random, observed lifetime/outcome for that MSM state.
+    Guarentees observation of a photon (donor or acceptor) as opposed to non-radiative decay.
 
+    Attributes
+    -----------
+    states, np.array
+        MSM states to pull lifetime/excitation outcomes from
+    lifetimes, ragged np.array (n_centers, n_samples (or 0))
+        Lifetimes of photon excitement
+    outcomes, ragged np.array (n_centers, n_samples (or 0))
+        Outcome of dye excitation (matched with lifetimes, above).
+
+    Returns
+    -----------
+    photons, np.array (n_states)
+        Observations of acceptor photon (1) or donor photon (0)
+    lifetime, np.array (n_states)
+        Time since excitation that photon was observed
     """
+
     rng=np.random.default_rng()
 
     photons, lifetime = [],[]
@@ -293,11 +357,67 @@ def sample_lifetimes_guarenteed_photon(states, lifetimes, outcomes):
         if outcomes[state][event_n]=='energy_transfer':
             photons.append(1)
             #Acceptor event
-        else:
+        elif outcomes[state][event_n]=='radiative':
             photons.append(0)
             #Donor event
+        else:
+            #Something went wrong.
+            print('Something seems wrong with your outcomes array, expected outcomes of:')
+            print(f'non_radiative, energy_transfer, or radiative. Got {outcomes[state][event_n]}.')
+            print(f'For reference, state was {state}, and event number {event_n}')
+            exit()
         lifetime.append(lifetimes[state][event_n])
 
     photons = np.array(photons)
     lifetime = np.array(lifetime)
     return(photons, lifetime)
+
+def remake_prot_MSM_from_lifetimes(lifetimes, prot_tcounts, outdir='./', prot_eqs=None):
+    """
+    Rebuilds protein MSM removing states that had steric clashes with dyes.
+    Attributes
+    -----------
+    lifetimes, np.array
+        ragged array of dye lifetimes shape (n_prot_states, n_sampled_lifetimes or 0)
+    prot_tcounts, np.array (n_centers, n_centers)
+        T_counts from protein MSM
+    outdir, path
+        Where to save data to. Default = ./
+    prot_eqs, np.array (n_centers, n_centers)
+        Equilibirium probabilities of protein MSM, for nice bookkeeping.
+        Default = None
+
+    Returns
+    -----------
+    new_tprobs, np.array (n_centers, n_centers)
+        Transition probabilities for the clash-free protein MSM
+    new_eqs, np.array (n_centers,)
+        Equilibrium probabilities for the clash-free protein MSM
+    """
+
+    # Find which states couldn't be labeled:
+    bad_states = r0c.find_dyeless_states(lifetimes)
+
+    print(f'{len(bad_states)} of {len(prot_traj)} protein states had steric clashes.')
+
+    if len(bad_states)/len(prot_tcounts) > 0.2:
+        print(f'WARNING! Labeling resulted in loss of {np.round(100*len(bad_states)/len(prot_tcounts))}% of your MSM states. \n')
+
+    if prot_eqs:
+        print(f'\nThis was {np.round(100*np.sum(prot_eqs[bad_states]),2)}% of the original equilibirum probability.')
+
+        if np.sum(prot_eqs[bad_states]) > 0.2:
+            print(f'WARNING! Lots of equilibrium probability lost. \n')
+
+    print(f'Remaking MSM.')
+    # remove bad states from protein MSM
+    trimmed_tcounts = r0c.remove_bad_states(bad_states, prot_tcounts)
+
+    #remake protein MSM
+    #Add in a "you lost this many states / eq probs."
+    new_tcounts, new_tprobs, new_eqs = builders.normalize(trimmed_tcounts, calculate_eq_probs=True)
+
+    print(f'Saving modified MSM here: {outdir}.')
+    np.save(f'{outdir}/{resSeqs[0]}-{"".join(dyenames[0].split(" "))}-{resSeqs[1]}-{"".join(dyenames[1].split(" "))}-eqs.npy',new_eqs)
+    np.save(f'{outdir}/{resSeqs[0]}-{"".join(dyenames[0].split(" "))}-{resSeqs[1]}-{"".join(dyenames[1].split(" "))}-t_prbs.npy',new_tprobs)
+    return new_tprobs, new_eqs
