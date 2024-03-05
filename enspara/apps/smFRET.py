@@ -137,6 +137,9 @@ def process_command_line(argv):
     fret_parameters.add_argument(
         '--output_dir', required=False, action=readable_dir, default='./',
         help="The location to write the FRET dye distributions.")
+    fret_parameters.add_argument(
+        '--save_prot_trj', required=False, default=False, type=bool,
+        help="Save center indicies of protein states visited during each burst?")
 
 
     ##########################
@@ -187,7 +190,7 @@ def main(argv=None):
     for i, arg in enumerate(argv):
         # Provide helpful output to remind users their input
         print(i, arg)
-    print()
+    print("", flush=True)
 
         # Make an output directory
     if args.output_dir != './':
@@ -251,7 +254,8 @@ def main(argv=None):
                 T=t_probabilities, populations=populations, dist_distribution=dist_distribution,
                 MSM_frames=MSM_frames, R0=args.R0, n_procs=args.n_procs, n_photon_std=args.n_chunks)
             np.save(f"{args.output_dir}/FRET_E_{title}_time_factor_{args.slowing_factor}.npy", FEs_sampling)
-            np.save(f'{args.output_dir}/syn-trjs-{title}.npy', trajs)
+            if args.save_prot_trj:
+                np.save(f'{args.output_dir}/syn-trjs-{title}.npy', trajs)
 
         logger.info(f"Success! Your FRET data can be found here: {args.output_dir}")
 
