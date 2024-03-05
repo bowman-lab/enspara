@@ -644,14 +644,22 @@ def sample_FRET_histograms(
     """
 
     # fill in function values
-    sample_func = partial(
-        _sample_FRET_histograms, T=T, populations=populations,
-        dist_distribution=dist_distribution, R0=R0, n_photon_std=n_photon_std)
+    if n_procs == 1:
+        FE = []
+        for frame in MSM_frames:
+            FE.append(_sample_FRET_histograms(frame, T=T, populations=populations,
+            dist_distribution=dist_distribution, R0=R0, n_photon_std=n_photon_std))
 
-    # multiprocess
-    pool = Pool(processes=n_procs)
-    FE= pool.map(sample_func, MSM_frames)
-    pool.terminate()
+    else:
+        sample_func = partial(
+            _sample_FRET_histograms, T=T, populations=populations,
+            dist_distribution=dist_distribution, R0=R0, n_photon_std=n_photon_std)
+
+        # multiprocess
+        pool = Pool(processes=n_procs)
+        FE= pool.map(sample_func, MSM_frames)
+        pool.terminate()
+        
     # numpy the output
     FE= np.array(FE, dtype=object)
     FEs=FE[:,0:2]

@@ -23,6 +23,14 @@ def load_dye(dyename, dyelibrary, dyes_dir):
     dye=md.load(dyes_dir+f'/trajs/{dye_file}_cutoff10.dcd',top=dyes_dir+f'/structures/{dye_file}.pdb')
     return(dye)
 
+def load_library():
+    dyes_dir=os.path.dirname(enspara.__file__)+'/data/dyes'
+
+    with open(f'{dyes_dir}/libraries.yml','r') as yaml_file:
+        dyelibrary = yaml.load(yaml_file, Loader=yaml.FullLoader)
+
+    return dyelibrary
+
 def calc_R0(k2, QD, J, n=1.333):
     """
     Calculates R0 from dye parameters
@@ -404,28 +412,25 @@ def map_dye_on_protein(trj, dyename, resseq, outpath='.', save_aligned_dyes=Fals
         optionally save trajectory of aligned/pruned dyes
     centern: int,
         protein center number that you're aligning to (for output naming)
-    weights: bool, default=True
+    weights: bool, default=False
         Weight conformation probability by conformation probability in dye traj?
+        Not yet implemented
     
     Returns
     ---------------
     
     '''
     
-    #Set the dyes directory to enspara dyes
-    dyes_dir=os.path.dirname(enspara.__file__)+'/data/dyes'
-    
-    #Load the dyelibrary to use for parsing etc.
-    with open(f'{dyes_dir}/libraries.yml','r') as yaml_file:
-        dyelibrary = yaml.load(yaml_file, Loader=yaml.FullLoader)
+    dyelibrary = load_library()
     
     #Load the dye trajectory
     dye = load_dye(dyename, dyelibrary, dyes_dir)
     
     #Load dye weights (if using)
     if weight_dyes:
-        dye_weights=np.loadtxt(
-            f'{dye_dir}/weights/{dyelibrary[dyename]["filename"].split("_cutoff")[0]}_cutoff10_weights.txt')
+        raise Exception("Dye-weighting not yet implemented")
+        # dye_weights=np.loadtxt(
+        #     f'{dye_dir}/weights/{dyelibrary[dyename]["filename"].split("_cutoff")[0]}_cutoff10_weights.txt')
     else:
         dye_weights=[]
     st = False
@@ -508,8 +513,7 @@ def remove_dyeless_msm_states(dye_coords1, dye_coords2, dyename1, dyename2, eq_p
     '''
     Removes bad states from the MSM without re-normalizing.
     
-    Crude function, probably better to check if states are
-    now disconnected and also re-normalize.
+    Crude, probably better to check if states are now disconnected.
     
     Attributes
     -----------
