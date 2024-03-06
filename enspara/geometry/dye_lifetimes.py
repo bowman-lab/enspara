@@ -465,3 +465,153 @@ def remake_prot_MSM_from_lifetimes(lifetimes, prot_tcounts, resSeqs, dyenames, o
     np.save(f'{outdir}/{resSeqs[0]}-{"".join(dyenames[0].split(" "))}-{resSeqs[1]}-{"".join(dyenames[1].split(" "))}-eqs.npy',new_eqs)
     np.save(f'{outdir}/{resSeqs[0]}-{"".join(dyenames[0].split(" "))}-{resSeqs[1]}-{"".join(dyenames[1].split(" "))}-t_prbs.npy',new_tprobs)
     return new_tprobs, new_eqs
+
+def single_exp_decay(t, Io, tau):
+    """
+    Function for a single exponential decay.
+    Attributes
+    -------------- 
+    t : np.array
+        Time
+    Io : float
+        Initial maximum
+    tau : float
+        lifetime
+    """
+    
+    return Io*np.exp(-t/tau)
+
+def fit_single_exp(t,y,p0):
+    """
+    Fits a single exponential decay curve to data, returns optimum parameters.
+    """
+    from scipy.optimize import curve_fit
+    opt_params, parm_cov = curve_fit(single_exp_decay, t, y, p0=p0)
+    Io, tau = opt_params
+    return Io, tau
+
+def fit_lifetimes_single_exp(lifetimes, donor_name=None, hist_bins = 100, hist_range=(0,25)):
+    """
+    Fits decay lifetimes to a single exponential decay making reasonable initial guesses
+    
+    Attributes
+    -------------- 
+    lifetimes : np.array
+        Lifetimes of dye
+    donor name : string, default = None
+        Dye in enspara library. Used to get initial guess for lifetime
+        Makes more accurate initial guess. If not passed, we make an ok initial guess.
+    hist_bins : int, defaults = 100
+        How many bins to histogram lifetimes into?
+    hist_range: tuple of ints, default = (0,25)
+        What range should lifetimes be histogrammed over?
+    
+    Returns
+    -------------
+    t : np.array
+        Lifetime histogram bin center values
+    counts : np.array
+        Counts associated with histogram bins
+    fit_I : float
+        Initial amplitude of decay
+    fit_tau : float
+        Lifetime of the decay
+    """
+    
+    #Histogram the lifetimes
+    counts, edges = np.histogram(np.concatenate(d_lifetimes), range=hist_range, bins=hist_bins)
+
+    bin_w = edges[1]-edges[0]
+    t = edges[:-1]+bin_w/2
+
+    #Guess initial parameters
+    #Only going to use this to pull donor lifetime, so can pass donor name twice
+    if donor_name==None:
+        Td = 4 #reasonable lifetime guess given most single molecule dyes.
+    else:
+        J, QD, Td = r0c.get_dye_overlap(donor_name, donor_name)
+    
+    Io = np.amax(counts)
+
+    fit_I, fit_tau = fit_single_exp(t, counts, p0 = np.array([Io, Td[0]]))
+    
+    return(t, counts, fit_I, fit_tau)
+
+def double_exp_decay(t, Io1, Io2, tau1, tau2):
+    """
+    Function for a single exponential decay.
+    Attributes
+    -------------- 
+    t : np.array
+        Time
+    Io1 : float
+        Initial maximum guess for first decay curve
+    Io2 : float
+        Initial maximum guess for second decay curve
+    tau1 : float
+        Initial lifetime guess for first lifetime
+    tau2 : float
+        Initial lifetime guess for second lifetime
+    """
+    return Io1*np.exp(-t/tau1) + Io2*np.exp(-t/tau2)
+
+def fit_double_exp(t,y,p0):
+    """
+    Fits a double exponential decay curve to data, returns optimum parameters.
+    """  
+    
+    from scipy.optimize import curve_fit
+    opt_params, parm_cov = curve_fit(double_exp_decay, t, y, p0=p0)
+    Io1, Io2, tau1, tau2 = opt_params
+    return Io1, Io2, tau1, tau2
+
+def fit_lifetimes_double_exp(lifetimes, donor_name=None, hist_bins = 100, hist_range=(0,25)):
+    """
+    Fits decay lifetimes to a double exponential decay making reasonable initial guesses
+    
+    Attributes
+    -------------- 
+    lifetimes : np.array
+        Lifetimes of dye
+    donor name : string, default = None
+        Dye in enspara library. Used to get initial guess for lifetime
+        Makes more accurate initial guess. If not passed, we make an ok initial guess.
+    hist_bins : int, defaults = 100
+        How many bins to histogram lifetimes into?
+    hist_range: tuple of ints, default = (0,25)
+        What range should lifetimes be histogrammed over?
+        
+    Returns
+    -------------
+    t : np.array
+        Lifetime histogram bin center values
+    counts : np.array
+        Counts associated with histogram bins
+    fit_I1 : float
+        Initial amplitude of first decay curve
+    fit_I2 : float
+        Initial amplitude of second decay curve
+    fit_tau1 : float
+        Lifetime of the first decay
+    fit_tau2 : float
+        Lifetime of the second decay
+    """
+    
+    #Histogram the lifetimes
+    counts, edges = np.histogram(np.concatenate(d_lifetimes), range=hist_range, bins=hist_bins)
+
+    bin_w = edges[1]-edges[0]
+    t = edges[:-1]+bin_w/2
+
+    #Guess initial parameters
+    #Only going to use this to pull donor lifetime, so can pass donor name twice
+    if donor_name==None:
+        Td = 4 #reasonable lifetime guess given most single molecule dyes.
+    else:
+        J, QD, Td = r0c.get_dye_overlap(donor_name, donor_name)
+        
+    Io = np.amax(counts)
+
+    fit_I1, fit_I2, fit_tau1, fit_tau2 = fit_double_exp(t, counts, p0 = np.array([Io/2, Io/2, Td[0], Td[0]]))
+    
+    return(t, counts, fit_I1, fit_I2, fit_tau1, fit_tau2)
