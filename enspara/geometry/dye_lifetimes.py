@@ -2,6 +2,8 @@ import numpy as np
 from enspara.geometry import explicit_r0_calc as r0c
 from enspara.msm import builders
 from enspara.msm import synthetic_data
+from scipy.optimize import curve_fit
+
 
 def FRET_rate(r, R0, Td):
     """
@@ -485,7 +487,6 @@ def fit_single_exp(t,y,p0):
     """
     Fits a single exponential decay curve to data, returns optimum parameters.
     """
-    from scipy.optimize import curve_fit
     opt_params, parm_cov = curve_fit(single_exp_decay, t, y, p0=p0)
     Io, tau = opt_params
     return Io, tau
@@ -496,7 +497,7 @@ def fit_lifetimes_single_exp(lifetimes, donor_name=None, hist_bins = 100, hist_r
     
     Attributes
     -------------- 
-    lifetimes : np.array
+    lifetimes : np.array, shape (n_lifetimes,)
         Lifetimes of dye
     donor name : string, default = None
         Dye in enspara library. Used to get initial guess for lifetime
@@ -519,7 +520,7 @@ def fit_lifetimes_single_exp(lifetimes, donor_name=None, hist_bins = 100, hist_r
     """
     
     #Histogram the lifetimes
-    counts, edges = np.histogram(np.concatenate(d_lifetimes), range=hist_range, bins=hist_bins)
+    counts, edges = np.histogram(lifetimes, range=hist_range, bins=hist_bins)
 
     bin_w = edges[1]-edges[0]
     t = edges[:-1]+bin_w/2
@@ -558,9 +559,7 @@ def double_exp_decay(t, Io1, Io2, tau1, tau2):
 def fit_double_exp(t,y,p0):
     """
     Fits a double exponential decay curve to data, returns optimum parameters.
-    """  
-    
-    from scipy.optimize import curve_fit
+    """ 
     opt_params, parm_cov = curve_fit(double_exp_decay, t, y, p0=p0)
     Io1, Io2, tau1, tau2 = opt_params
     return Io1, Io2, tau1, tau2
@@ -571,7 +570,7 @@ def fit_lifetimes_double_exp(lifetimes, donor_name=None, hist_bins = 100, hist_r
     
     Attributes
     -------------- 
-    lifetimes : np.array
+    lifetimes : np.array, shape (n_lifetimes,)
         Lifetimes of dye
     donor name : string, default = None
         Dye in enspara library. Used to get initial guess for lifetime
@@ -598,7 +597,7 @@ def fit_lifetimes_double_exp(lifetimes, donor_name=None, hist_bins = 100, hist_r
     """
     
     #Histogram the lifetimes
-    counts, edges = np.histogram(np.concatenate(d_lifetimes), range=hist_range, bins=hist_bins)
+    counts, edges = np.histogram(lifetimes, range=hist_range, bins=hist_bins)
 
     bin_w = edges[1]-edges[0]
     t = edges[:-1]+bin_w/2
@@ -648,3 +647,54 @@ def extract_fret_efficiency_lifetimes(lifetime_samples):
     d_lifetimes=np.array(d_lifetimes, dtype=object)
     a_lifetimes=np.array(a_lifetimes, dtype=object)
     return FEs, d_lifetimes, a_lifetimes
+
+def fit_lifetimes_single_exp_high_throughput(lifetimes, donor_name=None, hist_bins = 100, hist_range=(0,25)):
+    """
+    Fits decay lifetimes to a single exponential decay making reasonable initial guesses
+    Some run-time handling in case of bad fitting (returns HIGH half life.)
+    
+    Attributes
+    -------------- 
+    lifetimes : np.array, shape (n_lifetimes,)
+        Lifetimes of dye
+    donor name : string, default = None
+        Dye in enspara library. Used to get initial guess for lifetime
+        Makes more accurate initial guess. If not passed, we make an ok initial guess.
+    hist_bins : int, defaults = 100
+        How many bins to histogram lifetimes into?
+    hist_range: tuple of ints, default = (0,25)
+        What range should lifetimes be histogrammed over?
+    
+    Returns
+    -------------
+    t : np.array
+        Lifetime histogram bin center values
+    counts : np.array
+        Counts associated with histogram bins
+    fit_I : float
+        Initial amplitude of decay
+    fit_tau : float
+        Lifetime of the decay
+    """
+    
+    #Histogram the lifetimes
+    counts, edges = np.histogram(lifetimes, range=hist_range, bins=hist_bins)
+
+    bin_w = edges[1]-edges[0]
+    t = edges[:-1]+bin_w/2
+
+    #Guess initial parameters
+    #Only going to use this to pull donor lifetime, so can pass donor name twice
+    if donor_name==None:
+        Td = 4 #reasonable lifetime guess given most single molecule dyes.
+    else:
+        J, QD, Td = r0c.get_dye_overlap(donor_name, donor_name)
+    
+    Io = np.amax(counts)
+
+    try:
+        fit_I, fit_tau = lifetime_fns.fit_single_exp(t, counts, p0 = np.array([Io, Td[0]]))
+    except RuntimeError:
+        return(t, counts, 0, 100)
+    
+    return(t, counts, fit_I, fit_tau)
