@@ -615,3 +615,36 @@ def fit_lifetimes_double_exp(lifetimes, donor_name=None, hist_bins = 100, hist_r
     fit_I1, fit_I2, fit_tau1, fit_tau2 = fit_double_exp(t, counts, p0 = np.array([Io/2, Io/2, Td[0], Td[0]]))
     
     return(t, counts, fit_I1, fit_I2, fit_tau1, fit_tau2)
+
+def extract_fret_efficiency_lifetimes(lifetime_samples):
+    """
+    Extracts FRET efficiency and donor/acceptor lifetimes from 
+    sample_lifetimes_guarenteed_photon arrays.
+    
+    Attributes
+    -------------- 
+    lifetime_samples : np.array, shape (n_bursts, 2, variable)
+        Ragged array of photons and lifetimes for each burst.
+        Should be able to directly pass the output of repeated calls
+        to sample_lifetimes_guarenteed_photon to this!
+        
+    Returns
+    -------------
+    FEs : np.array, shape (n_bursts)
+        Average lifetime for each burst
+    d_lifetimes : np.array (n_bursts, variable)
+        Lifetimes associated with each donor photon in a burst.
+    a_lifetimes : np.array (n_bursts, variable)
+        Lifetimes associated with each donor photon in a burst.
+    """
+    
+    FEs = np.array([np.sum(burst)/len(burst) for burst in lifetime_samples[:,0]])
+    
+    d_lifetimes, a_lifetimes=[],[]
+    for burst in lifetime_samples:
+        d_lifetimes.append(burst[1][np.where(burst[0]==0)[0]])
+        a_lifetimes.append(burst[1][np.where(burst[0]==1)[0]])
+
+    d_lifetimes=np.array(d_lifetimes, dtype=object)
+    a_lifetimes=np.array(a_lifetimes, dtype=object)
+    return FEs, d_lifetimes, a_lifetimes
