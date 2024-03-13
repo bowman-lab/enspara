@@ -387,7 +387,7 @@ def sample_lifetimes_guarenteed_photon(frames, t_probs, eqs, lifetimes, outcomes
     t_probs, np.array, shape (n_states, n_states)
         Transition probabilities of the protein MSM
     eqs, np.array, shape (n_states,)
-        Equilibirum probabilities of the protein MSM
+        Equilibrium probabilities of the protein MSM
     lifetimes, ragged np.array (n_centers, n_samples (or 0))
         Lifetimes of photon excitement for each protein MSM center
     outcomes, ragged np.array (n_centers, n_samples (or 0))
@@ -430,7 +430,7 @@ def remake_prot_MSM_from_lifetimes(lifetimes, prot_tcounts, resSeqs, dyenames, o
     outdir, path
         Where to save data to. Default = ./
     prot_eqs, np.array (n_centers, n_centers)
-        Equilibirium probabilities of protein MSM, for nice bookkeeping.
+        Equilibrium probabilities of protein MSM, for nice bookkeeping.
         Default = None
 
     Returns
@@ -444,7 +444,7 @@ def remake_prot_MSM_from_lifetimes(lifetimes, prot_tcounts, resSeqs, dyenames, o
     # Find which states couldn't be labeled:
     bad_states = r0c.find_dyeless_states(lifetimes)
 
-    print(f'{len(bad_states)} of {len(prot_tcounts)} protein states had steric clashes for labeling pair: {resSeqs[0]}-{resSeqs[1]}.',
+    print(f'\n{len(bad_states)} of {len(prot_tcounts)} protein states had steric clashes for labeling pair: {resSeqs[0]}-{resSeqs[1]}.',
         flush=True)
 
     if len(bad_states)/len(prot_tcounts) > 0.2:
@@ -453,9 +453,9 @@ def remake_prot_MSM_from_lifetimes(lifetimes, prot_tcounts, resSeqs, dyenames, o
 
     if prot_eqs is not None:
         if len(bad_states) == 0:
-            print(f'\n No equilibrium probability lost for labeling pair: {resSeqs[0]}-{resSeqs[1]}.')
+            print(f'No equilibrium probability lost for labeling pair: {resSeqs[0]}-{resSeqs[1]}.')
         else:
-            print(f'\nThis was {np.round(100*np.sum(prot_eqs[bad_states]),2)}% of the original equilibirum probability')
+            print(f'This was {np.round(100*np.sum(prot_eqs[bad_states]),2)}% of the original equilibrium probability')
             print(f'for labeling pair: {resSeqs[0]}-{resSeqs[1]}.')
 
             if np.sum(prot_eqs[bad_states]) > 0.2:
