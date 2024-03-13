@@ -444,11 +444,12 @@ def remake_prot_MSM_from_lifetimes(lifetimes, prot_tcounts, resSeqs, dyenames, o
     # Find which states couldn't be labeled:
     bad_states = r0c.find_dyeless_states(lifetimes)
 
-    print(f'{len(bad_states)} of {len(prot_tcounts)} protein states had steric clashes for labeling pair: {resSeqs[0]}-{resSeqs[1]}.')
+    print(f'{len(bad_states)} of {len(prot_tcounts)} protein states had steric clashes for labeling pair: {resSeqs[0]}-{resSeqs[1]}.',
+        flush=True)
 
     if len(bad_states)/len(prot_tcounts) > 0.2:
         print(f'WARNING! Labeling resulted in loss of {np.round(100*len(bad_states)/len(prot_tcounts))}%') 
-        print(f'of your MSM states for labeling pair: {resSeqs[0]}-{resSeqs[1]}. \n')
+        print(f'of your MSM states for labeling pair: {resSeqs[0]}-{resSeqs[1]}. \n', flush=True)
 
     if prot_eqs is not None:
         if len(bad_states) == 0:
@@ -458,9 +459,9 @@ def remake_prot_MSM_from_lifetimes(lifetimes, prot_tcounts, resSeqs, dyenames, o
             print(f'for labeling pair: {resSeqs[0]}-{resSeqs[1]}.')
 
             if np.sum(prot_eqs[bad_states]) > 0.2:
-                print(f'WARNING! Lots of equilibrium probability lost. \n')
+                print(f'WARNING! Lots of equilibrium probability lost. \n',flush=True)
 
-    print(f'Remaking MSM for labeling pair: {resSeqs[0]}-{resSeqs[1]}.')
+    print(f'Remaking MSM for labeling pair: {resSeqs[0]}-{resSeqs[1]}.',flush=True)
     # remove bad states from protein MSM
     trimmed_tcounts = r0c.remove_bad_states(bad_states, prot_tcounts)
 
@@ -468,7 +469,7 @@ def remake_prot_MSM_from_lifetimes(lifetimes, prot_tcounts, resSeqs, dyenames, o
     #Add in a "you lost this many states / eq probs."
     new_tcounts, new_tprobs, new_eqs = builders.normalize(trimmed_tcounts, calculate_eq_probs=True)
 
-    print(f'Saving modified MSM here: {outdir}.')
+    print(f'Saving modified MSM here: {outdir}.', flush=True)
     np.save(f'{outdir}/{resSeqs[0]}-{"".join(dyenames[0].split(" "))}-{resSeqs[1]}-{"".join(dyenames[1].split(" "))}-eqs.npy',new_eqs)
     np.save(f'{outdir}/{resSeqs[0]}-{"".join(dyenames[0].split(" "))}-{resSeqs[1]}-{"".join(dyenames[1].split(" "))}-t_prbs.npy',new_tprobs)
     return new_tprobs, new_eqs
