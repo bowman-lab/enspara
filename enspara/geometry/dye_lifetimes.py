@@ -444,18 +444,23 @@ def remake_prot_MSM_from_lifetimes(lifetimes, prot_tcounts, resSeqs, dyenames, o
     # Find which states couldn't be labeled:
     bad_states = r0c.find_dyeless_states(lifetimes)
 
-    print(f'{len(bad_states)} of {len(prot_tcounts)} protein states had steric clashes.')
+    print(f'{len(bad_states)} of {len(prot_tcounts)} protein states had steric clashes for labeling pair: {resSeqs[0]}-{resSeqs[1]}.')
 
     if len(bad_states)/len(prot_tcounts) > 0.2:
-        print(f'WARNING! Labeling resulted in loss of {np.round(100*len(bad_states)/len(prot_tcounts))}% of your MSM states. \n')
+        print(f'WARNING! Labeling resulted in loss of {np.round(100*len(bad_states)/len(prot_tcounts))}%') 
+        print(f'of your MSM states for labeling pair: {resSeqs[0]}-{resSeqs[1]}. \n')
 
     if prot_eqs is not None:
-        print(f'\nThis was {np.round(100*np.sum(prot_eqs[bad_states]),2)}% of the original equilibirum probability.')
+        if len(bad_states) == 0:
+            print(f'\n No equilibrium probability lost for labeling pair: {resSeqs[0]}-{resSeqs[1]}.')
+        else:
+            print(f'\nThis was {np.round(100*np.sum(prot_eqs[bad_states]),2)}% of the original equilibirum probability')
+            print(f'for labeling pair: {resSeqs[0]}-{resSeqs[1]}.')
 
-        if np.sum(prot_eqs[bad_states]) > 0.2:
-            print(f'WARNING! Lots of equilibrium probability lost. \n')
+            if np.sum(prot_eqs[bad_states]) > 0.2:
+                print(f'WARNING! Lots of equilibrium probability lost. \n')
 
-    print(f'Remaking MSM.')
+    print(f'Remaking MSM for labeling pair: {resSeqs[0]}-{resSeqs[1]}.')
     # remove bad states from protein MSM
     trimmed_tcounts = r0c.remove_bad_states(bad_states, prot_tcounts)
 
