@@ -366,7 +366,7 @@ def _sample_lifetimes_guarenteed_photon(states, lifetimes, outcomes):
             #Something went wrong.
             print('Something seems wrong with your outcomes array, expected outcomes of:')
             print(f'non_radiative, energy_transfer, or radiative. Got {outcomes[state][event_n]}.')
-            print(f'For reference, state was {state}, and event number {event_n}')
+            print(f'For reference, state was {state}, and event number {event_n}', flush=True)
             exit()
         lifetime.append(lifetimes[state][event_n])
 
