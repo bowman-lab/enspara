@@ -135,6 +135,7 @@ def resolve_excitation(d_name, a_name, d_tprobs, a_tprobs, d_eqs, a_eqs,
     #Introduce a new random seed in each location otherwise pool with end up with the same seeds.
     rng=np.random.default_rng()
     
+    #Extract dye parameters, calculate constant transfer rates
     J, Qd, Td = dye_params
     
     krad = Qd/Td #Constant
@@ -215,6 +216,8 @@ def make_dye_msm(centers, t_counts, pdb, resseq, dyename, dyelibrary,
         Transition probabilities for the dye MSM
     eqs, np.array (n_centers,)
         Equilibrium probabilities for the dye MSM
+    dye_indicies, np.array len(dyes without steric clash)
+        Indicies of centers that don't have steric clashes.
     """
     
     # Align dye to PDB structure
@@ -243,12 +246,6 @@ def make_dye_msm(centers, t_counts, pdb, resseq, dyename, dyelibrary,
     counts, tprobs, eqs = builders.normalize(new_tcounts,calculate_eq_probs=True)
     
     return(tprobs, eqs, dye_indicies)
-
-def map_trimmed_array():
-    """
-    Takes a non-trimmed and trimmed array and provides a map between them.
-    """
-
 
 def calc_lifetimes(pdb_center_num, d_centers, d_tcounts, a_centers, a_tcounts, resSeqs, dyenames, 
                    dye_lagtime, n_samples=1000, outdir='./', save_dye_trj=False, save_dye_msm=False):
@@ -330,7 +327,7 @@ def calc_lifetimes(pdb_center_num, d_centers, d_tcounts, a_centers, a_tcounts, r
         dtrj = np.array([np.searchsorted(d_indxs, event) for event in events[:,2]])
         atrj = np.array([np.searchsorted(a_indxs, event) for event in events[:,3]])
         np.save(f'{outdir}/center{center_n}-{dyenames[0]}-dtrj.npy',dtrj)
-        np.save(f'{outdir}/center{center_n}-{dyenames[0]}-atrj.npy',atrj)
+        np.save(f'{outdir}/center{center_n}-{dyenames[1]}-atrj.npy',atrj)
 
     lifetimes = events[:,0].astype(float)*dye_lagtime #ns
     outcomes = events[:,1]
@@ -479,7 +476,6 @@ def remake_prot_MSM_from_lifetimes(lifetimes, prot_tcounts, resSeqs, dyenames, o
     trimmed_tcounts = r0c.remove_bad_states(bad_states, prot_tcounts)
 
     #remake protein MSM
-    #Add in a "you lost this many states / eq probs."
     new_tcounts, new_tprobs, new_eqs = builders.normalize(trimmed_tcounts, calculate_eq_probs=True)
 
     print(f'Saving modified MSM here: {outdir}.', flush=True)
@@ -717,3 +713,4 @@ def fit_lifetimes_single_exp_high_throughput(lifetimes, donor_name=None, hist_bi
         return(t, counts, 0, 100)
     
     return(t, counts, fit_I, fit_tau)
+    
