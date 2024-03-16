@@ -304,10 +304,10 @@ def calc_lifetimes(pdb_center_num, d_centers, d_tcounts, a_centers, a_tcounts, r
         return [],[]
     
     if save_dye_msm:
-        np.save(f'{outdir}/center{center_n[0][0]}-{"".join(dyenames[0].split(" "))}-eqs.npy',d_mod_eqs)
-        np.save(f'{outdir}/center{center_n[0][0]}-{"".join(dyenames[1].split(" "))}-eqs.npy',a_mod_eqs)
-        np.save(f'{outdir}/center{center_n[0][0]}-{"".join(dyenames[0].split(" "))}-tps.npy',d_tprobs)
-        np.save(f'{outdir}/center{center_n[0][0]}-{"".join(dyenames[1].split(" "))}-tps.npy',a_tprobs)
+        np.save(f'{outdir}/center{center_n[0]}-{"".join(dyenames[0].split(" "))}-eqs.npy',d_mod_eqs)
+        np.save(f'{outdir}/center{center_n[0]}-{"".join(dyenames[1].split(" "))}-eqs.npy',a_mod_eqs)
+        np.save(f'{outdir}/center{center_n[0]}-{"".join(dyenames[0].split(" "))}-tps.npy',d_tprobs)
+        np.save(f'{outdir}/center{center_n[0]}-{"".join(dyenames[1].split(" "))}-tps.npy',a_tprobs)
 
     
     events = np.array([resolve_excitation(dyenames[0], dyenames[1], d_tprobs, a_tprobs, d_mod_eqs, a_mod_eqs, 
@@ -316,8 +316,8 @@ def calc_lifetimes(pdb_center_num, d_centers, d_tcounts, a_centers, a_tcounts, r
     if save_dye_trj:
         dtrj = events[:,2]
         atrj = events[:,3]
-        np.save(f'{outdir}/center{center_n[0][0]}-{dyenames[0]}-dtrj.npy',dtrj)
-        np.save(f'{outdir}/center{center_n[0][0]}-{dyenames[0]}-atrj.npy',atrj)
+        np.save(f'{outdir}/center{center_n[0]}-{dyenames[0]}-dtrj.npy',dtrj)
+        np.save(f'{outdir}/center{center_n[0]}-{dyenames[0]}-atrj.npy',atrj)
 
     lifetimes = events[:,0].astype(float)*dye_lagtime #ns
     outcomes = events[:,1]
