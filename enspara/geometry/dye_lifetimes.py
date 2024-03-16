@@ -1,8 +1,8 @@
 import numpy as np
 from enspara.geometry import explicit_r0_calc as r0c
-from enspara.msm import builders
-from enspara.msm import synthetic_data
+from enspara.msm import builders, synthetic_data
 from scipy.optimize import curve_fit
+from enspara.msm.transition_matrices import trim_disconnected
 
 
 def FRET_rate(r, R0, Td):
@@ -184,7 +184,8 @@ def resolve_excitation(d_name, a_name, d_tprobs, a_tprobs, d_eqs, a_eqs,
             
     return([steps, d_state, np.array(dtrj), np.array(atrj)])
 
-def make_dye_msm(centers, t_counts, pdb, resseq, dyename, dyelibrary, outdir='./', save_dye_xtc = False):
+def make_dye_msm(centers, t_counts, pdb, resseq, dyename, dyelibrary, 
+    center_n=None, outdir='./', save_dye_xtc = False):
     """
     Labels a protein residue with a given dye and returns a new dye MSM
     Attributes
@@ -201,8 +202,10 @@ def make_dye_msm(centers, t_counts, pdb, resseq, dyename, dyelibrary, outdir='./
         name of dye in enspara dye library
     dyelibrary, dictionary
         enspara dye library
+    center_n, int
+        Protein center_number being labeled (for bookkeeping)
     outdir, path
-        where to save output
+        where to save output (optional)
     save_dye_xtc, bool default = False
         Save an XTC of the dye positions?
     
@@ -217,16 +220,17 @@ def make_dye_msm(centers, t_counts, pdb, resseq, dyename, dyelibrary, outdir='./
     # Align dye to PDB structure
     centers.xyz = r0c.align_full_dye_to_res(pdb, centers, resseq, dyename, dyelibrary)
     
-    # Remove steric clashes
+    # Find dye positions with no steric clashes
     dye_indicies = r0c.remove_touches_protein_dye_traj(pdb, centers, resseq)
     
     if len(dye_indicies)==0:
         #No non-clashing label positions
-        #Need to think about what to return so we can rebuild the protein MSM correctly.
         return np.array([0]),np.array([0])
     
     if save_dye_xtc:
-        centers[dye_indicies].save_xtc(f'{outdir}/{resseq}-{"".join(dyename.split(" "))}.xtc')
+        #Need to think of a clever way to convert dtrj steps to the shortened dye xtc.
+        centers[dye_indicies].save_xtc(f'{outdir}/center{center_n}-aligned-to-{resseq}-{"".join(dyename.split(" "))}.xtc')
+        #centers.save_xtc(f'{outdir}/center{center_n}-aligned-to-{resseq}-{"".join(dyename.split(" "))}.xtc')
     
     #Reverse the indicies to get the bad ones
     all_indicies = np.arange(len(centers))
@@ -234,11 +238,16 @@ def make_dye_msm(centers, t_counts, pdb, resseq, dyename, dyelibrary, outdir='./
     
     #Purge the t_counts of the bad indicies
     new_tcounts = r0c.remove_bad_states(bad_indicies, t_counts)
-    
+
     #Rebuild the dye MSM
     counts, tprobs, eqs = builders.normalize(new_tcounts,calculate_eq_probs=True)
     
-    return(tprobs, eqs)
+    return(tprobs, eqs, dye_indicies)
+
+def map_trimmed_array():
+    """
+    Takes a non-trimmed and trimmed array and provides a map between them.
+    """
 
 
 def calc_lifetimes(pdb_center_num, d_centers, d_tcounts, a_centers, a_tcounts, resSeqs, dyenames, 
@@ -295,29 +304,33 @@ def calc_lifetimes(pdb_center_num, d_centers, d_tcounts, a_centers, a_tcounts, r
     pdb, center_n = pdb_center_num
     
     #Model dye onto residue of interest and remake MSM. Repeat per labeling position
-    d_tprobs, d_mod_eqs = make_dye_msm(d_centers,d_tcounts, pdb[0], resSeqs[0], dyenames[0], dyelibrary)
-    a_tprobs, a_mod_eqs = make_dye_msm(a_centers,a_tcounts, pdb[0], resSeqs[1], dyenames[1], dyelibrary)
+    d_tprobs, d_mod_eqs, d_indxs = make_dye_msm(d_centers,d_tcounts, pdb[0], resSeqs[0], dyenames[0], 
+        dyelibrary, center_n = center_n, outdir=outdir,save_dye_xtc=save_dye_trj)
+
+    a_tprobs, a_mod_eqs, a_indxs = make_dye_msm(a_centers,a_tcounts, pdb[0], resSeqs[1], dyenames[1], 
+        dyelibrary, center_n = center_n, outdir=outdir,save_dye_xtc=save_dye_trj)
     
     #Check if no feasible labeling positions
     if np.sum(a_mod_eqs) == 0 or np.sum(d_mod_eqs) == 0:
-        #return an empty list, could not label
+        #return an empty list, could not label one of the positions.
         return [],[]
     
     if save_dye_msm:
-        np.save(f'{outdir}/center{center_n[0]}-{"".join(dyenames[0].split(" "))}-eqs.npy',d_mod_eqs)
-        np.save(f'{outdir}/center{center_n[0]}-{"".join(dyenames[1].split(" "))}-eqs.npy',a_mod_eqs)
-        np.save(f'{outdir}/center{center_n[0]}-{"".join(dyenames[0].split(" "))}-tps.npy',d_tprobs)
-        np.save(f'{outdir}/center{center_n[0]}-{"".join(dyenames[1].split(" "))}-tps.npy',a_tprobs)
+        np.save(f'{outdir}/center{center_n}-{"".join(dyenames[0].split(" "))}-eqs.npy',d_mod_eqs)
+        np.save(f'{outdir}/center{center_n}-{"".join(dyenames[1].split(" "))}-eqs.npy',a_mod_eqs)
+        np.save(f'{outdir}/center{center_n}-{"".join(dyenames[0].split(" "))}-tps.npy',d_tprobs)
+        np.save(f'{outdir}/center{center_n}-{"".join(dyenames[1].split(" "))}-tps.npy',a_tprobs)
 
-    
     events = np.array([resolve_excitation(dyenames[0], dyenames[1], d_tprobs, a_tprobs, d_mod_eqs, a_mod_eqs, 
                         d_centers, a_centers, dye_params, dye_lagtime, dyelibrary) for i in range(n_samples)])
     
     if save_dye_trj:
-        dtrj = events[:,2]
-        atrj = events[:,3]
-        np.save(f'{outdir}/center{center_n[0]}-{dyenames[0]}-dtrj.npy',dtrj)
-        np.save(f'{outdir}/center{center_n[0]}-{dyenames[0]}-atrj.npy',atrj)
+        #Dyes are reindexed, events are original indexing. Search to find the 
+        #corresponding value in the reindexed array.
+        dtrj = np.array([np.searchsorted(d_indxs, event) for event in events[:,2]])
+        atrj = np.array([np.searchsorted(a_indxs, event) for event in events[:,3]])
+        np.save(f'{outdir}/center{center_n}-{dyenames[0]}-dtrj.npy',dtrj)
+        np.save(f'{outdir}/center{center_n}-{dyenames[0]}-atrj.npy',atrj)
 
     lifetimes = events[:,0].astype(float)*dye_lagtime #ns
     outcomes = events[:,1]
