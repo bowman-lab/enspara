@@ -23,6 +23,8 @@ import os
 import mdtraj as md
 import numpy as np
 import enspara
+from functools import partial
+from multiprocessing import get_context
 from enspara.geometry import dyes_from_expt_dist as dyefs
 from enspara.geometry import dye_lifetimes
 from enspara.apps.util import readable_dir
@@ -193,6 +195,9 @@ def process_command_line(argv):
 def main(argv=None):
     args = process_command_line(argv)
 
+    os.environ['NUMEXPR_MAX_THREADS'] = str(args.n_procs)
+    os.environ['NUMEXPR_NUM_THREADS'] = '1'
+
     print("Your input was:")
     for i, arg in enumerate(argv):
         # Provide helpful output to remind users their input
@@ -200,6 +205,7 @@ def main(argv=None):
     print("", flush=True)
 
     os.makedirs(args.output_dir, exist_ok=True)
+    resSeqs = np.loadtxt(args.resid_pairs, dtype=int).reshape(-1,2)
 
     # Process the input
     if args.command == 'calc_lifetimes':
@@ -225,21 +231,21 @@ def main(argv=None):
 
             print(f'Starting pool for resSeq {resSeq}.', flush=True)
 
+            procs = min([len(prot_traj), args.n_procs])
 
-            with get_context("spawn").Pool() as pool:
+            with get_context("spawn").Pool(processes = procs) as pool:
 
                 lifetime_events = pool.map(func, zip(prot_traj, np.arange(len(prot_traj))))
                 pool.terminate()
 
             lifetime_events = np.array(lifetime_events)
-            print(f'Saving lifetimes and outcomes here: {outdir}')
-            np.save(f'{outdir}/events-{resSeq[0]}-{resSeq[1]}.npy', lifetime_events)
+            print(f'Saving lifetimes and outcomes here: {args.output_dir}')
+            np.save(f'{args.output_dir}/events-{resSeq[0]}-{resSeq[1]}.npy', lifetime_events)
 
 
     elif args.command == 'run_burst':
 
    		#Load in initial files
-        resSeqs = np.loadtxt(args.resid_pairs)
         prot_traj=md.load(args.prot_top)
         prot_tcounts = np.load(args.t_counts, allow_pickle=True)
         prot_eqs = np.load(args.eq_probs)
