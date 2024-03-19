@@ -22,6 +22,7 @@ import logging
 import os
 import mdtraj as md
 import numpy as np
+import enspara
 from enspara.geometry import dyes_from_expt_dist as dyefs
 from enspara.geometry import dye_lifetimes
 from enspara.apps.util import readable_dir
@@ -42,57 +43,57 @@ def process_command_line(argv):
                                        description='valid subcommands',
                                        help='Call a subparser!')
 
-    ############################
-    ### Model_dyes subparser ###
-    ############################
+    ################################
+    ### calc lifetimes subparser ###
+    ################################
     calc_lifetimes_parser = subparsers.add_parser('calc_lifetimes', help='model FRET \
         dyes onto MSM centers and calculate their lifetimes')
 
     # Model dyes INPUTS
-    calc_lts_input_args = calc_lifetimes_parser.add_argument_group("Input Settings")
+    calc_lts_input_args = calc_lifetimes_parser.add_argument_group("Input Settings (Required)")
     calc_lts_input_args.add_argument(
-        'donor_name',
+        '--donor_name', required=True,
         help="Name of the donor dye. Should be in the enspara dye library.")
     calc_lts_input_args.add_argument(
-        'donor_centers',
+        '--donor_centers', required=True,
         help="Path to cluster centers from the MSM"
              "should be of type .xtc.")
     calc_lts_input_args.add_argument(
-        'donor_top',
+        '--donor_top', required=True,
         help="topology file for supplied trajectory")
     calc_lts_input_args.add_argument(
-        'donor_tcounts',
+        '--donor_tcounts', required=True,
         help='t_counts for the donor dye MSM.')
     calc_lts_input_args.add_argument(
-        'acceptor_name',
+        '--acceptor_name', required=True,
         help='Name of the acceptor dye. Should be in the enspara dye library.')
     calc_lts_input_args.add_argument(
-        'acceptor_centers',
+        '--acceptor_centers', required=True,
         help="Path to cluster centers from the MSM"
              "should be of type .xtc.")
     calc_lts_input_args.add_argument(
-        'acceptor_top',
+        '--acceptor_top', required=True,
         help="topology file for supplied trajectory")
     calc_lts_input_args.add_argument(
-        'acceptor_tcounts',
+        '--acceptor_tcounts', required=True,
         help='t_counts for the acceptor dye MSM')
     calc_lts_input_args.add_argument(
-        'dye_lagtime', type=float,
+        '--dye_lagtime', type=float, required=True,
         help="Lagtime for dye MSMs, in ns."
         "Enspara dye MSMs were built with a lagtime of 0.002 ns.")
     calc_lts_input_args.add_argument(
-        'prot_top',
+        '--prot_top', required=True,
         help='Protein topology file to read protein centers')
     calc_lts_input_args.add_argument(
-        'resid_pairs',
+        '--resid_pairs', required=True,
         help="Path to whitespace delimited file that is a list of residues to label. Pass in "
              "pairs of residues with the same numbering as in the topology file."
              "Pass multiple lines to model multiple residue pairs")
 
     # Optional PARAMETERS
-    calc_lts_param_args = calc_lifetimes_parser.add_argument_group("Parameters")
+    calc_lts_param_args = calc_lifetimes_parser.add_argument_group("Parameters (Optional)")
     calc_lts_param_args.add_argument(
-        'prot_centers', required=False,
+        '--prot_centers', required=False,
         help="Path to protein MSM cluster centers."
         "Should be trajectory file readable by mdtraj."
         "If not provided, will just label the protein topology file."
@@ -125,47 +126,47 @@ def process_command_line(argv):
                                                   'using modeled dye lifetimes')
 
     # Calc FRET INPUTS
-    burst_input_args = run_burst_parser.add_argument_group("Input Settings")
+    burst_input_args = run_burst_parser.add_argument_group("Input Settings (Required)")
     burst_input_args.add_argument(
-        'eq_probs',
+        '--eq_probs', required=True,
         help="Path to equilibrium probabilities from the protein MSM. "
              "Should be of file type .npy")
     burst_input_args.add_argument(
-        't_counts',
+        '--t_counts', required=True,
         help="Path to transition counts from the protein MSM. "
              "Should be of file type .npy")
     burst_input_args.add_argument(
-        'prot_centers',
+        '--prot_centers', required=True,
         help="Path to protein MSM cluster centers."
         "Should be trajectory file readable by mdtraj.")
     burst_input_args.add_argument(
-        'prot_top',
+        '--prot_top', required=True,
         help="Path to protein topology file.")
     burst_input_args.add_argument(
-        'lifetimes_dir', action=readable_dir,
+        '--lifetimes_dir', action=readable_dir,
         help="Path to dye-lifetimes directory / output from calc_lifetimes.")
     burst_input_args.add_argument(
-        'donor_name', type=str, 
+        '--donor_name', type=str,  required=True,
         help="Name of donor dye. Should be a dye in the Enspara dye library.")
     burst_input_args.add_argument(
-        'acceptor_name', type=str,
+        '--acceptor_name', type=str, required=True,
         help="Name of acceptor dye. Should be a dye in the Enspara dye library.")
     burst_input_args.add_argument(
-        'lagtime', type=float,
+        '--lagtime', type=float, required=True,
         help="lag time used to construct the protein MSM (in ns) "
              "Should be type float")
     burst_input_args.add_argument(
-        'FRET_dye_dists', action=readable_dir,
+        '--FRET_dye_dists', action=readable_dir, required=True,
         help="Path to FRET dye distributions (output of model_dyes)")
     burst_input_args.add_argument(
-        'resid_pairs',
+        '--resid_pairs', required=True,
         help="Path to whitespace delimited text file that is a list of residues to label. Pass in "
              "pairs of residues with the same numbering (resSeq) as in the topology file."
              "Pass multiple lines to model multiple residue pairs. First residue is the donor"
              "and the second residue corresponds to the acceptor.")
 
     # Calc FRET PARAMETERS
-    burst_parameters = run_burst_parser.add_argument_group("Parameters")
+    burst_parameters = run_burst_parser.add_argument_group("Parameters (Optional)")
     burst_parameters.add_argument(
         '--n_procs', required=False, type=int, default=1,
         help="Number of cores to use for parallel processing. "
@@ -174,7 +175,7 @@ def process_command_line(argv):
         '--output_dir', required=False, action=readable_dir, default='./',
         help="The location to write the FRET dye distributions.")
     burst_parameters.add_argument(
-        'photon_times', required=False, 
+        '--photon_times', required=False, 
         default=f'{os.path.dirname(enspara.__file__)}/data/dyes/interphoton_times.npy',
         help="File containing inter photon times. Each list is an individual photon burst "
              "with photon wait times (in us) for each burst. Size (n_bursts, nphotons in burst) "
