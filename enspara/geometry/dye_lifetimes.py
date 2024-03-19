@@ -483,6 +483,54 @@ def remake_prot_MSM_from_lifetimes(lifetimes, prot_tcounts, resSeqs, dyenames, o
     np.save(f'{outdir}/{resSeqs[0]}-{"".join(dyenames[0].split(" "))}-{resSeqs[1]}-{"".join(dyenames[1].split(" "))}-t_prbs.npy',new_tprobs)
     return new_tprobs, new_eqs
 
+def remake_msms(resSeq, prot_tcounts, dye_dir, dyenames, orig_eqs, outdir):
+    lifetime_outcomes_path = f'{dye_dir}/events-{resSeq[0]}-{resSeq[1]}.npy'
+
+    #Load simulated events
+    lifetime_outcomes = np.load(lifetime_outcomes_path, allow_pickle=True)
+
+    #Parse the outcomes
+    lifets = lifetime_outcomes[:,0]
+    outcomes = lifetime_outcomes[:,1]
+
+    #Remake the protein MSM
+    new_tprobs, new_eqs = remake_prot_MSM_from_lifetimes(lifets, prot_tcounts, 
+                                                resSeq, dyenames, outdir= f'{outdir}/MSMs', prot_eqs = orig_eqs)
+
+def run_mc(resSeq, prot_tcounts, dyenames, MSM_frames, dye_dir, outdir, time_correction):
+    lifetime_outcomes_path = f'{dye_dir}/events-{resSeq[0]}-{resSeq[1]}.npy'
+
+    #Load simulated events
+    lifetime_outcomes = np.load(lifetime_outcomes_path, allow_pickle=True)
+
+    #Parse the outcomes
+    lifets = lifetime_outcomes[:,0]
+    outcomes = lifetime_outcomes[:,1]
+
+    new_tprobs = np.load(f'{outdir}/MSMs/{resSeqs[0]}-{"".join(dyenames[0].split(" "))}-{resSeqs[1]}-{"".join(dyenames[1].split(" "))}-t_prbs.npy')
+    new_eqs = np.load(f'{outdir}/MSMs/{resSeqs[0]}-{"".join(dyenames[0].split(" "))}-{resSeqs[1]}-{"".join(dyenames[1].split(" "))}-eqs.npy')
+
+    print(f'Running MC sampling for {resSeq[0]}-{resSeq[1]} and time factor {time_correction}.', flush=True)
+    #Sample the protein MSM to get bursts
+    sampling = np.array([
+        sample_lifetimes_guarenteed_photon(
+        frames, new_tprobs, new_eqs, lifets, outcomes) for frames in MSM_frames])
+
+    print(f'Extracting FEs and lifetimes for {resSeq[0]}-{resSeq[1]} and time factor {time_correction}.', flush=True)
+
+    FEs, d_lifetimes, a_lifetimes = extract_fret_efficiency_lifetimes(
+        sampling)
+
+    print(f'Saving results for {resSeq[0]}-{resSeq[1]} and time factor {time_correction}.', flush=True)
+
+    #Convert from photons to FRET E
+    FEs = np.array([np.sum(FE)/len(FE) for FE in sampling[:,0]])
+    os.makedirs(f'{outdir}/Lifetimes', exist_ok=True)
+    os.makedirs(f'{outdir}/FEs', exist_ok=True)
+    np.save(f'{outdir}/FEs/FE-{resSeq[0]}-{resSeq[1]}-{time_correction}.npy', FEs)
+    np.save(f'{outdir}/Lifetimes/d_lifetimes-{resSeq[0]}-{resSeq[1]}-{time_correction}.npy', d_lifetimes)    
+    np.save(f'{outdir}/Lifetimes/a_lifetimes-{resSeq[0]}-{resSeq[1]}-{time_correction}.npy', a_lifetimes)
+
 def single_exp_decay(t, Io, tau):
     """
     Function for a single exponential decay.
@@ -713,4 +761,3 @@ def fit_lifetimes_single_exp_high_throughput(lifetimes, donor_name=None, hist_bi
         return(t, counts, 0, 100)
     
     return(t, counts, fit_I, fit_tau)
-    
