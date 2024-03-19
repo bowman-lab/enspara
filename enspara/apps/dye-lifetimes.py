@@ -46,13 +46,13 @@ def process_command_line(argv):
     ### Model_dyes subparser ###
     ############################
     calc_lifetimes_parser = subparsers.add_parser('calc_lifetimes', help='model FRET \
-    	dyes onto MSM centers and calculate their lifetimes')
+        dyes onto MSM centers and calculate their lifetimes')
 
     # Model dyes INPUTS
     calc_lts_input_args = calc_lifetimes_parser.add_argument_group("Input Settings")
     calc_lts_input_args.add_argument(
-    	'donor_name',
-    	help="Name of the donor dye. Should be in the enspara dye library.")
+        'donor_name',
+        help="Name of the donor dye. Should be in the enspara dye library.")
     calc_lts_input_args.add_argument(
         'donor_centers',
         help="Path to cluster centers from the MSM"
@@ -61,11 +61,11 @@ def process_command_line(argv):
         'donor_top',
         help="topology file for supplied trajectory")
     calc_lts_input_args.add_argument(
-    	'donor_tcounts',
-    	help='t_counts for the donor dye MSM.')
+        'donor_tcounts',
+        help='t_counts for the donor dye MSM.')
     calc_lts_input_args.add_argument(
-    	'acceptor_name',
-    	help='Name of the acceptor dye. Should be in the enspara dye library.')
+        'acceptor_name',
+        help='Name of the acceptor dye. Should be in the enspara dye library.')
     calc_lts_input_args.add_argument(
         'acceptor_centers',
         help="Path to cluster centers from the MSM"
@@ -74,15 +74,15 @@ def process_command_line(argv):
         'acceptor_top',
         help="topology file for supplied trajectory")
     calc_lts_input_args.add_argument(
-    	'acceptor_tcounts'
-    	help='t_counts for the acceptor dye MSM')
+        'acceptor_tcounts',
+        help='t_counts for the acceptor dye MSM')
     calc_lts_input_args.add_argument(
         'dye_lagtime', type=float,
         help="Lagtime for dye MSMs, in ns."
         "Enspara dye MSMs were built with a lagtime of 0.002 ns.")
     calc_lts_input_args.add_argument(
-    	'prot_top',
-    	help='Protein topology file to read protein centers')
+        'prot_top',
+        help='Protein topology file to read protein centers')
     calc_lts_input_args.add_argument(
         'resid_pairs',
         help="Path to whitespace delimited file that is a list of residues to label. Pass in "
@@ -92,12 +92,12 @@ def process_command_line(argv):
     # Optional PARAMETERS
     calc_lts_param_args = calc_lifetimes_parser.add_argument_group("Parameters")
     calc_lts_param_args.add_argument(
-    	'prot_centers', required=False,
-    	help="Path to protein MSM cluster centers."
-    	"Should be trajectory file readable by mdtraj."
-    	"If not provided, will just label the protein topology file."
-    	"Running burst with a single protein center is not supported though, since there are no"
-    	"conformations to average over. Calculate FRET directly from the lifetime outcomes.")
+        'prot_centers', required=False,
+        help="Path to protein MSM cluster centers."
+        "Should be trajectory file readable by mdtraj."
+        "If not provided, will just label the protein topology file."
+        "Running burst with a single protein center is not supported though, since there are no"
+        "conformations to average over. Calculate FRET directly from the lifetime outcomes.")
     calc_lts_param_args.add_argument(
         '--n_procs', required=False, type=int, default=1,
         help="Number of cores to use for parallel processing"
@@ -135,21 +135,21 @@ def process_command_line(argv):
         help="Path to transition counts from the protein MSM. "
              "Should be of file type .npy")
     burst_input_args.add_argument(
-    	'prot_centers',
-    	help="Path to protein MSM cluster centers."
-    	"Should be trajectory file readable by mdtraj.")
+        'prot_centers',
+        help="Path to protein MSM cluster centers."
+        "Should be trajectory file readable by mdtraj.")
     burst_input_args.add_argument(
-    	'prot_top',
-    	help="Path to protein topology file.")
+        'prot_top',
+        help="Path to protein topology file.")
     burst_input_args.add_argument(
-    	'lifetimes_dir', action=readable_dir,
-    	help="Path to dye-lifetimes directory / output from calc_lifetimes.")
+        'lifetimes_dir', action=readable_dir,
+        help="Path to dye-lifetimes directory / output from calc_lifetimes.")
     burst_input_args.add_argument(
-    	'donor_name', type=str, 
-    	help="Name of donor dye. Should be a dye in the Enspara dye library.")
+        'donor_name', type=str, 
+        help="Name of donor dye. Should be a dye in the Enspara dye library.")
     burst_input_args.add_argument(
-    	'acceptor_name', type=str,
-    	help="Name of acceptor dye. Should be a dye in the Enspara dye library.")
+        'acceptor_name', type=str,
+        help="Name of acceptor dye. Should be a dye in the Enspara dye library.")
     burst_input_args.add_argument(
         'lagtime', type=float,
         help="lag time used to construct the protein MSM (in ns) "
@@ -198,84 +198,80 @@ def main(argv=None):
         print(i, arg)
     print("", flush=True)
 
-	os.makedirs(args.output_dir, exist_ok=True)
+    os.makedirs(args.output_dir, exist_ok=True)
 
     # Process the input
     if args.command == 'calc_lifetimes':
-    	#Load in initial stuff
-    	print('Loading dye MSMs.', flush=True)
-    	d_centers = md.load(args.donor_centers, top=args.donor_top)
-    	a_centers = md.load(args.acceptor_centers, top=args.acceptor_top)
-    	d_tcounts = np.load(args.donor_tcounts, allow_pickle=True)
-    	a_tcounts = np.load(args.acceptor_tcounts, allow_pickle=True)
+        #Load in initial stuff
+        print('Loading dye MSMs.', flush=True)
+        d_centers = md.load(args.donor_centers, top=args.donor_top)
+        a_centers = md.load(args.acceptor_centers, top=args.acceptor_top)
+        d_tcounts = np.load(args.donor_tcounts, allow_pickle=True)
+        a_tcounts = np.load(args.acceptor_tcounts, allow_pickle=True)
 
-    	print('Loading protein centers.', flush=True)
-    	if args.prot_centers == None:
-    		prot_traj = md.load(args.prot_top)
-	    else:
-	    	prot_traj = md.load(args.prot_centers, top=args.prot_top)
-	    	
+        print('Loading protein centers.', flush=True)
+        if args.prot_centers == None:
+            prot_traj = md.load(args.prot_top)
+        else:
+            prot_traj = md.load(args.prot_centers, top=args.prot_top)
 
-    	for resSeq in resSeqs:
-    		func = partial(dye_lifetimes.calc_lifetimes, d_centers=d_centers, d_tcounts=d_tcounts,
+        for resSeq in resSeqs:
+            func = partial(dye_lifetimes.calc_lifetimes, d_centers=d_centers, d_tcounts=d_tcounts,
             a_centers=a_centers, a_tcounts=a_tcounts, resSeqs=resSeq, 
             dyenames=[args.donor_name, args.acceptor_name],
             dye_lagtime=args.dye_lagtime, n_samples=args.n_samples, outdir=args.output_dir, 
             save_dye_trj=args.save_dtrj, save_dye_msm=args.save_dmsm)
 
-	        print(f'Starting pool for resSeq {resSeq}.', flush=True)
+            print(f'Starting pool for resSeq {resSeq}.', flush=True)
 
 
-	        with get_context("spawn").Pool() as pool:
+            with get_context("spawn").Pool() as pool:
 
-	            lifetime_events = pool.map(func, zip(prot_traj, np.arange(len(prot_traj))))
-	            pool.terminate()
+                lifetime_events = pool.map(func, zip(prot_traj, np.arange(len(prot_traj))))
+                pool.terminate()
 
-	        lifetime_events = np.array(lifetime_events)
-	        print(f'Saving lifetimes and outcomes here: {outdir}')
-	        np.save(f'{outdir}/events-{resSeq[0]}-{resSeq[1]}.npy', lifetime_events)
+            lifetime_events = np.array(lifetime_events)
+            print(f'Saving lifetimes and outcomes here: {outdir}')
+            np.save(f'{outdir}/events-{resSeq[0]}-{resSeq[1]}.npy', lifetime_events)
 
 
     elif args.command == 'run_burst':
 
    		#Load in initial files
-    	resSeqs = np.loadtxt(args.resid_pairs)
+        resSeqs = np.loadtxt(args.resid_pairs)
+        prot_traj=md.load(args.prot_top)
+        prot_tcounts = np.load(args.t_counts, allow_pickle=True)
+        prot_eqs = np.load(args.eq_probs)
+        cumulative_times = np.load(args.photon_times)
 
-    	#TODO
-    	#This is a dumb check - make people provide an xtc since they have to provide t_counts.
-    	prot_traj=md.load(args.prot_top)
-    	prot_tcounts = np.load(args.t_counts, allow_pickle=True)
-    	prot_eqs = np.load(args.eq_probs)
-    	cumulative_times = np.load(args.photon_times)
+        #Make output dirs
+        os.makedirs(f'{args.output_dir}/MSMs', exist_ok=True)
 
-    	#Make output dirs
-    	os.makedirs(f'{args.output_dir}/MSMs', exist_ok=True)
+        #Choose a sensible number of processes to start for pool.
+        procs = min([len(resSeqs),args.n_procs])
 
-    	#Choose a sensible number of processes to start for pool.
-    	procs = min([len(resSeqs),args.n_procs])
+        print('Remaking dye MSMs to account for protein states with no available dyes.', flush=True)
 
-    	print('Remaking dye MSMs to account for protein states with no available dyes.', flush=True)
-
-    	#Remake dye MSM for each dye pair
-    	func = partial(dye_lifetimes.remake_msms, prot_tcounts=prot_tcounts, dye_dir=args.lifetimes_dir,
-    		dyenames=[args.donor_name, args.acceptor_name],orig_eqs=prot_eqs, outdir = args.output_dir)
+        #Remake dye MSM for each dye pair
+        func = partial(dye_lifetimes.remake_msms, prot_tcounts=prot_tcounts, dye_dir=args.lifetimes_dir,
+            dyenames=[args.donor_name, args.acceptor_name],orig_eqs=prot_eqs, outdir = args.output_dir)
         with get_context("spawn").Pool(processes=procs) as pool:
             run = pool.map(func, resSeqs)
             pool.terminate()
 
-    	#Run burst MC for each correction factor
-    	for time_correction in args.correction_factor:
-        	# Convert Photon arrival times into MSM steps.
-    		MSM_frames = dyefs.convert_photon_times(cumulative_times, args.lagtime, time_correction)
+        #Run burst MC for each correction factor
+        for time_correction in args.correction_factor:
+            # Convert Photon arrival times into MSM steps.
+            MSM_frames = dyefs.convert_photon_times(cumulative_times, args.lagtime, time_correction)
 
-	        func = partial(dye_lifetimes.run_mc, prot_tcounts=prot_tcounts, 
-	        	dyenames=[args.donor_name, args.acceptor_name], 
-	            dye_dir=args.lifetimes_dir, orig_eqs=prot_eqs, MSM_frames=MSM_frames, 
-	            outdir=args.output_dir, time_correction=time_correction)
+            func = partial(dye_lifetimes.run_mc, prot_tcounts=prot_tcounts, 
+               dyenames=[args.donor_name, args.acceptor_name], 
+                dye_dir=args.lifetimes_dir, orig_eqs=prot_eqs, MSM_frames=MSM_frames, 
+                outdir=args.output_dir, time_correction=time_correction)
 
-	        with get_context("spawn").Pool(processes=procs) as pool:
-	            run = pool.map(func, resSeqs)
-	            pool.terminate()
+            with get_context("spawn").Pool(processes=procs) as pool:
+                run = pool.map(func, resSeqs)
+                pool.terminate()
 
 if __name__ == "__main__":
     sys.exit(main(sys.argv))
