@@ -180,7 +180,7 @@ def process_command_line(argv):
              "with photon wait times (in us) for each burst. Size (n_bursts, nphotons in burst) "
              "Should be of file type .npy")
     burst_parameters.add_argument(
-        '--correction_factor', required=False, type=list_of_ints, default=[10000], 
+        '--correction_factor', required=False, type=int, default=[10000], 
         nargs="+", action='append',
         help="Time factor by which your MSM is faster than experimental timescale."
         "Pass multiple to rescale MSM to multiple times.")
