@@ -497,7 +497,7 @@ def remake_msms(resSeq, prot_tcounts, dye_dir, dyenames, orig_eqs, outdir):
     new_tprobs, new_eqs = remake_prot_MSM_from_lifetimes(lifets, prot_tcounts, 
                                                 resSeq, dyenames, outdir= f'{outdir}/MSMs', prot_eqs = orig_eqs)
 
-def run_mc(resSeqs, prot_tcounts, dyenames, MSM_frames, dye_dir, outdir, time_correction):
+def run_mc(resSeq, prot_tcounts, dyenames, MSM_frames, dye_dir, outdir, time_correction):
     lifetime_outcomes_path = f'{dye_dir}/events-{resSeq[0]}-{resSeq[1]}.npy'
 
     #Load simulated events
@@ -507,8 +507,8 @@ def run_mc(resSeqs, prot_tcounts, dyenames, MSM_frames, dye_dir, outdir, time_co
     lifets = lifetime_outcomes[:,0]
     outcomes = lifetime_outcomes[:,1]
 
-    new_tprobs = np.load(f'{outdir}/MSMs/{resSeqs[0]}-{"".join(dyenames[0].split(" "))}-{resSeqs[1]}-{"".join(dyenames[1].split(" "))}-t_prbs.npy')
-    new_eqs = np.load(f'{outdir}/MSMs/{resSeqs[0]}-{"".join(dyenames[0].split(" "))}-{resSeqs[1]}-{"".join(dyenames[1].split(" "))}-eqs.npy')
+    new_tprobs = np.load(f'{outdir}/MSMs/{resSeq[0]}-{"".join(dyenames[0].split(" "))}-{resSeq[1]}-{"".join(dyenames[1].split(" "))}-t_prbs.npy')
+    new_eqs = np.load(f'{outdir}/MSMs/{resSeq[0]}-{"".join(dyenames[0].split(" "))}-{resSeq[1]}-{"".join(dyenames[1].split(" "))}-eqs.npy')
 
     print(f'Running MC sampling for {resSeq[0]}-{resSeq[1]} and time factor {time_correction}.', flush=True)
     #Sample the protein MSM to get bursts
