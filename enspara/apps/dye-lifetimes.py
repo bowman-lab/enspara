@@ -270,7 +270,7 @@ def main(argv=None):
 
             func = partial(dye_lifetimes.run_mc, prot_tcounts=prot_tcounts, 
                dyenames=[args.donor_name, args.acceptor_name], 
-                dye_dir=args.lifetimes_dir, orig_eqs=prot_eqs, MSM_frames=MSM_frames, 
+                dye_dir=args.lifetimes_dir,  MSM_frames=MSM_frames, 
                 outdir=args.output_dir, time_correction=time_correction)
 
             with get_context("spawn").Pool(processes=procs) as pool:
