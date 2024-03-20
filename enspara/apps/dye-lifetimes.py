@@ -158,9 +158,6 @@ def process_command_line(argv):
         help="lag time used to construct the protein MSM (in ns) "
              "Should be type float")
     burst_input_args.add_argument(
-        '--FRET_dye_dists', action=readable_dir, required=True,
-        help="Path to FRET dye distributions (output of model_dyes)")
-    burst_input_args.add_argument(
         '--resid_pairs', required=True,
         help="Path to whitespace delimited text file that is a list of residues to label. Pass in "
              "pairs of residues with the same numbering (resSeq) as in the topology file."
