@@ -241,7 +241,9 @@ def main(argv=None):
 
 
     elif args.command == 'run_burst':
+        print(args.correction_factor)
         for time_correction in args.correction_factor:
+
             print(time_correction, type(time_correction))
    		#Load in initial files
         prot_traj=md.load(args.prot_top)
