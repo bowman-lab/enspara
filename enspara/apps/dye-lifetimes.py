@@ -181,7 +181,7 @@ def process_command_line(argv):
              "Should be of file type .npy")
     burst_parameters.add_argument(
         '--correction_factor', required=False, type=int, default=[10000], 
-        nargs="+", action='append',
+        nargs="+",
         help="Time factor by which your MSM is faster than experimental timescale."
         "Pass multiple to rescale MSM to multiple times.")
 
@@ -241,10 +241,6 @@ def main(argv=None):
 
 
     elif args.command == 'run_burst':
-        print(args.correction_factor)
-        for time_correction in args.correction_factor:
-
-            print(time_correction, type(time_correction))
    		#Load in initial files
         prot_traj=md.load(args.prot_top)
         prot_tcounts = np.load(args.t_counts, allow_pickle=True)
