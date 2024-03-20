@@ -246,7 +246,7 @@ def main(argv=None):
         prot_traj=md.load(args.prot_top)
         prot_tcounts = np.load(args.t_counts, allow_pickle=True)
         prot_eqs = np.load(args.eq_probs)
-        cumulative_times = np.load(args.photon_times)
+        cumulative_times = np.load(args.photon_times, allow_pickle=True)
 
         #Make output dirs
         os.makedirs(f'{args.output_dir}/MSMs', exist_ok=True)
