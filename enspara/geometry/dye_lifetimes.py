@@ -498,6 +498,8 @@ def remake_msms(resSeq, prot_tcounts, dye_dir, dyenames, orig_eqs, outdir):
                                                 resSeq, dyenames, outdir= f'{outdir}/MSMs', prot_eqs = orig_eqs)
 
 def run_mc(resSeq, prot_tcounts, dyenames, MSM_frames, dye_dir, outdir, time_correction):
+    import os
+    
     lifetime_outcomes_path = f'{dye_dir}/events-{resSeq[0]}-{resSeq[1]}.npy'
 
     #Load simulated events
