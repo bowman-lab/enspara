@@ -228,7 +228,7 @@ def make_dye_msm(centers, t_counts, pdb, resseq, dyename, dyelibrary,
     
     if len(dye_indicies)==0:
         #No non-clashing label positions
-        return np.array([0]),np.array([0])
+        return np.array([0]),np.array([0]), np.array([])
     
     if save_dye_xtc:
         #Need to think of a clever way to convert dtrj steps to the shortened dye xtc.
@@ -300,7 +300,7 @@ def calc_lifetimes(pdb_center_num, d_centers, d_tcounts, a_centers, a_tcounts, r
     
     pdb, center_n = pdb_center_num
     
-    #Model dye onto residue of interest and remake MSM. Repeat per labeling position
+    #Model dye onto residue of interest and remake MSM.
     d_tprobs, d_mod_eqs, d_indxs = make_dye_msm(d_centers,d_tcounts, pdb[0], resSeqs[0], dyenames[0], 
         dyelibrary, center_n = center_n, outdir=outdir,save_dye_xtc=save_dye_trj)
 
@@ -324,10 +324,12 @@ def calc_lifetimes(pdb_center_num, d_centers, d_tcounts, a_centers, a_tcounts, r
     if save_dye_trj:
         #Dyes are reindexed, events are original indexing. Search to find the 
         #corresponding value in the reindexed array.
-        dtrj = np.array([np.searchsorted(d_indxs, event) for event in events[:,2]])
-        atrj = np.array([np.searchsorted(a_indxs, event) for event in events[:,3]])
-        np.save(f'{outdir}/center{center_n}-{dyenames[0]}-dtrj.npy',dtrj)
-        np.save(f'{outdir}/center{center_n}-{dyenames[1]}-atrj.npy',atrj)
+        if len(d_indxs) > 0:
+            dtrj = np.array([np.searchsorted(d_indxs, event) for event in events[:,2]])
+            np.save(f'{outdir}/center{center_n}-{dyenames[0]}-dtrj.npy',dtrj)
+        if len(a_indxs) > 0:
+            atrj = np.array([np.searchsorted(a_indxs, event) for event in events[:,3]])
+            np.save(f'{outdir}/center{center_n}-{dyenames[1]}-atrj.npy',atrj)
 
     lifetimes = events[:,0].astype(float)*dye_lagtime #ns
     outcomes = events[:,1]
@@ -383,26 +385,6 @@ def _sample_lifetimes_guarenteed_photon(states, lifetimes, outcomes):
     photons = np.array(photons)
     lifetime = np.array(lifetime)
     return(photons, lifetime)
-
-def calc_per_state_FE(events):
-    """
-    Takes an events array from calc_lifetimes and returns the FRET efficiency per protein state.
-
-    Attributes
-    ____________
-    events, np.arrray shape (n_states, 2, n_samples)
-        Dye lifetimes and outcomes array from calc_lifetimes
-
-    Returns
-    ____________
-    per_state, np.array shape (n_states)
-        FRET efficiency for each state, averaged over the number of samples.
-    """
-    per_state = np.array([len(np.where(event=='energy_transfer')[0]) / \
-        (len(np.where(event=='radiative')[0])+len(np.where(event=='energy_transfer')[0])) 
-        for event in events[:,1]])
-
-    return per_state
 
 def sample_lifetimes_guarenteed_photon(frames, t_probs, eqs, lifetimes, outcomes):
 
@@ -553,6 +535,26 @@ def run_mc(resSeq, prot_tcounts, dyenames, MSM_frames, dye_dir, outdir, time_cor
     np.save(f'{outdir}/Lifetimes/d_lifetimes-{resSeq[0]}-{resSeq[1]}-{time_correction}.npy', d_lifetimes)    
     np.save(f'{outdir}/Lifetimes/a_lifetimes-{resSeq[0]}-{resSeq[1]}-{time_correction}.npy', a_lifetimes)
 
+def calc_per_state_FE(events):
+    """
+    Takes an events array from calc_lifetimes and returns the FRET efficiency per protein state.
+
+    Attributes
+    ____________
+    events, np.arrray shape (n_states, 2, n_samples)
+        Dye lifetimes and outcomes array from calc_lifetimes
+
+    Returns
+    ____________
+    per_state, np.array shape (n_states)
+        FRET efficiency for each state, averaged over the number of samples.
+    """
+    per_state = np.array([np.count_nonzero(event=='energy_transfer') / \
+        (np.count_nonzero(event=='radiative')+np.count_nonzero(event=='energy_transfer'))
+        for event in events[:,1]])
+
+    return per_state
+
 def single_exp_decay(t, Io, tau):
     """
     Function for a single exponential decay.
@@ -672,7 +674,7 @@ def fit_lifetimes_double_exp(lifetimes, donor_name=None, hist_bins = 100, hist_r
     counts : np.array
         Counts associated with histogram bins
     fit_I1 : float
-        Initial amplitude of first decay curve
+        Initial amplitude of first decay curve7
     fit_I2 : float
         Initial amplitude of second decay curve
     fit_tau1 : float
