@@ -384,6 +384,26 @@ def _sample_lifetimes_guarenteed_photon(states, lifetimes, outcomes):
     lifetime = np.array(lifetime)
     return(photons, lifetime)
 
+def calc_per_state_FE(events):
+    """
+    Takes an events array from calc_lifetimes and returns the FRET efficiency per protein state.
+
+    Attributes
+    ____________
+    events, np.arrray shape (n_states, 2, n_samples)
+        Dye lifetimes and outcomes array from calc_lifetimes
+
+    Returns
+    ____________
+    per_state, np.array shape (n_states)
+        FRET efficiency for each state, averaged over the number of samples.
+    """
+    per_state = np.array([len(np.where(event=='energy_transfer')[0]) / \
+        (len(np.where(event=='radiative')[0])+len(np.where(event=='energy_transfer')[0])) 
+        for event in events[:,1]])
+
+    return per_state
+
 def sample_lifetimes_guarenteed_photon(frames, t_probs, eqs, lifetimes, outcomes):
 
     """
