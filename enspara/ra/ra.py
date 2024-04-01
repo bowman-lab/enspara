@@ -499,7 +499,6 @@ class RaggedArray(object):
     def __init__(self, array, lengths=None, error_checking=True, copy=True):
         # Check that input is proper (array of arrays)
         if error_checking:
-            array = np.array(list(array))
             if len(array) > 20000:
                 # lenghts is None => we are not inferring lengths from
                 # e.g. nested lists
@@ -533,6 +532,8 @@ class RaggedArray(object):
                 self.lengths = np.array([len(i) for i in array], dtype=int)
                 self._array = np.array(
                     partition_list(self._data, self.lengths), dtype='O')
+
+               
             # array of single values
             else:
                 self.lengths = np.array([len(array)], dtype=int)
