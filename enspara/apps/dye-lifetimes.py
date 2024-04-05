@@ -164,7 +164,7 @@ def process_command_line(argv):
              "Pass multiple lines to model multiple residue pairs. First residue is the donor"
              "and the second residue corresponds to the acceptor.")
 
-    # Calc FRET PARAMETERS
+    # Calc FRET bursts PARAMETERS
     burst_parameters = run_burst_parser.add_argument_group("Parameters (Optional)")
     burst_parameters.add_argument(
         '--n_procs', required=False, type=int, default=1,
@@ -245,7 +245,7 @@ def main(argv=None):
         prot_traj=md.load(args.prot_top)
         prot_tcounts = np.load(args.t_counts, allow_pickle=True)
         prot_eqs = np.load(args.eq_probs)
-        cumulative_times = np.load(args.photon_times, allow_pickle=True)
+        interphoton_times = np.load(args.photon_times, allow_pickle=True)
 
         #Make output dirs
         os.makedirs(f'{args.output_dir}/MSMs', exist_ok=True)
@@ -265,7 +265,7 @@ def main(argv=None):
         #Run burst MC for each correction factor
         for time_correction in args.correction_factor:
             # Convert Photon arrival times into MSM steps.
-            MSM_frames = dyefs.convert_photon_times(cumulative_times, args.lagtime, time_correction)
+            MSM_frames = dyefs.convert_photon_times(interphoton_times, args.lagtime, time_correction)
 
             func = partial(dye_lifetimes.run_mc, prot_tcounts=prot_tcounts, 
                dyenames=[args.donor_name, args.acceptor_name], 
