@@ -371,7 +371,7 @@ def partition_list(list_to_partition, partition_lengths):
 def _is_iterable(iterable):
     """Indicates if the input is iterable but not due to being a string or
        bytes. Returns a boolean value."""
-    iterable_bool = isinstance(iterable, collections.Iterable) and not \
+    iterable_bool = isinstance(iterable, collections.abc.Iterable) and not \
         isinstance(iterable, (str, bytes))
     return iterable_bool
 
@@ -450,7 +450,8 @@ def _get_iis_from_slices(first_dimension_iis, second_dimension, lengths):
     iis_to_flat = np.where(stops > lengths)
     stops[iis_to_flat] = lengths[iis_to_flat]
     iis_2d = np.array(
-        [np.arange(start, stops[num], step) for num in first_dimension_iis])
+        [np.arange(start, stops[num], step) for num in first_dimension_iis],
+        dtype='O')
     iis_2d_lengths = np.array([len(i) for i in iis_2d])
     iis_1d = np.array(
         np.concatenate(
@@ -499,7 +500,6 @@ class RaggedArray(object):
     def __init__(self, array, lengths=None, error_checking=True, copy=True):
         # Check that input is proper (array of arrays)
         if error_checking:
-            array = np.array(list(array))
             if len(array) > 20000:
                 # lenghts is None => we are not inferring lengths from
                 # e.g. nested lists
@@ -533,6 +533,8 @@ class RaggedArray(object):
                 self.lengths = np.array([len(i) for i in array], dtype=int)
                 self._array = np.array(
                     partition_list(self._data, self.lengths), dtype='O')
+
+               
             # array of single values
             else:
                 self.lengths = np.array([len(array)], dtype=int)

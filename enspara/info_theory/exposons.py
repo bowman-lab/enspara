@@ -6,6 +6,7 @@ from sklearn.cluster import AffinityPropagation
 
 from .mutual_info import weighted_mi
 from enspara.citation import cite
+from enspara import exception
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -193,7 +194,14 @@ def condense_sidechain_sasas(sasas, top):
     """
 
     assert top.n_residues > 1
-    assert top.n_atoms == sasas.shape[1]
+
+    if top.n_atoms != sasas.shape[1]:
+        raise exception.DataInvalid(
+            f"The number of atoms in top ({top.n_atoms}) didn't match the "
+            f"number of SASAs provided ({sasas.shape[1]}). Make sure you "
+            f"computed atom-level SASAs (mode='atom') and that you've passed "
+            "the correct topology file and array of SASAs"
+        )
 
     sc_ids = get_sidechain_atom_ids(top)
 
