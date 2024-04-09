@@ -449,18 +449,19 @@ def _get_iis_from_slices(first_dimension_iis, second_dimension, lengths):
     # if indices go past length, make it go upto length
     iis_to_flat = np.where(stops > lengths)
     stops[iis_to_flat] = lengths[iis_to_flat]
-    iis_2d = np.array(
-        [np.arange(start, stops[num], step) for num in first_dimension_iis],
-        dtype='O')
-    iis_2d_lengths = np.array([len(i) for i in iis_2d])
-    iis_1d = np.array(
-        np.concatenate(
-            np.array(
-                [
-                    list(
-                        itertools.repeat(first_dimension_iis[i],
-                        iis_2d_lengths[i]))
-                    for i in range(len(iis_2d_lengths))])), dtype=int)
+    # iis_2d = np.array(
+    #     [np.arange(start, stops[num], step) for num in first_dimension_iis],
+    #     dtype='O')
+    iis_2d = []
+    iis_2d_lengths = []
+    for num in first_dimension_iis:
+        splits_inds = np.arange(start, stops[num], step)
+        iis_2d.append(splits_inds)
+        iis_2d_lengths.append(len(splits_inds))
+    iis_2d_lengths = np.array(iis_2d_lengths, dtype=int)
+    iis_1d = np.concatenate([
+                    list(itertools.repeat(first_dimension_iis[i], iis_2d_lengths[i]))
+                    for i in range(len(iis_2d_lengths))], dtype=int)
     return (iis_1d, np.concatenate(iis_2d)), iis_2d_lengths
 
 
@@ -518,7 +519,10 @@ class RaggedArray(object):
                     warnings.warn(
                         "Can't create a view into %s, copying anyway." %
                         type(array), RuntimeWarning)
-                self._data = np.concatenate(array)
+                try:
+                    self._data = np.concatenate(array)
+                except ValueError:
+                    self._data = np.concatenate([j for i in array for j in i])
             else:
                 self._data = np.array(array, copy=copy)
         elif len(array) > 0:
@@ -544,6 +548,15 @@ class RaggedArray(object):
             self.lengths = np.array([], dtype=int)
             self._array = []
         # rebuild array from 1d and lengths
+        # special case for lengths equivalent
+        elif np.all(lengths == lengths[0]):
+            try:
+                self._array = self._data.reshape(-1, lengths[0])
+            except DataInvalid:
+                raise DataInvalid(
+                    "Sum of lengths (%s) didn't match data shape (%s)." %
+                    (sum(lengths), self._data.shape))
+            self.lengths = np.array(lengths)
         else:
             try:
                 self._array = np.array(
@@ -624,9 +637,11 @@ class RaggedArray(object):
                 # if the second dimension is a slice, determines the 2d indices
                 # from the lengths in the ragged dimension
                 else:
-                    first_dimension_iis = first_dimension
                     iis, new_lengths  = _get_iis_from_slices(
-                        first_dimension_iis, second_dimension, self.lengths)
+                        first_dimension, second_dimension, self.lengths)
+                    # first_dimension_iis = first_dimension
+                    # iis, new_lengths  = _get_iis_from_slices(
+                    #     first_dimension_iis, second_dimension, self.lengths)
             # If the indices are a tuple, but does not contain a slice,
             # does regular conversion.
             else:
