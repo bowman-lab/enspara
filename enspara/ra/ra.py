@@ -450,7 +450,8 @@ def _get_iis_from_slices(first_dimension_iis, second_dimension, lengths):
     iis_to_flat = np.where(stops > lengths)
     stops[iis_to_flat] = lengths[iis_to_flat]
     iis_2d = np.array(
-        [np.arange(start, stops[num], step) for num in first_dimension_iis])
+        [np.arange(start, stops[num], step) for num in first_dimension_iis],
+        dtype='O')
     iis_2d_lengths = np.array([len(i) for i in iis_2d])
     iis_1d = np.array(
         np.concatenate(
