@@ -59,11 +59,11 @@ def runhelper(args, expected_size, expect_reassignment=True,
             assigns = ra.load(fnames['assignments'])
             if type(assigns) is ra.RaggedArray:
                 assert_equal(len(assigns), expected_size[0])
-                assert_equal(assigns._data.dtype, np.int)
+                assert_equal(assigns._data.dtype, int)
                 assert_array_equal(assigns.lengths, expected_size[1])
             else:
                 assert_equal(assigns.shape, expected_size)
-                assert_equal(assigns.dtype, np.int)
+                assert_equal(assigns.dtype, int)
 
             distfile = fnames['distances']
             assert os.path.isfile(distfile), \
