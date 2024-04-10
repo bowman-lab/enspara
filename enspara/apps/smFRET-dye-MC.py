@@ -235,7 +235,7 @@ def main(argv=None):
                 lifetime_events = pool.map(func, zip(prot_traj, np.arange(len(prot_traj))))
                 pool.terminate()
 
-            lifetime_events = np.array(lifetime_events)
+            lifetime_events = np.array(lifetime_events, dtype='O')
             print(f'Saving lifetimes and outcomes here: {args.output_dir}')
             np.save(f'{args.output_dir}/events-{resSeq[0]}-{resSeq[1]}.npy', lifetime_events)
 

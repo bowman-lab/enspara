@@ -293,7 +293,7 @@ def main(argv=None):
 
             # Load the predicted FRET histograms
             predicted_FRET_histos = np.array([np.load(f"{FRET_histos[n]}")
-                                              for n in range(len(time_scales))])
+                                              for n in range(len(time_scales))], dtype='O')
 
             expt_counts = np.loadtxt(f"{expt_histogram_paths[i]}")
             
@@ -327,7 +327,7 @@ def main(argv=None):
             print(
                 f"Minimum difference between experiment and prediction for {label_pair}"
                 f" is at time factor: {time_scales[np.argmin(difference_array[i])]}.")
-            output_array = np.vstack((np.array(time_scales), difference_array[i])).T
+            output_array = np.vstack((np.array(time_scales,dtype='O'), difference_array[i])).T
             np.save(f'{args.output_dir}/{label_pair}_{args.method}.npy', output_array)
             print("")
         if args.Global_fit == 'True':

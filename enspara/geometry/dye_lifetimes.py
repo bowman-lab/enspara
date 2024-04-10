@@ -319,7 +319,7 @@ def calc_lifetimes(pdb_center_num, d_centers, d_tcounts, a_centers, a_tcounts, r
         np.save(f'{outdir}/center{center_n}-{"".join(dyenames[1].split(" "))}-tps.npy',a_tprobs)
 
     events = np.array([resolve_excitation(dyenames[0], dyenames[1], d_tprobs, a_tprobs, d_mod_eqs, a_mod_eqs, 
-                        d_centers, a_centers, dye_params, dye_lagtime, dyelibrary) for i in range(n_samples)])
+                        d_centers, a_centers, dye_params, dye_lagtime, dyelibrary) for i in range(n_samples)], dtype='O')
     
     if save_dye_trj:
         #Dyes are reindexed, events are original indexing. Search to find the 
@@ -518,7 +518,7 @@ def run_mc(resSeq, prot_tcounts, dyenames, MSM_frames, dye_dir, outdir, time_cor
     #Sample the protein MSM to get bursts
     sampling = np.array([
         sample_lifetimes_guarenteed_photon(
-        frames, new_tprobs, new_eqs, lifets, outcomes) for frames in MSM_frames])
+        frames, new_tprobs, new_eqs, lifets, outcomes) for frames in MSM_frames], dtype='O')
 
     print(f'Extracting FEs and lifetimes for {resSeq[0]}-{resSeq[1]} and time factor {time_correction}.', flush=True)
 
