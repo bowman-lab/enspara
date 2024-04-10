@@ -675,7 +675,7 @@ def convert_photon_times(inter_photon_times, lagtime, slowing_factor):
 
     #Multiply experimental wait times by this to get MSM steps.
     MSM_frames=np.array([np.cumsum(np.multiply(inter_photon_times[i], conversion_factor), dtype=int)
-     for i in range(len(inter_photon_times))])
+     for i in range(len(inter_photon_times))], dtype='O')
     return MSM_frames
 
 def int_norm_hist(xs, ys):
