@@ -521,8 +521,9 @@ class RaggedArray(object):
                         type(array), RuntimeWarning)
                 try:
                     self._data = np.concatenate(array)
+                # if 2nd and 3rd dims are ragged, need object array to store them.
                 except ValueError:
-                    self._data = np.concatenate([j for i in array for j in i])
+                    self._data = np.array([np.array(j) for i in array for j in i], dtype='O')
             else:
                 self._data = np.array(array, copy=copy)
         elif len(array) > 0:
@@ -535,9 +536,9 @@ class RaggedArray(object):
             # array of arrays
             if _is_iterable(array[0]):
                 self.lengths = np.array([len(i) for i in array], dtype=int)
+                print('building array no lengths', self.lengths)
                 self._array = np.array(
                     partition_list(self._data, self.lengths), dtype='O')
-
                
             # array of single values
             else:
