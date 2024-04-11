@@ -153,7 +153,7 @@ def assigns_to_counts(
             'If this is really what you want, try using '
             'assignments.reshape(1, -1) to create a single-row 2d array.')
 
-    assigns = np.array([a[np.where(a != -1)] for a in assigns])
+    assigns = np.array([a[np.where(a != -1)] for a in assigns], dtype='O')
 
     if max_n_states is None:
         max_n_states = np.concatenate(assigns).max() + 1

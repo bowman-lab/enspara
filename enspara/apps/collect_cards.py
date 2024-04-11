@@ -32,7 +32,7 @@ import mdtraj as md
 from glob import glob 
 from enspara.cards import cards
 from enspara.util.parallel import auto_nprocs
-from enspara.util import array as ra
+from enspara import ra
 from enspara.util import load_as_concatenated
 from enspara.apps.util import readable_dir
 from enspara.util.log import timed

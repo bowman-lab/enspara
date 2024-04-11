@@ -17,7 +17,7 @@ from numpy.testing import assert_array_equal, assert_allclose
 from ..import mpi
 from ..apps import cluster
 from ..cluster import util, kcenters
-from ..util import array as ra
+from enspara import ra
 
 from .util import fix_np_rng
 
@@ -59,11 +59,11 @@ def runhelper(args, expected_size, expect_reassignment=True,
             assigns = ra.load(fnames['assignments'])
             if type(assigns) is ra.RaggedArray:
                 assert_equal(len(assigns), expected_size[0])
-                assert_equal(assigns._data.dtype, np.int)
+                assert_equal(assigns._data.dtype, int)
                 assert_array_equal(assigns.lengths, expected_size[1])
             else:
                 assert_equal(assigns.shape, expected_size)
-                assert_equal(assigns.dtype, np.int)
+                assert_equal(assigns.dtype, int)
 
             distfile = fnames['distances']
             assert os.path.isfile(distfile), \
@@ -166,7 +166,8 @@ def test_rmsd_kcenters_mpi_subsample():
                 '--cluster-number', '4',
                 '--subsample', str(SUBSAMPLE_FACTOR),
                 '--atoms', SELECTION,
-                '--algorithm', 'kcenters'],
+                '--algorithm', 'kcenters',
+                '--no-reassign'],
                 expected_size=expected_size,
                 expect_reassignment=False)
 
@@ -217,7 +218,7 @@ def test_rmsd_khybrid_mpi_basic():
     trj = md.load(TRJFILE, top=TOPFILE)
     trj_sele = trj.atom_slice(trj.top.select(SELECTION))
 
-    expected_s = md.join([trj[i[1]] for i in idx])
+    # expected_s = md.join([trj[i[1]] for i in idx])
     expected_i = [[0, 0],
                   [0, 55],
                   [1, 102],
@@ -263,7 +264,8 @@ def test_rmsd_khybrid_mpi_subsample():
                 '--cluster-radius', '0.1',
                 '--subsample', str(SUBSAMPLE_FACTOR),
                 '--atoms', SELECTION,
-                '--algorithm', 'khybrid'],
+                '--algorithm', 'khybrid',
+                '--no-reassign'],
                 expected_size=expected_size,
                 expect_reassignment=False)
 
