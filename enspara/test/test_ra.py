@@ -9,7 +9,7 @@ from mdtraj import io
 from nose.tools import assert_raises, assert_equals, assert_is, assert_true
 from numpy.testing import assert_array_equal
 
-from ..util import array as ra
+from enspara import ra
 from ..util.load import load_as_concatenated, concatenate_trjs
 from ..exception import DataInvalid, ImproperlyConfigured
 
@@ -30,7 +30,7 @@ class Test_RaggedArray(unittest.TestCase):
         a = ra.RaggedArray(array=[np.array(range(10)),
                                   np.array(range(20))])
         assert_equals(len(a), 2)
-        assert_equals(a.dtype, np.int)
+        assert_equals(a.dtype, int)
         assert_array_equal(a.lengths, [10, 20])
         assert_array_equal(a.starts, [0, 10])
         assert_array_equal(a._data, np.concatenate([range(10), range(20)]))
@@ -40,7 +40,7 @@ class Test_RaggedArray(unittest.TestCase):
                             [1.1, 1.0, 0.9, 0.8]])
 
         assert_equals(len(a), 2)
-        assert_equals(a.dtype, np.float)
+        assert_equals(a.dtype, float)
         assert_array_equal(a.lengths, [3, 4])
         assert_array_equal(a.starts, [0, 3])
         assert_array_equal(
@@ -51,7 +51,7 @@ class Test_RaggedArray(unittest.TestCase):
         a = ra.RaggedArray(array=np.array(range(50)), lengths=[25, 20, 5])
         assert_equals(a.shape, (3, None))
         assert_equals(a.size, 50)
-        assert_equals(a.dtype, np.int)
+        assert_equals(a.dtype, int)
 
         src_reg = [[[0,0,0],[1,1,1],[2,2,2]],[[4,4,4],[5,5,5]]]
         a_reg = ra.RaggedArray(src_reg)
@@ -224,10 +224,8 @@ class Test_RaggedArray(unittest.TestCase):
         assert_array_equal(a[0:2].flatten(), src[0:30])
         assert_array_equal(a[1:].flatten(), src[10:])
 
-        assert_array_equal(a[:, 0:5].flatten(), np.concatenate((src[0:5],
-                                                                src[10:15],
-                                                                src[30:35])))
-
+        assert_array_equal(a[:, 0:5].flatten(), 
+                           np.concatenate((src[0:5], src[10:15], src[30:35])))
         assert_is(type(a[[0, 1]]), type(a))
         assert_is(type(a[0]), type(src))
         assert_is(type(a[[0]]), type(a))

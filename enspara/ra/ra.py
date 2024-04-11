@@ -449,17 +449,19 @@ def _get_iis_from_slices(first_dimension_iis, second_dimension, lengths):
     # if indices go past length, make it go upto length
     iis_to_flat = np.where(stops > lengths)
     stops[iis_to_flat] = lengths[iis_to_flat]
-    iis_2d = np.array(
-        [np.arange(start, stops[num], step) for num in first_dimension_iis])
-    iis_2d_lengths = np.array([len(i) for i in iis_2d])
-    iis_1d = np.array(
-        np.concatenate(
-            np.array(
-                [
-                    list(
-                        itertools.repeat(first_dimension_iis[i],
-                        iis_2d_lengths[i]))
-                    for i in range(len(iis_2d_lengths))])), dtype=int)
+    # iis_2d = np.array(
+    #     [np.arange(start, stops[num], step) for num in first_dimension_iis],
+    #     dtype='O')
+    iis_2d = []
+    iis_2d_lengths = []
+    for num in first_dimension_iis:
+        splits_inds = np.arange(start, stops[num], step)
+        iis_2d.append(splits_inds)
+        iis_2d_lengths.append(len(splits_inds))
+    iis_2d_lengths = np.array(iis_2d_lengths, dtype=int)
+    iis_1d = np.concatenate([
+                    list(itertools.repeat(first_dimension_iis[i], iis_2d_lengths[i]))
+                    for i in range(len(iis_2d_lengths))], dtype=int)
     return (iis_1d, np.concatenate(iis_2d)), iis_2d_lengths
 
 
@@ -499,7 +501,6 @@ class RaggedArray(object):
     def __init__(self, array, lengths=None, error_checking=True, copy=True):
         # Check that input is proper (array of arrays)
         if error_checking:
-            array = np.array(list(array))
             if len(array) > 20000:
                 # lenghts is None => we are not inferring lengths from
                 # e.g. nested lists
@@ -518,7 +519,11 @@ class RaggedArray(object):
                     warnings.warn(
                         "Can't create a view into %s, copying anyway." %
                         type(array), RuntimeWarning)
-                self._data = np.concatenate(array)
+                try:
+                    self._data = np.concatenate(array)
+                # if 2nd and 3rd dims are ragged, need object array to store them.
+                except ValueError:
+                    self._data = np.array([np.array(j) for i in array for j in i], dtype='O')
             else:
                 self._data = np.array(array, copy=copy)
         elif len(array) > 0:
@@ -531,8 +536,10 @@ class RaggedArray(object):
             # array of arrays
             if _is_iterable(array[0]):
                 self.lengths = np.array([len(i) for i in array], dtype=int)
+                print('building array no lengths', self.lengths)
                 self._array = np.array(
                     partition_list(self._data, self.lengths), dtype='O')
+               
             # array of single values
             else:
                 self.lengths = np.array([len(array)], dtype=int)
@@ -542,6 +549,15 @@ class RaggedArray(object):
             self.lengths = np.array([], dtype=int)
             self._array = []
         # rebuild array from 1d and lengths
+        # special case for lengths equivalent
+        elif np.all(lengths == lengths[0]):
+            try:
+                self._array = self._data.reshape(-1, lengths[0])
+            except DataInvalid:
+                raise DataInvalid(
+                    "Sum of lengths (%s) didn't match data shape (%s)." %
+                    (sum(lengths), self._data.shape))
+            self.lengths = np.array(lengths)
         else:
             try:
                 self._array = np.array(
@@ -622,9 +638,11 @@ class RaggedArray(object):
                 # if the second dimension is a slice, determines the 2d indices
                 # from the lengths in the ragged dimension
                 else:
-                    first_dimension_iis = first_dimension
                     iis, new_lengths  = _get_iis_from_slices(
-                        first_dimension_iis, second_dimension, self.lengths)
+                        first_dimension, second_dimension, self.lengths)
+                    # first_dimension_iis = first_dimension
+                    # iis, new_lengths  = _get_iis_from_slices(
+                    #     first_dimension_iis, second_dimension, self.lengths)
             # If the indices are a tuple, but does not contain a slice,
             # does regular conversion.
             else:
