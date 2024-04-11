@@ -174,7 +174,7 @@ def kcenters(traj, distance_method, n_clusters=np.inf, dist_cutoff=0,
         J. Comput. Chem. 34, 95–104 (2013).
     """
 
-    if (n_clusters is np.inf) and (dist_cutoff is 0):
+    if (n_clusters is np.inf) and (dist_cutoff == 0):
             raise ImproperlyConfigured("Either n_clusters or cluster_radius "
                                        "is required for KHybrid clustering")
 

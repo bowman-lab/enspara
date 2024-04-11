@@ -12,10 +12,9 @@ from numpy.testing import assert_array_equal
 
 from sklearn.datasets import make_blobs
 
-from .. import exception
-from ..util import array as ra
+from enspara import exception, ra
+from enspara.apps import cluster
 
-from ..apps import cluster
 
 TEST_DIR = os.path.dirname(__file__)
 TRJFILE = os.path.join(os.path.dirname(__file__), 'data', 'frame0.xtc')
@@ -54,7 +53,7 @@ def runhelper(args, expected_size, algorithm='khybrid', expected_k=None,
             assigns = ra.load(fnames['assignments'])
             if type(assigns) is ra.RaggedArray:
                 assert_equal(len(assigns), expected_size[0])
-                assert_equal(assigns._data.dtype, np.int)
+                assert_equal(assigns._data.dtype, int)
                 assert_array_equal(assigns.lengths, expected_size[1])
                 if expected_k is not None:
                     assert_array_equal(
@@ -62,7 +61,7 @@ def runhelper(args, expected_size, algorithm='khybrid', expected_k=None,
                         np.arange(expected_k))
             else:
                 assert_equal(assigns.shape, expected_size)
-                assert_equal(assigns.dtype, np.int)
+                assert_equal(assigns.dtype, int)
                 if expected_k is not None:
                     assert_array_equal(
                         np.unique(assigns),

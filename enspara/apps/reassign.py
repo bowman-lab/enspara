@@ -31,7 +31,7 @@ import enspara
 from enspara.cluster.util import assign_to_nearest_center, partition_list
 from enspara.util.load import (concatenate_trjs, sound_trajectory,
                                load_as_concatenated)
-from enspara.util import array as ra
+from enspara import ra
 from enspara.util.log import timed
 
 
