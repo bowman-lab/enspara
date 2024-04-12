@@ -1,0 +1,507 @@
+ATTO 390 C2R:
+  author: D Montepietra, G Tesei, JM Martins, MBA Kunze, RB Best, K Lindorff-Larsen
+  citation: https://doi.org/10.1038/s42003-024-05910-6
+  filename: T39_C2R_cutoff30
+  licence: GPLv3
+  mu:
+  - C1
+  - C10 and resname T39
+  negative: []
+  positive: []
+  r:
+  - C7 and resname T39
+  CB:
+  - name C6 and resname C2R
+ATTO 390 L1R:
+  author: D Montepietra, G Tesei, JM Martins, MBA Kunze, RB Best, K Lindorff-Larsen
+  citation: https://doi.org/10.1038/s42003-024-05910-6
+  filename: T39_L1R_cutoff30
+  licence: GPLv3
+  mu:
+  - C1
+  - C10 and resname T39
+  negative: []
+  positive: []
+  r:
+  - C7 and resname T39
+  CB:
+  - name C3 and resname L1R
+ATTO 425 C2R:
+  author: D Montepietra, G Tesei, JM Martins, MBA Kunze, RB Best, K Lindorff-Larsen
+  citation: https://doi.org/10.1038/s42003-024-05910-6
+  filename: T42_C2R_cutoff30
+  licence: GPLv3
+  mu:
+  - C1
+  - C10 and resname T42
+  negative: []
+  positive: []
+  r:
+  - C7 and resname T42
+  CB:
+  - name C6 and resname C2R 
+ATTO 425 L1R:
+  author: D Montepietra, G Tesei, JM Martins, MBA Kunze, RB Best, K Lindorff-Larsen
+  citation: https://doi.org/10.1038/s42003-024-05910-6
+  filename: T42_L1R_cutoff30
+  licence: GPLv3
+  mu:
+  - C1
+  - C10 and resname T42
+  negative: []
+  positive: []
+  r:
+  - C7 and resname T42
+  CB:
+  - name C3 and resname L1R
+ATTO 465 C2R:
+  author: D Montepietra, G Tesei, JM Martins, MBA Kunze, RB Best, K Lindorff-Larsen
+  citation: https://doi.org/10.1038/s42003-024-05910-6
+  filename: T46_C2R_cutoff30
+  licence: GPLv3
+  mu:
+  - C1
+  - C10 and resname T46
+  negative: []
+  positive:
+  - N1 and resname T46
+  - N2 and resname T46
+  - N3 and resname T46
+  r:
+  - N1 and resname T46
+  CB:
+  - name C6 and resname C2R
+ATTO 465 L1R:
+  author: D Montepietra, G Tesei, JM Martins, MBA Kunze, RB Best, K Lindorff-Larsen
+  citation: https://doi.org/10.1038/s42003-024-05910-6
+  filename: T46_L1R_cutoff30
+  licence: GPLv3
+  mu:
+  - C1
+  - C10 and resname T46
+  negative: []
+  positive:
+  - N1 and resname T46
+  - N2 and resname T46
+  - N3 and resname T46
+  r:
+  - N1 and resname T46
+  CB:
+  - name C3 and resname L1R
+ATTO 488 C3R:
+  author: D Montepietra, G Tesei, JM Martins, MBA Kunze, RB Best, K Lindorff-Larsen
+  citation: https://doi.org/10.1038/s42003-024-05910-6
+  filename: T48_C3R_cutoff30
+  licence: GPLv3
+  mu:
+  - C1
+  - C9 and resname T48
+  negative:
+  - S1 and resname T48
+  - S2 and resname T48
+  positive:
+  - N2 and resname T48
+  - N3 and resname T48
+  r:
+  - C15 and resname T48
+  CB:
+  - name C6 and resname C3R
+ATTO 495 C2R:
+  author: D Montepietra, G Tesei, JM Martins, MBA Kunze, RB Best, K Lindorff-Larsen
+  citation: https://doi.org/10.1038/s42003-024-05910-6
+  filename: T49_C2R_cutoff30
+  licence: GPLv3
+  mu:
+  - C1
+  - C10 and resname T49
+  negative: []
+  positive:
+  - N1 and resname T49
+  r:
+  - N1 and resname T49
+  CB:
+  - name C6 and resname C2R
+ATTO 495 L1R:
+  author: D Montepietra, G Tesei, JM Martins, MBA Kunze, RB Best, K Lindorff-Larsen
+  citation: https://doi.org/10.1038/s42003-024-05910-6
+  filename: T49_L1R_cutoff30
+  licence: GPLv3
+  mu:
+  - C1
+  - C10 and resname T49
+  negative: []
+  positive:
+  - N1 and resname T49
+  r:
+  - N1 and resname T49
+  CB:
+  - name C3 and resname L1R
+ATTO 520 C2R:
+  author: D Montepietra, G Tesei, JM Martins, MBA Kunze, RB Best, K Lindorff-Larsen
+  citation: https://doi.org/10.1038/s42003-024-05910-6
+  filename: T52_C2R_cutoff30
+  licence: GPLv3
+  mu:
+  - C4
+  - C11 and resname T52
+  negative: []
+  positive:
+  - N1 and resname T52
+  - N2 and resname T52
+  r:
+  - C7 and resname T52
+  CB:
+  - name C6 and resname C2R
+ATTO 520 L1R:
+  author: D Montepietra, G Tesei, JM Martins, MBA Kunze, RB Best, K Lindorff-Larsen
+  citation: https://doi.org/10.1038/s42003-024-05910-6
+  filename: T52_L1R_cutoff30
+  licence: GPLv3
+  mu:
+  - C4
+  - C11 and resname T52
+  negative: []
+  positive:
+  - N1 and resname T52
+  - N2 and resname T52
+  r:
+  - C7 and resname T52
+  CB:
+  - name C3 and resname L1R
+ATTO 610 C2R:
+  author: D Montepietra, G Tesei, JM Martins, MBA Kunze, RB Best, K Lindorff-Larsen
+  citation: https://doi.org/10.1038/s42003-024-05910-6
+  filename: T61_C2R_cutoff30
+  licence: GPLv3
+  mu:
+  - C2
+  - C17 and resname T61
+  negative: []
+  positive:
+  - N1 and resname T61
+  - N2 and resname T61
+  r:
+  - C8 and resname T61
+  CB:
+  - name C6 and resname C2R
+ATTO 610 L1R:
+  author: D Montepietra, G Tesei, JM Martins, MBA Kunze, RB Best, K Lindorff-Larsen
+  citation: https://doi.org/10.1038/s42003-024-05910-6
+  filename: T61_L1R_cutoff30
+  licence: GPLv3
+  mu:
+  - C2
+  - C17 and resname T61
+  negative: []
+  positive:
+  - N1 and resname T61
+  - N2 and resname T61
+  r:
+  - C8 and resname T61
+  CB:
+  - name C3 and resname L1R
+ATTO Thio12 C3R:
+  author: D Montepietra, G Tesei, JM Martins, MBA Kunze, RB Best, K Lindorff-Larsen
+  citation: https://doi.org/10.1038/s42003-024-05910-6
+  filename: Tth_C3R_cutoff30
+  licence: GPLv3
+  mu:
+  - C5
+  - C11 and resname Tth
+  negative: []
+  positive:
+  - N2 and resname Tth
+  - N3 and resname Tth
+  r:
+  - C9 and resname Tth
+  CB:
+  - name C6 and resname C3R
+AlexaFluor 350 C1R:
+  author: D Montepietra, G Tesei, JM Martins, MBA Kunze, RB Best, K Lindorff-Larsen
+  citation: https://doi.org/10.1038/s42003-024-05910-6
+  filename: A35_C1R_cutoff30
+  licence: GPLv3
+  mu:
+  - C2
+  - C9 and resname A35
+  negative:
+  - S1 and resname A35
+  positive:
+  - N1 and resname A35
+  r:
+  - C5 and resname A35
+  CB:
+  - name C6 and resname C1R
+AlexaFluor 350 L1R:
+  author: D Montepietra, G Tesei, JM Martins, MBA Kunze, RB Best, K Lindorff-Larsen
+  citation: https://doi.org/10.1038/s42003-024-05910-6
+  filename: A35_L1R_cutoff30
+  licence: GPLv3
+  mu:
+  - C2
+  - C9 and resname A35
+  negative:
+  - S1 and resname A35
+  positive:
+  - N1 and resname A35
+  r:
+  - C5 and resname A35
+  CB:
+  - name C3 and resname L1R
+AlexaFluor 488 B1R:
+  author: D Montepietra, G Tesei, JM Martins, MBA Kunze, RB Best, K Lindorff-Larsen
+  citation: https://doi.org/10.1038/s42003-024-05910-6
+  filename: A48_B1R_cutoff30
+  licence: GPLv3
+  mu:
+  - C2 and resname A48
+  - C13 and resname A48
+  negative:
+  - S1 and resname A48
+  - S2 and resname A48
+  - C20 and resname A48
+  positive:
+  - N1 and resname A48
+  - N2 and resname A48
+  r:
+  - C7 and resname A48
+  CB:
+  - name C7 and resname B1R
+AlexaFluor 488 C1R:
+  author: D Montepietra, G Tesei, JM Martins, MBA Kunze, RB Best, K Lindorff-Larsen
+  citation: https://doi.org/10.1038/s42003-024-05910-6
+  filename: A48_C1R_cutoff30
+  licence: GPLv3
+  mu:
+  - C2
+  - C13 and resname A48
+  negative:
+  - S1 and resname A48
+  - S2 and resname A48
+  - C20 and resname A48
+  positive:
+  - N1 and resname A48
+  - N2 and resname A48
+  r:
+  - C7 and resname A48
+  CB:
+  - name C6 and resname C1R
+AlexaFluor 488 L1R:
+  author: D Montepietra, G Tesei, JM Martins, MBA Kunze, RB Best, K Lindorff-Larsen
+  citation: https://doi.org/10.1038/s42003-024-05910-6
+  filename: A48_L1R_cutoff30
+  licence: GPLv3
+  mu:
+  - C2
+  - C13 and resname A48
+  negative:
+  - S1 and resname A48
+  - S2 and resname A48
+  - C20 and resname A48
+  positive:
+  - N1 and resname A48
+  - N2 and resname A48
+  r:
+  - C7 and resname A48
+  CB:
+  - name C3 and resname L1R
+AlexaFluor 532 C1R:
+  author: D Montepietra, G Tesei, JM Martins, MBA Kunze, RB Best, K Lindorff-Larsen
+  citation: https://doi.org/10.1038/s42003-024-05910-6
+  filename: A53_C1R_cutoff30
+  licence: GPLv3
+  mu:
+  - C2
+  - C13 and resname A53
+  negative:
+  - S1 and resname A53
+  - S2 and resname A53
+  positive:
+  - N1 and resname A53
+  - N2 and resname A53
+  r:
+  - C7 and resname A53
+  CB:
+  - name C6 and resname C1R
+AlexaFluor 532 L1R:
+  author: D Montepietra, G Tesei, JM Martins, MBA Kunze, RB Best, K Lindorff-Larsen
+  citation: https://doi.org/10.1038/s42003-024-05910-6
+  filename: A53_L1R_cutoff30
+  licence: GPLv3
+  mu:
+  - C2
+  - C13 and resname A53
+  negative:
+  - S1 and resname A53
+  - S2 and resname A53
+  positive:
+  - N1 and resname A53
+  - N2 and resname A53
+  r:
+  - C7 and resname A53
+  CB:
+  - name C3 and resname L1R
+AlexaFluor 568 C1R:
+  author: D Montepietra, G Tesei, JM Martins, MBA Kunze, RB Best, K Lindorff-Larsen
+  citation: https://doi.org/10.1038/s42003-024-05910-6
+  filename: A56_C1R_cutoff30
+  licence: GPLv3
+  mu:
+  - C5
+  - C16 and resname A56
+  negative:
+  - S1 and resname A56
+  - S2 and resname A56
+  - C32 and resname A56
+  positive:
+  - N1 and resname A56
+  - N2 and resname A56
+  r:
+  - C10 and resname A56
+  CB:
+  - name C6 and resname C1R
+AlexaFluor 568 L1R:
+  author: D Montepietra, G Tesei, JM Martins, MBA Kunze, RB Best, K Lindorff-Larsen
+  citation: https://doi.org/10.1038/s42003-024-05910-6
+  filename: A56_L1R_cutoff30
+  licence: GPLv3
+  mu:
+  - C5
+  - C16 and resname A56
+  negative:
+  - S1 and resname A56
+  - S2 and resname A56
+  - C32 and resname A56
+  positive:
+  - N1 and resname A56
+  - N2 and resname A56
+  r:
+  - C10 and resname A56
+  CB:
+  - name C3 and resname L1R
+AlexaFluor 594 C1R:
+  author: D Montepietra, G Tesei, JM Martins, MBA Kunze, RB Best, K Lindorff-Larsen
+  citation: https://doi.org/10.1038/s42003-024-05910-6
+  filename: A59_C1R_cutoff30
+  licence: GPLv3
+  mu:
+  - C5
+  - C16 and resname A59
+  negative:
+  - S1 and resname A59
+  - S2 and resname A59
+  - C26 and resname A56
+  positive:
+  - N1 and resname A59
+  - N2 and resname A59
+  r:
+  - C10 and resname A59
+  CB:
+  - name C6 and resname C1R
+AlexaFluor 594 L1R:
+  author: D Montepietra, G Tesei, JM Martins, MBA Kunze, RB Best, K Lindorff-Larsen
+  citation: https://doi.org/10.1038/s42003-024-05910-6
+  filename: A59_L1R_cutoff30
+  licence: GPLv3
+  mu:
+  - C5
+  - C16 and resname A59
+  negative:
+  - S1 and resname A59
+  - S2 and resname A59
+  - C26 and resname A56
+  positive:
+  - N1 and resname A59
+  - N2 and resname A59
+  r:
+  - C10 and resname A59
+  CB:
+  - name C3 and resname L1R
+AlexaFluor 647 C2R:
+  author: D Montepietra, G Tesei, JM Martins, MBA Kunze, RB Best, K Lindorff-Larsen
+  citation: https://doi.org/10.1038/s42003-024-05910-6
+  filename: A64_C2R_cutoff30
+  licence: GPLv3
+  mu:
+  - C4
+  - C15 and resname A64
+  negative:
+  - S1 and resname A64
+  - S2 and resname A64
+  - S3 and resname A64
+  - S4 and resname A64
+  positive:
+  - N1 and resname A64
+  - N2 and resname A64
+  r:
+  - C29 and resname A64
+  CB:
+  - name C6 and resname C2R
+AlexaFluor 647 L1R:
+  author: D Montepietra, G Tesei, JM Martins, MBA Kunze, RB Best, K Lindorff-Larsen
+  citation: https://doi.org/10.1038/s42003-024-05910-6
+  filename: A64_L1R_cutoff30
+  licence: GPLv3
+  mu:
+  - C4
+  - C15 and resname A64
+  negative:
+  - S1 and resname A64
+  - S2 and resname A64
+  - S3 and resname A64
+  - S4 and resname A64
+  positive:
+  - N1 and resname A64
+  - N2 and resname A64
+  r:
+  - C29 and resname A64
+  CB:
+  - name C3 and resname L1R
+Lumiprobe Cy5.5 C2R:
+  author: D Montepietra, G Tesei, JM Martins, MBA Kunze, RB Best, K Lindorff-Larsen
+  citation: https://doi.org/10.1038/s42003-024-05910-6
+  filename: C55_C2R_cutoff30
+  licence: GPLv3
+  mu:
+  - C5
+  - C16 and resname C55
+  negative: []
+  positive:
+  - N1 and resname C55
+  - N2 and resname C55
+  r:
+  - C39 and resname C55
+  CB:
+  - name C6 and resname C2R
+Lumiprobe Cy5.5 L1R:
+  author: D Montepietra, G Tesei, JM Martins, MBA Kunze, RB Best, K Lindorff-Larsen
+  citation: https://doi.org/10.1038/s42003-024-05910-6
+  filename: C55_L1R_cutoff30
+  licence: GPLv3
+  mu:
+  - C5
+  - C16 and resname C55
+  negative: []
+  positive:
+  - N1 and resname C55
+  - N2 and resname C55
+  r:
+  - C39 and resname C55
+  CB:
+  - name C3 and resname L1R
+Lumiprobe Cy7.5 L1R:
+  author: D Montepietra, G Tesei, JM Martins, MBA Kunze, RB Best, K Lindorff-Larsen
+  citation: https://doi.org/10.1038/s42003-024-05910-6
+  filename: C75_L1R_cutoff30
+  licence: GPLv3
+  mu:
+  - C5
+  - C16 and resname C75
+  negative: []
+  positive:
+  - N1 and resname C75
+  - N2 and resname C75
+  r:
+  - C43 and resname C75
+  CB:
+  - name C3 and resname L1R

@@ -1,0 +1,21 @@
+AF488 and AF594 PDB files are point clouds that represent the distribution
+of possible dye heads from different fluorophores. These are from several 
+ns of simulation from:
+
+Stuchell-Brereton MD, Zimmerman MI, Miller JJ, Mallimadugula UL, Incicco JJ, 
+Roy D, Smith LG, Cubuk J, Baban B, DeKoster GT, Frieden C, Bowman GR, Soranno A. 
+Apolipoprotein E4 has extensive conformational heterogeneity in lipid-free and
+ lipid-bound forms. Proc Natl Acad Sci U S A. 2023 Feb 14;120(7):e2215371120. 
+doi: 10.1073/pnas.2215371120. Epub 2023 Feb 7. PMID: 36749730; PMCID: PMC9963066.
+
+Additional point clouds can be generated from the FRET Predict trajectories using 
+make_point_clouds.py with the original trajectories.
+
+Citation for FRETPredict is:
+Montepietra D, Tesei G, Martins JM, Kunze MBA, Best RB, Lindorff-Larsen K. 
+FRETpredict: a Python package for FRET efficiency predictions using rotamer libraries. 
+Commun Biol. 2024 Mar 9;7(1):298. doi: 10.1038/s42003-024-05910-6. 
+PMID: 38461354; PMCID: PMC10925062.
+
+The github repository is:
+https://github.com/KULL-Centre/FRETpredict/tree/main
