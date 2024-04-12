@@ -643,14 +643,8 @@ def sample_FRET_histograms(
         in the synthetic trajectory for each drawing.
     """
 
-    # fill in function values
-    if n_procs == 1:
-        FE = []
-        for frame in MSM_frames:
-            FE.append(_sample_FRET_histograms(frame, T=T, populations=populations,
-            dist_distribution=dist_distribution, R0=R0, n_photon_std=n_photon_std))
-
-    else:
+    if n_procs > 1:
+        # fill in function values
         sample_func = partial(
             _sample_FRET_histograms, T=T, populations=populations,
             dist_distribution=dist_distribution, R0=R0, n_photon_std=n_photon_std)
@@ -659,7 +653,12 @@ def sample_FRET_histograms(
         pool = Pool(processes=n_procs)
         FE= pool.map(sample_func, MSM_frames)
         pool.terminate()
-        
+
+    else:
+        FE = [_sample_FRET_histograms(MSM_frame, T=T, populations=populations,
+            dist_distribution=dist_distribution, R0=R0, n_photon_std=n_photon_std) 
+            for MSM_frame in MSM_frames]
+
     # numpy the output
     FE= np.array(FE, dtype=object)
     FEs=FE[:,0:2]
