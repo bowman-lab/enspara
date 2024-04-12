@@ -52,6 +52,7 @@ install_requires = [
     'pandas',
     'scikit-learn>=0.23.2',
     'scipy>=0.17'
+    'pyyaml'
 ]
 
 # this code checks for OS. If OS is OSx then it checks for GCC as default compiler
