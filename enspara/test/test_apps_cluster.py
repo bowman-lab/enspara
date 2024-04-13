@@ -1,6 +1,7 @@
 import os
 import tempfile
 import hashlib
+import pytest
 import shutil
 
 from datetime import datetime

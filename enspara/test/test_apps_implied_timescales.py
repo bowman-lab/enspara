@@ -1,6 +1,7 @@
 import os
 
 import numpy as np
+import pytest
 
 from nose.tools import assert_raises, assert_equals
 from numpy.testing import assert_array_equal

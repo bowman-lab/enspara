@@ -1,5 +1,6 @@
 import numpy as np
 from scipy import sparse
+import pytest
 
 import unittest
 from nose.tools import assert_equal, assert_raises

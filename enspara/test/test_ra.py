@@ -1,6 +1,7 @@
 import unittest
 import logging
 import tempfile
+import pytest
 
 import numpy as np
 import mdtraj as md

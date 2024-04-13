@@ -4,6 +4,7 @@ import tempfile
 import hashlib
 import pickle
 import shutil
+import pytest
 
 from datetime import datetime
 

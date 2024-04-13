@@ -1,4 +1,5 @@
 import warnings
+import pytest
 
 from nose.tools import assert_raises
 from numpy.testing import (assert_array_equal, assert_allclose,

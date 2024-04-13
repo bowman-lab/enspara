@@ -1,5 +1,6 @@
 import tempfile
 import warnings
+import pytest
 
 from nose.tools import assert_equal, assert_is, raises
 from numpy.testing import assert_array_equal, assert_allclose

@@ -1,5 +1,6 @@
 import unittest
 import mdtraj as md
+import pytest
 
 from numpy.testing import assert_array_equal, assert_allclose
 

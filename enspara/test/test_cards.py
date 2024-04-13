@@ -4,6 +4,7 @@ large blocks of expected data in the `test_data` subdirectory.
 
 import os
 import pickle
+import pytest
 
 from nose.tools import assert_almost_equal, assert_greater
 from numpy.testing import assert_array_equal, assert_allclose

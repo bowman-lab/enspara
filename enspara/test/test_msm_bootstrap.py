@@ -1,4 +1,5 @@
 import numpy as np
+import pytest
 
 from nose.tools import assert_equal, assert_true
 from numpy.testing import assert_allclose

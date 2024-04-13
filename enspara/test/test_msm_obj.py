@@ -3,6 +3,8 @@ import tempfile
 import shutil
 import os
 import pickle
+import pytest
+
 
 from nose.tools import assert_equal, assert_false, assert_true
 from numpy.testing import assert_allclose, assert_array_equal

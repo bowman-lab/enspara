@@ -3,6 +3,7 @@ import tempfile
 import shutil
 import pickle
 import warnings
+import pytest
 
 import mdtraj as md
 

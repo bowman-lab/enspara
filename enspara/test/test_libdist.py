@@ -1,6 +1,7 @@
 import numpy as np
 from scipy.spatial.distance import cdist
 from scipy.spatial.distance import hamming as scipy_hamming
+import pytest
 
 from nose.tools import assert_raises
 from numpy.testing import assert_array_equal

@@ -1,4 +1,5 @@
 import os
+import pytest
 
 from nose.tools import assert_equal
 from numpy.testing import assert_array_equal
