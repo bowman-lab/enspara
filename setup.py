@@ -105,7 +105,7 @@ setup(
     classifiers=CLASSIFIERS,
     include_dirs=[np.get_include()],
     ext_modules=cythonize(cython_extensions),
-    python_requires='>=3.5,<3.12', 
+    python_requires='>=3.5,<3.13', 
     entry_points={'console_scripts': ['enspara = enspara.apps.main:main']},
     setup_requires=['Cython>=0.24', 'numpy>=1.13'],
     install_requires=install_requires,
@@ -113,7 +113,7 @@ setup(
     include_package_data=True,
     extras_require={
         'dev': [
-            'nose',
+            'pytest',
         ],
         'docs': [
             'Sphinx>=2.3.0',
