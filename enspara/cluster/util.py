@@ -16,7 +16,7 @@ import numpy as np
 from ..geometry.libdist import euclidean, manhattan
 
 from ..exception import ImproperlyConfigured, DataInvalid
-from ..util import partition_list, partition_indices
+from ..ra.ra import partition_list, partition_indices
 from enspara import ra
 
 logger = logging.getLogger(__name__)
