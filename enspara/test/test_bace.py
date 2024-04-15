@@ -47,8 +47,9 @@ EXP_LABELS = {
      8: [0, 1, 1, 2, 3, 4, 5, 6, 7]}
 
 
-pytest.mark.skip()
+@unittest.skip
 def test_bace_integration_dense():
+    pytest.mark.skip()
 
     bayes_factors, labels = bace.bace(
         TCOUNTS, n_macrostates=2, n_procs=4)
@@ -65,9 +66,9 @@ def test_bace_integration_dense():
     assert labels.keys() == EXP_LABELS.keys()
 
 
-
-pytest.mark.skip()
+@unittest.skip
 def test_bace_integration_sparse():
+    pytest.mark.skip()
 
     bayes_factors, labels = bace.bace(
         sparse.lil_matrix(TCOUNTS), n_macrostates=2, n_procs=4)
