@@ -2,7 +2,6 @@ import tempfile
 import warnings
 import pytest
 
-from nose.tools import assert_equal, assert_is, raises
 from numpy.testing import assert_array_equal, assert_allclose
 
 import numpy as np
@@ -32,7 +31,7 @@ def test_trim_mapping_construction():
     tm2 = TrimMapping()
     tm2.to_mapped = {0: 0, 1: 1, 3: 2, 7: 3}
 
-    assert_equal(tm1, tm2)
+    assert tm1 == tm2
 
 
 def test_trim_mapping_roundtrip():
@@ -48,17 +47,17 @@ def test_trim_mapping_roundtrip():
         f.flush()
 
         with open(f.name, 'r') as f2:
-            assert_equal(
-                f2.read().split('\n'),
+            assert (
+                f2.read().split('\n') ==
                 ['original,mapped', '0,0', '1,-1', '2,1', '3,2', ''])
         with open(f.name, 'r') as f2:
             tm2 = TrimMapping.read(f2)
-            assert_equal(tm, tm2)
+            assert tm == tm2
 
     with tempfile.NamedTemporaryFile() as f:
         tm.save(f.name)
         tm2 = TrimMapping.load(f.name)
-        assert_equal(tm, tm2)
+        assert tm == tm2
 
 
 def test_implied_timescales():
@@ -91,7 +90,7 @@ def test_implied_timescales():
             in_assigns, lag_times=range(1, 5), method=builders.transpose,
             trim=False, n_times=3)
 
-    assert_equal(tscales.shape, (4, 3))
+    assert tscales.shape == (4, 3)
 
 
 def test_eigenspectrum_types():
@@ -136,7 +135,7 @@ def test_assigns_to_counts_negnums():
     assert_array_equal(counts.toarray(), expected)
 
 
-@raises(exception.DataInvalid)
+@pytest.mark.xfail(exception.DataInvalid)
 def test_assigns_to_counts_1d():
     """assigns_to_counts handles 1d arrays gracefully
     """
@@ -168,10 +167,8 @@ def test_normalize_types():
                  [7, 3, 0]])
             _, out_probs, _ = builders.normalize(in_cts, **kwargs)
 
-            assert_equal(
-                type(in_cts), type(out_probs),
-                "builders.transpose was given %s but returned %s." %
-                (type(in_cts), type(out_probs)))
+            assert (
+                type(in_cts) == type(out_probs)), f"builders.transpose was given {type(in_cts)} but returned {type(out_probs)}."
 
             # cast to ndarray if necessary for comparison to correct result
             try:
@@ -204,10 +201,8 @@ def test_transpose_types():
                  [7, 3, 0]])
             _, out_probs, _ = builders.transpose(in_cts, **kwargs)
 
-            assert_equal(
-                type(in_cts), type(out_probs),
-                "builders.transpose was given %s but returned %s." %
-                (type(in_cts), type(out_probs)))
+            assert (
+                type(in_cts) == type(out_probs)), f"builders.transpose was given {type(in_cts)} but returned {type(out_probs)}."
 
             # cast to ndarray if necessary for comparison to correct result
             try:
@@ -242,10 +237,8 @@ def test_mle_types():
                 warnings.simplefilter("ignore")
                 _, out_probs, _ = builders.mle(in_cts, **kwargs)
 
-            assert_equal(
-                type(in_cts), type(out_probs),
-                "builders.mle was given %s but returned %s." %
-                (type(in_cts), type(out_probs)))
+            assert (
+                type(in_cts) == type(out_probs)), f"builders.mle was given {type(in_cts)} but returned {type(out_probs)}."
 
             # cast to ndarray if necessary for comparison to correct result
             try:
@@ -287,7 +280,7 @@ def test_trim_disconnected():
                           [0, 1, 0, 2]])
 
         mapping, trimmed = trim_disconnected(given)
-        assert_is(type(trimmed), type(given))
+        assert type(trimmed) is type(given)
 
         expected_tcounts = np.array([[1, 2, 0],
                                      [2, 1, 1],
@@ -301,7 +294,7 @@ def test_trim_disconnected():
         assert_array_equal(trimmed, expected_tcounts)
 
         expected_mapping = TrimMapping([(0, 0), (1, 1), (3, 2)])
-        assert_equal(mapping, expected_mapping)
+        assert mapping == expected_mapping
 
         mapping, trimmed = trim_disconnected(given, threshold=2)
 
@@ -315,7 +308,7 @@ def test_trim_disconnected():
         assert_array_equal(trimmed, expected_tcounts)
 
         expected_mapping = TrimMapping([(0, 0), (1, 1)])
-        assert_equal(mapping, expected_mapping)
+        assert mapping == expected_mapping
 
 def test_prior_counts():
 

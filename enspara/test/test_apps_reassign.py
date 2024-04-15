@@ -11,7 +11,6 @@ from datetime import datetime
 import numpy as np
 import mdtraj as md
 
-from nose.tools import assert_less, assert_equal, assert_is
 from numpy.testing import assert_array_equal, assert_allclose
 
 from enspara import ra
@@ -119,9 +118,9 @@ def test_reassignment_function_memory():
     highwater_diff = (new_highwater - mem_highwater)
 
     print(new_highwater)
-    assert_less(highwater_diff, 4000000)
+    assert highwater_diff < 4000000
 
-    assert_is(type(assigns), np.ndarray)
+    assert type(assigns) is np.ndarray
 
     assert_array_equal(assigns[0], assigns[1])
     assert_array_equal(assigns[0][::50], range(len(centers)))
@@ -148,9 +147,9 @@ def test_reassignment_function_heterogenous():
     assigns, dists = reassign.reassign(
         topologies, trajectories, atoms, centers)
 
-    assert_is(type(assigns), ra.RaggedArray)
+    assert type(assigns) is ra.RaggedArray
     assert_array_equal(assigns.lengths, [501, 501, 5001, 5001])
-    assert_equal(len(assigns), 4)
+    assert len(assigns) == 4
 
     assert_array_equal(assigns[0], assigns[1])
     assert_array_equal(assigns[0][::50], range(len(centers)))

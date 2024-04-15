@@ -6,10 +6,6 @@ import pytest
 import numpy as np
 import mdtraj as md
 
-from nose.tools import (assert_raises, assert_less, assert_true, assert_is,
-                        assert_equal)
-from nose.plugins.attrib import attr
-
 from sklearn.datasets import make_blobs
 
 from numpy.testing import assert_array_equal, assert_allclose

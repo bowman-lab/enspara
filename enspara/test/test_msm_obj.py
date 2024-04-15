@@ -6,7 +6,6 @@ import pickle
 import pytest
 
 
-from nose.tools import assert_equal, assert_false, assert_true
 from numpy.testing import assert_allclose, assert_array_equal
 
 import numpy as np
@@ -38,12 +37,12 @@ def test_create_msm():
     for method, expected in cases:
         msm = MSM(lag_time=1, **method)
 
-        assert_false(any([hasattr(msm, param) for param in
-                          ['tprobs_', 'tcounts_', 'eq_probs_', 'mapping_']]))
+        assert not any([hasattr(msm, param) for param in
+                          ['tprobs_', 'tcounts_', 'eq_probs_', 'mapping_']])
 
         msm.fit(in_assigns)
 
-        assert_equal(msm.n_states_, msm.tprobs_.shape[0])
+        assert msm.n_states_ == msm.tprobs_.shape[0]
 
         for prop, expected_value in expected.items():
             calc_value = getattr(msm, prop)
@@ -66,8 +65,8 @@ def test_msm_roundtrip():
     msmfile = tempfile.mktemp()
     try:
         msm.save(msmfile)
-        assert_true(os.path.isdir(msmfile))
-        assert_equal(MSM.load(msmfile), msm)
+        assert os.path.isdir(msmfile)
+        assert MSM.load(msmfile) == msm
     finally:
         try:
             shutil.rmtree(msmfile)
@@ -79,12 +78,12 @@ def test_msm_roundtrip():
     try:
         # specify different names for some properties
         msm.save(msmfile)
-        assert_true(os.path.isdir(msmfile))
+        assert os.path.isdir(msmfile)
 
         shutil.move(os.path.join(msmfile, 'manifest.json'),
                     os.path.join(msmfile, manifest_path))
 
-        assert_equal(MSM.load(msmfile, manifest=manifest_path), msm)
+        assert MSM.load(msmfile, manifest=manifest_path) == msm
     finally:
         try:
             shutil.rmtree(msmfile)
@@ -97,12 +96,12 @@ def test_msm_roundtrip():
     try:
         # specify different names for some properties
         msm.save(msmfile, **filedict)
-        assert_true(os.path.isdir(msmfile))
+        assert os.path.isdir(msmfile)
 
         for filename in filedict.values():
-            assert_true(os.path.isfile(os.path.join(msmfile, filename)))
+            assert os.path.isfile(os.path.join(msmfile, filename))
 
-        assert_equal(MSM.load(msmfile), msm)
+        assert MSM.load(msmfile) == msm
     finally:
         try:
             shutil.rmtree(msmfile)
@@ -124,7 +123,7 @@ def test_msm_roundtrip_pickle():
 
         m2 = pickle.load(open(tmp_f.name, 'rb'))
 
-    assert_equal(m, m2)
+    assert m == m2
 
 
 def test_msm_normalize_with_prior():

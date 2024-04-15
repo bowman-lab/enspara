@@ -5,13 +5,10 @@ import pytest
 import numpy as np
 from numpy.testing import assert_array_equal
 
-from nose.plugins.attrib import attr
-
-
 from .. import mpi, ra
 
 
-@attr('mpi')
+@pytest.mark.mpi
 def test_parallel_h5_read():
 
     full_arr = ra.RaggedArray([
@@ -27,7 +24,7 @@ def test_parallel_h5_read():
                        full_arr[mpi.rank()::mpi.size()]._data)
 
 
-@attr('mpi')
+@pytest.mark.mpi
 def test_parallel_h5_read_strided():
 
     full_arr = ra.RaggedArray([

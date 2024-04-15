@@ -17,16 +17,16 @@ from .. import mpi
 def test_mpi_mean():
 
     a = np.zeros((10,))
-    assert_equal(a.mean(), mpi.ops.striped_array_mean(a))
+    assert a.mean() == mpi.ops.striped_array_mean(a)
 
     a = np.ones((10,))
-    assert_equal(a.mean(), mpi.ops.striped_array_mean(a))
+    assert a.mean() == mpi.ops.striped_array_mean(a)
 
     a = np.arange(10)
-    assert_equal(a.mean(), mpi.ops.striped_array_mean(a))
+    assert a.mean() == mpi.ops.striped_array_mean(a)
 
     a = np.square(np.arange(10)) - 25
-    assert_equal(a.mean(), mpi.ops.striped_array_mean(a))
+    assert a.mean() == mpi.ops.striped_array_mean(a)
 
 
 @attr('mpi')
@@ -36,10 +36,10 @@ def test_mpi_max():
     expected_max = 14
     a = np.arange(endpt)
     np.random.shuffle(a)
-    assert_equal(endpt-1, mpi.ops.striped_array_max(a))
+    assert endpt-1 == mpi.ops.striped_array_max(a)
 
     a = -np.arange(5 * (mpi.rank() + 1))
-    assert_equal(0, mpi.ops.striped_array_max(a))
+    assert 0 == mpi.ops.striped_array_max(a)
 
 
 @attr('mpi')
@@ -50,7 +50,7 @@ def test_mpi_distribute_frame_ndarray():
     d = mpi.ops.distribute_frame(data, 7, mpi.size()-1)
 
     assert_array_equal(d, data[7])
-    assert_is(type(d), type(data))
+    assert type(d) is type(data)
 
 
 @attr('mpi')
@@ -61,7 +61,7 @@ def test_mpi_distribute_frame_mdtraj():
     d = mpi.ops.distribute_frame(data, 7, mpi.size()-1)
 
     assert_array_equal(d.xyz, data[7].xyz)
-    assert_is(type(d), type(data))
+    assert type(d) is type(data)
 
 
 @attr('mpi')
@@ -100,8 +100,8 @@ def test_mpi_randind_few_options():
 
     r, o = mpi.ops.randind(a[mpi.rank()::mpi.size()])
 
-    assert_equal(r, 0)
-    assert_equal(o, 0)
+    assert r == 0
+    assert o == 0
 
     # test an array that is only on rank 1
     if mpi.size() > 1:
@@ -110,8 +110,8 @@ def test_mpi_randind_few_options():
         else:
             r, o = mpi.ops.randind(np.array([]))
 
-        assert_equal(r, 1)
-        assert_equal(o, 0)
+        assert r == 1
+        assert o == 0
 
     with assert_raises(exception.DataInvalid):
         # test on an empty array
@@ -131,8 +131,8 @@ def test_mpi_randind_same_as_np():
             a[mpi.rank()::mpi.size()],
             random_state=seed)
 
-        assert_equal(
-            np.random.RandomState(seed).choice(a),
+        assert (
+            np.random.RandomState(seed).choice(a) ==
             a[r::mpi.size()][o])
 
 
@@ -153,4 +153,4 @@ def test_mpi_randind_uniform():
             [len(a[r::mpi.size()]) for r in range(mpi.size())])[0])
 
     distro = np.bincount(hits)
-    assert_equal(distro[np.argmax(distro)], i+1)
+    assert distro[np.argmax(distro)] == i+1
