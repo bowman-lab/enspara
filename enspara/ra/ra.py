@@ -266,6 +266,11 @@ def _handle_negative_indices(
         first_dimension = np.array(first_dimension)
     if type(second_dimension) is not np.ndarray:
         second_dimension = np.array(second_dimension)
+    if np.ndim(first_dimension)==0:
+        first_dimension = first_dimension.reshape(-1)
+    if np.ndim(second_dimension)==0:
+        second_dimension = second_dimension.reshape(-1)
+
     # remove negative indices from first dimension
     first_dimension_neg_iis = np.where(first_dimension < 0)[0]
     second_dimension_neg_iis = np.where(second_dimension < 0)[0]
@@ -274,7 +279,7 @@ def _handle_negative_indices(
             first_dimension[first_dimension_neg_iis] += len(starts)
         else:
             first_dimension += len(starts)
-        if len(np.where(first_dimension < 0)[0]) > 0:
+        if (first_dimension<0).sum() > 0:
             # TODO: have clear error message here
             raise IndexError()
     # remove negative indices from second dimension
@@ -291,7 +296,7 @@ def _handle_negative_indices(
                     first_dimension]
         else:
             second_dimension += lengths[first_dimension]
-        if len(np.where(second_dimension < 0)[0]) > 0:
+        if (second_dimension<0).sum() > 0:
             # TODO: have clear error message here
             raise IndexError()
     return first_dimension, second_dimension
