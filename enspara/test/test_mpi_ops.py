@@ -4,8 +4,6 @@ import pytest
 
 import mdtraj as md
 
-from nose.tools import (
-    assert_is, assert_almost_equal, assert_equal, assert_raises)
 from nose.plugins.attrib import attr
 
 from .util import get_fn
@@ -13,7 +11,7 @@ from .. import exception
 from .. import mpi
 
 
-@attr('mpi')
+@pytest.mark.mpi
 def test_mpi_mean():
 
     a = np.zeros((10,))
@@ -29,7 +27,7 @@ def test_mpi_mean():
     assert a.mean() == mpi.ops.striped_array_mean(a)
 
 
-@attr('mpi')
+@pytest.mark.mpi
 def test_mpi_max():
 
     endpt = 5 * (mpi.rank() + 2)
@@ -42,7 +40,7 @@ def test_mpi_max():
     assert 0 == mpi.ops.striped_array_max(a)
 
 
-@attr('mpi')
+@pytest.mark.mpi
 def test_mpi_distribute_frame_ndarray():
 
     data = np.arange(10*100*3).reshape(10, 100, 3)
@@ -53,7 +51,7 @@ def test_mpi_distribute_frame_ndarray():
     assert type(d) is type(data)
 
 
-@attr('mpi')
+@pytest.mark.mpi
 def test_mpi_distribute_frame_mdtraj():
 
     data = md.load(get_fn('frame0.h5'))
@@ -64,7 +62,7 @@ def test_mpi_distribute_frame_mdtraj():
     assert type(d) is type(data)
 
 
-@attr('mpi')
+@pytest.mark.mpi
 def test_mpi_assemble_striped_array():
 
     a = np.arange(77) + 1
@@ -74,7 +72,7 @@ def test_mpi_assemble_striped_array():
     assert_array_equal(a, b)
 
 
-@attr('mpi')
+@pytest.mark.mpi
 def test_mpi_randind():
 
     a = np.arange(17)
@@ -89,10 +87,10 @@ def test_mpi_randind():
             [len(a[r::mpi.size()]) for r in range(mpi.size())])[0])
 
     distro = np.bincount(hits)
-    assert_almost_equal(distro.mean(), (i+1)/len(a))
+    pytest.approx(distro.mean(), (i+1)/len(a),abs=1e-7)
 
 
-@attr('mpi')
+@pytest.mark.mpi
 def test_mpi_randind_few_options():
 
     # test an array that is only on rank 0
@@ -113,7 +111,7 @@ def test_mpi_randind_few_options():
         assert r == 1
         assert o == 0
 
-    with assert_raises(exception.DataInvalid):
+    with pytest.raises(exception.DataInvalid):
         # test on an empty array
         a = np.array([])
 
@@ -121,7 +119,7 @@ def test_mpi_randind_few_options():
 
 
 
-@attr('mpi')
+@pytest.mark.mpi
 def test_mpi_randind_same_as_np():
 
     a = np.arange(17)
@@ -136,7 +134,7 @@ def test_mpi_randind_same_as_np():
             a[r::mpi.size()][o])
 
 
-@attr('mpi')
+@pytest.mark.mpi
 def test_mpi_randind_uniform():
 
     a = np.arange(17)

@@ -6,7 +6,6 @@ import os
 import pickle
 import pytest
 
-from nose.tools import assert_almost_equal, assert_greater
 from numpy.testing import assert_array_equal, assert_allclose
 
 import numpy as np
@@ -34,8 +33,8 @@ N_DIHEDRALS = ROTAMER_TRJS[0].shape[1]
 
 
 def assert_correlates(m1, m2):
-    assert_almost_equal(pearsonr(m1.flatten(), m2.flatten())[0], 1,
-                        places=14)
+    pytest.approx(pearsonr(m1.flatten(), m2.flatten())[0], 1,
+                        abs=1e-14)
 
 
 # This is really an integration test for the entire cards package.
