@@ -4,8 +4,6 @@ import pytest
 
 import mdtraj as md
 
-from nose.plugins.attrib import attr
-
 from .util import get_fn
 from .. import exception
 from .. import mpi

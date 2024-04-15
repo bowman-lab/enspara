@@ -37,6 +37,7 @@ class TestProtLabeling(unittest.TestCase):
         self.donor_trj = md.load(self.donor_trj_fname, top=self.donor_top_fname)
         self.acceptor_trj = md.load(self.acceptor_trj_fname, top=self.acceptor_top_fname)
 
+    pytest.mark.skip('Nothing to test here yet.')
     def test_labeling(self):
         return()
 
