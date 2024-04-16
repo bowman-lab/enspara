@@ -17,14 +17,14 @@ Current installation instructions are (using mamba):
 
 ```
 git clone https://github.com/bowman-lab/enspara
-mamba create -n enspara -c conda-forge cython numpy matplotlib mdtraj psutil scikit-learn scipy mpi4py mpi4py=3.1.4 c-blosc2=2.14.3 python=3.12
+mamba create -n enspara -c conda-forge cython numpy mdtraj scipy python=3.12
 mamba activate enspara
 cd enspara
 pip install -e .
 ```
 
 Optionally, install pytests to run the tests:
-`mamba install -c conda-forge pytests`
+`mamba install -c conda-forge pytest`
 
 ## Building the docs
 
