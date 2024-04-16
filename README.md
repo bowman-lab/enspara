@@ -38,17 +38,17 @@ make html
 
 ## Running the tests
 
-Enspara uses `pytests` as a test discovery and running tool. To run the
+Enspara uses `pytest` as a test discovery and running tool. To run the
 tests, you should first make sure you have the development dependencies
 installed then, from the enspara directory, run:
 
 ```bash
-pytests
+pytest
 ```
 
 If you wish to skip the MPI tests, you can run:
 ```bash
-pytests -m 'not mpi'
+pytest -m 'not mpi'
 ```
 
 If you want to run the MPI tests, you can run:
