@@ -85,7 +85,7 @@ def test_mpi_randind():
             [len(a[r::mpi.size()]) for r in range(mpi.size())])[0])
 
     distro = np.bincount(hits)
-    pytest.approx(distro.mean(), (i+1)/len(a),abs=1e-7)
+    assert pytest.approx(distro.mean(), abs=1e-7) == (i+1)/len(a)
 
 
 @pytest.mark.mpi

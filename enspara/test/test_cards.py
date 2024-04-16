@@ -33,9 +33,7 @@ N_DIHEDRALS = ROTAMER_TRJS[0].shape[1]
 
 
 def assert_correlates(m1, m2):
-    pytest.approx(pearsonr(m1.flatten(), m2.flatten())[0], 1,
-                        abs=1e-14)
-
+    assert pytest.approx(pearsonr(m1.flatten(), m2.flatten())[0], abs = 1e-14) == 1
 
 # This is really an integration test for the entire cards package.
 def test_cards():
