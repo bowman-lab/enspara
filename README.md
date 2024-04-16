@@ -13,6 +13,19 @@ Porter, J.R., Zimmerman, M.I. and Bowman, G.R., 2019. [Enspara: Modeling molecul
 
 Installation is documented [here](https://enspara.readthedocs.io/en/latest/installation.html).
 
+Current installation instructions are (using mamba):
+
+```
+git clone https://github.com/bowman-lab/enspara
+mamba create -n enspara -c conda-forge cython numpy matplotlib mdtraj psutil scikit-learn scipy mpi4py mpi4py=3.1.4 c-blosc2=2.14.3 python=3.12
+mamba activate enspara
+cd enspara
+pip install -e .
+```
+
+Optionally, install pytests to run the tests:
+`mamba install -c conda-forge pytests`
+
 ## Building the docs
 
 Enspara uses sphinx for documentation. They're a bit of a work in progress,
@@ -25,18 +38,21 @@ make html
 
 ## Running the tests
 
-Enspara uses `nosetests` as a test discovery and running tool. To run the
+Enspara uses `pytests` as a test discovery and running tool. To run the
 tests, you should first make sure you have the development dependencies
 installed then, from the enspara directory, run:
 
 ```bash
-nosetests enspara
+pytests
 ```
 
-If you want to run the MPI tests, you can run
+If you wish to skip the MPI tests, you can run:
+```bash
+pytests -m 'not mpi'
+```
+
+If you want to run the MPI tests, you can run:
 
 ```bash
-mpiexec -n 2 nosetests enspara -a mpi
+mpiexec -n 2 pytests -m 'mpi'
 ```
-
-where `-a mpi` asks nose to run only the tests that are MPI tests.
