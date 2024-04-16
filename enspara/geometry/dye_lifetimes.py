@@ -89,7 +89,8 @@ def calc_energy_transfer_prob(krad, k_non_rad, kRET, dt):
 
 
 def resolve_excitation(d_name, a_name, d_tprobs, a_tprobs, d_eqs, a_eqs, 
-                        d_centers, a_centers, dye_params, dye_lagtime, dyelibrary):
+                        d_centers, a_centers, dye_params, dye_lagtime, dyelibrary,
+                        rng_seed=None):
 
     """
     Runs a Monte Carlo to watch for dye decay and reports back the dye lifetime
@@ -118,6 +119,8 @@ def resolve_excitation(d_name, a_name, d_tprobs, a_tprobs, d_eqs, a_eqs,
         Direct output of r0c.get_dye_overlap
     dye_lagtime : float,
         Lagtime for the dye MSMs in ns.
+    rng_seed : int, default = None
+        seed for numpy.random.default_rng (for testing)
 
     Returns
     ---------------
@@ -133,7 +136,7 @@ def resolve_excitation(d_name, a_name, d_tprobs, a_tprobs, d_eqs, a_eqs,
     """
 
     #Introduce a new random seed in each location otherwise pool with end up with the same seeds.
-    rng=np.random.default_rng()
+    rng=np.random.default_rng(rng_seed)
     
     #Extract dye parameters, calculate constant transfer rates
     J, Qd, Td = dye_params
@@ -248,7 +251,8 @@ def make_dye_msm(centers, t_counts, pdb, resseq, dyename, dyelibrary,
     return(tprobs, eqs, dye_indicies)
 
 def calc_lifetimes(pdb_center_num, d_centers, d_tcounts, a_centers, a_tcounts, resSeqs, dyenames, 
-                   dye_lagtime, n_samples=1000, outdir='./', save_dye_trj=False, save_dye_msm=False):
+                   dye_lagtime, n_samples=1000, outdir='./', save_dye_trj=False, save_dye_msm=False,
+                   rng_seed=None):
 
     """
     Takes a protein pdb structure, dye trajectories/MSM, and labeling positions and calculates expected
@@ -283,6 +287,8 @@ def calc_lifetimes(pdb_center_num, d_centers, d_tcounts, a_centers, a_tcounts, r
         Save a trajectory of the dye conformations that didn't have steric clashes?
     save_dye_msm, bool, default=False
         Save the rebuilt MSM of the dye conformations that didn't have steric clashes?
+    rng_seed, int, default=None
+        seed for np.rng, for testing!
 
     Returns
     -----------
@@ -319,7 +325,7 @@ def calc_lifetimes(pdb_center_num, d_centers, d_tcounts, a_centers, a_tcounts, r
         np.save(f'{outdir}/center{center_n}-{"".join(dyenames[1].split(" "))}-tps.npy',a_tprobs)
 
     events = np.array([resolve_excitation(dyenames[0], dyenames[1], d_tprobs, a_tprobs, d_mod_eqs, a_mod_eqs, 
-                        d_centers, a_centers, dye_params, dye_lagtime, dyelibrary) for i in range(n_samples)], dtype='O')
+                        d_centers, a_centers, dye_params, dye_lagtime, dyelibrary, rng_seed) for i in range(n_samples)], dtype='O')
     
     if save_dye_trj:
         #Dyes are reindexed, events are original indexing. Search to find the 
@@ -336,7 +342,7 @@ def calc_lifetimes(pdb_center_num, d_centers, d_tcounts, a_centers, a_tcounts, r
     
     return lifetimes, outcomes
 
-def _sample_lifetimes_guarenteed_photon(states, lifetimes, outcomes):
+def _sample_lifetimes_guarenteed_photon(states, lifetimes, outcomes, rng_seed=None):
     """
     Samples dye lifetimes/outcomes such as outputs of calc_lifetimes at specific MSM states.
     Returns random, observed lifetime/outcome for that MSM state.
@@ -350,6 +356,8 @@ def _sample_lifetimes_guarenteed_photon(states, lifetimes, outcomes):
         Lifetimes of photon excitement
     outcomes, ragged np.array (n_centers, n_samples (or 0))
         Outcome of dye excitation (matched with lifetimes, above).
+    rng_seed, int, default=None
+        seed for np.rng, for testing.
 
     Returns
     -----------
@@ -359,7 +367,7 @@ def _sample_lifetimes_guarenteed_photon(states, lifetimes, outcomes):
         Time since excitation that photon was observed
     """
 
-    rng=np.random.default_rng()
+    rng=np.random.default_rng(rng_seed)
 
     photons, lifetime = [],[]
     for state in states:
@@ -386,7 +394,7 @@ def _sample_lifetimes_guarenteed_photon(states, lifetimes, outcomes):
     lifetime = np.array(lifetime)
     return(photons, lifetime)
 
-def sample_lifetimes_guarenteed_photon(frames, t_probs, eqs, lifetimes, outcomes):
+def sample_lifetimes_guarenteed_photon(frames, t_probs, eqs, lifetimes, outcomes, rng_seed=None):
 
     """
     Samples dye lifetimes and excitation outcomes given protein MSM frames and a protein MSM.
@@ -404,6 +412,8 @@ def sample_lifetimes_guarenteed_photon(frames, t_probs, eqs, lifetimes, outcomes
         Lifetimes of photon excitement for each protein MSM center
     outcomes, ragged np.array (n_centers, n_samples (or 0))
         Outcome of dye excitation (matched with lifetimes, above).
+    rng_seed, int, default=None
+        random seed for np.rng (for testing purposes)
 
     Returns
     -----------
@@ -414,7 +424,7 @@ def sample_lifetimes_guarenteed_photon(frames, t_probs, eqs, lifetimes, outcomes
     """
 
     #Introduce a new random seed in each location otherwise pool with end up with the same seeds.
-    rng=np.random.default_rng()
+    rng=np.random.default_rng(rng_seed)
 
     # determine number of frames to sample MSM
     n_frames = np.amax(frames) + 1
