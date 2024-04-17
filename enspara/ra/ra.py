@@ -541,7 +541,6 @@ class RaggedArray(object):
             # array of arrays
             if _is_iterable(array[0]):
                 self.lengths = np.array([len(i) for i in array], dtype=int)
-                print('building array no lengths', self.lengths)
                 self._array = np.array(
                     partition_list(self._data, self.lengths), dtype='O')
                
