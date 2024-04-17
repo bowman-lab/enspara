@@ -29,10 +29,17 @@ def test_mpi_mean():
 def test_mpi_max():
 
     endpt = 5 * (mpi.rank() + 2)
-    expected_max = 14
+    #Need to explicitly define the expected max as enpt varies across processes.
+    #MPI.size gives us the total number of processes, rank is processes - 1 (0 indexed)
+    expected_max = 5 * ( (mpi.size() - 1) + 2) - 1
+    #Needs to be -1 different from endpt calc since np.arange excludes endpt
+
+    #Give each process a different array
     a = np.arange(endpt)
     np.random.shuffle(a)
-    assert endpt-1 == mpi.ops.striped_array_max(a)
+
+    #Should find the global max.
+    assert expected_max == mpi.ops.striped_array_max(a)
 
     a = -np.arange(5 * (mpi.rank() + 1))
     assert 0 == mpi.ops.striped_array_max(a)
