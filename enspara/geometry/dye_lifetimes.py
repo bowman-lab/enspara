@@ -559,11 +559,17 @@ def calc_per_state_FE(events):
     per_state, np.array shape (n_states)
         FRET efficiency for each state, averaged over the number of samples.
     """
-    per_state = np.array([np.count_nonzero(event=='energy_transfer') / \
-        (np.count_nonzero(event=='radiative')+np.count_nonzero(event=='energy_transfer'))
-        for event in events[:,1]])
+    per_state=[]
+    for event in events[:,1]:
+        if len(event)==0:
+            #If state had no label pairs, return that the FE is nan
+            per_state.append(np.nan)
+        else:
+            acceptors = np.count_nonzero(event=='energy_transfer')
+            donors = np.count_nonzero(event=='radiative')
+            per_state.append(acceptors/(donors+acceptors))
 
-    return per_state
+    return np.array(per_state)
 
 def single_exp_decay(t, Io, tau):
     """
