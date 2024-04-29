@@ -107,7 +107,7 @@ def process_command_line(argv):
              "Generally parallel over number of frames in supplied trajectory/MSM state. ")
     calc_lts_param_args.add_argument(
         '--n_samples', required=False, type=int,
-        default=5000,
+        default=1000,
         help="Number of times to run dye_lifetime calculations (per center).")
     calc_lts_param_args.add_argument(
         '--save_dtrj', required=False, default=False, type=bool,

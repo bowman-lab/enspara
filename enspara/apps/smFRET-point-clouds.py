@@ -72,11 +72,11 @@ def process_command_line(argv):
              "Generally parallel over number of frames in supplied trajectory/MSM state")
     model_parameter_args.add_argument(
         '--FRETdye1', required=False,
-        default=os.path.dirname(inspect.getfile(ra)) + '/../data/dyes/AF488.pdb',
+        default=os.path.dirname(inspect.getfile(ra)) + '/../data/dyes/point-clouds/AF488.pdb',
         help="Path to point cloud of FRET dye pair 2")
     model_parameter_args.add_argument(
         '--FRETdye2', required=False,
-        default=os.path.dirname(inspect.getfile(ra)) + '/../data/dyes/AF594.pdb',
+        default=os.path.dirname(inspect.getfile(ra)) + '/../data/dyes/point-clouds/AF594.pdb',
         help="Path to point cloud of FRET dye pair 2")
     model_parameter_args.add_argument(
         '--output_dir', required=False, action=readable_dir, default='./',
@@ -101,11 +101,6 @@ def process_command_line(argv):
         help="transition probabilities from the MSM. "
              "Should be of file type .npy")
     fret_input_args.add_argument(
-        'photon_times',
-        help="File containing inter photon times. Each list is an individual photon burst "
-             "with photon wait times (in us) for each burst. Size (n_bursts, nphotons in burst) "
-             "Should be of file type .npy")
-    fret_input_args.add_argument(
         'lagtime', type=float,
         help="lag time used to construct the MSM (in ns) "
              "Should be type float")
@@ -125,6 +120,12 @@ def process_command_line(argv):
         help="Number of cores to use for parallel processing. "
              "Generally parallel over number of frames in supplied trajectory/MSM state")
     fret_parameters.add_argument(
+        '--photon_times',
+        default=os.path.dirname(inspect.getfile(ra)) + '/../data/dyes/interphoton_times.npy',
+        help="File containing inter photon times. Each list is an individual photon burst "
+             "with photon wait times (in us) for each burst. Size (n_bursts, nphotons in burst) "
+             "Should be of file type .npy")
+    fret_parameters.add_argument(
         '--n_chunks', required=False, type=int, default=2,
         help="Enables you to assess intraburst variation. "
              "How many chunks would you like a given burst broken into?")
@@ -132,7 +133,7 @@ def process_command_line(argv):
         '--R0', required=False, type=float, default=5.4,
         help="R0 value for FRET dye pair of interest")
     fret_parameters.add_argument(
-        '--slowing_factor', required=False, type=int, default=1,
+        '--time_factor', required=False, type=int, default=1,
         help="factor to slow your trajectories by")
     fret_parameters.add_argument(
         '--output_dir', required=False, action=readable_dir, default='./',
@@ -230,10 +231,10 @@ def main(argv=None):
         cumulative_times = np.load(args.photon_times, allow_pickle=True)
 
         # Convert Photon arrival times into MSM steps.
-        MSM_frames = dyes_from_expt_dist.convert_photon_times(cumulative_times, args.lagtime, args.slowing_factor)
+        MSM_frames = dyes_from_expt_dist.convert_photon_times(cumulative_times, args.lagtime, args.time_factor)
 
         logger.info(f"Using r0 of {args.R0}")
-        logger.info(f"Using slowing factor of {args.slowing_factor}")
+        logger.info(f"Using time factor of {args.time_factor}")
         # Calculate the FRET efficiencies
         for n in np.arange(resSeq_pairs.shape[0]):
             logger.info(f"Calculating FRET Efficiencies for residues {resSeq_pairs[n]}")
@@ -250,7 +251,7 @@ def main(argv=None):
             FEs_sampling, trajs = dyes_from_expt_dist.sample_FRET_histograms(
                 T=t_probabilities, populations=populations, dist_distribution=dist_distribution,
                 MSM_frames=MSM_frames, R0=args.R0, n_procs=args.n_procs, n_photon_std=args.n_chunks)
-            np.save(f"{args.output_dir}/FRET_E_{title}_time_factor_{args.slowing_factor}.npy", FEs_sampling)
+            np.save(f"{args.output_dir}/FRET_E_{title}_time_factor_{args.time_factor}.npy", FEs_sampling)
 
             if args.save_burst_frames==True:
                 np.save(f'{args.output_dir}/syn-trjs-{title}.npy', trajs)
