@@ -29,6 +29,7 @@ Contents:
    cookbook
    pocket-detection
    transition-path-theory
+   smFRET
    developing
    _modules/enspara
 

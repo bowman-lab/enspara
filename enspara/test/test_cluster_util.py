@@ -1,7 +1,6 @@
 import numpy as np
 import mdtraj as md
-
-from nose.tools import assert_is, assert_is_not
+import pytest
 
 from numpy.testing import assert_array_equal, assert_allclose
 
@@ -28,12 +27,12 @@ def test_ClusterResult_partition_np():
     rslt = concat_rslt.partition(list_lens)
 
     # ensuring it isn't a ragged array allows list, ndarray or maskedarray
-    assert_is_not(type(rslt.assignments), ra.RaggedArray)
+    assert type(rslt.assignments) is not ra.RaggedArray
     assert_array_equal(rslt.assignments[0], [0]*20)
     assert_array_equal(rslt.assignments[1], [1]*20)
     assert_array_equal(rslt.assignments[2], [2]*20)
 
-    assert_is_not(type(rslt.distances), ra.RaggedArray)
+    assert type(rslt.distances) is not ra.RaggedArray
     assert_array_equal(rslt.distances[0], [0.2]*20)
     assert_array_equal(rslt.distances[1], [0.3]*20)
     assert_array_equal(rslt.distances[2], [0.4]*20)
@@ -56,12 +55,12 @@ def test_ClusterResult_partition_ra():
 
     rslt = concat_rslt.partition(list_lens)
 
-    assert_is(type(rslt.assignments), ra.RaggedArray)
+    assert type(rslt.assignments) is ra.RaggedArray
     assert_array_equal(rslt.assignments[0], [0]*10)
     assert_array_equal(rslt.assignments[1], [1]*20)
     assert_array_equal(rslt.assignments[2], [2]*100)
 
-    assert_is(type(rslt.distances), ra.RaggedArray)
+    assert type(rslt.distances) is ra.RaggedArray
     assert_array_equal(rslt.distances[0], [0.2]*10)
     assert_array_equal(rslt.distances[1], [0.3]*20)
     assert_array_equal(rslt.distances[2], [0.4]*100)

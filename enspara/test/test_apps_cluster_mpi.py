@@ -3,11 +3,9 @@ import tempfile
 import shutil
 import pickle
 import warnings
+import pytest
 
 import mdtraj as md
-
-from nose.tools import assert_equal
-from nose.plugins.attrib import attr
 
 from sklearn.datasets import make_blobs
 
@@ -58,12 +56,12 @@ def runhelper(args, expected_size, expect_reassignment=True,
 
             assigns = ra.load(fnames['assignments'])
             if type(assigns) is ra.RaggedArray:
-                assert_equal(len(assigns), expected_size[0])
-                assert_equal(assigns._data.dtype, int)
+                assert len(assigns) == expected_size[0]
+                assert assigns._data.dtype == int
                 assert_array_equal(assigns.lengths, expected_size[1])
             else:
-                assert_equal(assigns.shape, expected_size)
-                assert_equal(assigns.dtype, int)
+                assert assigns.shape == expected_size
+                assert assigns.dtype == int
 
             distfile = fnames['distances']
             assert os.path.isfile(distfile), \
@@ -99,7 +97,7 @@ def runhelper(args, expected_size, expect_reassignment=True,
     return assigns, dists, center_inds, center_structs
 
 
-@attr('mpi')
+@pytest.mark.mpi
 def test_rmsd_kcenters_mpi():
 
     TRJFILE = os.path.join(os.path.dirname(__file__), 'data', 'frame0.xtc')
@@ -141,7 +139,7 @@ def test_rmsd_kcenters_mpi():
     assert_array_equal(expected_s.xyz, md.join(s).xyz)
 
 
-@attr('mpi')
+@pytest.mark.mpi
 def test_rmsd_kcenters_mpi_subsample():
 
     TRJFILE = os.path.join(os.path.dirname(__file__), 'data', 'frame0.xtc')
@@ -186,7 +184,7 @@ def test_rmsd_kcenters_mpi_subsample():
 
 
 @fix_np_rng()
-@attr('mpi')
+@pytest.mark.mpi
 def test_rmsd_khybrid_mpi_basic():
 
     expected_size = (2, 501)
@@ -239,7 +237,7 @@ def test_rmsd_khybrid_mpi_basic():
     assert_allclose(expect_d, d, atol=1e-4)
 
 
-@attr('mpi')
+@pytest.mark.mpi
 def test_rmsd_khybrid_mpi_subsample():
 
     TRJFILE = os.path.join(os.path.dirname(__file__), 'data', 'frame0.xtc')
@@ -275,7 +273,7 @@ def test_rmsd_khybrid_mpi_subsample():
 
 
 @fix_np_rng(5)
-@attr('mpi')
+@pytest.mark.mpi
 def test_feature_khybrid_mpi_basic():
     expected_size = (3, (50, 30, 20))
 
@@ -304,7 +302,7 @@ def test_feature_khybrid_mpi_basic():
             expected_size=expected_size,
             centers_format='npy')
 
-        assert_equal(len(inds), 3)
+        assert len(inds) == 3
     finally:
         if mpi.rank() == 0:
             td.cleanup()
@@ -319,7 +317,7 @@ def test_feature_khybrid_mpi_basic():
 
 
 @fix_np_rng(5)
-@attr('mpi')
+@pytest.mark.mpi
 def test_feature_khybrid_mpi_h5():
     expected_size = (3, (50, 30, 20))
 
@@ -348,7 +346,7 @@ def test_feature_khybrid_mpi_h5():
             expected_size=expected_size,
             centers_format='npy')
 
-        assert_equal(len(inds), 3)
+        assert len(inds) == 3
     finally:
         if mpi.rank() == 0:
             td.cleanup()

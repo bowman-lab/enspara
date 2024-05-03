@@ -1,9 +1,8 @@
 import numpy as np
 from scipy import sparse
+import pytest
 
 import unittest
-from nose.tools import assert_equal, assert_raises
-from nose.plugins.skip import Skip
 from numpy.testing import assert_array_equal, assert_allclose
 
 from enspara.msm import bace
@@ -50,6 +49,7 @@ EXP_LABELS = {
 
 @unittest.skip
 def test_bace_integration_dense():
+    pytest.mark.skip()
 
     bayes_factors, labels = bace.bace(
         TCOUNTS, n_macrostates=2, n_procs=4)
@@ -63,13 +63,12 @@ def test_bace_integration_dense():
     assert_array_equal(
         np.vstack(labels.values()),
         np.vstack(EXP_LABELS.values()))
-    assert_equal(labels.keys(), EXP_LABELS.keys())
+    assert labels.keys() == EXP_LABELS.keys()
 
 
 @unittest.skip
 def test_bace_integration_sparse():
-
-    raise Skip
+    pytest.mark.skip()
 
     bayes_factors, labels = bace.bace(
         sparse.lil_matrix(TCOUNTS), n_macrostates=2, n_procs=4)
@@ -83,7 +82,7 @@ def test_bace_integration_sparse():
     assert_array_equal(
         np.vstack(labels.values()),
         np.vstack(EXP_LABELS.values()))
-    assert_equal(labels.keys(), EXP_LABELS.keys())
+    assert labels.keys() == EXP_LABELS.keys()
 
 
 def test_baysean_prune_types():
@@ -170,7 +169,7 @@ def test_absorb_island():
          [  0,   0,  5]])
 
     for array_type in [np.array, sparse.csr_matrix]:
-        with assert_raises(exception.DataInvalid):
+        with pytest.raises(exception.DataInvalid):
             absorbed_counts, labels = bace.absorb(array_type(tcounts), [2])
 
 

@@ -4,8 +4,8 @@ large blocks of expected data in the `test_data` subdirectory.
 
 import os
 import pickle
+import pytest
 
-from nose.tools import assert_almost_equal, assert_greater
 from numpy.testing import assert_array_equal, assert_allclose
 
 import numpy as np
@@ -33,9 +33,7 @@ N_DIHEDRALS = ROTAMER_TRJS[0].shape[1]
 
 
 def assert_correlates(m1, m2):
-    assert_almost_equal(pearsonr(m1.flatten(), m2.flatten())[0], 1,
-                        places=14)
-
+    assert pytest.approx(pearsonr(m1.flatten(), m2.flatten())[0], abs = 1e-14) == 1
 
 # This is really an integration test for the entire cards package.
 def test_cards():
@@ -107,7 +105,7 @@ def test_cards_length_difference():
     assert_allclose(r1[0], r2[0], rtol=1e-12)
     assert_correlates(r1[0], r2[0])
 
-    assert_greater(pearsonr(r1[3].flatten(), r2[3].flatten())[0], 0.8)
+    assert pearsonr(r1[3].flatten(), r2[3].flatten())[0] > 0.8
 
     assert_array_equal(r1[4], r2[4])
 
@@ -192,11 +190,11 @@ def test_split_transition_times():
         ratio_diff, np.ones(ratio_diff.shape[0]),
         rtol=1.1)
 
-    assert_greater(
-        pearsonr(avg_ord_unsp.flatten(), avg_ord_spl.flatten())[0],
+    assert (
+        pearsonr(avg_ord_unsp.flatten(), avg_ord_spl.flatten())[0] >
         0.9)
-    assert_greater(
-        pearsonr(avg_dis_unsp.flatten(), avg_dis_spl.flatten())[0],
+    assert (
+        pearsonr(avg_dis_unsp.flatten(), avg_dis_spl.flatten())[0] >
         0.9)
 
     assert_allclose(avg_dis_spl[n_samples > 35], avg_dis_unsp[n_samples > 35],

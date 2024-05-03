@@ -44,14 +44,15 @@ def use_openmp():
 
 install_requires = [
     'Cython>=0.24',
-    'numpy>=1.13',
+    'numpy>=1.20',
     'tables>=3.2',
     'matplotlib>=1.5.1',
     'mdtraj>=1.7',
     'psutil>=5.2.2',
     'pandas',
     'scikit-learn>=0.23.2',
-    'scipy>=0.17'
+    'scipy>=0.17',
+    'pyyaml'
 ]
 
 # this code checks for OS. If OS is OSx then it checks for GCC as default compiler
@@ -104,7 +105,7 @@ setup(
     classifiers=CLASSIFIERS,
     include_dirs=[np.get_include()],
     ext_modules=cythonize(cython_extensions),
-    python_requires='>=3.5,<3.12', 
+    python_requires='>=3.7,<3.13', 
     entry_points={'console_scripts': ['enspara = enspara.apps.main:main']},
     setup_requires=['Cython>=0.24', 'numpy>=1.13'],
     install_requires=install_requires,
@@ -112,7 +113,7 @@ setup(
     include_package_data=True,
     extras_require={
         'dev': [
-            'nose',
+            'pytest',
         ],
         'docs': [
             'Sphinx>=2.3.0',
