@@ -1,6 +1,6 @@
 import warnings
+import pytest
 
-from nose.tools import assert_raises
 from numpy.testing import (assert_array_equal, assert_allclose,
                            assert_almost_equal)
 
@@ -8,7 +8,7 @@ import numpy as np
 
 from enspara import exception
 
-from enspara.util import array as ra
+from enspara import ra
 from enspara.info_theory import mutual_info
 
 from .util import fix_np_rng
@@ -85,7 +85,7 @@ def test_check_feature_size():
 
     mutual_info.check_features_states(states_same, [2, 2, 2])
 
-    with assert_raises(exception.DataInvalid):
+    with pytest.raises(exception.DataInvalid):
         mutual_info.check_features_states(states_same, [2, 2])
 
     states_different = [
@@ -101,7 +101,7 @@ def test_check_feature_size():
         np.array([[0, 0, 0],
                   [0, 0, 0]])]
 
-    with assert_raises(exception.DataInvalid):
+    with pytest.raises(exception.DataInvalid):
         mutual_info.check_features_states(states_different_features, [3])
 
 

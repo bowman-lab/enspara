@@ -1,8 +1,8 @@
 import numpy as np
 from scipy.spatial.distance import cdist
 from scipy.spatial.distance import hamming as scipy_hamming
+import pytest
 
-from nose.tools import assert_raises
 from numpy.testing import assert_array_equal
 
 from enspara import exception
@@ -39,16 +39,16 @@ def test_manhattan_distance():
                   [-1, 3]])
     y = np.array([0, 0])
 
-    with assert_raises(exception.DataInvalid):
+    with pytest.raises(exception.DataInvalid):
         libdist.manhattan(X, y.reshape(1, -1))
 
-    with assert_raises(exception.DataInvalid):
+    with pytest.raises(exception.DataInvalid):
         libdist.manhattan(X.reshape(1, -1), y)
 
-    with assert_raises(exception.DataInvalid):
+    with pytest.raises(exception.DataInvalid):
         libdist.manhattan(X.flatten(), y)
 
-    with assert_raises(exception.DataInvalid):
+    with pytest.raises(exception.DataInvalid):
         libdist.manhattan(X, y[1:])
 
     d = libdist.manhattan(X, y)
@@ -65,16 +65,16 @@ def test_euclidean_distance():
                   [-1, 3]])
     y = np.array([0, 0])
 
-    with assert_raises(exception.DataInvalid):
+    with pytest.raises(exception.DataInvalid):
         libdist.euclidean(X, y.reshape(1, -1))
 
-    with assert_raises(exception.DataInvalid):
+    with pytest.raises(exception.DataInvalid):
         libdist.euclidean(X.reshape(1, -1), y)
 
-    with assert_raises(exception.DataInvalid):
+    with pytest.raises(exception.DataInvalid):
         libdist.euclidean(X.flatten(), y)
 
-    with assert_raises(exception.DataInvalid):
+    with pytest.raises(exception.DataInvalid):
         libdist.euclidean(X, y[1:])
 
     d = libdist.euclidean(X, y)
@@ -90,12 +90,12 @@ def test_euclidean_distance_noalloc():
                   [-1, 3]])
     y = np.array([0, 0])
 
-    with assert_raises(exception.DataInvalid):
+    with pytest.raises(exception.DataInvalid):
         d = libdist.euclidean(
             X, y,
             out=np.empty(shape=(X.shape[0]), dtype='int'))
 
-    with assert_raises(exception.DataInvalid):
+    with pytest.raises(exception.DataInvalid):
         d = libdist.euclidean(
             X, y,
             out=np.empty(shape=(X.shape[0]-1)))

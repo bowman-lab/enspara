@@ -1,7 +1,6 @@
 import numpy as np
 from numpy.testing import assert_array_almost_equal, assert_almost_equal
-
-from nose.tools import assert_raises
+import pytest
 
 from ..msm import builders
 from ..exception import DataInvalid
@@ -253,12 +252,12 @@ def test_kl_divergence_negative_probs():
         [0.25, 0.25, 0.5],
         [0.1, 0.65, 0.25]])
 
-    with assert_raises(DataInvalid):
+    with pytest.raises(DataInvalid):
         P_neg = np.copy(P_test)
         P_neg[0, 1] *= -1
         kl_divergence(P_neg, Q_test)
 
-    with assert_raises(DataInvalid):
+    with pytest.raises(DataInvalid):
         Q_neg = np.copy(Q_test)
         Q_neg[0, 1] *= -1
         kl_divergence(P_test, Q_neg)

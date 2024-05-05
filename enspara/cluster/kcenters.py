@@ -85,7 +85,7 @@ class KCenters(BaseEstimator, ClusterMixin, util.MolecularClusterMixin):
             Begin clustring with these centers as cluster centers.
         """
 
-        t0 = time.clock()
+        t0 = time.perf_counter()
 
         self.result_ = kcenters(
             X,
@@ -96,7 +96,7 @@ class KCenters(BaseEstimator, ClusterMixin, util.MolecularClusterMixin):
             random_first_center=self.random_first_center,
             mpi_mode=self.mpi_mode)
 
-        self.runtime_ = time.clock() - t0
+        self.runtime_ = time.perf_counter() - t0
         return self
 
 
@@ -174,7 +174,7 @@ def kcenters(traj, distance_method, n_clusters=np.inf, dist_cutoff=0,
         J. Comput. Chem. 34, 95–104 (2013).
     """
 
-    if (n_clusters is np.inf) and (dist_cutoff is 0):
+    if (n_clusters is np.inf) and (dist_cutoff == 0):
             raise ImproperlyConfigured("Either n_clusters or cluster_radius "
                                        "is required for KHybrid clustering")
 

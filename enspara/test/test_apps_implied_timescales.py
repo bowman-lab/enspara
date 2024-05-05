@@ -1,8 +1,8 @@
 import os
 
 import numpy as np
+import pytest
 
-from nose.tools import assert_raises, assert_equals
 from numpy.testing import assert_array_equal
 
 from .. import exception
@@ -16,33 +16,31 @@ TRJ_PATH = os.path.join(TEST_DATA_DIR, "trj0.xtc")
 
 def test_process_units():
 
-    with assert_raises(exception.ImproperlyConfigured):
+    with pytest.raises(exception.ImproperlyConfigured):
         implied_timescales.process_units(timestep=10, infer_timestep=TRJ_PATH)
 
-    assert_equals(
-        implied_timescales.process_units(timestep=10),
+    assert (
+        implied_timescales.process_units(timestep=10) ==
         (10, 'ns'))
 
-    assert_equals(
-        implied_timescales.process_units(None, None),
+    assert (
+        implied_timescales.process_units(None, None) ==
         (1, 'frames'))
 
-    assert_equals(
-        implied_timescales.process_units(),
+    assert (
+        implied_timescales.process_units() ==
         (1, 'frames'))
 
-    assert_equals(
-        implied_timescales.process_units(infer_timestep=TRJ_PATH),
+    assert (
+        implied_timescales.process_units(infer_timestep=TRJ_PATH) ==
         (100, 'ns'))
 
-    print(get_fn('frame0.h5'))
-
-    assert_equals(
-        implied_timescales.process_units(infer_timestep=get_fn('frame0.h5')),
+    assert (
+        implied_timescales.process_units(infer_timestep=get_fn('frame0.h5')) ==
         (1000, 'ns'))
 
-    assert_equals(
-        implied_timescales.process_units(infer_timestep=get_fn('frame0.xtc')),
+    assert (
+        implied_timescales.process_units(infer_timestep=get_fn('frame0.xtc')) ==
         (1000, 'ns'))
 
 

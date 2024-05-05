@@ -51,7 +51,7 @@ from enspara.apps.util import readable_dir
 
 from enspara import mpi
 from enspara.cluster import KHybrid, KCenters, KMedoids
-from enspara.util import array as ra
+from enspara import ra
 from enspara.util import load_as_concatenated
 from enspara.util.log import timed
 from enspara.util.parallel import auto_nprocs

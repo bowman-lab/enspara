@@ -1,15 +1,15 @@
 import unittest
 import logging
 import tempfile
+import pytest
 
 import numpy as np
 import mdtraj as md
 from mdtraj import io
 
-from nose.tools import assert_raises, assert_equals, assert_is, assert_true
 from numpy.testing import assert_array_equal
 
-from ..util import array as ra
+from enspara import ra
 from ..util.load import load_as_concatenated, concatenate_trjs
 from ..exception import DataInvalid, ImproperlyConfigured
 
@@ -29,8 +29,8 @@ class Test_RaggedArray(unittest.TestCase):
 
         a = ra.RaggedArray(array=[np.array(range(10)),
                                   np.array(range(20))])
-        assert_equals(len(a), 2)
-        assert_equals(a.dtype, np.int)
+        assert len(a) == 2
+        assert a.dtype == int
         assert_array_equal(a.lengths, [10, 20])
         assert_array_equal(a.starts, [0, 10])
         assert_array_equal(a._data, np.concatenate([range(10), range(20)]))
@@ -39,8 +39,8 @@ class Test_RaggedArray(unittest.TestCase):
         a = ra.RaggedArray([[0.8, 1.0, 1.2],
                             [1.1, 1.0, 0.9, 0.8]])
 
-        assert_equals(len(a), 2)
-        assert_equals(a.dtype, np.float)
+        assert len(a) == 2
+        assert a.dtype == float
         assert_array_equal(a.lengths, [3, 4])
         assert_array_equal(a.starts, [0, 3])
         assert_array_equal(
@@ -49,17 +49,17 @@ class Test_RaggedArray(unittest.TestCase):
     def test_RaggedArray_shape_size(self):
 
         a = ra.RaggedArray(array=np.array(range(50)), lengths=[25, 20, 5])
-        assert_equals(a.shape, (3, None))
-        assert_equals(a.size, 50)
-        assert_equals(a.dtype, np.int)
+        assert a.shape == (3, None)
+        assert a.size == 50
+        assert a.dtype == int
 
         src_reg = [[[0,0,0],[1,1,1],[2,2,2]],[[4,4,4],[5,5,5]]]
         a_reg = ra.RaggedArray(src_reg)
-        assert_equals(a_reg.shape, (2, None, 3))
+        assert a_reg.shape == (2, None, 3)
 
         src_irreg = [[[0,0,0,0],[1,1],[2,2,2]],[[4,4],[5,5,5,5,5]]]
         a_irreg = ra.RaggedArray(src_irreg)
-        assert_equals(a_irreg.shape, (2, None, None))
+        assert a_irreg.shape == (2, None, None)
 
     def test_RaggedArray_disk_roundtrip(self):
         src = np.array(range(55))
@@ -123,50 +123,50 @@ class Test_RaggedArray(unittest.TestCase):
 
     def test_RaggedArray_bad_size(self):
 
-        with assert_raises(DataInvalid):
+        with pytest.raises(DataInvalid):
             ra.RaggedArray(array=np.array(range(50)), lengths=[25, 20])
 
     def test_RaggedArray_indexing(self):
         src = np.array(range(55))
         a = ra.RaggedArray(array=src, lengths=[25, 30])
 
-        assert_equals(a[0, 0], 0)
-        assert_equals(a[0, 5], 5)
-        assert_equals(a[1, 0], 25)
-        assert_equals(a[1, 9], 34)
+        assert a[0, 0] == 0
+        assert a[0, 5] == 5
+        assert a[1, 0] == 25
+        assert a[1, 9] == 34
 
-        with assert_raises(IndexError):
+        with pytest.raises(IndexError):
             a[0, 25]
-        with assert_raises(IndexError):
+        with pytest.raises(IndexError):
             a[0, -26]
-        with assert_raises(IndexError):
+        with pytest.raises(IndexError):
             a[1, 30]
-        with assert_raises(IndexError):
+        with pytest.raises(IndexError):
             a[1, -31]
 
-        assert_equals(a[0, 0], a[0][0])
-        assert_equals(a[0, 5], a[0][5])
-        assert_equals(a[1, 0], a[1][0])
-        assert_equals(a[1, 9], a[1][9])
+        assert a[0, 0] == a[0][0]
+        assert a[0, 5] == a[0][5]
+        assert a[1, 0] == a[1][0]
+        assert a[1, 9] == a[1][9]
 
-        assert_equals(a[0, -1], a[0, 24])
-        assert_equals(a[1, -2], a[1, 28])
+        assert a[0, -1] == a[0, 24]
+        assert a[1, -2] == a[1, 28]
 
         assert_array_equal(a[0], src[0:25])
         assert_array_equal(a[1], src[25:])
         assert_array_equal(a[-1], a[1])
         assert_array_equal(a[-2], a[0])
 
-        assert_equals(len(a[0]), 25)
-        assert_equals(len(a[1]), 30)
+        assert len(a[0]) == 25
+        assert len(a[1]) == 30
 
-        with assert_raises(IndexError):
+        with pytest.raises(IndexError):
             a[2]
-        with assert_raises(IndexError):
+        with pytest.raises(IndexError):
             a[-3]
 
         b = ra.RaggedArray([[23, 24],[48, 49, 50]])
-        assert_equals(a[:, 23:26], b)
+        assert a[:, 23:26] == b
 
     def test_RaggedArray_iterator(self):
         src = [range(10), range(20), range(30)]
@@ -224,13 +224,11 @@ class Test_RaggedArray(unittest.TestCase):
         assert_array_equal(a[0:2].flatten(), src[0:30])
         assert_array_equal(a[1:].flatten(), src[10:])
 
-        assert_array_equal(a[:, 0:5].flatten(), np.concatenate((src[0:5],
-                                                                src[10:15],
-                                                                src[30:35])))
-
-        assert_is(type(a[[0, 1]]), type(a))
-        assert_is(type(a[0]), type(src))
-        assert_is(type(a[[0]]), type(a))
+        assert_array_equal(a[:, 0:5].flatten(), 
+                           np.concatenate((src[0:5], src[10:15], src[30:35])))
+        assert type(a[[0, 1]]) is type(a)
+        assert type(a[0]) is type(src)
+        assert type(a[[0]]) is type(a)
 
         assert_array_equal(a[0, 5:10], src[5:10])
         assert_array_equal(a[-1, 5:10], src[35:40])
@@ -263,7 +261,7 @@ class Test_RaggedArray(unittest.TestCase):
 
         b = a[1]
         b[0] = -1
-        assert_equals(a[1, 0], -1)
+        assert a[1, 0] == -1
 
     def test_ra_bool_indexing(self):
         src = [range(10), range(15), range(10)]
@@ -281,8 +279,8 @@ class Test_RaggedArray(unittest.TestCase):
 
         assert_array_equal(a[1], range(30))
         assert_array_equal(a[0], range(20))
-        assert_equals(a[1, 0], 0)
-        assert_equals(a[1, -1], 29)
+        assert a[1, 0] == 0
+        assert a[1, -1] == 29
 
         a = ra.RaggedArray(array=src, lengths=[20, 30])
         a[0, 2:5] = np.array([11, 12, 13])
@@ -299,23 +297,23 @@ class Test_RaggedArray(unittest.TestCase):
         a[(np.array([1, 1, 0, -1]),
            np.array([0, 3, -1, 4]))] = np.array([-1, -2, -3, -4])
 
-        assert_equals(a[1, 0], -1)
-        assert_equals(a[1, 3], -2)
-        assert_equals(a[0, -1], -3)
-        assert_equals(a[-1, 4], -4)
+        assert a[1, 0] == -1
+        assert a[1, 3] == -2
+        assert a[0, -1] == -3
+        assert a[-1, 4] == -4
 
         # __setitem__ using fancy indexing + int should succeed.
         a = ra.RaggedArray(array=src, lengths=[20, 30])
         a[np.array([0, -1]), 3] = np.array([-3, -2])
-        assert_equals(a[0, 3], -3)
-        assert_equals(a[-1, 3], -2)
+        assert a[0, 3] == -3
+        assert a[-1, 3] == -2
 
         # __setitem__ using int + fancy indexing should succeed.
         a = ra.RaggedArray(array=src, lengths=[20, 30])
         a[0, np.array([1, 2, -1])] = np.array([-3, -2, -1])
-        assert_equals(a[0, 1], -3)
-        assert_equals(a[0, 2], -2)
-        assert_equals(a[0, -1], -1)
+        assert a[0, 1] == -3
+        assert a[0, 2] == -2
+        assert a[0, -1] == -1
 
     def test_ra_eq(self):
         src = [range(10), range(20), range(30)]
@@ -382,9 +380,9 @@ class Test_RaggedArray(unittest.TestCase):
         b = ra.zeros_like(a)
 
         assert_array_equal(a.lengths, b.lengths)
-        assert_equals(a.shape[0], b.shape[0])
-        assert_true((b == 0).all())
-        assert_is(type(b), ra.RaggedArray)
+        assert a.shape[0] == b.shape[0]
+        assert (b == 0).all()
+        assert type(b) is ra.RaggedArray
 
         a = np.linspace(10, 20)
         b = ra.zeros_like(a)
@@ -397,7 +395,7 @@ class Test_RaggedArray(unittest.TestCase):
         a = ra.RaggedArray([[True, False, True, False],
                             [False, True, False]])
 
-        with assert_raises(TypeError):
+        with pytest.raises(TypeError):
             a > 'asdfasdfasd'
 
 
@@ -540,16 +538,16 @@ class TestParallelLoad(unittest.TestCase):
 
         expected = np.concatenate([t1.xyz, t2.xyz, t3.xyz])
 
-        assert_equals(expected.shape, xyz.shape)
-        assert_true(np.all(expected == xyz))
+        assert expected.shape == xyz.shape
+        assert np.all(expected == xyz)
 
-        with assert_raises(ImproperlyConfigured):
+        with pytest.raises(ImproperlyConfigured):
             lengths, xyz = load_as_concatenated(
                 [self.trj_fname]*3,
                 top=self.top,
                 lengths=[len(t) for t in [t1, t3]])
 
-        with assert_raises(DataInvalid):
+        with pytest.raises(DataInvalid):
             lengths, xyz = load_as_concatenated(
                 [self.trj_fname]*3,
                 top=self.top,
@@ -652,7 +650,7 @@ class TestConcatenateTrajs(unittest.TestCase):
         trjlist = [md.load(self.top_fname)] * 10
         trj = concatenate_trjs(trjlist)
 
-        assert_equals(len(trjlist), len(trj))
+        assert len(trjlist) == len(trj)
 
         for trjframe, trjlist_item in zip(trj, trjlist):
             assert_array_equal(trjframe.xyz, trjlist_item.xyz)
@@ -663,7 +661,7 @@ class TestConcatenateTrajs(unittest.TestCase):
         trjlist = [md.load(self.top_fname)] * 10
         trj = concatenate_trjs(trjlist, atoms=ATOMS)
 
-        assert_equals(len(trjlist), len(trj))
+        assert len(trjlist) == len(trj)
 
         for trjframe, trjlist_item in zip(trj, trjlist):
             sliced_item = trjlist_item.atom_slice(
@@ -677,14 +675,14 @@ class TestConcatenateTrajs(unittest.TestCase):
 
         trj = concatenate_trjs(trjlist, atoms='name CA or name N or name C')
 
-        assert_equals(trj.xyz.shape, (506, 6, 3))
+        assert trj.xyz.shape == (506, 6, 3)
 
     def test_mismatched(self):
 
         trjlist = [md.load(self.top_fname)] * 5
         trjlist.append(trjlist[0].atom_slice(np.arange(10)))
 
-        with assert_raises(DataInvalid):
+        with pytest.raises(DataInvalid):
             concatenate_trjs(trjlist)
 
 

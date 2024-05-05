@@ -9,6 +9,14 @@ enspara\.info\_theory\.entropy module
     :undoc-members:
     :show-inheritance:
 
+enspara\.info\_theory\.exposons module
+------------------------------------------
+
+.. automodule:: enspara.info_theory.exposons
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
 enspara\.info\_theory\.libinfo module
 -------------------------------------
 

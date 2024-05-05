@@ -1,5 +1,6 @@
 sftp-config.json
 enspara.sublime-workspace
+.idea
 
 # nose cache
 .noseids
@@ -100,3 +101,6 @@ ENV/
 
 # Mac file caches
 .DS_Store
+
+# PyCharm project settings
+.idea/

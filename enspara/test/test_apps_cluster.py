@@ -1,22 +1,22 @@
 import os
 import tempfile
 import hashlib
+import pytest
 import shutil
 
 from datetime import datetime
-
-from nose.tools import assert_equal, assert_raises
 
 import numpy as np
 from numpy.testing import assert_array_equal
 
 from sklearn.datasets import make_blobs
 
-from .. import exception
-from ..util import array as ra
+from enspara import exception, ra
+from enspara.apps import cluster
 
 from ..cluster import kcenters, kmedoids, util
 from ..apps import cluster
+
 
 TEST_DIR = os.path.dirname(__file__)
 TRJFILE = os.path.join(os.path.dirname(__file__), 'data', 'frame0.xtc')
@@ -54,16 +54,16 @@ def runhelper(args, expected_size, algorithm='khybrid', expected_k=None,
 
             assigns = ra.load(fnames['assignments'])
             if type(assigns) is ra.RaggedArray:
-                assert_equal(len(assigns), expected_size[0])
-                assert_equal(assigns._data.dtype, np.int)
+                assert len(assigns) == expected_size[0]
+                assert assigns._data.dtype == int
                 assert_array_equal(assigns.lengths, expected_size[1])
                 if expected_k is not None:
                     assert_array_equal(
                         np.unique(assigns._data),
                         np.arange(expected_k))
             else:
-                assert_equal(assigns.shape, expected_size)
-                assert_equal(assigns.dtype, np.int)
+                assert assigns.shape == expected_size
+                assert assigns.dtype == int
                 if expected_k is not None:
                     assert_array_equal(
                         np.unique(assigns),
@@ -139,7 +139,7 @@ def test_rmsd_cluster_broken_atoms():
 
     expected_size = (2, 501)
 
-    with assert_raises(exception.ImproperlyConfigured):
+    with pytest.raises(exception.ImproperlyConfigured):
         runhelper([
             '--trajectories', TRJFILE, TRJFILE,
             '--topology', TOPFILE,
@@ -321,7 +321,7 @@ def test_feature_cluster_basic():
                 centers_format='npy')
 
             center_indices = np.load(ind_f)
-            assert_equal(len(center_indices), 3)
+            assert len(center_indices) == 3
 
     y_ra = ra.RaggedArray(y, assignments.lengths)
     for cid in range(len(center_indices)):
@@ -354,7 +354,7 @@ def test_feature_cluster_manhattan():
                 centers_format='npy')
 
             center_indices = np.load(ind_f)
-            assert_equal(len(center_indices), 3)
+            assert len(center_indices) == 3
 
     y_ra = ra.RaggedArray(y, assignments.lengths)
     for cid in range(len(center_indices)):
@@ -384,7 +384,7 @@ def test_feature_cluster_radius_based_h5_input():
             expected_size=expected_size,
             centers_format='npy')
 
-        assert_equal(len(np.unique(assignments.flatten())), 11)
+        assert len(np.unique(assignments.flatten())) == 11
 
 
 def reorder_assignments(assigs):
@@ -437,7 +437,7 @@ def test_feature_cluster_number_khybrid_npy_input():
     y = reorder_assignments(y)
     assignments = reorder_assignments(assignments.flatten())
 
-    assert_equal(len(np.unique(assignments)), 3)
+    assert len(np.unique(assignments)) == 3
     assert_array_equal(y, assignments)
 
 
@@ -473,7 +473,7 @@ def test_feature_cluster_number_kcenters_npy_input():
     y = reorder_assignments(y)
     assignments = reorder_assignments(assignments.flatten())
 
-    assert_equal(len(np.unique(assignments)), 3)
+    assert len(np.unique(assignments)) == 3
     assert_array_equal(y, assignments)
 
 
@@ -495,7 +495,7 @@ def test_feature_cluster_number_kcenters_npy_input_iterations_flag_error():
             np.save(pathname, a[row_i])
             pathnames.append(pathname)
 
-        with assert_raises(exception.ImproperlyConfigured):
+        with pytest.raises(exception.ImproperlyConfigured):
             _, _ = runhelper([
                 '--features', pathnames[0], pathnames[1], pathnames[2],
                 '--cluster-number', '3',
@@ -542,7 +542,7 @@ def test_feature_cluster_number_khybrid_npy_input_zero_iterations():
     y = reorder_assignments(y)
     assignments = reorder_assignments(assignments.flatten())
 
-    assert_equal(len(np.unique(assignments)), 3)
+    assert len(np.unique(assignments)) == 3
     assert_array_equal(y, assignments)
 
     assert_array_equal(kc.distances_, distances.flatten())

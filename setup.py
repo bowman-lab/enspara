@@ -5,7 +5,7 @@ from setuptools import find_packages
 from distutils.core import setup
 from distutils.extension import Extension
 import distutils.ccompiler
-__version__ = '0.1.0'
+__version__ = '0.1.1'
 
 CLASSIFIERS = [
     "Development Status :: 3 - Alpha",
@@ -44,14 +44,15 @@ def use_openmp():
 
 install_requires = [
     'Cython>=0.24',
-    'numpy>=1.13',
+    'numpy>=1.20',
     'tables>=3.2',
     'matplotlib>=1.5.1',
     'mdtraj>=1.7',
     'psutil>=5.2.2',
     'pandas',
-    'scikit-learn>=0.21.0',
-    'scipy>=0.17'
+    'scikit-learn>=0.23.2',
+    'scipy>=0.17',
+    'pyyaml'
 ]
 
 # this code checks for OS. If OS is OSx then it checks for GCC as default compiler
@@ -93,7 +94,7 @@ cython_extensions = [
 
 setup(
     name='enspara',
-    packages=find_packages(exclude=["tests"],),
+    packages=find_packages(),
     version=__version__,
     project_urls={
         'Documentation': 'https://enspara.readthedocs.io',
@@ -104,7 +105,7 @@ setup(
     classifiers=CLASSIFIERS,
     include_dirs=[np.get_include()],
     ext_modules=cythonize(cython_extensions),
-    python_requires='>=3.5,<3.8',  # cython is broken for 3.7
+    python_requires='>=3.7,<3.13', 
     entry_points={'console_scripts': ['enspara = enspara.apps.main:main']},
     setup_requires=['Cython>=0.24', 'numpy>=1.13'],
     install_requires=install_requires,
@@ -112,13 +113,16 @@ setup(
     include_package_data=True,
     extras_require={
         'dev': [
-            'nose',
+            'pytest',
         ],
         'docs': [
-            'Sphinx>=1.6.4',
-            'sphinx-rtd-theme>=0.2.4',
-            'sphinxcontrib-websupport>=1.0.1',
-            'numpydoc>=0.7.0',
+            'Sphinx>=2.3.0',
+            'sphinx-rtd-theme>=0.4.3',
+            'sphinxcontrib-websupport>=1.1.2',
+            'numpydoc>=0.9.1',
+        ],
+        'mpi': [
+            'mpi4py>=2.0.0'
         ]
     },
     zip_safe=False

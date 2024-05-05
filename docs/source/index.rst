@@ -25,9 +25,12 @@ Contents:
    CARDS <cards>
    cli
    clustering
+   exposons
    cookbook
    pocket-detection
    transition-path-theory
+   smFRET
+   developing
    _modules/enspara
 
 

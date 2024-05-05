@@ -4,7 +4,7 @@ import numpy as np
 from sklearn.utils import check_random_state
 
 from ..exception import ImproperlyConfigured, DataInvalid
-from ..util import array as ra
+from enspara import ra
 from .. import mpi
 from ..cluster import util
 

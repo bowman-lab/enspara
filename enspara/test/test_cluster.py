@@ -2,20 +2,16 @@ import unittest
 import os
 import tempfile
 import copy
+import pytest
 
 import numpy as np
 import mdtraj as md
-
-from nose.tools import (assert_raises, assert_less, assert_true, assert_is,
-                        assert_equal)
-from nose.plugins.attrib import attr
 
 from sklearn.datasets import make_blobs
 
 from numpy.testing import assert_array_equal, assert_allclose
 
 from .util import get_fn, fix_np_rng
-
 from ..geometry import libdist
 from ..cluster.hybrid import KHybrid, hybrid
 from ..cluster import kcenters, kmedoids, util
@@ -37,7 +33,7 @@ class TestTrajClustering(unittest.TestCase):
         N_CLUSTERS = 5
         CLUSTER_RADIUS = 0.1
 
-        with assert_raises(ImproperlyConfigured):
+        with pytest.raises(ImproperlyConfigured):
             kcenters.KCenters(metric=md.rmsd)
 
         # Test n clusters
@@ -82,7 +78,7 @@ class TestTrajClustering(unittest.TestCase):
         # '''
         N_CLUSTERS = 5
 
-        with assert_raises(ImproperlyConfigured):
+        with pytest.raises(ImproperlyConfigured):
             KHybrid(metric=md.rmsd, kmedoids_updates=10)
 
         clustering = KHybrid(
@@ -195,10 +191,10 @@ class TestTrajClustering(unittest.TestCase):
 
         # kcenters will always produce the same number of clusters on
         # this input data (unchanged by kmedoids updates)
-        assert_equal(len(np.unique(result.assignments)), N_CLUSTERS)
+        assert len(np.unique(result.assignments)) == N_CLUSTERS
 
-        assert_less(round(result.distances.mean(), 7), 0.094)
-        assert_less(np.std(result.distances), 0.019)
+        assert round(result.distances.mean(), 7) < 0.094
+        assert np.std(result.distances) < 0.019
 
     def test_kcenters_maxdist(self):
         result = kcenters.kcenters(
@@ -239,7 +235,7 @@ class TestTrajClustering(unittest.TestCase):
                                0.018355072790569946)
 
 
-@attr('mpi')
+@pytest.mark.mpi
 def test_kcenters_mpi_traj():
     from .. import mpi
 
@@ -276,7 +272,7 @@ def test_kcenters_mpi_traj():
         assert_array_equal(mpi_ctr_inds, r.center_indices)
 
 
-@attr('mpi')
+@pytest.mark.mpi
 def test_kcenters_mpi_numpy():
     from .. import mpi
 
@@ -315,7 +311,7 @@ def test_kcenters_mpi_numpy():
         assert_array_equal(mpi_ctr_inds, r.center_indices)
 
 
-@attr('mpi')
+@pytest.mark.mpi
 @fix_np_rng(1)
 def test_kcenters_mpi_numpy_node_blob_differences():
     from .. import mpi
@@ -376,8 +372,7 @@ def test_kcenters_mpi_numpy_node_blob_differences():
         assert_array_equal(mpi_dists, r.distances)
         # assert_array_equal(mpi_ctr_inds, r.center_indices)
 
-
-@attr('mpi')
+@pytest.mark.mpi
 def test_kmedoids_update_mpi_mdtraj():
     from .. import mpi
 
@@ -420,7 +415,7 @@ def test_kmedoids_update_mpi_mdtraj():
                     rtol=1e-06, atol=1e-03)
 
 
-@attr('mpi')
+@pytest.mark.mpi
 def test_kmedoids_update_mpi_numpy():
     from .. import mpi
 
@@ -463,7 +458,7 @@ def test_kmedoids_update_mpi_numpy():
                     rtol=1e-06, atol=1e-03)
 
 
-@attr('mpi')
+@pytest.mark.mpi
 def test_kmedoids_update_mpi_numpy_separated_blobs():
     from .. import mpi
 
@@ -612,13 +607,13 @@ class TestNumpyClustering(unittest.TestCase):
             predict_result.assignments,
             [0]*20 + [1]*20 + [2]*20)
 
-        assert_true(np.all(predict_result.distances < 4))
+        assert np.all(predict_result.distances < 4)
 
         assert_array_equal(
             np.argmin(predict_result.distances[0:20]),
             predict_result.center_indices[0])
 
-        assert_is(predict_result.centers, centers)
+        assert predict_result.centers is centers
 
     def test_kcenters_hot_start(self):
 
@@ -628,13 +623,13 @@ class TestNumpyClustering(unittest.TestCase):
             X=np.concatenate(self.traj_lst),
             init_centers=np.array(self.generators[0:2], dtype=float))
 
-        assert_equal(len(clust.result_.center_indices), 3)
-        assert_equal(len(np.unique(clust.result_.center_indices)),
+        assert len(clust.result_.center_indices) == 3
+        assert (len(np.unique(clust.result_.center_indices)) ==
                      np.max(clust.result_.assignments) + 1)
 
         # because two centers were generators, only one center
         # should actually be a frame
-        assert_equal(len(np.where(clust.result_.distances == 0)), 1)
+        assert len(np.where(clust.result_.distances == 0)) == 1
 
     def test_numpy_hybrid(self):
         N_CLUSTERS = 3
@@ -768,7 +763,7 @@ def test_kcenters_iteration_triangle_mdtraj():
         ctr_inds = trad_ctr_inds
 
 
-@attr('mpi')
+@pytest.mark.mpi
 def test_mpi_kcenters_iteration_triangle_npy():
     from .. import mpi
 
@@ -811,7 +806,7 @@ def test_mpi_kcenters_iteration_triangle_npy():
         ctr_inds = trad_ctr_inds
 
 
-@attr('mpi')
+@pytest.mark.mpi
 def test_mpi_kcenters_iteration_triangle_mdtraj():
     from .. import mpi
 
@@ -848,7 +843,7 @@ def test_mpi_kcenters_iteration_triangle_mdtraj():
         ctr_inds = trad_ctr_inds
 
 
-@attr('mpi')
+@pytest.mark.mpi
 def test_kmedoids_propose_center_amongst():
     from .. import mpi
 
@@ -861,11 +856,11 @@ def test_kmedoids_propose_center_amongst():
     prop_c, (rank, local_ind) = kmedoids._propose_new_center_amongst(
         X, state_inds, mpi_mode=True, random_state=0)
 
-    assert_equal(prop_c % 3, 0)
-    assert_equal(a[rank::mpi.size()][local_ind], prop_c)
+    assert prop_c % 3 == 0
+    assert a[rank::mpi.size()][local_ind] == prop_c
 
 
-@attr('mpi')
+@pytest.mark.mpi
 def test_kmedoids_propose_center_amongst_hits_all():
     from .. import mpi
 
@@ -880,8 +875,8 @@ def test_kmedoids_propose_center_amongst_hits_all():
         prop_c, (rank, local_ind) = kmedoids._propose_new_center_amongst(
             X, state_inds, mpi_mode=True, random_state=i)
 
-        assert_equal(prop_c % 3, 0)
-        assert_equal(a[rank::mpi.size()][local_ind], prop_c)
+        assert prop_c % 3 == 0
+        assert a[rank::mpi.size()][local_ind] == prop_c
         hits.add(int(prop_c))
 
-    assert_equal(hits, set([0, 3, 6, 9, 12, 15]))
+    assert hits == set([0, 3, 6, 9, 12, 15])

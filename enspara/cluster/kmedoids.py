@@ -80,7 +80,7 @@ class KMedoids(BaseEstimator, ClusterMixin, util.MolecularClusterMixin):
             not just the data on a single MPI rank.
         """
 
-        t0 = time.clock()
+        t0 = time.process_time()
 
         self.result_ = kmedoids(
             X,
@@ -92,7 +92,7 @@ class KMedoids(BaseEstimator, ClusterMixin, util.MolecularClusterMixin):
             cluster_center_inds=cluster_center_inds,
             X_lengths=X_lengths)
 
-        self.runtime_ = time.clock() - t0
+        self.runtime_ = time.process_time() - t0
         return self
 
 
@@ -631,9 +631,12 @@ def _kmedoids_pam_update(
         assert np.all(new_assig >= 0)
         assert np.all(new_dist >= 0)
 
-        #In mpi mode, the cost function looks at distances across all nodes
-        old_cost = cost(distances)
-        new_cost = cost(new_dist)
+
+        # Added timing to cost computation
+        with timed("Computed costs points in %.2f sec.",
+                   logger.debug):
+            old_cost = cost(distances)
+            new_cost = cost(new_dist)
 
         if new_cost < old_cost:
             logger.debug(

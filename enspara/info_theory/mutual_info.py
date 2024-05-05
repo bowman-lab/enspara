@@ -132,7 +132,7 @@ def weighted_mi(features, weights, n_feature_states=None, normalize=True):
                 n_feature_states.shape[0], features.shape[1])
         )
 
-    mi_mtx = np.zeros((features.shape[1], features.shape[1]), dtype=np.float)
+    mi_mtx = np.zeros((features.shape[1], features.shape[1]), dtype=float)
 
     max_n_fstates = max(n_feature_states)
 
@@ -200,7 +200,7 @@ def mi_matrix_serial(states_a_list, states_b_list, n_a_states, n_b_states,
                     states_a_list[k][:, i], states_b_list[k][:, j],
                     n_a_states[i], n_b_states[j])
 
-            mi[i, j] = mutual_information(jc)
+            mi[i, j] = mutual_information(jc)[0,0]
             mi[j, i] = mi[i, j]
 
     if normalize:

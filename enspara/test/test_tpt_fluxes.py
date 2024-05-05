@@ -1,11 +1,12 @@
 import warnings
-
+import pytest
 import numpy as np
 import scipy.sparse
 
 from numpy.testing import assert_array_equal, assert_array_almost_equal
 
-from ..tpt import committors, reactive_fluxes, mfpts
+from enspara import tpt
+from enspara.tpt import committors, reactive_fluxes, mfpts
 
 
 ARR_TYPES = [
@@ -130,3 +131,32 @@ def test_mfpts():
     assert_array_almost_equal(
         mfpts(T_test)*5.0,
         mfpts(T_test, lagtime=5), 5)
+
+# NOTE: block absorbed from MSMBuilder test_tpt.py
+def test_paths():
+    net_flux = np.array([[0.0, 0.5, 0.5, 0.0, 0.0, 0.0],
+                         [0.0, 0.0, 0.0, 0.3, 0.0, 0.2],
+                         [0.0, 0.0, 0.0, 0.0, 0.5, 0.0],
+                         [0.0, 0.0, 0.0, 0.0, 0.0, 0.3],
+                         [0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                         [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]])
+
+    sources = np.array([0])
+    sinks = np.array([4, 5])
+
+    ref_paths = [[0, 2, 4],
+                 [0, 1, 3, 5],
+                 [0, 1, 5]]
+
+    ref_fluxes = np.array([0.5, 0.3, 0.2])
+
+    res_bottle = tpt.paths(sources, sinks, net_flux, remove_path='bottleneck')
+    res_subtract = tpt.paths(sources, sinks, net_flux, remove_path='subtract')
+
+    for paths, fluxes in [res_bottle, res_subtract]:
+        assert_array_almost_equal(fluxes, ref_fluxes)
+        assert len(paths) == len(ref_paths)
+
+        for i in range(len(paths)):
+            assert_array_equal(paths[i], ref_paths[i])
+# END absorbed block.

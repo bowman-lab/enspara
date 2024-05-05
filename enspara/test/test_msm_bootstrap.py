@@ -1,6 +1,6 @@
 import numpy as np
+import pytest
 
-from nose.tools import assert_equal, assert_true
 from numpy.testing import assert_allclose
 
 from ..msm.bootstrap import bootstrap
@@ -25,12 +25,12 @@ def test_bootstrap_msm():
         method=builders.transpose, n_trials=N_TRIALS,
         max_n_states=N_STATES, n_procs=1)
 
-    assert_equal(len(msms), N_TRIALS)
-    assert_true(all(m.lag_time == LAG_TIME for m in msms))
-    assert_true(all(m.max_n_states == N_STATES for m in msms))
+    assert len(msms) == N_TRIALS
+    assert all(m.lag_time == LAG_TIME for m in msms)
+    assert all(m.max_n_states == N_STATES for m in msms)
 
-    assert_true(all([m.tprobs_.shape == (N_STATES, N_STATES) for m in msms]))
-    assert_true(all([m.eq_probs_.shape == (N_STATES,) for m in msms]))
+    assert all([m.tprobs_.shape == (N_STATES, N_STATES) for m in msms])
+    assert all([m.eq_probs_.shape == (N_STATES,) for m in msms])
 
     assert_allclose(
         np.array([m.tprobs_.todense() for m in msms]).mean(axis=0),

@@ -1,9 +1,9 @@
-from nose.tools import assert_equal
 from numpy.testing import assert_array_equal
+import pytest
 
 import numpy as np
 
-from ..util import array as ra
+from enspara import ra
 from ..cards import disorder
 
 
@@ -43,7 +43,7 @@ def test_trj_ord_disord_times_one_transition():
     result = disorder.traj_ord_disord_times(transition_times)
 
     expected = (1.25, 0.5, 0.1, 0.5)
-    assert_equal(expected, result)
+    assert expected == result
 
 
 # def test_trj_ord_disord_times_many_transition():
