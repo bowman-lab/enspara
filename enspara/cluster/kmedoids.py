@@ -14,6 +14,13 @@ from ..exception import ImproperlyConfigured
 from ..util.log import timed
 
 from . import util
+from enspara.cluster.util import *
+
+try:
+    from ..apps.cluster import write_assignments_and_distances_with_reassign, \
+    write_centers, write_centers_indices
+except:
+    pass
 
 logger = logging.getLogger(__name__)
 
@@ -43,15 +50,16 @@ class KMedoids(BaseEstimator, ClusterMixin, util.MolecularClusterMixin):
     """
 
     def __init__(
-            self, metric, n_clusters=None, n_iters=5):
+            self, metric, n_clusters=None, n_iters=5, args=None):
         
         self.metric = util._get_distance_method(metric)
 
         self.n_clusters = n_clusters
         self.n_iters = n_iters
+        self.args = args
 
     def fit(self, X, assignments=None, distances=None,
-            cluster_center_inds=None, X_lengths=None):
+            cluster_center_inds=None, X_lengths=None, args=None):
         """Takes trajectories, X, and performs KMedoids clustering.
         Automatically determines whether or not to use the MPI version of this
         algorithm. Can start from scratch or perform a warm start using inital
@@ -80,7 +88,7 @@ class KMedoids(BaseEstimator, ClusterMixin, util.MolecularClusterMixin):
             not just the data on a single MPI rank.
         """
 
-        t0 = time.process_time()
+        t0 = time.perf_counter()
 
         self.result_ = kmedoids(
             X,
@@ -90,15 +98,15 @@ class KMedoids(BaseEstimator, ClusterMixin, util.MolecularClusterMixin):
             assignments=assignments,
             distances=distances,
             cluster_center_inds=cluster_center_inds,
-            X_lengths=X_lengths)
+            X_lengths=X_lengths, args=args)
 
-        self.runtime_ = time.process_time() - t0
+        self.runtime_ = time.perf_counter() - t0
         return self
 
 
 def kmedoids(X, distance_method, n_clusters=None, n_iters=5, assignments=None,
              distances=None, cluster_center_inds=None, proposals=None,
-             X_lengths=None):
+             X_lengths=None, args=None):
     """K-Medoids clustering.
 
     K-Medoids is a clustering algorithm similar to the k-means algorithm
@@ -185,7 +193,7 @@ def kmedoids(X, distance_method, n_clusters=None, n_iters=5, assignments=None,
 
     return _kmedoids_iterations(
                X, distance_method, n_iters, cluster_center_inds,
-               assignments, distances, proposals=proposals)
+               assignments, distances, proposals=proposals, args=args)
 
 def _kmedoids_inputs_tree_mpi(X, distance_method, n_clusters, assignments,
                               distances, cluster_center_inds, X_lengths):
@@ -388,7 +396,7 @@ def ctr_ids_mpi(cluster_center_inds, lengths):
 
 def _kmedoids_iterations(
         X, distance_method, n_iters, cluster_center_inds,
-        assignments, distances, proposals=None):
+        assignments, distances, proposals=None, args=None):
     """Inner loop performing kmedoids updates.
 
     Parameters
@@ -425,13 +433,27 @@ def _kmedoids_iterations(
         cluster_center_inds, distances, assignments, centers = \
             _kmedoids_pam_update(X, distance_method, cluster_center_inds,
                                  assignments, distances, proposals=proposals)
+        result = util.ClusterResult(
+            center_indices=cluster_center_inds,
+            assignments=assignments,
+            distances=distances,
+            centers=centers)
+
+        if args != None and args.save_intermediates:
+            #if on the last iteration, about to save anyways...
+            if i != n_iters -1:
+                with timed("Wrote center indices in %.2f sec.", logger.info):
+                    write_centers_indices(
+                        args.center_indices,
+                        [(t, f * args.subsample) for t, f in cluster_center_inds],
+                        intermediate_n=f'kmedoids-{i}')
+                with timed("Wrote center structures in %.2f sec.", logger.info):
+                    write_centers(result, args, intermediate_n=f'kmedoids-{i}')
+                write_assignments_and_distances_with_reassign(result, args, 
+                    intermediate_n=f'kmedoids-{i}')
         logger.info("KMedoids update %s", i)
 
-    return util.ClusterResult(
-        center_indices=cluster_center_inds,
-        assignments=assignments,
-        distances=distances,
-        centers=centers)
+    return result
 
 def _msq(x):
     return mpi.ops.striped_array_mean(np.square(x))
@@ -483,7 +505,7 @@ def _kmedoids_pam_update(
 
     PAM iteratively proposes a new cluster center from among the points
     assigned to a cluster center, recomputes the cost function, and
-    accepts the proposal iff cost goes down. Its time complexity is
+    accepts the proposal if cost goes down. Its time complexity is
     O(k*n*i), where k is the number of centers, n is the size of the data
     and i is the number of iterations (i.e. each invocation of this
     function costs O(kn).)

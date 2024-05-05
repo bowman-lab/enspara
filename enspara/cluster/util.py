@@ -9,6 +9,12 @@
 
 import logging
 from collections import namedtuple
+from glob import glob
+import os
+import json
+from enspara.util.log import timed
+from enspara.util.parallel import auto_nprocs
+from enspara import mpi
 
 import mdtraj as md
 import numpy as np
@@ -294,3 +300,239 @@ def _get_distance_method(metric):
     else:
         raise ImproperlyConfigured(
             "'{}' is not a recognized metric".format(metric))
+
+def expand_files(pgroups):
+    expanded_pgroups = []
+    for pgroup in pgroups:
+        expanded_pgroups.append([])
+        for p in pgroup:
+            expanded_pgroups[-1].extend(sorted(glob(p)))
+    return expanded_pgroups
+
+
+def load_features(features, stride):
+    try:
+        if len(features) == 1:
+            with timed("Loading features took %.1f s.", logger.info):
+                lengths, data = mpi.io.load_h5_as_striped(features[0], stride)
+
+        else:  # and len(features) > 1
+            with timed("Loading features took %.1f s.", logger.info):
+                lengths, data = mpi.io.load_npy_as_striped(features, stride)
+
+        with timed("Turned over array in %.2f min", logger.info):
+            tmp_data = data.copy()
+            del data
+            data = tmp_data
+    except MemoryError:
+        logger.error(
+            "Ran out of memory trying to allocate features array"
+            " from file %s", features[0])
+        raise
+
+    logger.info("Loaded %s trajectories with %s frames with stride %s.",
+                len(lengths), len(data), stride)
+
+    return lengths, data
+
+
+def load_trajectories(topologies, trajectories, selections, stride, processes):
+
+    for top, selection in zip(topologies, selections):
+        sentinel_trj = md.load(top)
+        try:
+            # noop, but causes fast-fail w/bad args.atoms
+            sentinel_trj.top.select(selection)
+        except:
+            raise exception.ImproperlyConfigured((
+                "The provided selection '{s}' didn't match the topology "
+                "file, {t}").format(s=selection, t=top))
+
+    flat_trjs = []
+    configs = []
+    n_inds = None
+
+    for topfile, trjset, selection in zip(topologies, trajectories,
+                                          selections):
+        top = md.load(topfile).top
+        indices = top.select(selection)
+
+        if n_inds is not None:
+            if n_inds != len(indices):
+                raise exception.ImproperlyConfigured(
+                    ("Selection on topology %s selected %s atoms, but "
+                     "other selections selected %s atoms.") %
+                    (topfile, len(indices), n_inds))
+        n_inds = len(indices)
+
+        for trj in trjset:
+            flat_trjs.append(trj)
+            configs.append({
+                'top': top,
+                'stride': stride,
+                'atom_indices': indices,
+            })
+
+    logger.info(
+        "Loading %s trajectories with %s atoms using %s processes "
+        "(subsampling %s)",
+        len(flat_trjs), len(top.select(selection)), processes, stride)
+    assert len(top.select(selection)) > 0, "No atoms selected for clustering"
+
+    with timed("Loading took %.1f sec", logger.info):
+        lengths, xyz = mpi.io.load_trajectory_as_striped(
+            flat_trjs, args=configs, processes=auto_nprocs())
+
+    with timed("Turned over array in %.2f min", logger.info):
+        tmp_xyz = xyz.copy()
+        del xyz
+        xyz = tmp_xyz
+
+    logger.info("Loaded %s frames.", len(xyz))
+
+    return lengths, xyz, top.subset(top.select(selection))
+
+
+def load_asymm_frames(center_indices, trajectories, topology, subsample):
+
+    frames = []
+    begin_index = 0
+    for topfile, trjset in zip(topology, trajectories):
+        end_index = begin_index + len(trjset)
+        target_centers = [c for c in center_indices
+                          if begin_index <= c[0] < end_index]
+
+        try:
+            subframes = load_frames(
+                list(itertools.chain(*trajectories)),
+                target_centers,
+                top=md.load(topfile).top,
+                stride=subsample)
+        except exception.ImproperlyConfigured:
+            logger.error('Failure to load cluster centers %s for topology %s',
+                         topfile, target_centers)
+            raise
+
+        frames.extend(subframes)
+        begin_index += len(trjset)
+
+    return frames
+
+
+def load_trjs_or_features(args):
+
+    if args.features:
+        with timed("Loading features took %.1f s.", logger.info):
+            lengths, data = load_features(args.features, stride=args.subsample)
+    else:
+        assert args.trajectories
+        assert len(args.trajectories) == len(args.topologies)
+
+        targets = {os.path.basename(topf): "%s files" % len(trjfs)
+                   for topf, trjfs
+                   in zip(args.topologies, args.trajectories)
+                   }
+        logger.info("Beginning clustering; targets:\n%s",
+                    json.dumps(targets, indent=4))
+
+        with timed("Loading trajectories took %.1f s.", logger.info):
+            lengths, xyz, select_top = load_trajectories(
+                args.topologies, args.trajectories, selections=args.atoms,
+                stride=args.subsample, processes=auto_nprocs())
+
+        logger.info("Clustering using %s atoms matching '%s'.", xyz.shape[1],
+                    args.atoms)
+
+        # md.rmsd requires an md.Trajectory object, so wrap `xyz` in
+        # the topology.
+        data = md.Trajectory(xyz=xyz, topology=select_top)
+
+    return lengths, data
+
+
+def write_centers_indices(path, indices, intermediate_n=None):
+    if path:
+        if intermediate_n is not None:
+            indcs_dir = os.path.dirname(path)
+            incs_feats = f'{indcs_dir}/intermediate-{intermediate_n}/{os.path.basename(path)}'
+            os.makedirs(f'{int_feats}/intermediate-{intermediate_n}', exist_ok=True)
+            with open(incs_feats, 'wb') as f:
+                np.save(f, indices)
+
+        else:
+            with open(path, 'wb') as f:
+                np.save(f, indices)
+    else:
+        logger.info("--center-indices not provided, not writing center "
+                    "indices to file.")
+
+
+def write_centers(result, args, intermediate_n=None):
+    if args.features:
+        if intermediate_n is not None:
+            centers_dir = os.path.dirname(args.center_features)
+            int_feats = f'{centers_dir}/intermediate-{intermediate_n}/{os.path.basename(args.center_features)}'
+            os.makedirs(f'{int_feats}/intermediate-{intermediate_n}', exist_ok=True)
+            ra.save(int_feats, result.centers)
+
+        else:
+            np.save(args.center_features, result.centers)
+
+    else:
+        if intermediate_n is not None:
+            centers_dir = os.path.dirname(args.center_features)
+            outdir = f'{centers_dir}/intermediate-{intermediate_n}/{os.path.basename(args.center_features)}'
+
+        else:
+            outdir = os.path.dirname(args.center_features)
+
+        logger.info("Saving cluster centers at %s", outdir)
+
+        os.makedirs(outdir, exist_ok=True)
+
+
+        centers = load_asymm_frames(result.center_indices, args.trajectories,
+                                    args.topologies, args.subsample)
+        with open(args.center_features, 'wb') as f:
+            pickle.dump(centers, f)
+
+
+def write_assignments_and_distances_with_reassign(result, args, intermediate_n=None):
+    if args.subsample == 1:
+        logger.debug("Subsampling was 1, not reassigning.")
+        if intermediate_n is not None:
+            dists_dir = os.path.dirname(args.distances)
+            int_dists = f'{dists_dir}/intermediate-{intermediate_n}/{os.path.basename(args.distances)}'
+            os.makedirs(f'{dists_dir}/intermediate-{intermediate_n}', exist_ok=True)
+            ra.save(int_dists, result.distances)
+
+            assigs_dir = os.path.dirname(args.assignments)
+            int_assigs = f'{assigs_dir}/intermediate-{intermediate_n}/{os.path.basename(args.assignments)}'
+            os.makedirs(f'{assigs_dir}/intermediate-{intermediate_n}')            
+            ra.save(int_assigs, result.assignments)
+
+        else:
+            ra.save(args.distances, result.distances)
+            ra.save(args.assignments, result.assignments)
+
+    elif not args.no_reassign:
+        logger.debug("Reassigning data from subsampling of %s", args.subsample)
+        assig, dist = reassign(
+            args.topologies, args.trajectories, args.atoms,
+            centers=result.centers)
+
+        if intermediate_n is not None:
+            dists_dir = os.path.dirname(args.distances)
+            int_dists = f'{dists_dir}/intermediate-{intermediate_n}/{os.path.basename(args.distances)}'
+            os.makedirs(f'{dists_dir}/intermediate-{intermediate_n}', exist_ok=True)
+            ra.save(int_dists, dist)
+
+            assigs_dir = os.path.dirname(args.assignments)
+            int_assigs = f'{assigs_dir}/intermediate-{intermediate_n}/{os.path.basename(args.assignments)}'
+            os.makedirs(f'{assigs_dir}/intermediate-{intermediate_n}')            
+            ra.save(int_assigs, assig)
+
+        ra.save(args.distances, dist)
+        ra.save(args.assignments, assig)
+    else:
+        logger.debug("Got --no-reassign, not doing reassigment")
