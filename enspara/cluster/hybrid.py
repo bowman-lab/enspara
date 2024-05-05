@@ -65,7 +65,7 @@ class KHybrid(BaseEstimator, ClusterMixin, util.MolecularClusterMixin):
 
     def __init__(self, metric, n_clusters=None, cluster_radius=None,
                  kmedoids_updates=5, random_first_center=False,
-                 random_state=None, mpi_mode=None, args=None):
+                 random_state=None, mpi_mode=None, args=None, lengths=None):
 
         if n_clusters is None and cluster_radius is None:
             raise ImproperlyConfigured("Either n_clusters or cluster_radius "
@@ -80,6 +80,7 @@ class KHybrid(BaseEstimator, ClusterMixin, util.MolecularClusterMixin):
         self.random_state = check_random_state(random_state)
         self.mpi_mode = mpi_mode if mpi_mode is not None else mpi.size() != 1
         self.args = args
+        self.lengths = lengths
 
     def fit(self, X, init_centers=None, args=None):
         """Takes trajectories, X, and performs KHybrid clustering.
@@ -102,7 +103,8 @@ class KHybrid(BaseEstimator, ClusterMixin, util.MolecularClusterMixin):
             random_first_center=self.random_first_center,
             init_centers=init_centers,
             random_state=self.random_state,
-            mpi_mode=self.mpi_mode, args=self.args)
+            mpi_mode=self.mpi_mode, args=self.args,
+            lengths=self.lengths)
 
         self.runtime_ = time.perf_counter() - t0
 
@@ -113,7 +115,7 @@ def hybrid(
         X, distance_method, n_iters=5, n_clusters=np.inf,
         dist_cutoff=0, random_first_center=False,
         init_centers=None, random_state=None, mpi_mode=False,
-        args=None):
+        args=None, lengths=None):
 
     distance_method = util._get_distance_method(distance_method)
 
@@ -131,22 +133,33 @@ def hybrid(
 
     #TO DO - this is giving me a 1D array and expected is a 2D array.
     if args != None and args.save_intermediates:
+
+        int_result = util.ClusterResult(
+            center_indices=cluster_center_inds,
+            assignments=assignments,
+            distances=distances,
+            centers=centers).partition(lengths)
+
+        int_indcs, int_assigs, int_dists, int_centers = int_result
+
+        print(int_indcs)
+        print(np.shape(int_assigs))
         with timed("Wrote kcenters center indices in %.2f sec.", logger.info):
             write_centers_indices(
                 args.center_indices,
-                [(t, f * args.subsample) for t, f in cluster_center_inds],
+                [(t, f * args.subsample) for t, f in int_indcs],
                 intermediate_n=f'kcenters')
 
         with timed("Wrote kcenters center structures in %.2f sec.", logger.info):
-            write_centers(result, args, intermediate_n=f'kcenters')
+            write_centers(int_result, args, intermediate_n=f'kcenters')
 
-        write_assignments_and_distances_with_reassign(result, args, 
+        write_assignments_and_distances_with_reassign(int_result, args, 
             intermediate_n=f'kcenters')
 
     if n_iters > 0:
         return kmedoids._kmedoids_iterations(
             X, distance_method, n_iters, cluster_center_inds, assignments,
-            distances, args=args)
+            distances, args=args, lengths=lengths)
     else:
         return util.ClusterResult(
             center_indices=cluster_center_inds,

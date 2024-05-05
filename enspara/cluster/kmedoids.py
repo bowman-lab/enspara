@@ -50,13 +50,14 @@ class KMedoids(BaseEstimator, ClusterMixin, util.MolecularClusterMixin):
     """
 
     def __init__(
-            self, metric, n_clusters=None, n_iters=5, args=None):
+            self, metric, n_clusters=None, n_iters=5, args=None, lengths=None):
         
         self.metric = util._get_distance_method(metric)
 
         self.n_clusters = n_clusters
         self.n_iters = n_iters
         self.args = args
+        self.lengths = lengths
 
     def fit(self, X, assignments=None, distances=None,
             cluster_center_inds=None, X_lengths=None, args=None):
@@ -106,7 +107,7 @@ class KMedoids(BaseEstimator, ClusterMixin, util.MolecularClusterMixin):
 
 def kmedoids(X, distance_method, n_clusters=None, n_iters=5, assignments=None,
              distances=None, cluster_center_inds=None, proposals=None,
-             X_lengths=None, args=None):
+             X_lengths=None, args=None, lengths=None):
     """K-Medoids clustering.
 
     K-Medoids is a clustering algorithm similar to the k-means algorithm
@@ -193,7 +194,7 @@ def kmedoids(X, distance_method, n_clusters=None, n_iters=5, assignments=None,
 
     return _kmedoids_iterations(
                X, distance_method, n_iters, cluster_center_inds,
-               assignments, distances, proposals=proposals, args=args)
+               assignments, distances, proposals=proposals, args=args, lengths=lengths)
 
 def _kmedoids_inputs_tree_mpi(X, distance_method, n_clusters, assignments,
                               distances, cluster_center_inds, X_lengths):
@@ -396,7 +397,7 @@ def ctr_ids_mpi(cluster_center_inds, lengths):
 
 def _kmedoids_iterations(
         X, distance_method, n_iters, cluster_center_inds,
-        assignments, distances, proposals=None, args=None):
+        assignments, distances, proposals=None, args=None, lengths=None):
     """Inner loop performing kmedoids updates.
 
     Parameters
@@ -441,15 +442,18 @@ def _kmedoids_iterations(
 
         if args != None and args.save_intermediates:
             #if on the last iteration, about to save anyways...
+            int_result = result.partition(lengths)
+            int_indcs, int_assigs, int_dists, int_centers = int_result
+
             if i != n_iters -1:
                 with timed("Wrote center indices in %.2f sec.", logger.info):
                     write_centers_indices(
                         args.center_indices,
-                        [(t, f * args.subsample) for t, f in cluster_center_inds],
+                        [(t, f * args.subsample) for t, f in int_indcs],
                         intermediate_n=f'kmedoids-{i}')
                 with timed("Wrote center structures in %.2f sec.", logger.info):
-                    write_centers(result, args, intermediate_n=f'kmedoids-{i}')
-                write_assignments_and_distances_with_reassign(result, args, 
+                    write_centers(int_result, args, intermediate_n=f'kmedoids-{i}')
+                write_assignments_and_distances_with_reassign(int_result, args, 
                     intermediate_n=f'kmedoids-{i}')
         logger.info("KMedoids update %s", i)
 

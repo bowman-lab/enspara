@@ -302,6 +302,7 @@ def main(argv=None):
             kwargs['n_iters'] = int(args.cluster_iterations)
         if args.Clusterer is not KCenters:
             kwargs['args']=args
+            kwargs['lengths']=lengths
 
     #kmedoids doesn't need a cluster radius, but kcenters does
     if args.cluster_radius is not None:

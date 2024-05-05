@@ -15,6 +15,8 @@ import json
 from enspara.util.log import timed
 from enspara.util.parallel import auto_nprocs
 from enspara import mpi
+import itertools
+import pickle
 
 import mdtraj as md
 import numpy as np
@@ -455,7 +457,7 @@ def write_centers_indices(path, indices, intermediate_n=None):
         if intermediate_n is not None:
             indcs_dir = os.path.dirname(path)
             incs_feats = f'{indcs_dir}/intermediate-{intermediate_n}/{os.path.basename(path)}'
-            os.makedirs(f'{int_feats}/intermediate-{intermediate_n}', exist_ok=True)
+            os.makedirs(f'{indcs_dir}/intermediate-{intermediate_n}', exist_ok=True)
             with open(incs_feats, 'wb') as f:
                 np.save(f, indices)
 
@@ -472,7 +474,7 @@ def write_centers(result, args, intermediate_n=None):
         if intermediate_n is not None:
             centers_dir = os.path.dirname(args.center_features)
             int_feats = f'{centers_dir}/intermediate-{intermediate_n}/{os.path.basename(args.center_features)}'
-            os.makedirs(f'{int_feats}/intermediate-{intermediate_n}', exist_ok=True)
+            os.makedirs(f'{centers_dir}/intermediate-{intermediate_n}', exist_ok=True)
             ra.save(int_feats, result.centers)
 
         else:
@@ -481,7 +483,7 @@ def write_centers(result, args, intermediate_n=None):
     else:
         if intermediate_n is not None:
             centers_dir = os.path.dirname(args.center_features)
-            outdir = f'{centers_dir}/intermediate-{intermediate_n}/{os.path.basename(args.center_features)}'
+            outdir = f'{centers_dir}/intermediate-{intermediate_n}/'
 
         else:
             outdir = os.path.dirname(args.center_features)
@@ -508,7 +510,7 @@ def write_assignments_and_distances_with_reassign(result, args, intermediate_n=N
 
             assigs_dir = os.path.dirname(args.assignments)
             int_assigs = f'{assigs_dir}/intermediate-{intermediate_n}/{os.path.basename(args.assignments)}'
-            os.makedirs(f'{assigs_dir}/intermediate-{intermediate_n}')            
+            os.makedirs(f'{assigs_dir}/intermediate-{intermediate_n}',exist_ok=True)            
             ra.save(int_assigs, result.assignments)
 
         else:
