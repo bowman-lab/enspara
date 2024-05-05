@@ -47,7 +47,6 @@ except ModuleNotFoundError:
         datefmt='%m-%d-%Y %H:%M:%S')
     mpi_mode = False
 
-from enspara.apps.reassign import reassign
 from enspara.apps.util import readable_dir
 
 from enspara import mpi
@@ -56,7 +55,8 @@ from enspara import ra
 from enspara.util import load_as_concatenated
 from enspara.util.log import timed
 from enspara.util.parallel import auto_nprocs
-from enspara.cluster.util import load_frames, partition_indices, ClusterResult
+from enspara.cluster.util import load_frames, partition_indices, \
+ClusterResult, reassign
 
 from enspara.geometry import libdist
 

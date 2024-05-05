@@ -15,7 +15,6 @@ from numpy.testing import assert_array_equal, assert_allclose
 
 from enspara import ra
 from ..apps import reassign
-
 from .util import get_fn
 
 
