@@ -45,8 +45,9 @@ installed then, from the enspara directory, run:
 ```bash
 pytest
 ```
+By default this runs without MPI. 
 
-If you wish to skip the MPI tests, you can run:
+If you wish to explicitly skip the MPI tests, you can run:
 ```bash
 pytest -m 'not mpi'
 ```
@@ -54,5 +55,5 @@ pytest -m 'not mpi'
 If you want to run the MPI tests, you can run:
 
 ```bash
-mpiexec -n 2 pytests -m 'mpi'
+mpirun -n 2 python -m pytest -m 'mpi' --with-mpi
 ```

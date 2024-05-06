@@ -107,7 +107,7 @@ class KMedoids(BaseEstimator, ClusterMixin, util.MolecularClusterMixin):
 
 def kmedoids(X, distance_method, n_clusters=None, n_iters=5, assignments=None,
              distances=None, cluster_center_inds=None, proposals=None,
-             X_lengths=None, args=None, lengths=None):
+             X_lengths=None, args=None, lengths=None, random_state=None):
     """K-Medoids clustering.
 
     K-Medoids is a clustering algorithm similar to the k-means algorithm
@@ -174,7 +174,8 @@ def kmedoids(X, distance_method, n_clusters=None, n_iters=5, assignments=None,
     if mpi.size() > 1:
         assignments, distances, cluster_center_inds = \
          _kmedoids_inputs_tree_mpi(X, distance_method, n_clusters, assignments,
-                               distances, cluster_center_inds, X_lengths) 
+                               distances, cluster_center_inds, X_lengths,
+                               random_state=random_state) 
         
         #Check that the cluster_center_inds on this ranks corresponed to
         # distances with value 0.
@@ -185,7 +186,8 @@ def kmedoids(X, distance_method, n_clusters=None, n_iters=5, assignments=None,
     else:
         assignments, distances, cluster_center_inds = \
             _kmedoids_inputs_tree(X, distance_method, n_clusters, assignments,
-                                  distances, cluster_center_inds, X_lengths)
+                                  distances, cluster_center_inds, X_lengths,
+                                  random_state=random_state)
         ctr_ids = util.find_cluster_centers(assignments, distances)
         
         #Should be all 0s, but machine precision issues means they might
@@ -194,10 +196,12 @@ def kmedoids(X, distance_method, n_clusters=None, n_iters=5, assignments=None,
 
     return _kmedoids_iterations(
                X, distance_method, n_iters, cluster_center_inds,
-               assignments, distances, proposals=proposals, args=args, lengths=lengths)
+               assignments, distances, proposals=proposals, args=args, lengths=lengths,
+               random_state=random_state)
 
 def _kmedoids_inputs_tree_mpi(X, distance_method, n_clusters, assignments,
-                              distances, cluster_center_inds, X_lengths):
+                              distances, cluster_center_inds, X_lengths,
+                              random_state=None):
     """Helper function to process K-Medoids clustering inputs in mpi mode.
 
     Parameters
@@ -246,7 +250,7 @@ def _kmedoids_inputs_tree_mpi(X, distance_method, n_clusters, assignments,
        and assignments is None):
 
         for i in range(n_clusters):
-            r, idx = mpi.ops.randind(np.arange(X), check_random_state(None))
+            r, idx = mpi.ops.randind(np.arange(X), check_random_state(random_state))
             cluster_center_inds.append((r, idx))
         
         medoid_coords = []
@@ -276,7 +280,7 @@ def _kmedoids_inputs_tree_mpi(X, distance_method, n_clusters, assignments,
 
 def _kmedoids_inputs_tree(
         X, distance_method, n_clusters, assignments, distances,
-        cluster_center_inds, X_lengths):
+        cluster_center_inds, X_lengths, random_state=None):
     """Helper function to process K-Medoids clustering inputs in mpi mode.
 
     Parameters
@@ -316,6 +320,8 @@ def _kmedoids_inputs_tree(
         A list of the locations of center indices.
     """
 
+    rng = np.random.default_rng(seed=random_state)
+
     if ((assignments is not None and distances is None) or 
         (assignments is None and distances is not None)):
         raise ImproperlyConfigured(
@@ -335,7 +341,7 @@ def _kmedoids_inputs_tree(
             cluster_center_inds = np.array([])
             while len(np.unique(cluster_center_inds)) < n_clusters:
                 cluster_center_inds = \
-                    np.random.randint(0,len(X),n_clusters)
+                    rng.integers(0,len(X),n_clusters)
     
     # If cluster_center_inds is given as [(trj id, frame id), ...]
     elif hasattr(cluster_center_inds[0], '__len__'):
@@ -397,7 +403,8 @@ def ctr_ids_mpi(cluster_center_inds, lengths):
 
 def _kmedoids_iterations(
         X, distance_method, n_iters, cluster_center_inds,
-        assignments, distances, proposals=None, args=None, lengths=None):
+        assignments, distances, proposals=None, args=None, 
+        lengths=None, random_state=None):
     """Inner loop performing kmedoids updates.
 
     Parameters
@@ -433,7 +440,8 @@ def _kmedoids_iterations(
     for i in range(n_iters):
         cluster_center_inds, distances, assignments, centers = \
             _kmedoids_pam_update(X, distance_method, cluster_center_inds,
-                                 assignments, distances, proposals=proposals)
+                                 assignments, distances, proposals=proposals,
+                                 random_state=random_state)
         result = util.ClusterResult(
             center_indices=cluster_center_inds,
             assignments=assignments,
@@ -478,7 +486,6 @@ def _propose_new_center_amongst(X, state_inds, mpi_mode, random_state):
     random_state : numpy.RandomState
         The state of the RNG to use when drawing new random values.
     """
-
     random_state = check_random_state(random_state)
 
     # TODO: make it impossible to choose the current center
@@ -560,6 +567,7 @@ def _kmedoids_pam_update(
     assert np.issubdtype(type(assignments[0]), np.integer)
     assert len(assignments) == len(X)
     assert len(distances) == len(X)
+
     random_state = check_random_state(random_state)
 
     if proposals is not None:
