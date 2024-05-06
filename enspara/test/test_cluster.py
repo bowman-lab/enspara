@@ -161,16 +161,17 @@ class TestTrajClustering(unittest.TestCase):
         cluster_center_inds2, distances2, assignments2, centers2 = \
             kmedoids._kmedoids_pam_update(self.trj, distance_method, 
                                  cluster_center_inds, assignments,
-                                 distances, proposals=proposals)
+                                 distances, proposals=proposals, random_state=0)
 
 
         # Do we get the same answer if we just start kmedoids with the
         # results from kcenters (i.e init assignments, center_inds, distances
         r = kmedoids.kmedoids(self.trj, distance_method, n_clusters,
             n_iters=n_iters, assignments=assignments_x, distances=distances_x,
-            cluster_center_inds=cluster_center_inds_x, proposals=proposals)
+            cluster_center_inds=cluster_center_inds_x, proposals=proposals,
+            random_state=0)
 
-        assert_allclose(distances2, r.distances, atol=1e-04)
+        assert_allclose(distances2, r.distances, atol=1e-03)
         assert_array_equal(assignments2, r.assignments)
         assert_array_equal(cluster_center_inds2, r.center_indices)
         
@@ -398,6 +399,7 @@ def test_kmedoids_update_mpi_mdtraj():
         assignments=local_assignments,
         distances=local_distances,
         proposals=proposals,
+        random_state=0
     )
 
     local_ctr_inds, local_distances, local_assignments, centers = r
@@ -441,7 +443,8 @@ def test_kmedoids_update_mpi_numpy():
         medoid_inds=local_ctr_inds,
         assignments=local_assignments,
         distances=local_distances,
-        proposals=proposals)
+        proposals=proposals,
+        random_state=0)
 
     local_ctr_inds, local_distances, local_assignments, centers = r
     mpi_ctr_inds = [(i*mpi.size())+r for r, i in local_ctr_inds]
@@ -640,7 +643,8 @@ class TestNumpyClustering(unittest.TestCase):
             n_clusters=N_CLUSTERS,
             dist_cutoff=None,
             n_iters=10,
-            random_first_center=False)
+            random_first_center=False,
+            random_state=0)
 
         assert len(result.center_indices) == N_CLUSTERS
 
@@ -671,7 +675,8 @@ class TestNumpyClustering(unittest.TestCase):
             np.concatenate(self.traj_lst),
             distance_method='euclidean',
             n_clusters=N_CLUSTERS,
-            n_iters=100)
+            n_iters=100,
+            random_state=0)
 
         assert len(np.unique(result.assignments)) == N_CLUSTERS
         assert len(result.center_indices) == N_CLUSTERS

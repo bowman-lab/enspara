@@ -128,10 +128,6 @@ def hybrid(
         result.center_indices, result.assignments, result.distances,
         result.centers)
 
-    print(args)
-    print(cluster_center_inds)
-
-    #TO DO - this is giving me a 1D array and expected is a 2D array.
     if args != None and args.save_intermediates:
 
         int_result = util.ClusterResult(
@@ -159,7 +155,7 @@ def hybrid(
     if n_iters > 0:
         return kmedoids._kmedoids_iterations(
             X, distance_method, n_iters, cluster_center_inds, assignments,
-            distances, args=args, lengths=lengths)
+            distances, args=args, lengths=lengths, random_state=random_state)
     else:
         return util.ClusterResult(
             center_indices=cluster_center_inds,
