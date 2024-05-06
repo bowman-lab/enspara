@@ -17,7 +17,6 @@ from glob import glob
 
 import numpy as np
 import mdtraj as md
-from enspara.cluster.util import *
 
 try:
     # this mpi will get overriden by the enspara mpi module in a few lines.
@@ -55,8 +54,7 @@ from enspara import ra
 from enspara.util import load_as_concatenated
 from enspara.util.log import timed
 from enspara.util.parallel import auto_nprocs
-from enspara.cluster.util import load_frames, partition_indices, \
-ClusterResult, reassign
+from enspara.cluster import util 
 
 from enspara.geometry import libdist
 
@@ -175,7 +173,7 @@ def process_command_line(argv):
     args = parser.parse_args(argv[1:])
 
     if args.features:
-        args.features = expand_files([args.features])[0]
+        args.features = util.expand_files([args.features])[0]
 
         if args.cluster_distance in FEATURE_DISTANCES:
             args.cluster_distance = getattr(libdist, args.cluster_distance)
@@ -206,7 +204,7 @@ def process_command_line(argv):
                 "features.")
 
     elif args.trajectories and args.topologies:
-        args.trajectories = expand_files(args.trajectories)
+        args.trajectories = util.expand_files(args.trajectories)
 
         if not args.cluster_distance or args.cluster_distance == 'rmsd':
             args.cluster_distance = md.rmsd
@@ -292,7 +290,7 @@ def main(argv=None):
 
     # note that in MPI mode, lengths will be global, whereas data will
     # be local (i.e. only this node's data).
-    lengths, data = load_trjs_or_features(args)
+    lengths, data = util.load_trjs_or_features(args)
 
     kwargs = {}
     if args.cluster_iterations is not None:
@@ -351,7 +349,7 @@ def main(argv=None):
                 local_assigs, lengths)
             ctr_inds = mpi.ops.convert_local_indices(local_ctr_inds, lengths)
 
-        result = ClusterResult(
+        result = util.ClusterResult(
             center_indices=ctr_inds,
             distances=all_dists,
             assignments=all_assigs,
@@ -360,12 +358,12 @@ def main(argv=None):
 
     if mpi.rank() == 0:
         with timed("Wrote center indices in %.2f sec.", logger.info):
-            write_centers_indices(
+            util.write_centers_indices(
                 args.center_indices,
                 [(t, f * args.subsample) for t, f in result.center_indices])
         with timed("Wrote center structures in %.2f sec.", logger.info):
-            write_centers(result, args)
-        write_assignments_and_distances_with_reassign(result, args)
+            util.write_centers(result, args)
+        util.write_assignments_and_distances_with_reassign(result, args)
 
     mpi.comm.barrier()
 

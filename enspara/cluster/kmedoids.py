@@ -14,7 +14,7 @@ from ..exception import ImproperlyConfigured
 from ..util.log import timed
 
 from . import util
-from enspara.cluster.util import *
+# from enspara.cluster.util import *
 
 try:
     from ..apps.cluster import write_assignments_and_distances_with_reassign, \
@@ -143,6 +143,8 @@ def kmedoids(X, distance_method, n_clusters=None, n_iters=5, assignments=None,
     X_lengths : list, [traj1_length, traj2_length, ...], default=None
         List of the lengths of all trajectories with respect to all data
         not just the data on a single MPI rank.
+    random_state : int, default=None
+        Random state to fix RNG with.
 
     Returns
     -------
@@ -228,6 +230,8 @@ def _kmedoids_inputs_tree_mpi(X, distance_method, n_clusters, assignments,
     X_lengths : list, [traj1_length, traj2_length, ...]
         List of the lengths of all trajectories with respect to all data
         not just the data on a single MPI rank.
+    random_state : int, default = None
+        Random state to fix RNG with.
 
     Returns
     -------
@@ -307,6 +311,8 @@ def _kmedoids_inputs_tree(
     X_lengths : list, [traj1_length, traj2_length, ...]
         List of the lengths of all trajectories with respect to all data
         not just the data on a single MPI rank.
+    random_state : int, default = None
+        Random state to fix RNG with.
 
     Returns
     -------
@@ -429,6 +435,8 @@ def _kmedoids_iterations(
     proposals : array-like, default=None
         If specified, this list is a list of indices to propose as a
         center (rather than choosing randomly).
+    random_state : int, default = None
+        Random state to fix RNG with.
 
     Returns
     -------
@@ -455,13 +463,13 @@ def _kmedoids_iterations(
 
             if i != n_iters -1:
                 with timed("Wrote center indices in %.2f sec.", logger.info):
-                    write_centers_indices(
+                    util.write_centers_indices(
                         args.center_indices,
                         [(t, f * args.subsample) for t, f in int_indcs],
                         intermediate_n=f'kmedoids-{i}')
                 with timed("Wrote center structures in %.2f sec.", logger.info):
-                    write_centers(int_result, args, intermediate_n=f'kmedoids-{i}')
-                write_assignments_and_distances_with_reassign(int_result, args, 
+                    util.write_centers(int_result, args, intermediate_n=f'kmedoids-{i}')
+                util.write_assignments_and_distances_with_reassign(int_result, args, 
                     intermediate_n=f'kmedoids-{i}')
         logger.info("KMedoids update %s", i)
 

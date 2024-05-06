@@ -21,8 +21,6 @@ from ..util.log import timed
 
 from ..exception import ImproperlyConfigured
 from .. import mpi
-from enspara.cluster.util import *
-
 
 logger = logging.getLogger(__name__)
 
@@ -141,15 +139,15 @@ def hybrid(
         print(int_indcs)
         print(np.shape(int_assigs))
         with timed("Wrote kcenters center indices in %.2f sec.", logger.info):
-            write_centers_indices(
+            util.write_centers_indices(
                 args.center_indices,
                 [(t, f * args.subsample) for t, f in int_indcs],
                 intermediate_n=f'kcenters')
 
         with timed("Wrote kcenters center structures in %.2f sec.", logger.info):
-            write_centers(int_result, args, intermediate_n=f'kcenters')
+            util.write_centers(int_result, args, intermediate_n=f'kcenters')
 
-        write_assignments_and_distances_with_reassign(int_result, args, 
+        util.write_assignments_and_distances_with_reassign(int_result, args, 
             intermediate_n=f'kcenters')
 
     if n_iters > 0:
