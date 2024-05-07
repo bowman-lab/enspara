@@ -1,0 +1,13 @@
+name: enspara
+channels:
+  - conda-forge
+dependencies:
+  # Core
+  - python
+  - numpy
+  - mdtraj
+  - scipy
+  - cython
+  - pytest
+  - matplotlib
+  - pandas
