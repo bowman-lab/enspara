@@ -54,4 +54,4 @@ jobs:
     - name: Run tests
       if: always()
       run: |
-        pytest -m 'not mpi' test/
+        pytest -m 'not mpi' ./enspara/test/
