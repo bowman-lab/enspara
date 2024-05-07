@@ -52,8 +52,7 @@ jobs:
       run: |
         micromamba info
         micromamba list
-
-  test:
+        
     - name: Run non-MPI tests
       if: always()
       run: |
