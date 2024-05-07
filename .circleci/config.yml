@@ -37,7 +37,7 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
-    - name: Build
+    - name: build
       uses: mamba-org/setup-micromamba@v1
       with:
         environment-file: environment.yaml
@@ -52,7 +52,7 @@ jobs:
       run: |
         micromamba info
         micromamba list
-        
+
     - name: Run non-MPI tests
       if: always()
       run: |
