@@ -1,21 +1,21 @@
-# Python CircleCI 2.0 configuration file
-#
-# Check https://circleci.com/docs/2.0/language-python/ for more details
-#
-version: 2.0
+name: CI
 
-workflows:
-  version: 2
+defaults:
+  run:
+    shell: bash -l {0}
+
+jobs:
   test:
-    jobs:
-      runs-on: ${{ matrix.os }}
-
-        matrix:
-          os:
-            - ubuntu-latest
-
-          python-version:
-            - "3.10"
+    runs-on: ${{ matrix.os }}
+      matrix:
+        os:
+          # - macOS-latest  # arm64
+          # - macOS-13  # x86-64
+          - ubuntu-latest
+        python-version:
+          - "3.10"
+          # - "3.11"
+          # - "3.12"
   
     steps:
     - uses: actions/checkout@v4
