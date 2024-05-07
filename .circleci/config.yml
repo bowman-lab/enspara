@@ -9,29 +9,11 @@ workflows:
   test:
     jobs:
       - conda-py3.9-np1.21
-      #- conda-py3.5-np1.15
-      # conda-py3.6-np1.14
-      #- conda-py3.5-np1.14
-      # conda-py3.7-np1.15
-      # conda-py3.6-np1.16
-      # conda-py3.7-np1.16
-      #- pip-py3.5-np1.14
-      #- pip-py3.5-np1.15
-      #- pip-py3.5-np1.16
-      #- pip-py3.5-np1.17
-      # pip-py3.6-np1.14
-      #- pip-py3.6-np1.15
-      #- pip-py3.6-np1.16
-      #- pip-py3.6-np1.17
-      #- pip-py3.7-np1.14
-      #- pip-py3.7-np1.15
-      #- pip-py3.7-np1.16
-      #- pip-py3.7-np1.17
       - pip-py3.9-np1.20
       
 test-template-pip: &test-template-pip
   docker:
-    - image: ubuntu:bionic
+    - image: cimg/base
   steps:
     - checkout
     - run:
@@ -51,7 +33,7 @@ test-template-pip: &test-template-pip
           export PATH=/opt/python/bin:$PATH
           pip3 install --user --progress-bar off numpy==$NUMPY_VERSION cython==$CYTHON_VERSION
           pip3 install --user --progress-bar off --no-use-pep517 mdtraj
-          pip3 install --user --progress-bar off nose
+          pip3 install --user --progress-bar off pytest
           python3 --version
           python3 -c "import numpy; print('numpy', numpy.__version__)"
           pip3 freeze | grep mdtraj
@@ -92,7 +74,7 @@ test-template-pip: &test-template-pip
      
 test-template-conda: &test-template-anaconda
   docker:
-    - image: ubuntu:bionic
+    - image: cimg/base
   steps:
     - checkout
     - run:
@@ -126,7 +108,7 @@ test-template-conda: &test-template-anaconda
           source activate myenv
           conda install --yes pip
           conda install --yes -c conda-forge numpy=$NUMPY_VERSION cython=$CYTHON_VERSION
-          conda install --yes -c conda-forge nose mdtraj  
+          conda install --yes -c conda-forge pytest mdtraj  
           python --version
           python -c "import numpy; print(numpy.__version__)"
 
@@ -175,7 +157,43 @@ jobs:
        NUMPY_VERSION: 1.21
        CYTHON_VERSION: 3.0
        PYTHON_VERSION: 3.9
-        
+  conda-py3.9-np1.22:
+     <<: *test-template-anaconda
+     environment:
+       NUMPY_VERSION: 1.22
+       CYTHON_VERSION: 3.0
+       PYTHON_VERSION: 3.9
+  conda-py3.9-np1.23:
+     <<: *test-template-anaconda
+     environment:
+       NUMPY_VERSION: 1.23
+       CYTHON_VERSION: 3.0
+       PYTHON_VERSION: 3.9
+  conda-py3.9-np1.24:
+     <<: *test-template-anaconda
+     environment:
+       NUMPY_VERSION: 1.24
+       CYTHON_VERSION: 3.0
+       PYTHON_VERSION: 3.9
+  conda-py3.9-np1.25:
+     <<: *test-template-anaconda
+     environment:
+       NUMPY_VERSION: 1.25
+       CYTHON_VERSION: 3.0
+       PYTHON_VERSION: 3.9 
+  conda-py3.10-np1.26:
+     <<: *test-template-anaconda
+     environment:
+       NUMPY_VERSION: 1.26
+       CYTHON_VERSION: 3.0
+       PYTHON_VERSION: 3.10
+  conda-py3.11-np1.26:
+     <<: *test-template-anaconda
+     environment:
+       NUMPY_VERSION: 1.26
+       CYTHON_VERSION: 3.0
+       PYTHON_VERSION: 3.11
+
   # pip-py3.9-np1.20:
   #   <<: *test-template-pip
   #   docker:
@@ -190,6 +208,6 @@ jobs:
     docker:
       - image: cimg/python:3.9
     environment:
-      NUMPY_VERSION: 1.20
+      NUMPY_VERSION: 1.20.0
       CYTHON_VERSION: 3.0
       PYTHON_VERSION: 3.9
