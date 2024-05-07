@@ -44,7 +44,8 @@ jobs:
 
     - name: Install package
       run: |
-        python -m pip install .
+        mamba activate enspara
+        python -m pip install -e .
 
     - name: Environment Information
       run: |
