@@ -8,7 +8,7 @@ workflows:
   version: 2
   test:
     jobs:
-      - conda-py3.9-np1.20
+      - conda-py3.9-np1.21
       #- conda-py3.5-np1.15
       # conda-py3.6-np1.14
       #- conda-py3.5-np1.14
