@@ -1,8 +1,7 @@
 [![DOI:10.1007/978-3-319-76207-4_15](https://zenodo.org/badge/DOI/10.1063/1.5063794@jcp.2019.MMMK.issue-1.svg)]( https://doi.org/10.1063/1.5063794@jcp.2019.MMMK.issue-1)
 
-.. image:: https://github.com/bowman-lab/enspara/actions/workflows/config.yml/badge.svg
-   :target: https://github.com/bowman-lab/enspara/actions/workflows/config.yml
-   :alt: Build Status
+[![Build Status](https://github.com/bowman-lab/enspara/actions/workflows/config.yml/badge.svg)](https://github.com/bowman-lab/enspara/actions/)
+
 
 # enspara
 MSMs at Scale 
@@ -18,6 +17,15 @@ Porter, J.R., Zimmerman, M.I. and Bowman, G.R., 2019. [Enspara: Modeling molecul
 Installation is documented [here](https://enspara.readthedocs.io/en/latest/installation.html).
 
 Current installation instructions are (using mamba):
+
+```
+git clone https://github.com/bowman-lab/enspara
+mamba env create -f environment.yaml
+cd enspara
+pip install -e .
+```
+
+Alternatively, you can install packages directly:
 
 ```
 git clone https://github.com/bowman-lab/enspara
