@@ -1,4 +1,4 @@
-Sphinx==1.6.4
-sphinx-rtd-theme==0.2.4
-sphinxcontrib-websupport==1.0.1
-numpydoc==0.7.0
+Sphinx==5.0.2
+sphinx-rtd-theme==2.0.0
+#sphinxcontrib-websupport==1.0.1
+#numpydoc==0.7.0

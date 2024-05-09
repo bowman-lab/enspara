@@ -1,4 +1,8 @@
-[![DOI:10.1007/978-3-319-76207-4_15](https://zenodo.org/badge/DOI/10.1063/1.5063794@jcp.2019.MMMK.issue-1.svg)]( https://doi.org/10.1063/1.5063794@jcp.2019.MMMK.issue-1) [![Circle CI](https://circleci.com/gh/bowman-lab/enspara.svg?style=svg)](https://circleci.com/gh/bowman-lab/enspara)
+[![DOI:10.1007/978-3-319-76207-4_15](https://zenodo.org/badge/DOI/10.1063/1.5063794@jcp.2019.MMMK.issue-1.svg)]( https://doi.org/10.1063/1.5063794@jcp.2019.MMMK.issue-1)
+
+.. image:: https://github.com/bowman-lab/enspara/actions/workflows/config.yml/badge.svg
+   :target: https://github.com/bowman-lab/enspara/actions/workflows/config.yml
+   :alt: Build Status
 
 # enspara
 MSMs at Scale 

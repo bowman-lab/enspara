@@ -1,9 +1,10 @@
 smFRET predictions
-==========
+======================
 
 :code:`enspara` enables prediction of smFRET results from Markov State models.
-Accordingly, you will need to have clustered your data (see :doc:`clustering </clustering>`)
-and built an appropriate MSM (see :doc: `Fitting-an-MSM </./tutorial/fitting>`).
+Accordingly, you will need to have clustered your data (see  
+:doc:`clustering </clustering>`,  
+and built an appropriate MSM (see :doc:`Fitting-an-MSM </./tutorial/fitting>`).
 
 You will also need to acquire either point clouds of MSMs of the dyes you wish
 to model. We have deposited some dye MSMs `here <https://osf.io/82xtd/?view_only=b7f354e86eb144a69d9d047b42e21a9f>`_ for general use.
@@ -12,7 +13,7 @@ Once you are satisfied with your MSMs, you may predict smFRET results from them.
 
 There are two levels of detail available for use:
 
-1. :ref:`Apps <smFRET-app>`. smFRET prediction code is availiable in a 
+1. :ref:`Apps <smFRET-app>`. smFRET prediction code is available in a 
 command-line application that is capable of handling much of the bookkeeping
 necessary.
 
@@ -46,7 +47,7 @@ additional dye MSMs
 
 
 Predicting smFRET using dye MSMs
-~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 smFRET calculations are parallelized using pool. It is generally fairly fast,
 but MPI implementation has not been implemented yet. Scaling to many cluster centers
@@ -153,7 +154,7 @@ of shape (n_bursts, n_photons).
 occured when the protein was labeled.
 
 Predicting smFRET using dye point clouds
-~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 smFRET calculations are parallelized using pool. It is generally fairly fast,
 but MPI implementation has not been implemented yet. Scaling to many cluster centers
