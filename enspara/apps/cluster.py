@@ -46,16 +46,15 @@ except ModuleNotFoundError:
         datefmt='%m-%d-%Y %H:%M:%S')
     mpi_mode = False
 
-from enspara.apps.reassign import reassign
 from enspara.apps.util import readable_dir
 
 from enspara import mpi
-from enspara.cluster import KHybrid, KCenters
+from enspara.cluster import KHybrid, KCenters, KMedoids
 from enspara import ra
 from enspara.util import load_as_concatenated
 from enspara.util.log import timed
 from enspara.util.parallel import auto_nprocs
-from enspara.cluster.util import load_frames, partition_indices, ClusterResult
+from enspara.cluster import util 
 
 from enspara.geometry import libdist
 
@@ -71,6 +70,11 @@ def process_command_line(argv):
 
     FEATURE_DISTANCES = ['euclidean', 'manhattan']
     TRAJECTORY_DISTANCES = ['rmsd']
+    ALGORITHMS = {
+                  'kcenters': KCenters,
+                  'khybrid': KHybrid,
+                  'kmedoids': KMedoids
+}
 
     parser = argparse.ArgumentParser(
         prog='cluster',
@@ -99,7 +103,8 @@ def process_command_line(argv):
     # PARAMETERS
     cluster_args = parser.add_argument_group("Clustering Settings")
     cluster_args.add_argument(
-        '--algorithm', required=True, choices=["khybrid", "kcenters"],
+        '--algorithm', required=True,
+        choices=["khybrid", "kcenters", "kmedoids"],
         help="The clustering algorithm to use.")
     cluster_args.add_argument(
         '--atoms', action="append",
@@ -125,7 +130,21 @@ def process_command_line(argv):
         "--cluster-iterations", default=None, type=int,
         help="The number of refinement iterations to perform. This is only "
              "relevant to khybrid clustering.")
-
+    cluster_args.add_argument(
+        "--save_intermediates", default=False, type=bool,
+        help="Save intermediate clustering results when doing khybrid? ")
+    cluster_args.add_argument(
+        "--init-center-inds", default=None, type=str,
+        help="Path to a .npy file that is a list giving the position of "
+             "each cluster center in traj. Useful for restarting clustering.")
+    cluster_args.add_argument(
+        "--init-assignments", default=None, type=str,
+        help="Path to an .h5 file that indicates which cluster center each "
+             "data point is closest to. Useful for restarting clustering")
+    cluster_args.add_argument(
+        "--init-distances", default=None, type=str,
+        help="Path to an .h5 file that indicates how far each data point is"
+             "to its cluster center. Useful for restarting clustering")
     cluster_args.add_argument(
         '--subsample', default=1, type=int,
         help="Take only every nth frame when loading trajectories. "
@@ -154,7 +173,7 @@ def process_command_line(argv):
     args = parser.parse_args(argv[1:])
 
     if args.features:
-        args.features = expand_files([args.features])[0]
+        args.features = util.expand_files([args.features])[0]
 
         if args.cluster_distance in FEATURE_DISTANCES:
             args.cluster_distance = getattr(libdist, args.cluster_distance)
@@ -185,7 +204,7 @@ def process_command_line(argv):
                 "features.")
 
     elif args.trajectories and args.topologies:
-        args.trajectories = expand_files(args.trajectories)
+        args.trajectories = util.expand_files(args.trajectories)
 
         if not args.cluster_distance or args.cluster_distance == 'rmsd':
             args.cluster_distance = md.rmsd
@@ -220,14 +239,26 @@ def process_command_line(argv):
             "At least one of --cluster-radius and --cluster-number is "
             "required to cluster.")
 
-    if args.algorithm == 'kcenters':
-        args.Clusterer = KCenters
+    args.Clusterer = ALGORITHMS[args.algorithm]
+    if args.Clusterer is KCenters:
         if args.cluster_iterations is not None:
             raise exception.ImproperlyConfigured(
                 "--cluster-iterations only has an effect when using an "
                 "interative clustering scheme (e.g. khybrid).")
-    elif args.algorithm == 'khybrid':
-        args.Clusterer = KHybrid
+    if args.Clusterer is KMedoids:
+        if args.cluster_radius is not None:
+            raise exception.ImproperlyConfigured(
+                "--cluster-radius only has an effect when using kcenters"
+                " or khybrid.")
+    else:
+        restart_arg_names = [args.init_center_inds, args.init_distances,
+            args.init_assignments]
+        for name in restart_arg_names:
+            if name:
+                raise exception.ImproperlyConfigured(
+                    "--init-center-inds, --init-distances, and"
+                    "--init-assignments are only implemented for kmedoids")
+
 
     if args.no_reassign and args.subsample == 1:
         logger.warn("When subsampling is 1 (or unspecified), "
@@ -253,219 +284,51 @@ def process_command_line(argv):
     return args
 
 
-def expand_files(pgroups):
-    expanded_pgroups = []
-    for pgroup in pgroups:
-        expanded_pgroups.append([])
-        for p in pgroup:
-            expanded_pgroups[-1].extend(sorted(glob(p)))
-    return expanded_pgroups
-
-
-def load_features(features, stride):
-    try:
-        if len(features) == 1:
-            with timed("Loading features took %.1f s.", logger.info):
-                lengths, data = mpi.io.load_h5_as_striped(features[0], stride)
-
-        else:  # and len(features) > 1
-            with timed("Loading features took %.1f s.", logger.info):
-                lengths, data = mpi.io.load_npy_as_striped(features, stride)
-
-        with timed("Turned over array in %.2f min", logger.info):
-            tmp_data = data.copy()
-            del data
-            data = tmp_data
-    except MemoryError:
-        logger.error(
-            "Ran out of memory trying to allocate features array"
-            " from file %s", features[0])
-        raise
-
-    logger.info("Loaded %s trajectories with %s frames with stride %s.",
-                len(lengths), len(data), stride)
-
-    return lengths, data
-
-
-def load_trajectories(topologies, trajectories, selections, stride, processes):
-
-    for top, selection in zip(topologies, selections):
-        sentinel_trj = md.load(top)
-        try:
-            # noop, but causes fast-fail w/bad args.atoms
-            sentinel_trj.top.select(selection)
-        except:
-            raise exception.ImproperlyConfigured((
-                "The provided selection '{s}' didn't match the topology "
-                "file, {t}").format(s=selection, t=top))
-
-    flat_trjs = []
-    configs = []
-    n_inds = None
-
-    for topfile, trjset, selection in zip(topologies, trajectories,
-                                          selections):
-        top = md.load(topfile).top
-        indices = top.select(selection)
-
-        if n_inds is not None:
-            if n_inds != len(indices):
-                raise exception.ImproperlyConfigured(
-                    ("Selection on topology %s selected %s atoms, but "
-                     "other selections selected %s atoms.") %
-                    (topfile, len(indices), n_inds))
-        n_inds = len(indices)
-
-        for trj in trjset:
-            flat_trjs.append(trj)
-            configs.append({
-                'top': top,
-                'stride': stride,
-                'atom_indices': indices,
-            })
-
-    logger.info(
-        "Loading %s trajectories with %s atoms using %s processes "
-        "(subsampling %s)",
-        len(flat_trjs), len(top.select(selection)), processes, stride)
-    assert len(top.select(selection)) > 0, "No atoms selected for clustering"
-
-    with timed("Loading took %.1f sec", logger.info):
-        lengths, xyz = mpi.io.load_trajectory_as_striped(
-            flat_trjs, args=configs, processes=auto_nprocs())
-
-    with timed("Turned over array in %.2f min", logger.info):
-        tmp_xyz = xyz.copy()
-        del xyz
-        xyz = tmp_xyz
-
-    logger.info("Loaded %s frames.", len(xyz))
-
-    return lengths, xyz, top.subset(top.select(selection))
-
-
-def load_asymm_frames(center_indices, trajectories, topology, subsample):
-
-    frames = []
-    begin_index = 0
-    for topfile, trjset in zip(topology, trajectories):
-        end_index = begin_index + len(trjset)
-        target_centers = [c for c in center_indices
-                          if begin_index <= c[0] < end_index]
-
-        try:
-            subframes = load_frames(
-                list(itertools.chain(*trajectories)),
-                target_centers,
-                top=md.load(topfile).top,
-                stride=subsample)
-        except exception.ImproperlyConfigured:
-            logger.error('Failure to load cluster centers %s for topology %s',
-                         topfile, target_centers)
-            raise
-
-        frames.extend(subframes)
-        begin_index += len(trjset)
-
-    return frames
-
-
-def load_trjs_or_features(args):
-
-    if args.features:
-        with timed("Loading features took %.1f s.", logger.info):
-            lengths, data = load_features(args.features, stride=args.subsample)
-    else:
-        assert args.trajectories
-        assert len(args.trajectories) == len(args.topologies)
-
-        targets = {os.path.basename(topf): "%s files" % len(trjfs)
-                   for topf, trjfs
-                   in zip(args.topologies, args.trajectories)
-                   }
-        logger.info("Beginning clustering; targets:\n%s",
-                    json.dumps(targets, indent=4))
-
-        with timed("Loading trajectories took %.1f s.", logger.info):
-            lengths, xyz, select_top = load_trajectories(
-                args.topologies, args.trajectories, selections=args.atoms,
-                stride=args.subsample, processes=auto_nprocs())
-
-        logger.info("Clustering using %s atoms matching '%s'.", xyz.shape[1],
-                    args.atoms)
-
-        # md.rmsd requires an md.Trajectory object, so wrap `xyz` in
-        # the topology.
-        data = md.Trajectory(xyz=xyz, topology=select_top)
-
-    return lengths, data
-
-
-def write_centers_indices(path, indices):
-    if path:
-        with open(path, 'wb') as f:
-            np.save(f, indices)
-    else:
-        logger.info("--center-indices not provided, not writing center "
-                    "indices to file.")
-
-
-def write_centers(result, args):
-    if args.features:
-        np.save(args.center_features, result.centers)
-    else:
-        outdir = os.path.dirname(args.center_features)
-        logger.info("Saving cluster centers at %s", outdir)
-
-        try:
-            os.makedirs(outdir)
-        except FileExistsError:
-            pass
-
-        centers = load_asymm_frames(result.center_indices, args.trajectories,
-                                    args.topologies, args.subsample)
-        with open(args.center_features, 'wb') as f:
-            pickle.dump(centers, f)
-
-
-def write_assignments_and_distances_with_reassign(result, args):
-    if args.subsample == 1:
-        logger.debug("Subsampling was 1, not reassigning.")
-        ra.save(args.distances, result.distances)
-        ra.save(args.assignments, result.assignments)
-    elif not args.no_reassign:
-        logger.debug("Reassigning data from subsampling of %s", args.subsample)
-        assig, dist = reassign(
-            args.topologies, args.trajectories, args.atoms,
-            centers=result.centers)
-
-        ra.save(args.distances, dist)
-        ra.save(args.assignments, assig)
-    else:
-        logger.debug("Got --no-reassign, not doing reassigment")
-
-
 def main(argv=None):
 
     args = process_command_line(argv)
 
     # note that in MPI mode, lengths will be global, whereas data will
     # be local (i.e. only this node's data).
-    lengths, data = load_trjs_or_features(args)
+    lengths, data = util.load_trjs_or_features(args)
 
     kwargs = {}
     if args.cluster_iterations is not None:
-        kwargs['kmedoids_updates'] = int(args.cluster_iterations)
+        if args.Clusterer is KHybrid:
+            kwargs['kmedoids_updates'] = int(args.cluster_iterations)
+        elif args.Clusterer is KMedoids:
+            kwargs['n_iters'] = int(args.cluster_iterations)
+        if args.Clusterer is not KCenters:
+            kwargs['args']=args
+            kwargs['lengths']=lengths
+
+    #kmedoids doesn't need a cluster radius, but kcenters does
+    if args.cluster_radius is not None:
+        kwargs['cluster_radius']=args.cluster_radius
+        kwargs['mpi_mode']=mpi_mode
 
     clustering = args.Clusterer(
         metric=args.cluster_distance,
         n_clusters=args.cluster_number,
-        cluster_radius=args.cluster_radius,
-        mpi_mode=mpi_mode,
         **kwargs)
-
-    clustering.fit(data)
+    
+    # Note to self: Need to implement restarts for KCenters as well
+    kwargs_restart = {}
+    if args.Clusterer is KMedoids:
+        if args.init_distances:
+            _, kwargs_restart['distances'] = \
+                 mpi.io.load_h5_as_striped(args.init_distances)
+        if args.init_assignments:
+            kwargs_restart['X_lengths'], kwargs_restart['assignments'] = \
+                mpi.io.load_h5_as_striped(args.init_assignments)
+        if args.save_intermediates:
+            kwargs_restart['args']=args
+        if args.init_center_inds:
+            kwargs_restart['cluster_center_inds'] = \
+                np.load(args.init_center_inds) 
+        clustering.fit(data,**kwargs_restart)
+    else:
+        clustering.fit(data)
     # release the RAM held by the trajectories (we don't need it anymore)
     del data
 
@@ -486,7 +349,7 @@ def main(argv=None):
                 local_assigs, lengths)
             ctr_inds = mpi.ops.convert_local_indices(local_ctr_inds, lengths)
 
-        result = ClusterResult(
+        result = util.ClusterResult(
             center_indices=ctr_inds,
             distances=all_dists,
             assignments=all_assigs,
@@ -495,12 +358,12 @@ def main(argv=None):
 
     if mpi.rank() == 0:
         with timed("Wrote center indices in %.2f sec.", logger.info):
-            write_centers_indices(
+            util.write_centers_indices(
                 args.center_indices,
                 [(t, f * args.subsample) for t, f in result.center_indices])
         with timed("Wrote center structures in %.2f sec.", logger.info):
-            write_centers(result, args)
-        write_assignments_and_distances_with_reassign(result, args)
+            util.write_centers(result, args)
+        util.write_assignments_and_distances_with_reassign(result, args)
 
     mpi.comm.barrier()
 
