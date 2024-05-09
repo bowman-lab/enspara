@@ -118,6 +118,9 @@ def process_command_line(argv):
     calc_lts_param_args.add_argument(
         '--output_dir', required=False, action=readable_dir, default='./',
         help="Location to write output to.")
+    calc_lts_param_args.add_argument(
+        '--dye_timefactor', type=float, required=False, default=1,
+        "Time factor by which dye dynamics evolve faster than experiment.")
 
 
     ###########################
@@ -220,10 +223,12 @@ def main(argv=None):
             prot_traj = md.load(args.prot_centers, top=args.prot_top)
 
         for resSeq in resSeqs:
+            dye_timestep = args.dye_lagtime * args.dye_timefactor
+
             func = partial(dye_lifetimes.calc_lifetimes, d_centers=d_centers, d_tcounts=d_tcounts,
             a_centers=a_centers, a_tcounts=a_tcounts, resSeqs=resSeq, 
             dyenames=[args.donor_name, args.acceptor_name],
-            dye_lagtime=args.dye_lagtime, n_samples=args.n_samples, outdir=args.output_dir, 
+            dye_lagtime=dye_timestep, n_samples=args.n_samples, outdir=args.output_dir, 
             save_dye_trj=args.save_dtrj, save_dye_msm=args.save_dmsm)
 
             print(f'Starting pool for resSeq {resSeq}.', flush=True)
