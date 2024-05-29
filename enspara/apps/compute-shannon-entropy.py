@@ -56,6 +56,21 @@ logger.setLevel(logging.INFO)
 def process_command_line(argv):
     """Parse the command line and do a first-pass on processing them into a
     format appropriate for the rest of the script.
+
+    Parameters
+    ----------
+    argv : list of str
+        The command line arguments.
+
+    Returns
+    -------
+    args : argparse.Namespace
+        The parsed arguments.
+
+    Raises
+    ------
+    exception.ImproperlyConfigured
+        If the buffer size is not between 0 and 360.
     """
     parser = argparse.ArgumentParser(
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -108,6 +123,21 @@ def process_command_line(argv):
 
 def load_trajs(args):
     """ Creates a generator object that is passed onto the CARDS framework.
+
+    Parameters
+    ----------
+    args : argparse.Namespace
+        The parsed arguments.
+
+    Returns
+    -------
+    gen : generator
+        A generator object that yields the loaded trajectories.
+
+    Raises
+    ------
+    exception.ImproperlyConfigured
+        If the number of trajectories and topologies do not match.
     """
     trajectories = args.trajectories
     topology = args.topology[0]
@@ -125,6 +155,16 @@ def load_trajs(args):
 def compute_rotamer_counts(rotamers): 
     """Use existing framework of computing joint counts matrices
     to compute the rotamer counts for each dihedral across each trajectory.
+
+    Parameters
+    ----------
+    rotamers : RotamerFeaturizer
+        The RotamerFeaturizer object from the CARDS framework.
+
+    Returns
+    -------
+    final_counts : np.array
+        The final counts for each dihedral across all trajectories.
     """
     jc = None
     feature_trajs = rotamers.feature_trajectories_
@@ -156,6 +196,16 @@ def compute_rotamer_counts(rotamers):
 
 def compute_dihedral_shannon_entropy(probs):
     """Computes a shannon entropy for every dihedral in the simulation set. 
+
+    Parameters
+    ----------
+    probs : np.array
+        The probability distribution for each dihedral.
+
+    Returns
+    -------
+    entropy_values : np.array
+        The entropy values for each dihedral.
     """
     num_dihedrals = probs.shape[0]
 
@@ -169,6 +219,20 @@ def compute_dihedral_shannon_entropy(probs):
 
 def sum_dihedral_entropies(dihedral_entropies, resi_mapping, n_resis):
     """This sums the dihedral entropies into an array of per-residue entropies.
+
+    Parameters
+    ----------
+    dihedral_entropies : np.array
+        The entropies for each dihedral.
+    resi_mapping : np.array
+        The mapping of each dihedral to a residue.
+    n_resis : int
+        The number of residues in the system.
+
+    Returns
+    -------
+    summed_entropies : np.array
+        The summed entropies for each residue.
     """
     summed_entropies = np.zeros(n_resis)
     for i in range(n_resis):
@@ -180,6 +244,14 @@ def compute_channel_capacities(n_states_array, resi_list, n_resis):
     """This computes the maximum possible entropy any one residue can have, based on 
     the number of dihedrals it has and the number of states each dihedral can adopt.
 
+    Parameters
+    ----------
+    n_states_array : np.array
+        The number of states for each dihedral.
+    resi_list : np.array
+        The mapping of each dihedral to a residue.
+    n_resis : int
+        The number of residues in the system.
     """
     # The maximum possible entropy for any one residue is 
     # np.sum(n*log(b)) where there are n total dihedrals and each dihedral has b states
@@ -199,6 +271,24 @@ def compute_residue_shannon_entropies(
     dihedral_entropies, topologyFile, atom_inds, n_states):
     """Compiles the dihedral level entropies into a single list of per-residue 
     Shannon entropies. Returns both as separate arrays.
+
+    Parameters
+    ----------
+    dihedral_entropies : np.array
+        The entropies for each dihedral.
+    topologyFile : str
+        The topology file for the system.
+    atom_inds : np.array
+        The atom indices for each dihedral.
+    n_states : np.array
+        The number of states for each dihedral.
+
+    Returns
+    -------
+    normalized_entropies : np.array
+        The normalized Shannon entropies for each residue.  
+    resi_list : np.array
+        The list of unique residues in the system.
     """
 
     # First we need to load our topology for matching up residues
@@ -241,7 +331,21 @@ def compute_residue_shannon_entropies(
 
 def compute_shannon_entropies(args, trj_list):
     """Main modular method which takes arguments and computes the final per-residue
-    Shannon entropy for saving. 
+    Shannon entropy for saving.
+
+    Parameters
+    ----------
+    args : argparse.Namespace
+        The parsed arguments.
+    trj_list : generator
+        A generator object that yields the loaded trajectories.
+
+    Returns
+    -------
+    residue_entropy : np.array
+        The final per-residue entropies.
+    resi_list : np.array
+        The list of unique residues in the system.
     """
     trajectories = args.trajectories
     topology = args.topology[0]
@@ -278,6 +382,20 @@ def compute_shannon_entropies(args, trj_list):
 def save_all_entropies(entropies, residues, fileName):
     """Saves the final per-residue entropies as a CSV file with the corresponding
     residue ID. 
+
+    Parameters
+    ----------
+    entropies : np.array
+        The per-residue entropies.
+    residues : np.array
+        The list of unique residues in the system.
+    fileName : str
+        The name of the file to save the entropies to.
+
+    Returns
+    -------
+    int
+        0 if the file was saved successfully.
     """
     final_entropy_data = np.vstack((residues, entropies)).T
 
@@ -290,12 +408,28 @@ def save_all_entropies(entropies, residues, fileName):
 def main(argv=None):
     """Run the driver script for this module. This code only runs if we're
     being run as a script. Otherwise, it's silent and just exposes methods.
+    
+    Parameters
+    ----------
+    argv : list of str
+        The command line arguments.
+        
+    Returns
+    -------
+    int
+        The return code.
+
+    Raises
+    ------
+    exception.ImproperlyConfigured
+        If the buffer size is not between 0 and 360.
     """
     args = process_command_line(argv)
-
+    
+    logger.info("Loading trajectories...")
     trj_list = load_trajs(args)
 
-    with timed("Calculating CARDS correlations took %.1f s.", logger.info):
+    with timed("Calculating Shannon entropy took %.1f s.", logger.info):
         entropies, residues = compute_shannon_entropies(args, trj_list)
 
     logger.info("Completed entropy calculation. ")
