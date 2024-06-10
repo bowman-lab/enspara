@@ -112,7 +112,20 @@ def process_command_line(argv):
 
 
 def load_trajectory_generator(trajectories, topology):
+    """Load a list of trajectories and return a generator object that can be passed to the CARDS framework.
+    
+    Parameters
+    ----------
+    trajectories : list
+        List of trajectory files to load.
+    topology : str
+        Path to the topology file.
 
+    Returns
+    -------
+    generator
+        A generator object that can be passed to the CARDS framework.
+    """
     for i,t in enumerate(trajectories):
         logger.info('loading '+str(t))
         yield md.load(t, top=topology)
@@ -121,6 +134,16 @@ def load_trajectory_generator(trajectories, topology):
 
 def load_trajs(args):
     """ Creates a generator object that can be then passed to the CARDS framework.
+
+    Parameters
+    ----------
+    args : argparse.Namespace
+        The parsed command line arguments.
+
+    Returns
+    -------
+    generator
+        A generator object that can be passed to the CARDS framework.
     """
     trajectories = args.trajectories[0]
     topology = args.topology[0]
@@ -140,6 +163,24 @@ def load_trajs(args):
 
 def save_cards(ss_mi, dd_mi, sd_mi, ds_mi, outputName):
     """Save the four cards matrices as a single pickle file
+
+    Parameters
+    ----------
+    ss_mi : numpy.ndarray
+        The Struc_struc_MI matrix.
+    dd_mi : numpy.ndarray
+        The Disorder_disorder_MI matrix.
+    sd_mi : numpy.ndarray
+        The Struc_disorder_MI matrix.
+    ds_mi : numpy.ndarray
+        The Disorder_struc_MI matrix.
+    outputName : str
+        The path to save the matrices.
+
+    Returns
+    -------
+    int
+        Returns 0 if the matrices were saved successfully.
     """
 
     #final_mats = [ss_mi, dd_mi, sd_mi, ds_mi]
@@ -162,6 +203,16 @@ def save_cards(ss_mi, dd_mi, sd_mi, ds_mi, outputName):
 def main(argv=None):
     """Run the driver script for this module. This code only runs if we're
     being run as a script. Otherwise, it's silent and just exposes methods.
+
+    Parameters
+    ----------
+    argv : list
+        The command line arguments to parse. If None, defaults to sys.argv.
+
+    Returns
+    -------
+    int
+        Returns 0 if the script ran successfully.
     """
     args = process_command_line(argv)
 
