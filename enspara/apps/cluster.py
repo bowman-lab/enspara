@@ -182,10 +182,6 @@ def process_command_line(argv):
                 "The given distance (%s) is not compatible with features." %
                 args.cluster_distance)
 
-        if args.subsample != 1 and len(args.features) == 1:
-                raise exception.ImproperlyConfigured(
-                    "Subsampling is not supported for h5 inputs.")
-
         # TODO: not necessary if mutually exclusvie above works
         if args.trajectories:
             raise exception.ImproperlyConfigured(
@@ -333,8 +329,8 @@ def main(argv=None):
     del data
 
     logger.info(
-        "Clustered %s frames into %s clusters in %s seconds.",
-        sum(lengths), len(clustering.centers_), clustering.runtime_)
+        f"Clustered {sum(lengths)} frames into {len(clustering.centers_)} " 
+        f"clusters in {clustering.runtime_} seconds.")
 
     result = clustering.result_
     if mpi_mode:
