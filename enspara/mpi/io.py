@@ -50,8 +50,10 @@ def load_h5_as_striped(filename, stride=1):
                                   root=0)
         all_shapes = mpi.comm.bcast(all_shapes if mpi.rank() == 0 else None,
                                     root=0)
-    global_lengths = [s[0] for s in all_shapes]
 
+    #This is hacky way to get proper lengths with stride > 1, better way?
+    global_lengths = [1+np.floor(s[0]/stride).astype('int') for s in all_shapes]
+    print(global_lengths)
     if len(all_keys) == 2 and 'array' in all_keys and 'lengths' in all_keys:
         raise NotImplementedError(
             'Parallel loading of RaggedArrays that have been stored as '
