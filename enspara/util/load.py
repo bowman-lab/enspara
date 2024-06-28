@@ -94,7 +94,7 @@ def load_as_concatenated(filenames, lengths=None, processes=None,
     # configure arguments to md.load
     if kwargs and args:
         raise exception.ImproperlyConfigured(
-            "Additional unnamed args can only be supplied iff no "
+            "Additional unnamed args can only be supplied if no "
             "additonal keyword args are supplied")
     elif kwargs:
         args = [kwargs] * len(filenames)

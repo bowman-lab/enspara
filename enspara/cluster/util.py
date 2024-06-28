@@ -269,6 +269,7 @@ def load_frames(filenames, indices, **kwargs):
         List of loaded trajectories.
     """
 
+    #TO-DO: Add compression to pass multiple frames for the same filename?
     stride = kwargs.pop('stride', 1)
     if stride is None:
         stride = 1
@@ -323,6 +324,9 @@ def expand_files(pgroups):
 
 def load_features(features, stride):
     try:
+        #Make more flexible? Think about file extensions?
+        #Providing a single np array theoretically should work, but is
+        #pushed to h5 loader. Similarly, multiple h5s would push to npy?
         if len(features) == 1:
             with timed("Loading features took %.1f s.", logger.info):
                 lengths, data = mpi.io.load_h5_as_striped(features[0], stride)
@@ -528,9 +532,7 @@ def write_assignments_and_distances_with_reassign(result, args, intermediate_n=N
 
     elif not args.no_reassign:
         logger.debug("Reassigning data from subsampling of %s", args.subsample)
-        assig, dist = reassign(
-            args.topologies, args.trajectories, args.atoms,
-            centers=result.centers)
+        assig, dist = reassign_trjs_or_feats(args, centers=result.centers)
 
         if intermediate_n is not None:
             dists_dir = os.path.dirname(args.distances)
@@ -648,6 +650,19 @@ def batch_reassign(targets, centers, lengths, frac_mem, n_procs=None):
 
     return assignments, distances
 
+def reassign_trjs_or_feats(args, centers):
+    """Determine whether to reassign a set of trajectories or features
+    based on a subset of centers.
+    """
+
+    if args.topologies:
+        assig, dist = reassign(
+        args.topologies, args.trajectories, args.atoms,
+        centers) 
+    else:
+        assig, dist = reassign_feats(args.features, centers, args.cluster_distance)
+
+    return assig, dist
 
 def reassign(topologies, trajectories, atoms, centers, frac_mem=0.5):
     """Reassign a set of trajectories based on a subset of atoms and centers.
@@ -722,6 +737,54 @@ def reassign(topologies, trajectories, atoms, centers, frac_mem=0.5):
 
         assignments, distances = batch_reassign(
             targets, centers, lengths, frac_mem=frac_mem, n_procs=n_procs)
+
+    if all([len(assignments[0]) == len(a) for a in assignments]):
+        logger.info("Trajectory lengths are homogenous. Output will "
+                    "be np.ndarrays.")
+        assert all([len(distances[0]) == len(d) for d in distances])
+        return np.array(assignments), np.array(distances)
+    else:
+        logger.info("Trajectory lengths are heterogenous. Output will "
+                    "be ra.RaggedArrays.")
+        return ra.RaggedArray(assignments), ra.RaggedArray(distances)
+
+def reassign_feats(features, centers, distance_method):
+    """Reassign features based on a subset of atoms and centers.
+
+    Parameters
+    ----------
+    features : list of features arrays.
+    centers : List of np arrays of features representing the centers
+        to assign to. shape (n_centers, n_features)
+
+    Returns
+    ----------
+    assignments: ra or np array of center assignments for trajectory
+        shape (n_trajectories, n_frames)
+    distances : ra or np array, shape=(n_frames,)
+        The distance between each frame in `trajectory` and its assigned
+        frame in cluster_centers.
+    """
+
+    #TO-DO: implement batch loading?
+    n_procs = auto_nprocs()
+
+    with timed("Reassignment took %.1f seconds.", logger.info):
+        #If we become more flexible in above loader, be more flexible here.
+        #Can't use loader directly as it flattens everything.
+        if len(features) == 1:
+            data= ra.load(features[0])
+        else:
+            data = [np.load(feature) for feature in features]
+
+        #Do the reassignment
+        assignments = []
+        distances = []
+        for trajectory in data:
+            assigs, dists = assign_to_nearest_center(trajectory, 
+                centers, distance_method)
+            assignments.append(assigs)
+            distances.append(dists)
 
     if all([len(assignments[0]) == len(a) for a in assignments]):
         logger.info("Trajectory lengths are homogenous. Output will "
