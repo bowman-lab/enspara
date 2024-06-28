@@ -52,7 +52,7 @@ def load_h5_as_striped(filename, stride=1):
                                     root=0)
 
     #This is hacky way to get proper lengths with stride > 1, better way?
-    if stride!=1:
+    if stride != 1:
         global_lengths = [1+np.floor(s[0]/stride).astype('int') for s in all_shapes]
     else:
         global_lengths = [s[0] for s in all_shapes]
