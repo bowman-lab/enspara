@@ -14,7 +14,7 @@ def dihedral_angles(traj, dihedral_type):
     # transform so angles range from 0 to 360 instead of radians or -180 to 180
     angles = np.rad2deg(angles)
     angles[np.where(angles < 0)] += 360
-    angles[np.where(angles > 359.5)] = 359.5
+    angles[np.where(angles == 360)] = 0
 
     n_angles = angles.shape[1]
     ref_atom_inds = np.zeros(n_angles)
