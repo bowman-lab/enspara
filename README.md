@@ -20,8 +20,9 @@ Current installation instructions are (using mamba):
 
 ```
 git clone https://github.com/bowman-lab/enspara
-mamba env create -f environment.yaml
 cd enspara
+mamba env create -f environment.yaml
+mamba activate enspara
 pip install -e .
 ```
 
@@ -29,7 +30,7 @@ Alternatively, you can install packages directly:
 
 ```
 git clone https://github.com/bowman-lab/enspara
-mamba create -n enspara -c conda-forge cython numpy mdtraj scipy python=3.12
+mamba create -n enspara -c conda-forge cython numpy mdtraj scipy python=3.12 mpi4py
 mamba activate enspara
 cd enspara
 pip install -e .
