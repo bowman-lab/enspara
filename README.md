@@ -1,4 +1,4 @@
-[![DOI:10.1007/978-3-319-76207-4_15](https://zenodo.org/badge/DOI/10.1063/1.5063794@jcp.2019.MMMK.issue-1.svg)]( https://doi.org/10.1063/1.5063794@jcp.2019.MMMK.issue-1)
+[![DOI:10.1007/978-3-319-76207-4_15](https://zenodo.org/badge/DOI/10.1063/1.5063794.svg)]( https://doi.org/10.1063/1.5063794)
 
 [![Build Status](https://github.com/bowman-lab/enspara/actions/workflows/config.yml/badge.svg)](https://github.com/bowman-lab/enspara/actions/)
 
@@ -20,8 +20,9 @@ Current installation instructions are (using mamba):
 
 ```
 git clone https://github.com/bowman-lab/enspara
-mamba env create -f environment.yaml
 cd enspara
+mamba env create -f environment.yaml
+mamba activate enspara
 pip install -e .
 ```
 
@@ -29,7 +30,7 @@ Alternatively, you can install packages directly:
 
 ```
 git clone https://github.com/bowman-lab/enspara
-mamba create -n enspara -c conda-forge cython numpy mdtraj scipy python=3.12
+mamba create -n enspara -c conda-forge cython numpy mdtraj scipy python=3.12 mpi4py
 mamba activate enspara
 cd enspara
 pip install -e .
