@@ -1,5 +1,6 @@
 import numpy as np
 from enspara.geometry import explicit_r0_calc as r0c
+from enspara.geometry import dyes_from_expt_dist as dyes_exp_dist
 from enspara.msm import builders, synthetic_data
 from scipy.optimize import curve_fit
 from enspara.msm.transition_matrices import trim_disconnected
@@ -86,6 +87,87 @@ def calc_energy_transfer_prob(krad, k_non_rad, kRET, dt):
         all_probs = all_probs / all_probs.sum()
         
     return(all_probs.flatten())
+
+def explicit_static_dyes(d_name, a_name, d_eqs, a_eqs, d_centers, a_centers, 
+                            dye_params, dyelibrary, n_samples=1000, rng_seed=None):
+
+    """
+    Resolves dye excitations assuming dyes are static with positions determined by
+    equilibrium dye positions from the MSM.
+    Attributes
+    -------------- 
+    d_name : string,
+        Name of a flurophore in the enspara dye library
+    a_name : string,
+        Name of a flurophore in the enspara dye library
+    d_eqs : np.array,
+        Equilibrium probabilities from donor dye MSM. shape (n_states)
+    a_eqs : np.array,
+        Equilibrium probabilities from acceptor dye MSM. shape (n_states)
+    d_centers : md.Trajectory,
+        MDtraj trajectory of donor dye conformations. shape (n_states)
+    a_centers : md.Trajectory,
+        MDtraj trajectory of acceptor dye conformations. shape (n_states)
+    dye_params : tuple,
+        Dye-pair overlap, Dye quantum yield, Donor dye lifetime (absent acceptor)
+        Direct output of r0c.get_dye_overlap
+    dye_lagtime : float,
+        Lagtime for the dye MSMs in ns.
+    rng_seed : int, default = None
+        seed for numpy.random.default_rng (for testing)
+
+    Returns
+    ---------------
+    steps : int,
+        Number of dye MSM steps it took for decay to occur.
+    d_state : string,
+        How the dye decayed. radiative = donor emission, energy_transfer = FRET
+        non_radiative = no visible decay.
+    dtraj : np.array,
+        MSM centers visited by the donor dye while dye was excited. Shape, (n_states)
+    atraj : np.array,
+        MSM centers visited by the acceptor dye while donor was excited. Shape, (n_states)        
+    """
+
+    #Introduce a new random seed in each location otherwise pool with end up with the same seeds.
+    rng=np.random.default_rng(rng_seed)
+    
+    #Extract dye parameters, calculate constant transfer rates
+    J, Qd, Td = dye_params
+    
+    krad = Qd/Td #Constant
+    k_non_rad = (1/Td) - krad #Constant
+    
+    # Choose a random starting state
+    dstates=rng.choice(np.arange(len(d_eqs)), p=d_eqs, size=n_samples)
+    astates=rng.choice(np.arange(len(a_eqs)), p=a_eqs, size=n_samples)
+
+    # Convert centers to dye vectors
+    d_coords = r0c.assemble_dye_r_mu(d_centers, d_name, dyelibrary)
+    a_coords = r0c.assemble_dye_r_mu(a_centers, a_name, dyelibrary)
+
+    dye_outcomes = []
+
+    for dstate, astate in zip(dstates, astates):
+        #Calculate distance, k2, and R0 for the random dye states
+        k2, r = r0c.calc_k2_r(d_coords[dstate],a_coords[astate])
+        R0 = r0c.calc_R0(k2, Qd, J)
+
+        #Calculate a FRET efficiency based off of the distance and R0.
+        FE = dyes_exp_dist.FRET_efficiency(r, R0)
+
+        #Randomly choose whether it was a donor or acceptor emission based on transfer probability
+        #returns TRUE if random number is less than transfer probability
+        #This represents an acceptor emission
+        if rng.random() <= FE:
+            outcome='energy_transfer'
+        else:
+            outcome='radiative'
+
+        dye_outcomes.append([0, outcome]) #return a 0 for lifetime since we didn't calculate that..
+
+    return dye_outcomes
+
 
 
 def resolve_excitation(d_name, a_name, d_tprobs, a_tprobs, d_eqs, a_eqs, 
@@ -251,8 +333,8 @@ def make_dye_msm(centers, t_counts, pdb, resseq, dyename, dyelibrary,
     return(tprobs, eqs, dye_indicies)
 
 def calc_lifetimes(pdb_center_num, d_centers, d_tcounts, a_centers, a_tcounts, resSeqs, dyenames, 
-                   dye_lagtime, n_samples=1000, outdir='./', save_dye_trj=False, save_dye_msm=False,
-                   rng_seed=None):
+                   dye_lagtime, n_samples=1000, dye_dynamics = True, outdir='./', save_dye_trj=False,
+                   save_dye_msm=False, rng_seed=None):
 
     """
     Takes a protein pdb structure, dye trajectories/MSM, and labeling positions and calculates expected
@@ -280,7 +362,9 @@ def calc_lifetimes(pdb_center_num, d_centers, d_tcounts, a_centers, a_tcounts, r
         Lagtime used to build the dye MSMs.
     n_samples, int. Default = 1000
         Number of monte carlo simulations to run.
-        Warning- this can get expensive if very large. 1000 takes ~ 5 minutes to run on my computer.
+        Warning- this can get expensive if very large. 1000 takes ~ 5 minutes/center to run on my computer.
+    dye_dynamics, bool, Default=True
+        Account for dye dynamics (True) or just take dye positions according to equilibrium probability (False)?
     outdir, path. Default = './'
         Where to save things to.
     save_dye_trj, bool, default=False
@@ -324,18 +408,24 @@ def calc_lifetimes(pdb_center_num, d_centers, d_tcounts, a_centers, a_tcounts, r
         np.save(f'{outdir}/center{center_n}-{"".join(dyenames[0].split(" "))}-tps.npy',d_tprobs)
         np.save(f'{outdir}/center{center_n}-{"".join(dyenames[1].split(" "))}-tps.npy',a_tprobs)
 
-    events = np.array([resolve_excitation(dyenames[0], dyenames[1], d_tprobs, a_tprobs, d_mod_eqs, a_mod_eqs, 
-                        d_centers, a_centers, dye_params, dye_lagtime, dyelibrary, rng_seed) for i in range(n_samples)], dtype='O')
-    
-    if save_dye_trj:
-        #Dyes are reindexed, events are original indexing. Search to find the 
-        #corresponding value in the reindexed array.
-        if len(d_indxs) > 0:
-            dtrj = np.array([np.searchsorted(d_indxs, event) for event in events[:,2]])
-            np.save(f'{outdir}/center{center_n}-{dyenames[0]}-dtrj.npy',dtrj)
-        if len(a_indxs) > 0:
-            atrj = np.array([np.searchsorted(a_indxs, event) for event in events[:,3]])
-            np.save(f'{outdir}/center{center_n}-{dyenames[1]}-atrj.npy',atrj)
+    if dye_dynamics==True:
+
+        events = np.array([resolve_excitation(dyenames[0], dyenames[1], d_tprobs, a_tprobs, d_mod_eqs, a_mod_eqs, 
+                            d_centers, a_centers, dye_params, dye_lagtime, dyelibrary, rng_seed) for i in range(n_samples)], dtype='O')
+        
+        if save_dye_trj:
+            #Dyes are reindexed, events are original indexing. Search to find the 
+            #corresponding value in the reindexed array.
+            if len(d_indxs) > 0:
+                dtrj = np.array([np.searchsorted(d_indxs, event) for event in events[:,2]])
+                np.save(f'{outdir}/center{center_n}-{dyenames[0]}-dtrj.npy',dtrj)
+            if len(a_indxs) > 0:
+                atrj = np.array([np.searchsorted(a_indxs, event) for event in events[:,3]])
+                np.save(f'{outdir}/center{center_n}-{dyenames[1]}-atrj.npy',atrj)
+
+    else:
+        events = np.array(explicit_static_dyes(dyenames[0], dyenames[1], d_mod_eqs, a_mod_eqs, 
+                            d_centers, a_centers, dye_params, dyelibrary, n_samples, rng_seed), dtype='O')
 
     lifetimes = events[:,0].astype(float)*dye_lagtime #ns
     outcomes = events[:,1]

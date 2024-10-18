@@ -23,6 +23,7 @@ import os
 import mdtraj as md
 import numpy as np
 import enspara
+from enspara import ra
 from functools import partial
 from multiprocessing import get_context
 from enspara.geometry import dyes_from_expt_dist as dyefs
@@ -119,8 +120,8 @@ def process_command_line(argv):
         '--output_dir', required=False, action=readable_dir, default='./',
         help="Location to write output to.")
     calc_lts_param_args.add_argument(
-        '--dye_timefactor', type=float, required=False, default=1,
-        "Time factor by which dye dynamics evolve faster than experiment.")
+        '--dye_dynamics', required=False, default=True,
+        help="Run dye kinectics (dye MC)? If not dyes are static and randomly selected based on MSM.")
 
 
     ###########################
@@ -223,12 +224,10 @@ def main(argv=None):
             prot_traj = md.load(args.prot_centers, top=args.prot_top)
 
         for resSeq in resSeqs:
-            dye_timestep = args.dye_lagtime * args.dye_timefactor
-
             func = partial(dye_lifetimes.calc_lifetimes, d_centers=d_centers, d_tcounts=d_tcounts,
             a_centers=a_centers, a_tcounts=a_tcounts, resSeqs=resSeq, 
             dyenames=[args.donor_name, args.acceptor_name],
-            dye_lagtime=dye_timestep, n_samples=args.n_samples, outdir=args.output_dir, 
+            dye_lagtime=args.dye_lagtime, n_samples=args.n_samples, dye_dynamics=args.dye_dynamics, outdir=args.output_dir, 
             save_dye_trj=args.save_dtrj, save_dye_msm=args.save_dmsm)
 
             print(f'Starting pool for resSeq {resSeq}.', flush=True)
@@ -250,7 +249,11 @@ def main(argv=None):
         prot_traj=md.load(args.prot_top)
         prot_tcounts = np.load(args.t_counts, allow_pickle=True)
         prot_eqs = np.load(args.eq_probs)
-        interphoton_times = np.load(args.photon_times, allow_pickle=True)
+ 
+        try:
+            interphoton_times = np.load(args.photon_times, allow_pickle=True)
+        except:
+            interphoton_times = ra.load(args.photon_times)
 
         #Make output dirs
         os.makedirs(f'{args.output_dir}/MSMs', exist_ok=True)
