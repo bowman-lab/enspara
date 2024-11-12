@@ -4,7 +4,7 @@ from enspara.geometry import dyes_from_expt_dist as dyes_exp_dist
 from enspara.msm import builders, synthetic_data
 from scipy.optimize import curve_fit
 from enspara.msm.transition_matrices import trim_disconnected
-
+from enspara.ra import ra
 
 def FRET_rate(r, R0, Td):
     """
@@ -732,8 +732,8 @@ def run_mc(resSeq, prot_tcounts, dyenames, MSM_frames, dye_dir, outdir, time_cor
     os.makedirs(f'{outdir}/Lifetimes', exist_ok=True)
     os.makedirs(f'{outdir}/FEs', exist_ok=True)
     if save_bursts:
-        photon_ids = [burst for burst in sampling[:,0]]
-        np.save(f'{outdir}/FEs/photon-trace-{resSeq[0]}-{resSeq[1]}-{time_correction}.npy', photon_ids)
+        photon_ids = ra.RaggedArray([burst for burst in sampling[:,0]])
+        ra.save(f'{outdir}/FEs/photon-trace-{resSeq[0]}-{resSeq[1]}-{time_correction}.h5', photon_ids)
     np.save(f'{outdir}/FEs/FE-{resSeq[0]}-{resSeq[1]}-{time_correction}.npy', FEs)
     np.save(f'{outdir}/Lifetimes/d_lifetimes-{resSeq[0]}-{resSeq[1]}-{time_correction}.npy', d_lifetimes)    
     np.save(f'{outdir}/Lifetimes/a_lifetimes-{resSeq[0]}-{resSeq[1]}-{time_correction}.npy', a_lifetimes)
