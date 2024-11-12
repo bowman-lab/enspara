@@ -180,6 +180,9 @@ def process_command_line(argv):
         help="Number of cores to use for parallel processing. "
              "Generally parallel over number of labeled residues.")
     burst_parameters.add_argument(
+        '--save_bursts', required=False, default=False,
+        help="Save photon identities and timestamps?")
+    burst_parameters.add_argument(
         '--output_dir', required=False, action=readable_dir, default='./',
         help="The location to write the FRET dye distributions.")
     burst_parameters.add_argument(
@@ -283,7 +286,8 @@ def main(argv=None):
             func = partial(dye_lifetimes.run_mc, prot_tcounts=prot_tcounts, 
                dyenames=[args.donor_name, args.acceptor_name], 
                 dye_dir=args.lifetimes_dir,  MSM_frames=MSM_frames, 
-                outdir=args.output_dir, time_correction=time_correction)
+                outdir=args.output_dir, time_correction=time_correction, 
+                save_bursts=args.save_bursts)
 
             with get_context("spawn").Pool(processes=procs) as pool:
                 run = pool.map(func, resSeqs)
