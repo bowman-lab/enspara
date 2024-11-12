@@ -39,8 +39,7 @@ def identify_app(argv):
     return args
 
 
-def main(argv=None):
-
+def main(argv=sys.argv):
     args = identify_app(argv)
 
     try:
