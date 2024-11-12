@@ -120,8 +120,13 @@ def process_command_line(argv):
         '--output_dir', required=False, action=readable_dir, default='./',
         help="Location to write output to.")
     calc_lts_param_args.add_argument(
-        '--dye_dynamics', required=False, default=True,
-        help="Run dye kinectics (dye MC)? If not dyes are static and randomly selected based on MSM.")
+        '--dye_treatment', required=False, default='Monte-carlo', choices=['Monte-carlo','static','isotropic'],
+        help="How would you like to model dye behavior? Monte-carlo simulates dye motion while donor is excited."
+            "static chooses single dye positions based on their probability (this tends to perform poorly)."
+            "isotropic assumes the FRET efficiency is the average of all donor x acceptor positions")
+    calc_lts_input_args.add_argument(
+        '--save_k2_r2', required=False, default=False,
+        help="Save k2 and R02 for each combination of dye position for each protein state?")
 
 
     ###########################
@@ -227,8 +232,8 @@ def main(argv=None):
             func = partial(dye_lifetimes.calc_lifetimes, d_centers=d_centers, d_tcounts=d_tcounts,
             a_centers=a_centers, a_tcounts=a_tcounts, resSeqs=resSeq, 
             dyenames=[args.donor_name, args.acceptor_name],
-            dye_lagtime=args.dye_lagtime, n_samples=args.n_samples, dye_dynamics=args.dye_dynamics, outdir=args.output_dir, 
-            save_dye_trj=args.save_dtrj, save_dye_msm=args.save_dmsm)
+            dye_lagtime=args.dye_lagtime, n_samples=args.n_samples, dye_treatment=args.dye_treatment, outdir=args.output_dir, 
+            save_dye_trj=args.save_dtrj, save_dye_msm=args.save_dmsm, save_k2_r2=args.save_k2_r2)
 
             print(f'Starting pool for resSeq {resSeq}.', flush=True)
 
