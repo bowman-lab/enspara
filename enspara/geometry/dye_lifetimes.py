@@ -699,7 +699,7 @@ def remake_msms(resSeq, prot_tcounts, dye_dir, dyenames, orig_eqs, outdir):
     new_tprobs, new_eqs = remake_prot_MSM_from_lifetimes(lifets, prot_tcounts, 
                                                 resSeq, dyenames, outdir= f'{outdir}/MSMs', prot_eqs = orig_eqs)
 
-def run_mc(resSeq, prot_tcounts, dyenames, MSM_frames, dye_dir, outdir, time_correction, save_bursts):
+def run_mc(resSeq, prot_tcounts, dyenames, MSM_frames, dye_dir, outdir, time_correction, save_photon_trjs):
     import os
     
     lifetime_outcomes_path = f'{dye_dir}/events-{resSeq[0]}-{resSeq[1]}.npy'
@@ -731,7 +731,7 @@ def run_mc(resSeq, prot_tcounts, dyenames, MSM_frames, dye_dir, outdir, time_cor
     FEs = np.array([np.sum(FE)/len(FE) for FE in sampling[:,0]])
     os.makedirs(f'{outdir}/Lifetimes', exist_ok=True)
     os.makedirs(f'{outdir}/FEs', exist_ok=True)
-    if save_bursts:
+    if save_photon_trjs:
         photon_ids = ra.RaggedArray([burst for burst in sampling[:,0]])
         ra.save(f'{outdir}/FEs/photon-trace-{resSeq[0]}-{resSeq[1]}-{time_correction}.h5', photon_ids)
     np.save(f'{outdir}/FEs/FE-{resSeq[0]}-{resSeq[1]}-{time_correction}.npy', FEs)
