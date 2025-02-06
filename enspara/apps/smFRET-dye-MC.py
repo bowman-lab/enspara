@@ -111,10 +111,10 @@ def process_command_line(argv):
         default=1000,
         help="Number of times to run dye_lifetime calculations (per center).")
     calc_lts_param_args.add_argument(
-        '--save_dtrj', required=False, default=False, type=bool,
+        '--save_dtrj', required=False, default=False, action='store_true',
         help="Save dye trajectories and sampled states? Saves per protein center.")
     calc_lts_param_args.add_argument(
-        '--save_dmsm', required=False, default=False, type=bool,
+        '--save_dmsm', required=False, default=False, action='store_true',
         help="Save dye MSMs with steric clash states dropped out? Saves per protein center.")    
     calc_lts_param_args.add_argument(
         '--output_dir', required=False, action=readable_dir, default='./',
@@ -125,7 +125,7 @@ def process_command_line(argv):
             "static chooses single dye positions based on their probability (this tends to perform poorly)."
             "isotropic assumes the FRET efficiency is the average of all donor x acceptor positions")
     calc_lts_input_args.add_argument(
-        '--save_k2_r2', required=False, default=False,
+        '--save_k2_r2', required=False, default=False, action='store_true',
         help="Save k2 and R02 for each combination of dye position for each protein state?")
 
 
@@ -180,7 +180,7 @@ def process_command_line(argv):
         help="Number of cores to use for parallel processing. "
              "Generally parallel over number of labeled residues.")
     burst_parameters.add_argument(
-        '--save_photon_trjs', required=False, default=False,
+        '--save_photon_trjs', required=False, default=False, action='store_true',
         help="Save photon identities for each burst?")
     burst_parameters.add_argument(
         '--output_dir', required=False, action=readable_dir, default='./',
