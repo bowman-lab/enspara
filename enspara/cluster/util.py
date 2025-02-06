@@ -407,11 +407,14 @@ def load_trajectories(topologies, trajectories, selections, stride, processes):
 def load_asymm_frames(center_indices, trajectories, topology, subsample):
 
     frames = []
+    clusterIDs = []
     begin_index = 0
     for topfile, trjset in zip(topology, trajectories):
         end_index = begin_index + len(trjset)
         target_centers = [c for c in center_indices
                           if begin_index <= c[0] < end_index]
+        target_clusterIDs   = [i for i,c in enumerate(center_indices)
+                               if begin_index <= c[0] < end_index]
 
         try:
             subframes = load_frames(
@@ -425,9 +428,12 @@ def load_asymm_frames(center_indices, trajectories, topology, subsample):
             raise
 
         frames.extend(subframes)
+        clusterIDs.extend(target_clusterIDs)
         begin_index += len(trjset)
 
+    frames = [y for x,y in sorted( zip(clusterIDs,frames) ) ]
     return frames
+
 
 
 def load_trjs_or_features(args):
