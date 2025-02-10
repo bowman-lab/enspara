@@ -130,9 +130,6 @@ def process_command_line(argv):
     calc_lts_input_args.add_argument(
         '--save_k2_r2', required=False, default=False, action='store_true',
         help="Save k2 and R02 for each combination of dye position for each protein state?")
-    calc_lts_input_args.add_argument(
-        '--save_dye_centers', required=False, default=False, action='store_true',
-        help="Save xtc of dye centers with steric clash states dropped? Saves per protein center.")
 
 
     ###########################
