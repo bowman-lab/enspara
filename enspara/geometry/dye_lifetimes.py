@@ -421,7 +421,7 @@ def make_dye_msm(centers, t_counts, pdb, resseq, dyename, dyelibrary,
 
 def calc_lifetimes(pdb_center_num, d_centers, d_tcounts, a_centers, a_tcounts, resSeqs, dyenames, 
                    dye_lagtime, n_samples=1000, dye_treatment = 'Monte-carlo', outdir='./', save_dye_trj=False,
-                   save_dye_msm=False, save_k2_r2=False, rng_seed=None):
+                   save_dye_msm=False, save_dye_centers=False, save_k2_r2=False, rng_seed=None):
 
     """
     Takes a protein pdb structure, dye trajectories/MSM, and labeling positions and calculates expected
@@ -479,10 +479,10 @@ def calc_lifetimes(pdb_center_num, d_centers, d_tcounts, a_centers, a_tcounts, r
     
     #Model dye onto residue of interest and remake MSM.
     d_tprobs, d_mod_eqs, d_indxs = make_dye_msm(d_centers,d_tcounts, pdb[0], resSeqs[0], dyenames[0], 
-        dyelibrary, center_n = center_n, outdir=outdir,save_dye_xtc=save_dye_trj)
+        dyelibrary, center_n = center_n, outdir=outdir,save_dye_xtc=save_dye_centers)
 
     a_tprobs, a_mod_eqs, a_indxs = make_dye_msm(a_centers,a_tcounts, pdb[0], resSeqs[1], dyenames[1], 
-        dyelibrary, center_n = center_n, outdir=outdir,save_dye_xtc=save_dye_trj)
+        dyelibrary, center_n = center_n, outdir=outdir,save_dye_xtc=save_dye_centers)
     
     #Check if no feasible labeling positions
     if np.sum(a_mod_eqs) == 0 or np.sum(d_mod_eqs) == 0:

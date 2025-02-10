@@ -115,7 +115,10 @@ def process_command_line(argv):
         help="Save dye trajectories and sampled states? Saves per protein center.")
     calc_lts_param_args.add_argument(
         '--save_dmsm', required=False, default=False, action='store_true',
-        help="Save dye MSMs with steric clash states dropped out? Saves per protein center.")    
+        help="Save dye MSMs with steric clash states dropped out? Saves per protein center.")
+    calc_lts_input_args.add_argument(
+        '--save_dye_centers', required=False, default=False, action='store_true',
+        help="Save xtc of dye centers with steric clash states dropped? Saves per protein center.")
     calc_lts_param_args.add_argument(
         '--output_dir', required=False, action=readable_dir, default='./',
         help="Location to write output to.")
@@ -127,6 +130,9 @@ def process_command_line(argv):
     calc_lts_input_args.add_argument(
         '--save_k2_r2', required=False, default=False, action='store_true',
         help="Save k2 and R02 for each combination of dye position for each protein state?")
+    calc_lts_input_args.add_argument(
+        '--save_dye_centers', required=False, default=False, action='store_true',
+        help="Save xtc of dye centers with steric clash states dropped? Saves per protein center.")
 
 
     ###########################
@@ -236,7 +242,8 @@ def main(argv=None):
             a_centers=a_centers, a_tcounts=a_tcounts, resSeqs=resSeq, 
             dyenames=[args.donor_name, args.acceptor_name],
             dye_lagtime=args.dye_lagtime, n_samples=args.n_samples, dye_treatment=args.dye_treatment, outdir=args.output_dir, 
-            save_dye_trj=args.save_dtrj, save_dye_msm=args.save_dmsm, save_k2_r2=args.save_k2_r2)
+            save_dye_trj=args.save_dtrj, save_dye_msm=args.save_dmsm, save_dye_centers=args.save_dye_centers, 
+            save_k2_r2=args.save_k2_r2)
 
             print(f'Starting pool for resSeq {resSeq}.', flush=True)
 
