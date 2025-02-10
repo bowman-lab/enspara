@@ -128,7 +128,7 @@ def process_command_line(argv):
             "static chooses single dye positions based on their probability (this tends to perform poorly)."
             "isotropic assumes the FRET efficiency is the average of all donor x acceptor positions")
     calc_lts_input_args.add_argument(
-        '--save_k2_r2', required=False, default=False, action='store_true',
+        '--save_k2_r2', required=False, default=False, action=argparse.BooleanOptionalAction, 
         help="Save k2 and R02 for each combination of dye position for each protein state?")
 
 
