@@ -199,6 +199,9 @@ def process_command_line(argv):
         nargs="+",
         help="Time factor by which your MSM is faster than experimental timescale. "
         "Pass multiple to rescale MSM to multiple times.")
+    burst_parameters.add_argument(
+        '--save_burst_frames', required=False, default=False, action='store_true',
+        help='Save a npy file of the frames that make up each burst and the efficiency? T/F')
 
     args = parser.parse_args(argv[1:])
     return args
@@ -291,7 +294,7 @@ def main(argv=None):
                dyenames=[args.donor_name, args.acceptor_name], 
                 dye_dir=args.lifetimes_dir,  MSM_frames=MSM_frames, 
                 outdir=args.output_dir, time_correction=time_correction, 
-                save_photon_trjs=args.save_photon_trjs)
+                save_photon_trjs=args.save_photon_trjs, save_burst_frames=args.save_burst_frames)
 
             with get_context("spawn").Pool(processes=procs) as pool:
                 run = pool.map(func, resSeqs)

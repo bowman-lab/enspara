@@ -628,7 +628,7 @@ def sample_lifetimes_guarenteed_photon(frames, t_probs, eqs, lifetimes, outcomes
     #Pull lifetimes and outcomes for each MSM frame
     photons, lifetimes = _sample_lifetimes_guarenteed_photon(trj[frames],lifetimes,outcomes)
 
-    return photons, lifetimes
+    return photons, lifetimes, trj[frames]
 
 def remake_prot_MSM_from_lifetimes(lifetimes, prot_tcounts, resSeqs, dyenames, outdir='./', prot_eqs=None):
     """
@@ -699,7 +699,8 @@ def remake_msms(resSeq, prot_tcounts, dye_dir, dyenames, orig_eqs, outdir):
     new_tprobs, new_eqs = remake_prot_MSM_from_lifetimes(lifets, prot_tcounts, 
                                                 resSeq, dyenames, outdir= f'{outdir}/MSMs', prot_eqs = orig_eqs)
 
-def run_mc(resSeq, prot_tcounts, dyenames, MSM_frames, dye_dir, outdir, time_correction, save_photon_trjs):
+def run_mc(resSeq, prot_tcounts, dyenames, MSM_frames, dye_dir, outdir, time_correction, 
+    save_photon_trjs=False, save_burst_frames=False):
     import os
     
     lifetime_outcomes_path = f'{dye_dir}/events-{resSeq[0]}-{resSeq[1]}.npy'
@@ -719,6 +720,10 @@ def run_mc(resSeq, prot_tcounts, dyenames, MSM_frames, dye_dir, outdir, time_cor
     sampling = np.array([
         sample_lifetimes_guarenteed_photon(
         frames, new_tprobs, new_eqs, lifets, outcomes) for frames in MSM_frames], dtype='O')
+
+    if save_burst_frames:
+        os.makedirs(f'{outdir}/protein-trajs/', exist_ok=True)
+        np.save(f'{outdir}/protein-trajs/{resSeq[0]}-{resSeq[1]}-{time_correction}.npy}', sampling[:,2])
 
     print(f'Extracting FEs and lifetimes for {resSeq[0]}-{resSeq[1]} and time factor {time_correction}.', flush=True)
 
