@@ -723,7 +723,7 @@ def run_mc(resSeq, prot_tcounts, dyenames, MSM_frames, dye_dir, outdir, time_cor
 
     if save_burst_frames:
         os.makedirs(f'{outdir}/protein-trajs/', exist_ok=True)
-        np.save(f'{outdir}/protein-trajs/{resSeq[0]}-{resSeq[1]}-{time_correction}.npy}', sampling[:,2])
+        np.save(f'{outdir}/protein-trajs/{resSeq[0]}-{resSeq[1]}-{time_correction}.npy', sampling[:,2])
 
     print(f'Extracting FEs and lifetimes for {resSeq[0]}-{resSeq[1]} and time factor {time_correction}.', flush=True)
 
