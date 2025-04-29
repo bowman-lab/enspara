@@ -15,7 +15,7 @@ def identify_app(argv):
         help="Name of the application.")
 
     parser.add_argument(
-        "appargs", nargs="*",
+        "appargs", nargs=argparse.REMAINDER,
         help="Subsequent arguments to the app (add subcommand for more).")
 
     helpstack = []
@@ -40,11 +40,13 @@ def identify_app(argv):
 
 
 def main(argv=None):
+    if argv is None:
+        argv = sys.argv
 
     args = identify_app(argv)
 
     try:
-        args.main(args.appargs)
+        args.main(argv[1:]) #Need to have argv for the apps start with initial iterator
     except Exception as e:
         message = ("An unexpected error has occurred; please consider filing "
                    "an issue at our issue tracker:\n"
