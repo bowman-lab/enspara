@@ -276,14 +276,40 @@ def main(argv=None):
         #Choose a sensible number of processes to start for pool.
         procs = min([len(resSeqs),args.n_procs])
 
-        print('Remaking dye MSMs to account for protein states with no available dyes.', flush=True)
+       #Check if MSMs exist already
+        existing_MSMs = []
+        for label_pair in resSeqs:
+            dname = "".join(args.donor_name.split(' '))
+            aname = "".join(args.acceptor_name.split(' '))
+            filename = f'{label_pair[0]}-{dname}-{label_pair[1]}-{aname}'
+            eqs = os.path.exists(f'{args.output_dir}/MSMs/{filename}-eqs.npy')
+            tprobs = os.path.exists(f'{args.output_dir}/MSMs/{filename}-t_prbs.npy')
+            # Need both modified tprobs and eqs to work
+            existing_MSMs.append(np.all([eqs, tprobs]))
 
-        #Remake dye MSM for each dye pair
-        func = partial(dye_lifetimes.remake_msms, prot_tcounts=prot_tcounts, dye_dir=args.lifetimes_dir,
-            dyenames=[args.donor_name, args.acceptor_name],orig_eqs=prot_eqs, outdir = args.output_dir)
-        with get_context("spawn").Pool(processes=procs) as pool:
-            run = pool.map(func, resSeqs)
-            pool.terminate()
+        if np.all(existing_MSMs):
+            print(f"Found MSMs for all dye and label pair combinations here: {args.output_dir}/MSMs.")
+            print('Not recalculating dye MSMs.')
+            pass
+        elif np.any(existing_MSMs):
+            #Remake dye MSM for each missing dye pair
+            print(f"Found existing MSMs for: {' '.join('-'.join(str(res) for res in resis) for resis in resSeq[existing_MSMs])}.")
+            print(f"Remaking MSMs for: {' '.join('-'.join(str(res) for res in resis) for resis in resSeq[~existing_MSMs])}.")
+            func = partial(dye_lifetimes.remake_msms, prot_tcounts=prot_tcounts, dye_dir=args.lifetimes_dir,
+                dyenames=[args.donor_name, args.acceptor_name],orig_eqs=prot_eqs, outdir = args.output_dir)
+            with get_context("spawn").Pool(processes=procs) as pool:
+                run = pool.map(func, resSeqs[~existing_MSMs])
+                pool.terminate()
+
+        else:
+            print('Remaking dye MSMs to account for protein states with no available dyes.', flush=True)
+
+            #Remake dye MSM for each dye pair
+            func = partial(dye_lifetimes.remake_msms, prot_tcounts=prot_tcounts, dye_dir=args.lifetimes_dir,
+                dyenames=[args.donor_name, args.acceptor_name],orig_eqs=prot_eqs, outdir = args.output_dir)
+            with get_context("spawn").Pool(processes=procs) as pool:
+                run = pool.map(func, resSeqs)
+                pool.terminate()
 
         #Run burst MC for each correction factor
         for time_correction in args.correction_factor:
