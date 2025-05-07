@@ -23,6 +23,7 @@ import os
 import mdtraj as md
 import numpy as np
 import enspara
+from enspara import ra
 from functools import partial
 from multiprocessing import get_context
 from enspara.geometry import dyes_from_expt_dist as dyefs
@@ -110,14 +111,25 @@ def process_command_line(argv):
         default=1000,
         help="Number of times to run dye_lifetime calculations (per center).")
     calc_lts_param_args.add_argument(
-        '--save_dtrj', required=False, default=False, type=bool,
+        '--save_dtrj', required=False, default=False, action='store_true',
         help="Save dye trajectories and sampled states? Saves per protein center.")
     calc_lts_param_args.add_argument(
-        '--save_dmsm', required=False, default=False, type=bool,
-        help="Save dye MSMs with steric clash states dropped out? Saves per protein center.")    
+        '--save_dmsm', required=False, default=False, action='store_true',
+        help="Save dye MSMs with steric clash states dropped out? Saves per protein center.")
+    calc_lts_input_args.add_argument(
+        '--save_dye_centers', required=False, default=False, action='store_true',
+        help="Save xtc of dye centers with steric clash states dropped? Saves per protein center.")
     calc_lts_param_args.add_argument(
         '--output_dir', required=False, action=readable_dir, default='./',
         help="Location to write output to.")
+    calc_lts_param_args.add_argument(
+        '--dye_treatment', required=False, default='Monte-carlo', choices=['Monte-carlo','static','isotropic'],
+        help="How would you like to model dye behavior? Monte-carlo simulates dye motion while donor is excited."
+            "static chooses single dye positions based on their probability (this tends to perform poorly)."
+            "isotropic assumes the FRET efficiency is the average of all donor x acceptor positions")
+    calc_lts_input_args.add_argument(
+        '--save_k2_r2', required=False, default=False, action='store_true', 
+        help="Save k2 and R02 for each combination of dye position for each protein state?")
 
 
     ###########################
@@ -171,6 +183,9 @@ def process_command_line(argv):
         help="Number of cores to use for parallel processing. "
              "Generally parallel over number of labeled residues.")
     burst_parameters.add_argument(
+        '--save_photon_trjs', required=False, default=False, action='store_true',
+        help="Save photon identities for each burst?")
+    burst_parameters.add_argument(
         '--output_dir', required=False, action=readable_dir, default='./',
         help="The location to write the FRET dye distributions.")
     burst_parameters.add_argument(
@@ -184,6 +199,9 @@ def process_command_line(argv):
         nargs="+",
         help="Time factor by which your MSM is faster than experimental timescale. "
         "Pass multiple to rescale MSM to multiple times.")
+    burst_parameters.add_argument(
+        '--save_burst_frames', required=False, default=False, action='store_true',
+        help='Save a npy file of the frames that make up each burst and the efficiency? T/F')
 
     args = parser.parse_args(argv[1:])
     return args
@@ -223,8 +241,9 @@ def main(argv=None):
             func = partial(dye_lifetimes.calc_lifetimes, d_centers=d_centers, d_tcounts=d_tcounts,
             a_centers=a_centers, a_tcounts=a_tcounts, resSeqs=resSeq, 
             dyenames=[args.donor_name, args.acceptor_name],
-            dye_lagtime=args.dye_lagtime, n_samples=args.n_samples, outdir=args.output_dir, 
-            save_dye_trj=args.save_dtrj, save_dye_msm=args.save_dmsm)
+            dye_lagtime=args.dye_lagtime, n_samples=args.n_samples, dye_treatment=args.dye_treatment, outdir=args.output_dir, 
+            save_dye_trj=args.save_dtrj, save_dye_msm=args.save_dmsm, save_dye_centers=args.save_dye_centers, 
+            save_k2_r2=args.save_k2_r2)
 
             print(f'Starting pool for resSeq {resSeq}.', flush=True)
 
@@ -245,7 +264,11 @@ def main(argv=None):
         prot_traj=md.load(args.prot_top)
         prot_tcounts = np.load(args.t_counts, allow_pickle=True)
         prot_eqs = np.load(args.eq_probs)
-        interphoton_times = np.load(args.photon_times, allow_pickle=True)
+ 
+        try:
+            interphoton_times = np.load(args.photon_times, allow_pickle=True)
+        except:
+            interphoton_times = ra.load(args.photon_times)
 
         #Make output dirs
         os.makedirs(f'{args.output_dir}/MSMs', exist_ok=True)
@@ -253,14 +276,40 @@ def main(argv=None):
         #Choose a sensible number of processes to start for pool.
         procs = min([len(resSeqs),args.n_procs])
 
-        print('Remaking dye MSMs to account for protein states with no available dyes.', flush=True)
+       #Check if MSMs exist already
+        existing_MSMs = []
+        for label_pair in resSeqs:
+            dname = "".join(args.donor_name.split(' '))
+            aname = "".join(args.acceptor_name.split(' '))
+            filename = f'{label_pair[0]}-{dname}-{label_pair[1]}-{aname}'
+            eqs = os.path.exists(f'{args.output_dir}/MSMs/{filename}-eqs.npy')
+            tprobs = os.path.exists(f'{args.output_dir}/MSMs/{filename}-t_prbs.npy')
+            # Need both modified tprobs and eqs to work
+            existing_MSMs.append(np.all([eqs, tprobs]))
 
-        #Remake dye MSM for each dye pair
-        func = partial(dye_lifetimes.remake_msms, prot_tcounts=prot_tcounts, dye_dir=args.lifetimes_dir,
-            dyenames=[args.donor_name, args.acceptor_name],orig_eqs=prot_eqs, outdir = args.output_dir)
-        with get_context("spawn").Pool(processes=procs) as pool:
-            run = pool.map(func, resSeqs)
-            pool.terminate()
+        if np.all(existing_MSMs):
+            print(f"Found MSMs for all dye and label pair combinations here: {args.output_dir}/MSMs.")
+            print('Not recalculating dye MSMs.')
+            pass
+        elif np.any(existing_MSMs):
+            #Remake dye MSM for each missing dye pair
+            print(f"Found existing MSMs for: {' '.join('-'.join(str(res) for res in resis) for resis in resSeq[existing_MSMs])}.")
+            print(f"Remaking MSMs for: {' '.join('-'.join(str(res) for res in resis) for resis in resSeq[~existing_MSMs])}.")
+            func = partial(dye_lifetimes.remake_msms, prot_tcounts=prot_tcounts, dye_dir=args.lifetimes_dir,
+                dyenames=[args.donor_name, args.acceptor_name],orig_eqs=prot_eqs, outdir = args.output_dir)
+            with get_context("spawn").Pool(processes=procs) as pool:
+                run = pool.map(func, resSeqs[~existing_MSMs])
+                pool.terminate()
+
+        else:
+            print('Remaking dye MSMs to account for protein states with no available dyes.', flush=True)
+
+            #Remake dye MSM for each dye pair
+            func = partial(dye_lifetimes.remake_msms, prot_tcounts=prot_tcounts, dye_dir=args.lifetimes_dir,
+                dyenames=[args.donor_name, args.acceptor_name],orig_eqs=prot_eqs, outdir = args.output_dir)
+            with get_context("spawn").Pool(processes=procs) as pool:
+                run = pool.map(func, resSeqs)
+                pool.terminate()
 
         #Run burst MC for each correction factor
         for time_correction in args.correction_factor:
@@ -270,7 +319,8 @@ def main(argv=None):
             func = partial(dye_lifetimes.run_mc, prot_tcounts=prot_tcounts, 
                dyenames=[args.donor_name, args.acceptor_name], 
                 dye_dir=args.lifetimes_dir,  MSM_frames=MSM_frames, 
-                outdir=args.output_dir, time_correction=time_correction)
+                outdir=args.output_dir, time_correction=time_correction, 
+                save_photon_trjs=args.save_photon_trjs, save_burst_frames=args.save_burst_frames)
 
             with get_context("spawn").Pool(processes=procs) as pool:
                 run = pool.map(func, resSeqs)
