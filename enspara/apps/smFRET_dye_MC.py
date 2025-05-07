@@ -150,13 +150,6 @@ def process_command_line(argv):
         help="Path to transition counts from the protein MSM. "
              "Should be of file type .npy.")
     burst_input_args.add_argument(
-        '--prot_centers', required=True,
-        help="Path to protein MSM cluster centers."
-        "Should be trajectory file readable by mdtraj.")
-    burst_input_args.add_argument(
-        '--prot_top', required=True,
-        help="Path to protein topology file.")
-    burst_input_args.add_argument(
         '--lifetimes_dir', action=readable_dir,
         help="Path to dye-lifetimes directory / output from calc_lifetimes.")
     burst_input_args.add_argument(
@@ -286,15 +279,16 @@ def main(argv=None):
             tprobs = os.path.exists(f'{args.output_dir}/MSMs/{filename}-t_prbs.npy')
             # Need both modified tprobs and eqs to work
             existing_MSMs.append(np.all([eqs, tprobs]))
-
+        existing_MSMs = np.array(existing_MSMs)
+        
         if np.all(existing_MSMs):
             print(f"Found MSMs for all dye and label pair combinations here: {args.output_dir}/MSMs.")
             print('Not recalculating dye MSMs.')
             pass
         elif np.any(existing_MSMs):
             #Remake dye MSM for each missing dye pair
-            print(f"Found existing MSMs for: {' '.join('-'.join(str(res) for res in resis) for resis in resSeq[existing_MSMs])}.")
-            print(f"Remaking MSMs for: {' '.join('-'.join(str(res) for res in resis) for resis in resSeq[~existing_MSMs])}.")
+            print(f"Found existing MSMs for: {' '.join('-'.join(str(res) for res in resis) for resis in resSeqs[existing_MSMs])}.")
+            print(f"Remaking MSMs for: {' '.join('-'.join(str(res) for res in resis) for resis in resSeqs[~existing_MSMs])}.")
             func = partial(dye_lifetimes.remake_msms, prot_tcounts=prot_tcounts, dye_dir=args.lifetimes_dir,
                 dyenames=[args.donor_name, args.acceptor_name],orig_eqs=prot_eqs, outdir = args.output_dir)
             with get_context("spawn").Pool(processes=procs) as pool:

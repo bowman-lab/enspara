@@ -58,7 +58,7 @@ This can be done as follows:
 
 .. code-block:: bash
 
-    python /home/username/enspara/enspara/apps/smFRET-dye-MC.py \
+    python /home/username/enspara/enspara/apps/smFRET_dye_MC.py calc_lifetimes\
     --donor_name 'AlexaFluor 488 B1R' \
     --acceptor_name 'AlexaFluor 647 C2R' \
     --donor_centers /path/to/donor/dye/MSM_centers.xtc \
@@ -115,15 +115,13 @@ This can be done as follows:
 
 .. code-block:: bash
 
-    python /home/username/enspara/enspara/apps/smFRET-dye-MC.py run_burst \
+    python /home/username/enspara/enspara/apps/smFRET_dye_MC.py run_burst \
     --eq_probs /path/to/protein/eq_probs.npy \
     --t_counts /path/to/protein/t_counts.npy \
     --lifetimes_dir /path/to/dye/lifetimes/output \
     --lagtime 5 \
     --donor_name 'AlexaFluor 488 B1R' \
     --acceptor_name 'AlexaFluor 647 C2R' \
-    --prot_top /path/to/protein/topology_file.pdb \
-    --prot_centers /path/to/protein/MSM/centers.xtc \
     --resid_pairs /path/to/residue/labeling/pairs.txt \
     --n_procs 2 \
     --output_dir /path/to/output/location/
@@ -138,6 +136,9 @@ Note- You must have calculated dye lifetimes for these residues or else
 the code will error. This calculation is generally very fast and is written 
 mostly single threaded. Parallelization is supported across the number of 
 dye pairs being calculated with pool. Lagtime is the protein MSM lagtime (in ns).
+Optionally, you can provide your own interphoton times with the argument 
+:code:`--photon_times /path/to/interphoton_times.npy`.
+
 
 Three outputs will be created:
 
@@ -179,9 +180,12 @@ in the protein MSM, for each residue labeling pair in :code:`pairs.txt`.
 
 :code:`pairs.txt` should look something like
 this:
+
 .. code-block:: bash
+
     112 136
     145 223
+
 
 This will calculate pairswise inter-dye distance distributions using the two
 provided point clouds. We provide two point clouds for dyes AlexaFluor 488 and
