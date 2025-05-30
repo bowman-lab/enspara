@@ -41,7 +41,7 @@ def rmsf_calc(centers, populations=None, ref_frame=0, per_residue=True):
     if per_residue:
         # obtain indices of all atoms partitioned by residues
         atom_iis_per_resi = np.array(
-            [[a.index for a in r.atoms] for r in centers.top.residues])
+            [[a.index for a in r.atoms] for r in centers.top.residues], dtype='O')
 
         # average the dot products within each residue
         avg_resi_dists = np.array(
