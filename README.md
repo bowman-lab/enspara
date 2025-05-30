@@ -23,7 +23,8 @@ git clone https://github.com/bowman-lab/enspara
 cd enspara
 mamba env create -f environment.yaml
 mamba activate enspara
-pip install -e .
+python -m pip install --upgrade build setuptools wheel cython numpy
+python setup.py build_ext --inplace
 ```
 
 Alternatively, you can install packages directly:
@@ -33,7 +34,8 @@ git clone https://github.com/bowman-lab/enspara
 mamba create -n enspara -c conda-forge cython numpy mdtraj scipy python=3.12 mpi4py
 mamba activate enspara
 cd enspara
-pip install -e .
+python -m pip install --upgrade build setuptools wheel cython numpy
+python setup.py build_ext --inplace
 ```
 
 Optionally, install pytests to run the tests:
