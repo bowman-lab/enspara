@@ -1,129 +1,69 @@
+from setuptools import setup, find_packages, Extension
+from setuptools.command.build_ext import build_ext
+from Cython.Build import cythonize
 import platform
+import numpy as np
 import sys
-
-from setuptools import find_packages
-from distutils.core import setup
-from distutils.extension import Extension
 import distutils.ccompiler
-__version__ = '0.2.0'
-
-CLASSIFIERS = [
-    "Development Status :: 3 - Alpha",
-    "Intended Audience :: Science/Research",
-    "Intended Audience :: Developers",
-    "Programming Language :: Cython",
-    "Programming Language :: Python :: 3 :: Only",
-    "Topic :: Scientific/Engineering :: Bio-Informatics",
-    "Topic :: Scientific/Engineering :: Chemistry",
-    "Operating System :: POSIX",
-    "Operating System :: Unix",
-    "Operating System :: MacOS",
-]
-
-# protect agaist absent cython/numpy
-try:
-    import numpy as np
-    import Cython
-    if Cython.__version__ < '0.19':
-        raise ImportError
-    from Cython.Build import cythonize
-except ImportError:
-    sys.stderr.write('-' * 80)
-    sys.stderr.write('\n'.join([
-        'Error: building enspara requires numpy and cython>=0.19',
-        'Try running the command ``pip install numpy cython`` or'
-        '``conda install numpy cython``.',
-
-        'or see http://docs.scipy.org/doc/numpy/user/install.html and'
-        'http://cython.org/ for more information.']))
-
-use_openmp = False
-def use_openmp():
-    use_openmp = True
-    #install_requires.append('mpi4py>=2.0.0')
-
-install_requires = [
-    'Cython>=0.24',
-    'numpy>=1.20',
-    'tables>=3.2',
-    'matplotlib>=1.5.1',
-    'mdtraj>=1.7',
-    'psutil>=5.2.2',
-    'pandas',
-    'scikit-learn>=0.23.2',
-    'scipy>=0.17',
-    'pyyaml'
-]
-
-# this code checks for OS. If OS is OSx then it checks for GCC as default compiler
-#if GCC is the default compiler adds -fopenmp to linker and compiler args.
-if 'darwin' in platform.system().lower():
-    if 'gcc' in  distutils.ccompiler.get_default_compiler():
-        use_openmp()
-    else:
-        use_openmp = False
-else:
-    use_openmp()
 
 extra_compile_args = ['-Wno-unreachable-code']
 extra_link_args = []
+use_openmp = False
+
+if 'darwin' in platform.system().lower():
+    if 'gcc' in distutils.ccompiler.get_default_compiler():
+        use_openmp = True
+else:
+    use_openmp = True
 
 if use_openmp:
-    extra_compile_args += ['-fopenmp']
-    extra_link_args = ['-fopenmp']
+    extra_compile_args.append('-fopenmp')
+    extra_link_args.append('-fopenmp')
 
-# build cython with `python setup.py build_ext --inplace`
-
-cython_extensions = [
+extensions = [
     Extension(
         "enspara.info_theory.libinfo",
         ["enspara/info_theory/libinfo.pyx"],
+        include_dirs=[np.get_include()],
         extra_compile_args=extra_compile_args,
         extra_link_args=extra_link_args,
-    ), Extension(
+    ),
+    Extension(
         "enspara.geometry.libdist",
         ["enspara/geometry/libdist.pyx"],
+        include_dirs=[np.get_include()],
         extra_compile_args=extra_compile_args,
         extra_link_args=extra_link_args,
-    ), Extension(
+    ),
+    Extension(
         "enspara.msm.libmsm",
         ["enspara/msm/libmsm.pyx"],
+        include_dirs=[np.get_include()],
         extra_compile_args=extra_compile_args,
         extra_link_args=extra_link_args,
-    )]
+    ),
+]
 
 setup(
-    name='enspara',
+    name="enspara",
+    version="0.2.0",
     packages=find_packages(),
-    version=__version__,
-    project_urls={
-        'Documentation': 'https://enspara.readthedocs.io',
-        'Source': 'https://github.com/bowman-lab/enspara',
-        'Tracker': 'https://github.com/bowman-lab/enspara/issues',
-    },
-    platforms=['Linux', 'Mac OS-X', 'Unix'],
-    classifiers=CLASSIFIERS,
-    include_dirs=[np.get_include()],
-    ext_modules=cythonize(cython_extensions),
-    python_requires='>=3.7,<3.13', 
-    entry_points={'console_scripts': ['enspara = enspara.apps.main:main']},
-    setup_requires=['Cython>=0.24', 'numpy>=1.13'],
-    install_requires=install_requires,
-    package_data={'': ['articles.json']},
+    ext_modules=cythonize(extensions, language_level=3),
     include_package_data=True,
-    extras_require={
-        'dev': [
-            'pytest',
-        ],
-        'docs': [
-            'Sphinx>=2.3.0',
-            'sphinx-rtd-theme>=0.4.3',
-            'sphinxcontrib-websupport>=1.1.2',
-            'numpydoc>=0.9.1',
-        ],
-        'mpi': [
-            'mpi4py>=2.0.0'
-        ]
+    python_requires='>=3.8',
+    install_requires=[
+        "Cython>=0.24",
+        "numpy>=1.20",
+        "tables>=3.2",
+        "matplotlib>=1.5.1",
+        "mdtraj>=1.7",
+        "psutil>=5.2.2",
+        "pandas",
+        "scikit-learn>=0.23.2",
+        "scipy>=0.17",
+        "pyyaml"
+    ],
+    entry_points={
+        'console_scripts': ['enspara = enspara.apps.main:main']
     },
-    zip_safe=False
 )

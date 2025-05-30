@@ -1,0 +1,75 @@
+[build-system]
+requires = [
+  "setuptools>=61",
+  "wheel",
+  "cython>=0.29",
+  "numpy>=1.20",
+  "versioningit~=2.0"
+]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "enspara"
+description = "MSMs at Scale"
+readme = "README.md"
+requires-python = ">=3.8"
+license = { text = "GPLv3" }
+authors = [{ name = "Gregory Bowman", email = "placeholder@upenn.edu" }]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Science/Research",
+  "Intended Audience :: Developers",
+  "Programming Language :: Cython",
+  "Programming Language :: Python :: 3 :: Only",
+  "Topic :: Scientific/Engineering :: Bio-Informatics",
+  "Topic :: Scientific/Engineering :: Chemistry",
+  "Operating System :: POSIX",
+  "Operating System :: Unix",
+  "Operating System :: MacOS"
+]
+dynamic = ["version"]
+dependencies = [
+  "Cython>=0.24",
+  "numpy>=1.20",
+  "tables>=3.2",
+  "matplotlib>=1.5.1",
+  "mdtraj>=1.7",
+  "psutil>=5.2.2",
+  "pandas",
+  "scikit-learn>=0.23.2",
+  "scipy>=0.17",
+  "pyyaml"
+]
+
+[project.urls]
+Documentation = "https://enspara.readthedocs.io"
+Source = "https://github.com/bowman-lab/enspara"
+Tracker = "https://github.com/bowman-lab/enspara/issues"
+
+[project.scripts]
+enspara = "enspara.apps.main:main"
+
+[project.optional-dependencies]
+dev = ["pytest"]
+docs = [
+  "Sphinx>=2.3.0",
+  "sphinx-rtd-theme>=0.4.3",
+  "sphinxcontrib-websupport>=1.1.2",
+  "numpydoc>=0.9.1"
+]
+mpi = ["mpi4py>=2.0.0"]
+
+[tool.versioningit]
+default-version = "0.2.0"
+
+[tool.setuptools]
+zip-safe = false
+include-package-data = true
+
+[tool.setuptools.packages.find]
+include = ["enspara*"]
+where = ["."]
+namespaces = false
+
+[tool.setuptools.package-data]
+enspara = ["py.typed", "articles.json"]
