@@ -1,0 +1,64 @@
+[build-system]
+requires = [
+    "setuptools>=64",
+    "wheel",
+    "Cython>=0.24",
+    "numpy>=2"
+]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "enspara"
+version = "0.2.0"
+description = "Tools for ensemble modeling"
+requires-python = ">=3.7,<3.13"
+authors = [
+    { name = "J. R. Porter" },
+    { name = "M. I. Zimmerman" },
+    { name = "G. R. Bowman", email = "grbowman@seas.upenn.edu" }
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "Intended Audience :: Developers",
+    "Programming Language :: Cython",
+    "Programming Language :: Python :: 3 :: Only",
+    "Topic :: Scientific/Engineering :: Bio-Informatics",
+    "Topic :: Scientific/Engineering :: Chemistry",
+    "Operating System :: POSIX",
+    "Operating System :: Unix",
+    "Operating System :: MacOS"
+]
+dependencies = [
+    "Cython>=0.24",
+    "numpy>=1.20",
+    "tables>=3.2",
+    "matplotlib>=1.5.1",
+    "mdtraj>=1.7",
+    "psutil>=5.2.2",
+    "pandas",
+    "scikit-learn>=0.23.2",
+    "scipy>=0.17",
+    "pyyaml"
+]
+
+[project.optional-dependencies]
+dev = [ "pytest" ]
+docs = [
+    "Sphinx>=2.3.0",
+    "sphinx-rtd-theme>=0.4.3",
+    "sphinxcontrib-websupport>=1.1.2",
+    "numpydoc>=0.9.1"
+]
+mpi = [ "mpi4py>=2.0.0" ]
+
+[project.urls]
+Documentation = "https://enspara.readthedocs.io"
+Source = "https://github.com/bowman-lab/enspara"
+Tracker = "https://github.com/bowman-lab/enspara/issues"
+
+[project.scripts]
+enspara = "enspara.apps.main:main"
+
+[tool.setuptools.packages]
+find = {}
