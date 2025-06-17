@@ -11,7 +11,7 @@ build-backend = "setuptools.build_meta"
 name = "enspara"
 version = "0.2.0"
 description = "Tools for ensemble modeling"
-requires-python = ">=3.7,<3.13"
+requires-python = ">=3.7"
 authors = [
     { name = "J. R. Porter" },
     { name = "M. I. Zimmerman" },
