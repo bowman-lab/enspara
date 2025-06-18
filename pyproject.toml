@@ -62,3 +62,9 @@ enspara = "enspara.apps.main:main"
 
 [tool.setuptools.packages]
 find = {}
+
+[tool.pytest.ini_options]
+markers = [
+    "mpi: Requires MPI",
+]
+addopts = "-m 'not mpi'"
