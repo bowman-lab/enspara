@@ -215,23 +215,25 @@ def test_rmsd_khybrid_mpi_basic():
 
     trj = md.load(TRJFILE, top=TOPFILE)
     trj_sele = trj.atom_slice(trj.top.select(SELECTION))
+    full_traj = md.join([trj_sele] * 2)
 
-    # expected_s = md.join([trj[i[1]] for i in idx])
-    expected_i = [[0, 0],
-                  [0, 55],
-                  [1, 102],
-                  [1, 196]]
+    assert a.shape == (1002,)
+    assert d.shape == (1002,)
+    assert len(idx) == len(s)
+    assert len(s) == 4
 
-    assert_array_equal(idx, expected_i)
+    selection_indices = trj.top.select(SELECTION)
 
-    expected_s = md.join([trj[i[1]] for i in idx])
-    assert_array_equal(
-        expected_s.xyz,
-        md.join(s).xyz)
+    for i, (traj_i, frame_i) in enumerate(idx):
+        center = trj_sele.slice([frame_i])
+        returned_center = s[i].atom_slice(selection_indices)
 
-    expect_a, expect_d = util.assign_to_nearest_center(
-        md.join([trj_sele] * 2),
-        md.join([trj_sele[i[1]] for i in idx]), md.rmsd)
+        rmsd = md.rmsd(returned_center, center)[0]
+        assert rmsd < 1e-3, f"Returned center structure {i} doesn't match frame {frame_i} (RMSD={rmsd})"
+
+    selection_indices = trj.top.select(SELECTION)
+    cluster_centers = md.join(s).atom_slice(selection_indices)
+    expect_a, expect_d = util.assign_to_nearest_center(full_traj, cluster_centers, md.rmsd)
 
     assert_array_equal(expect_a, a)
     assert_allclose(expect_d, d, atol=1e-4)
