@@ -72,14 +72,15 @@ class TestProtLabeling(unittest.TestCase):
                     dye_params, 0.002, self.dye_library, rng_seed=i) 
                            for i in range(n_samples)], dtype='O')
 
-        per_state = np.array([np.count_nonzero(events[:,1]=='energy_transfer') / \
-            (np.count_nonzero(events[:,1]=='radiative') + \
-                np.count_nonzero(events[:,1]=='energy_transfer'))])
+        per_state = (
+            np.count_nonzero(events[:, 1] == 'energy_transfer') /
+            np.count_nonzero(np.isin(events[:, 1], ['non_radiative', 'energy_transfer']))
+        )
 
         assert len(events) == n_samples
         assert events[0][0] == 4
         assert events[0][1] == 'energy_transfer'
-        assert per_state[0] == 0.9
+        assert per_state == 0.9
 
     def test_burst(self):
         #Tests running on an array.
