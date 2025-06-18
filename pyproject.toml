@@ -3,7 +3,7 @@ requires = [
     "setuptools>=64",
     "wheel",
     "Cython>=0.24",
-    "numpy>=2", # Required for C headers
+    "numpy>=2.3.0", # Required for C headers
     "Jinja2>=3"
 ]
 build-backend = "setuptools.build_meta"
@@ -15,7 +15,7 @@ description = "Tools for ensemble modeling"
 readme = "README.md"
 license = "GPL-3.0-or-later"
 license-files = [ "LICENSE" ]
-requires-python = ">=3.7"
+requires-python = ">=3.11"
 authors = [
     { name = "J. R. Porter" },
     { name = "M. I. Zimmerman" },
@@ -35,7 +35,7 @@ classifiers = [
 ]
 dependencies = [
     "Cython>=0.24",
-    "numpy>=1.20",
+    "numpy>=2.3.0",
     "tables>=3.2",
     "matplotlib>=1.5.1",
     "mdtraj>=1.7",
@@ -80,6 +80,13 @@ mpi = [
 
 [project.scripts]
 enspara = "enspara.apps.main:main"
+cluster = "enspara.apps.cluster:main"
+collect_cards = "enspara.apps.collect_cards:main"
+compute-shannon-entropy = "enspara.apps.collect_cards:main"
+implied_timescales = "enspara.apps.implied_timescales:main"
+reassign = "enspara.apps.reassign:main"
+smFRET_dye_MC = "enspara.apps.smFRET_dye_MC:main"
+smFRET_point_clouds = "enspara.apps.smFRET_point_clouds:main"
 
 [tool.setuptools.packages]
 find = {}
