@@ -34,17 +34,17 @@ jobs:
 
     - name: Create venv and install dependencies
       run: |
-        set -eux
         python -m pip install --upgrade pip
         python -m venv .venv
         source .venv/bin/activate
+        set -eux
         python -m pip install build twine conda-build anaconda-cli
         python -m pip install -e .
 
     - name: Build (PyPI)
       run: |
-        set -eux
         source .venv/bin/activate
+        set -eux
         python -m build .[dev]
 
     - name: Publish (PyPI)
@@ -52,15 +52,15 @@ jobs:
         TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
         TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
       run: |
-        set -eux
         source .venv/bin/activate
+        set -eux
         twine upload dist/* --verbose
 
     - name: Build (Conda)
       if: ${{ matrix.os == 'ubuntu-latest' }}
       run: |
-        set -eux
         source .venv/bin/activate
+        set -eux
         ./gen_meta.py
         conda-build .
     
