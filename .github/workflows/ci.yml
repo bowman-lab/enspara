@@ -53,8 +53,9 @@ jobs:
 
     - name: Build and install package
       run: |
-        source .venv/bin/activate
+        set -eux
         python -m venv .venv
+        source .venv/bin/activate
         python -m pip install -e .[dev,docs,mpi]
 
     - name: pytest (no MPI)
