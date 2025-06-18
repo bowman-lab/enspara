@@ -3,7 +3,8 @@ requires = [
     "setuptools>=64",
     "wheel",
     "Cython>=0.24",
-    "numpy>=2"
+    "numpy>=2", # Required for C headers
+    "Jinja2>=3"
 ]
 build-backend = "setuptools.build_meta"
 
@@ -11,6 +12,9 @@ build-backend = "setuptools.build_meta"
 name = "enspara"
 version = "0.2.0"
 description = "Tools for ensemble modeling"
+readme = "README.md"
+license = "GPL-3.0-or-later"
+license-files = [ "LICENSE" ]
 requires-python = ">=3.7"
 authors = [
     { name = "J. R. Porter" },
@@ -42,20 +46,37 @@ dependencies = [
     "pyyaml"
 ]
 
+[tool.custom-meta]
+long_description = """
+A python library and several applications for common Markov-state model related tasks:
+
+- MSM estimation and manipulation
+- Turn-key applications for clustering and analysis
+- Transition path theory
+- Information theory
+- Ragged ndarrays
+"""
+
+[project.urls]
+Homepage = "https://enspara.readthedocs.io/"
+Documentation = "https://enspara.readthedocs.io/"
+Repository = "https://github.com/bowman-lab/enspara"
+"Bug Tracker" = "https://github.com/bowman-lab/enspara/issues"
+Changelog = "https://github.com/bowman-lab/enspara/releases"
+
 [project.optional-dependencies]
-dev = [ "pytest" ]
+dev = [
+    "pytest"
+]
 docs = [
     "Sphinx>=2.3.0",
     "sphinx-rtd-theme>=0.4.3",
     "sphinxcontrib-websupport>=1.1.2",
     "numpydoc>=0.9.1"
 ]
-mpi = [ "mpi4py>=2.0.0" ]
-
-[project.urls]
-Documentation = "https://enspara.readthedocs.io"
-Source = "https://github.com/bowman-lab/enspara"
-Tracker = "https://github.com/bowman-lab/enspara/issues"
+mpi = [
+    "mpi4py>=2.0.0"
+]
 
 [project.scripts]
 enspara = "enspara.apps.main:main"

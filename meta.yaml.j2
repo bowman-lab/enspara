@@ -1,0 +1,56 @@
+{% set project = pyproject['project'] %}
+{% set name = project['name'] %}
+{% set version = project['version'] %}
+{% set python_dependency = 'python' + project['requires-python'] %}
+{% set build = pyproject.get('build-system', {}).get('requires', []) %}
+{% set runtime = project.get('dependencies', []) %}
+{% set optional = project.get('optional-dependencies', {}) %}
+{% set extras = optional.keys() | join(',') %}
+{% set urls = project.get('urls', {}) %}
+package:
+  name: "{{ name }}"
+  version: "{{ version }}"
+
+source:
+  path: .
+
+build:
+  noarch: python
+  script: "python -m pip install .[{{ extras }}] -vv"
+
+requirements:
+  channels:
+    - defaults
+    - conda-forge
+  host:
+    - "{{ python_dependency }}"
+    - pip
+    {% for dep in build %}
+    - "{{ dep }}"
+    {% endfor %}
+  run:
+    - "{{ python_dependency }}"
+    {% for dep in runtime %}
+    - "{{ dep }}"
+    {% endfor %}
+
+test:
+  requires:
+    - "{{ python_dependency }}"
+    - pip
+    {% for dep in optional.get('dev', []) %}
+    - "{{ dep }}"
+    {% endfor %}
+    - "{{ project['name'] }}"
+  imports:
+    - "{{ project['name'] }}"
+
+about:
+  home: "{{ urls.get('Homepage', '') }}"
+  summary: "{{ project['description'] }}"
+  license: "{{ project['license'] }}"
+  description: |
+    {{ pyproject['tool']['custom-meta']['long_description'] | indent(4) }}
+  dev_url: "{{ urls.get('Source', '') }}"
+  doc_url: "{{ urls.get('Documentation', '') }}"
+  doc_source_url: "{{ urls.get('Source', '') }}"

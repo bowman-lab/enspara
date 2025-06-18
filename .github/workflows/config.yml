@@ -24,35 +24,44 @@ jobs:
 
       matrix:
         os:
-          # - macOS-latest  # arm64
-          # - macOS-13  # x86-64
+          - macos-latest
           - ubuntu-latest
         python-version:
-          - "3.10"
           - "3.11"
           - "3.12"
+          - "3.13"
   
     steps:
     - uses: actions/checkout@v4
 
-    - name: Set up conda environment
-      uses: mamba-org/setup-micromamba@v1
+    - uses: actions/setup-python@v5
       with:
-        environment-file: environment.yaml
-        create-args: >-
-          python=${{ matrix.python-version }}
+        python-version: ${{ matrix.python-version }}
 
-    - name: Install package
+    - name: Install Dependencies (Linux) # OpenMPI preinstalled on darwin
+      if: ${{ matrix.os == 'ubuntu-latest' }}
       run: |
-        mamba activate enspara
-        python -m pip install -e .
+        set -eux
+        sudo apt-get update
+        sudo apt install libmpich12 libmpich-dev build-essential ca-certificates
 
-    - name: Environment Information
+    - name: Build and install package
       run: |
-        micromamba info
-        micromamba list
+        set -eux
+        python -m venv .venv
+        source .venv/bin/activate
+        python -m pip install -e .[dev,docs,mpi]
 
-    - name: Run tests
+    - name: pytest (no MPI)
       if: always()
       run: |
-        pytest -m 'not mpi' ./enspara/test/
+        set -eux
+        source .venv/bin/activate
+        python -m pytest
+    
+    - name: pytest (MPI)
+      if: always()
+      run: |
+        set -eux
+        source .venv/bin/activate
+        mpirun -n 2 python -m pytest -m 'mpi' # TODO: Test behavior depends on -n 2, this is bad and should be fixed
