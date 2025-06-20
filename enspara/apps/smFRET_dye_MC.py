@@ -254,7 +254,6 @@ def main(argv=None):
 
     elif args.command == 'run_burst':
    		#Load in initial files
-        prot_traj=md.load(args.prot_top)
         prot_tcounts = np.load(args.t_counts, allow_pickle=True)
         prot_eqs = np.load(args.eq_probs)
  

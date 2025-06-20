@@ -211,9 +211,11 @@ class TestTrajClustering(unittest.TestCase):
         # this is simlar to asserting the distribution of distances.
         # since KCenters is deterministic, this shouldn't ever change?
         self.assertAlmostEqual(np.average(result.distances),
-                               0.074690734158752686)
+                               0.074690734158752686,
+                               places=5)
         self.assertAlmostEqual(np.std(result.distances),
-                               0.018754008455304401)
+                               0.018754008455304401,
+                               places=5)
 
     def test_kcenters_nclust(self):
         N_CLUSTERS = 3

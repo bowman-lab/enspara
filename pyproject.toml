@@ -1,0 +1,98 @@
+[build-system]
+requires = [
+    "setuptools>=64",
+    "wheel",
+    "Cython>=0.24",
+    "numpy>=2.3.0", # Required for C headers
+    "Jinja2>=3"
+]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "enspara"
+version = "0.2.0"
+description = "Tools for ensemble modeling"
+readme = "README.md"
+license = "GPL-3.0-or-later"
+license-files = [ "LICENSE" ]
+requires-python = ">=3.11"
+authors = [
+    { name = "J. R. Porter" },
+    { name = "M. I. Zimmerman" },
+    { name = "G. R. Bowman", email = "grbowman@seas.upenn.edu" }
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "Intended Audience :: Developers",
+    "Programming Language :: Cython",
+    "Programming Language :: Python :: 3 :: Only",
+    "Topic :: Scientific/Engineering :: Bio-Informatics",
+    "Topic :: Scientific/Engineering :: Chemistry",
+    "Operating System :: POSIX",
+    "Operating System :: Unix",
+    "Operating System :: MacOS"
+]
+dependencies = [
+    "Cython>=0.24",
+    "numpy>=2.3.0",
+    "tables>=3.2",
+    "matplotlib>=1.5.1",
+    "mdtraj>=1.7",
+    "psutil>=5.2.2",
+    "pandas",
+    "scikit-learn>=0.23.2",
+    "scipy>=0.17",
+    "pyyaml"
+]
+
+[tool.custom-meta]
+long_description = """
+A python library and several applications for common Markov-state model related tasks:
+
+- MSM estimation and manipulation
+- Turn-key applications for clustering and analysis
+- Transition path theory
+- Information theory
+- Ragged ndarrays
+"""
+
+[project.urls]
+Homepage = "https://enspara.readthedocs.io/"
+Documentation = "https://enspara.readthedocs.io/"
+Repository = "https://github.com/bowman-lab/enspara"
+"Bug Tracker" = "https://github.com/bowman-lab/enspara/issues"
+Changelog = "https://github.com/bowman-lab/enspara/releases"
+
+[project.optional-dependencies]
+dev = [
+    "pytest"
+]
+docs = [
+    "Sphinx>=2.3.0",
+    "sphinx-rtd-theme>=0.4.3",
+    "sphinxcontrib-websupport>=1.1.2",
+    "numpydoc>=0.9.1"
+]
+mpi = [
+    "mpi4py>=2.0.0"
+]
+
+[project.scripts]
+enspara = "enspara.apps.main:main"
+cluster = "enspara.apps.cluster:main"
+collect_cards = "enspara.apps.collect_cards:main"
+compute-shannon-entropy = "enspara.apps.collect_cards:main"
+implied_timescales = "enspara.apps.implied_timescales:main"
+reassign = "enspara.apps.reassign:main"
+smFRET_dye_MC = "enspara.apps.smFRET_dye_MC:main"
+smFRET_point_clouds = "enspara.apps.smFRET_point_clouds:main"
+
+[tool.setuptools.packages]
+find = {}
+
+[tool.pytest.ini_options]
+markers = [
+    "mpi: Requires MPI",
+]
+addopts = "-m 'not mpi'"

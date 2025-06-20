@@ -111,10 +111,10 @@ def get_dye_overlap(donorname, acceptorname):
     ext_coeff_acceptor = (ext_coeff_max * acceptor_spectrum['Excitation']).fillna(0)
 
     # Integral of the donor emission spectrum
-    donor_spectra_integral = np.trapz(donor_spectrum['Emission'], x=donor_spectrum['Wavelength'])
+    donor_spectra_integral = np.trapezoid(donor_spectrum['Emission'], x=donor_spectrum['Wavelength'])
     
     # Overlap integral between donor-acceptor (normalized by the donor emission spectrum)
-    J = np.trapz(donor_spectrum['Emission'] * ext_coeff_acceptor * donor_spectrum['Wavelength'] ** 4,
+    J = np.trapezoid(donor_spectrum['Emission'] * ext_coeff_acceptor * donor_spectrum['Wavelength'] ** 4,
              x=donor_spectrum['Wavelength']) / donor_spectra_integral
     
     return(J, QD, Td)

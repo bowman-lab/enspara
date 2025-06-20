@@ -317,5 +317,5 @@ def _transitions_helper(
     else:
         start_states = assigns_1d[:-lag_time:lag_time]
         end_states = assigns_1d[lag_time::lag_time]
-    transitions = np.row_stack((start_states, end_states))
+    transitions = np.vstack((start_states, end_states))
     return transitions

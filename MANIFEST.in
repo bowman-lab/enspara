@@ -1,0 +1,2 @@
+include enspara/**/*.pyx
+include enspara/**/*.c

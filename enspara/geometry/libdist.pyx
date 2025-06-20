@@ -27,7 +27,7 @@ ctypedef fused INTEGRAL_TYPE_T:
 cdef extern from "math.h" nogil:
     double sqrt(double x)
     double fabs(double x)
-    float fabs(float x)
+    double fabs(double x)
 
 def _check_is_2d(X):
     if len(X.shape) != 2:
