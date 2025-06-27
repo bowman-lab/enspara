@@ -38,14 +38,11 @@ jobs:
         cache-environment: true
         cache-downloads: true
 
-    - name: Add bash hook
-      shell: bash
-      run: eval "$(micromamba shell hook --shell=bash)"
-
     - name: Install package
       shell: bash
       run: |
         set -eux
+        eval "$(micromamba shell hook --shell=bash)"
         micromamba activate cb-env
         pip install .[dev]
 
@@ -55,6 +52,7 @@ jobs:
       id: pypi-build
       run: |
         set -eux
+        eval "$(micromamba shell hook --shell=bash)"
         micromamba activate cb-env
         python -m build .
 
@@ -67,6 +65,7 @@ jobs:
         TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
       run: |
         set -eux
+        eval "$(micromamba shell hook --shell=bash)"
         micromamba activate cb-env
         twine upload dist/* --verbose --skip-existing
 
@@ -76,6 +75,7 @@ jobs:
       id: conda-meta
       run: |
         set -eux
+        eval "$(micromamba shell hook --shell=bash)"
         micromamba activate cb-env
         ./gen_meta.py
 
@@ -84,6 +84,8 @@ jobs:
       if: ${{ steps.conda-meta.outcome == 'success' && matrix.os == 'ubuntu-latest' }}
       id: conda-build
       run: |
+        set -eux
+        eval "$(micromamba shell hook --shell=bash)"
         micromamba activate cb-env
         path=$(conda-build . --output)
         conda-build .
@@ -94,6 +96,8 @@ jobs:
       if: ${{ steps.conda-build.outcome == 'success' && matrix.os == 'ubuntu-latest' }}
       id: conda-publish
       run: |
+        set -eux
+        eval "$(micromamba shell hook --shell=bash)"
         micromamba activate cb-env
         anaconda login --username $CONDA_USERNAME --password $CONDA_PASSWORD
         anaconda upload --user $CONDA_USERNAME "${{ steps.conda-build.outputs.path }}" --skip-existing
