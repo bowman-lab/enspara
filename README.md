@@ -1,6 +1,6 @@
 [![DOI:10.1007/978-3-319-76207-4_15](https://zenodo.org/badge/DOI/10.1063/1.5063794.svg)]( https://doi.org/10.1063/1.5063794)
 
-[![Build Status](https://github.com/bowman-lab/enspara/actions/workflows/config.yml/badge.svg)](https://github.com/bowman-lab/enspara/actions/)
+[![Build Status](https://github.com/bowman-lab/enspara/actions/workflows/ci.yml/badge.svg)](https://github.com/bowman-lab/enspara/actions/)
 
 
 # enspara
