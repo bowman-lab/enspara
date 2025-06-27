@@ -60,14 +60,14 @@ jobs:
       shell: bash
       id: pypi-publish
       if: ${{ steps.pypi-build.outcome == 'success' }}
-      env:
-        TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
-        TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
       run: |
         set -eux
         eval "$(micromamba shell hook --shell=bash)"
         micromamba activate cb-env
         twine upload dist/* --verbose --skip-existing
+      env:
+        TWINE_USERNAME: __token__
+        TWINE_PASSWORD: ${{ secrets.PYPI_TOKEN }}
 
     - name: Generate Conda metadata
       shell: bash
@@ -99,5 +99,6 @@ jobs:
         set -eux
         eval "$(micromamba shell hook --shell=bash)"
         micromamba activate cb-env
-        anaconda login --username $CONDA_USERNAME --password $CONDA_PASSWORD
-        anaconda upload --user $CONDA_USERNAME "${{ steps.conda-build.outputs.path }}" --skip-existing
+        anaconda upload --token "$ANACONDA_TOKEN" "${{ steps.conda-build.outputs.path }}" --skip-existing
+      env:
+        ANACONDA_TOKEN: ${{ secrets.ANACONDA_TOKEN }}
