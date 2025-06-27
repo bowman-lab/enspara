@@ -28,7 +28,7 @@ jobs:
         create-args: >-
           python=${{ matrix.python }}
           pip
-          build
+          python-build
           twine
           conda-build
           anaconda-client
