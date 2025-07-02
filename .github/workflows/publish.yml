@@ -60,7 +60,7 @@ jobs:
     - name: Publish (PyPI)
       shell: bash
       id: pypi-publish
-      if: ${{ steps.pypi-build.outcome == 'success' }}
+      if: ${{ always() && steps.pypi-build.outcome == 'success' && secrets.PYPI_TOKEN }}
       run: |
         set -eux
         eval "$(micromamba shell hook --shell=bash)"
@@ -82,7 +82,7 @@ jobs:
 
     - name: Build (Conda)
       shell: bash
-      if: ${{ steps.conda-meta.outcome == 'success' }}
+      if: ${{ always() && steps.conda-meta.outcome == 'success' }}
       id: conda-build
       run: |
         set -eux
@@ -94,7 +94,7 @@ jobs:
 
     - name: Publish (Conda)
       shell: bash
-      if: ${{ steps.conda-build.outcome == 'success' && matrix.os == 'ubuntu-latest' && matrix.python == '3.13' }}
+      if: ${{ always() && steps.conda-build.outcome == 'success' && matrix.os == 'ubuntu-latest' && matrix.python == '3.13' && secrets.ANACONDA_TOKEN }}
       id: conda-publish
       run: |
         set -eux
