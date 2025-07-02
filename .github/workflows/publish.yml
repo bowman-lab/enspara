@@ -34,8 +34,11 @@ jobs:
           conda-build
           anaconda-client
         condarc: |
+          channel_priority: strict
           channels:
             - conda-forge
+            - defaults
+            - bioconda
         cache-environment: true
         cache-downloads: true
 
