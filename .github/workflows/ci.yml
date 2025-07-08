@@ -71,3 +71,55 @@ jobs:
         source .venv/bin/activate
         set -eux
         mpirun -n 2 python -m pytest -m 'mpi'
+  test-conda:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+
+      matrix:
+        os:
+          - ubuntu-latest
+        python-version:
+          - "3.13"
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Micromamba
+      uses: mamba-org/setup-micromamba@v2.0.5
+      with:
+        environment-name: cb-env
+        create-args: >-
+          python=${{ matrix.python }}
+          pip
+          python-build
+          twine
+          conda-build
+          anaconda-client
+        condarc: |
+          channel_priority: strict
+          channels:
+            - conda-forge
+            - defaults
+            - bioconda
+        cache-environment: true
+        cache-downloads: true
+
+    - name: Generate Conda metadata
+      shell: bash
+      id: conda-meta
+      run: |
+        set -eux
+        eval "$(micromamba shell hook --shell=bash)"
+        micromamba activate cb-env
+        ./gen_meta.py
+
+    - name: Build (Conda)
+      shell: bash
+      id: conda-build
+      run: |
+        set -eux
+        eval "$(micromamba shell hook --shell=bash)"
+        micromamba activate cb-env
+        path=$(conda-build . --output)
+        conda-build .
+        echo "path=$path" >> $GITHUB_OUTPUT
