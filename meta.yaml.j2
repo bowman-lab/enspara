@@ -24,7 +24,6 @@ requirements:
     - conda-forge
   host:
     - "{{ python_dependency }}"
-    - pip
     {% for dep in build %}
     - "{{ dep }}"
     {% endfor %}
@@ -37,13 +36,9 @@ requirements:
 test:
   requires:
     - "{{ python_dependency }}"
-    - pip
     {% for dep in optional.get('dev', []) %}
     - "{{ dep }}"
     {% endfor %}
-    - "{{ project['name'] }}"
-  imports:
-    - "{{ project['name'] }}"
 
 about:
   home: "{{ urls.get('Homepage', '') }}"
@@ -54,3 +49,4 @@ about:
   dev_url: "{{ urls.get('Source', '') }}"
   doc_url: "{{ urls.get('Documentation', '') }}"
   doc_source_url: "{{ urls.get('Source', '') }}"
+
