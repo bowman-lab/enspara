@@ -105,6 +105,6 @@ jobs:
         if [ -z $ANACONDA_TOKEN ]; then exit 0; fi
         eval "$(micromamba shell hook --shell=bash)"
         micromamba activate cb-env
-        anaconda upload --token "$ANACONDA_TOKEN" "${{ steps.conda-build.outputs.path }}" --skip-existing
+        anaconda upload -t "$ANACONDA_TOKEN" "${{ steps.conda-build.outputs.path }}" --skip-existing
       env:
         ANACONDA_TOKEN: ${{ secrets.ANACONDA_TOKEN }}
