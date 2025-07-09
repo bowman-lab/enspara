@@ -111,4 +111,4 @@ jobs:
         micromamba activate cb-env
         anaconda upload "${{ steps.conda-build.outputs.path }}" --skip-existing
       env:
-        ANACONDA_TOKEN: ${{ secrets.ANACONDA_TOKEN }}
+        ANACONDA_API_TOKEN: ${{ secrets.ANACONDA_TOKEN }}
