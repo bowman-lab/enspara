@@ -10,7 +10,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "enspara"
-version = "0.2.0"
+version = "0.3.1"
 description = "Tools for ensemble modeling"
 readme = "README.md"
 license = "GPL-3.0-or-later"
