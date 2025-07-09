@@ -111,10 +111,10 @@ def get_dye_overlap(donorname, acceptorname):
     ext_coeff_acceptor = (ext_coeff_max * acceptor_spectrum['Excitation']).fillna(0)
 
     # Integral of the donor emission spectrum
-    donor_spectra_integral = np.trapz(donor_spectrum['Emission'], x=donor_spectrum['Wavelength'])
+    donor_spectra_integral = np.trapezoid(donor_spectrum['Emission'], x=donor_spectrum['Wavelength'])
     
     # Overlap integral between donor-acceptor (normalized by the donor emission spectrum)
-    J = np.trapz(donor_spectrum['Emission'] * ext_coeff_acceptor * donor_spectrum['Wavelength'] ** 4,
+    J = np.trapezoid(donor_spectrum['Emission'] * ext_coeff_acceptor * donor_spectrum['Wavelength'] ** 4,
              x=donor_spectrum['Wavelength']) / donor_spectra_integral
     
     return(J, QD, Td)
@@ -314,29 +314,32 @@ def align_full_dye_to_res(pdb, dye, resseq, dyename, dyelibrary):
     dye.xyz : nd.array of aligned atom positions for trajectory
     """
 
+    #This is a lot of work, but some residues are otherwise out of order..
     #Get the residue name
     resname = pdb.top.atom(pdb.top.select(f'resSeq {resseq}')[0]).residue.name
 
+    dye_ca = dye.top.select('name CA')
+    dye_n = dye.top.select('name N')
+    dye_c = dye.top.select('name C')
+    dye_o = dye.top.select('name O')
+
+    prot_ca = pdb.top.select(f'resSeq {resseq} and name CA')
+    prot_n = pdb.top.select(f'resSeq {resseq} and name N')
+    prot_c = pdb.top.select(f'resSeq {resseq} and name C')
+    prot_o = pdb.top.select(f'resSeq {resseq} and name O')
+
     #If not gly or pro, align to backbone + CB
     if resname != 'GLY' and resname != "PRO":
-        dye_ca = dye.top.select('name CA')
-        dye_n = dye.top.select('name N')
-        dye_c = dye.top.select('name C')
-        dye_o = dye.top.select('name O')
         dye_cb = dye.top.select(dyelibrary[dyename]['CB'][0])
         dye_sele = np.concatenate((dye_n, dye_ca, dye_cb, dye_c, dye_o))
 
-        prot_sele = pdb.top.select(f'resSeq {resseq} and (backbone or name CB)')
+        prot_cb = pdb.top.select(f'resSeq {resseq} and name CB')
+        prot_sele = np.concatenate((prot_n, prot_ca, prot_cb, prot_c, prot_o))
 
     #If Gly / Pro just do backbone alignment.
     else:
-        dye_ca = dye.top.select('name CA')
-        dye_n = dye.top.select('name N')
-        dye_c = dye.top.select('name C')
-        dye_o = dye.top.select('name O')
         dye_sele = np.concatenate((dye_n, dye_ca, dye_c, dye_o))
-    
-        prot_sele = pdb.top.select(f'resSeq {resseq} and backbone')
+        prot_sele = np.concatenate((prot_n, prot_ca, prot_c, prot_o))
     
     dye = dye.superpose(pdb, atom_indices = dye_sele, ref_atom_indices = prot_sele)
     return(dye.xyz)

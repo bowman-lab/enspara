@@ -1,9 +1,10 @@
 import numpy as np
 from enspara.geometry import explicit_r0_calc as r0c
+from enspara.geometry import dyes_from_expt_dist as dyes_exp_dist
 from enspara.msm import builders, synthetic_data
 from scipy.optimize import curve_fit
 from enspara.msm.transition_matrices import trim_disconnected
-
+from enspara.ra import ra
 
 def FRET_rate(r, R0, Td):
     """
@@ -87,6 +88,172 @@ def calc_energy_transfer_prob(krad, k_non_rad, kRET, dt):
         
     return(all_probs.flatten())
 
+def explicit_static_dyes(d_name, a_name, d_eqs, a_eqs, d_centers, a_centers, 
+                            dye_params, dyelibrary, n_samples=1000, rng_seed=None):
+
+    """
+    Resolves dye excitations assuming dyes are static with positions determined by
+    equilibrium dye positions from the MSM.
+    Attributes
+    -------------- 
+    d_name : string,
+        Name of a flurophore in the enspara dye library
+    a_name : string,
+        Name of a flurophore in the enspara dye library
+    d_eqs : np.array,
+        Equilibrium probabilities from donor dye MSM. shape (n_states)
+    a_eqs : np.array,
+        Equilibrium probabilities from acceptor dye MSM. shape (n_states)
+    d_centers : md.Trajectory,
+        MDtraj trajectory of donor dye conformations. shape (n_states)
+    a_centers : md.Trajectory,
+        MDtraj trajectory of acceptor dye conformations. shape (n_states)
+    dye_params : tuple,
+        Dye-pair overlap, Dye quantum yield, Donor dye lifetime (absent acceptor)
+        Direct output of r0c.get_dye_overlap
+    dyelibrary: dictionary
+        enspara dye library
+    rng_seed : int, default = None
+        seed for numpy.random.default_rng (for testing)
+
+    Returns
+    ---------------
+    dye_outcomes : [0, string],
+        0 is a placeholder for downstream calculations which expect the number of steps for emission
+        string indicates how the dye decayed. radiative = donor emission, energy_transfer = FRET
+    """
+
+    #Introduce a new random seed in each location otherwise pool with end up with the same seeds.
+    rng=np.random.default_rng(rng_seed)
+    
+    #Extract dye parameters
+    J, Qd, Td = dye_params
+    
+    # Choose a random starting state
+    dstates=rng.choice(np.arange(len(d_eqs)), p=d_eqs, size=n_samples)
+    astates=rng.choice(np.arange(len(a_eqs)), p=a_eqs, size=n_samples)
+
+    # Convert centers to dye vectors
+    d_coords = r0c.assemble_dye_r_mu(d_centers, d_name, dyelibrary)
+    a_coords = r0c.assemble_dye_r_mu(a_centers, a_name, dyelibrary)
+
+    dye_outcomes = []
+
+    for dstate, astate in zip(dstates, astates):
+        #Calculate distance, k2, and R0 for the random dye states
+        k2, r = r0c.calc_k2_r(d_coords[dstate],a_coords[astate])
+        R0 = r0c.calc_R0(k2, Qd, J)
+
+        #Calculate a FRET efficiency based off of the distance and R0.
+        FE = dyes_exp_dist.FRET_efficiency(r, R0)
+
+        #Randomly choose whether it was a donor or acceptor emission based on transfer probability
+        #returns TRUE if random number is less than transfer probability
+        #This represents an acceptor emission
+        if rng.random() <= FE:
+            outcome='energy_transfer'
+        else:
+            outcome='radiative'
+
+        dye_outcomes.append([0, outcome]) #return a 0 for lifetime since we didn't calculate that..
+
+    return dye_outcomes
+
+def fully_averaged_explict_dyes(d_name, a_name, d_eqs, a_eqs, d_centers, a_centers, 
+                            dye_params, dyelibrary, n_samples=1000, rng_seed=None):
+
+    """
+    Resolves dye excitations assuming dyes positions are the average of all possible dye positions.
+
+    Attributes
+    -------------- 
+    d_name : string,
+        Name of a flurophore in the enspara dye library
+    a_name : string,
+        Name of a flurophore in the enspara dye library
+    d_eqs : np.array,
+        Equilibrium probabilities from donor dye MSM. shape (n_states)
+    a_eqs : np.array,
+        Equilibrium probabilities from acceptor dye MSM. shape (n_states)
+    d_centers : md.Trajectory,
+        MDtraj trajectory of donor dye conformations. shape (n_states)
+    a_centers : md.Trajectory,
+        MDtraj trajectory of acceptor dye conformations. shape (n_states)
+    dye_params : tuple,
+        Dye-pair overlap, Dye quantum yield, Donor dye lifetime (absent acceptor)
+        Direct output of r0c.get_dye_overlap
+    dyelibrary: dictionary
+        enspara dye library
+
+    Returns
+    ---------------
+    Lifetimes : int (0), len n_samples
+        Placeholder since downstream code depends on lifetimes being present
+    transfers : str, len n_samples
+        photon identity based on the probability of FRET transfer for the state
+    k2s : np.array, len(dstates) * len(astates)
+        k2 for each combination of donor/acceptor flurophores
+    FEs : np.array, len(dstates) * len(astates)
+        FRET Efficiency for each donor/acceptor pair
+    eqs : np.array, len(dstates) * len(astates)
+        equilibrium probability of each donor x acceptor state.
+    """
+
+    #Introduce a new random seed in each location otherwise pool with end up with the same seeds.
+    rng=np.random.default_rng(rng_seed)
+    
+    #Extract dye parameters
+    J, Qd, Td = dye_params
+    
+    # Find the indices of the non-clashing dyes
+    dstates = np.where(d_eqs !=0 )[0]
+    astates = np.where(a_eqs != 0)[0]
+
+    # Convert centers to dye vectors
+    d_coords = r0c.assemble_dye_r_mu(d_centers, d_name, dyelibrary)
+    a_coords = r0c.assemble_dye_r_mu(a_centers, a_name, dyelibrary)
+
+    k2s, rs, FEs, eqs = [], [], [], []
+
+    for dstate in dstates:
+        for astate in astates:
+            #Loop over every acceptor and donor state
+            #Calculate each pairwise k2, r, corresponding R0, and resulting FRET probability
+            k2, r = r0c.calc_k2_r(d_coords[dstate],a_coords[astate])
+            R0 = r0c.calc_R0(k2, Qd, J)
+
+            #Calculate a FRET efficiency based off of the distance and R0.
+            FE = dyes_exp_dist.FRET_efficiency(r, R0)
+
+            #Calculate the combined probability of the state 
+            eq = d_eqs[dstate]*a_eqs[astate]
+
+            #Save the data
+            k2s.append(k2)
+            rs.append(r)
+            FEs.append(FE)
+            eqs.append(eq)
+
+    k2s=np.array(k2s).reshape(-1)
+    rs=np.array(rs).reshape(-1)
+    FEs = np.array(FEs).reshape(-1)
+    eqs = np.array(eqs).reshape(-1)
+    avg_FE = np.average(FEs, weights=eqs)
+
+    #Randomly choose whether it was a donor or acceptor emission based on transfer probability
+    #returns TRUE if random number is less than transfer probability
+    #This represents an acceptor emission
+
+    #choose n_samples random samples. Multiply to convert to 0/1 representation where 0 = no transfer
+    transfers = np.multiply(rng.random(n_samples) <= FE, 1, dtype='O')
+    transfers[transfers==0] = 'radiative'
+    transfers[transfers==1] = 'energy_transfer'
+
+    Lifetimes = [0]*n_samples # save a dummy lifetimes since that's used in downstream code..
+
+    return [Lifetimes, transfers, k2s, FEs, eqs]
+
+
 
 def resolve_excitation(d_name, a_name, d_tprobs, a_tprobs, d_eqs, a_eqs, 
                         d_centers, a_centers, dye_params, dye_lagtime, dyelibrary,
@@ -119,6 +286,8 @@ def resolve_excitation(d_name, a_name, d_tprobs, a_tprobs, d_eqs, a_eqs,
         Direct output of r0c.get_dye_overlap
     dye_lagtime : float,
         Lagtime for the dye MSMs in ns.
+    dyelibrary: dictionary
+        enspara dye library
     rng_seed : int, default = None
         seed for numpy.random.default_rng (for testing)
 
@@ -251,8 +420,8 @@ def make_dye_msm(centers, t_counts, pdb, resseq, dyename, dyelibrary,
     return(tprobs, eqs, dye_indicies)
 
 def calc_lifetimes(pdb_center_num, d_centers, d_tcounts, a_centers, a_tcounts, resSeqs, dyenames, 
-                   dye_lagtime, n_samples=1000, outdir='./', save_dye_trj=False, save_dye_msm=False,
-                   rng_seed=None):
+                   dye_lagtime, n_samples=1000, dye_treatment = 'Monte-carlo', outdir='./', save_dye_trj=False,
+                   save_dye_msm=False, save_dye_centers=False, save_k2_r2=False, rng_seed=None):
 
     """
     Takes a protein pdb structure, dye trajectories/MSM, and labeling positions and calculates expected
@@ -280,7 +449,9 @@ def calc_lifetimes(pdb_center_num, d_centers, d_tcounts, a_centers, a_tcounts, r
         Lagtime used to build the dye MSMs.
     n_samples, int. Default = 1000
         Number of monte carlo simulations to run.
-        Warning- this can get expensive if very large. 1000 takes ~ 5 minutes to run on my computer.
+        Warning- this can get expensive if very large. 1000 takes ~ 5 minutes/center to run on my computer.
+    dye_dynamics, bool, Default=True
+        Account for dye dynamics (True) or just take dye positions according to equilibrium probability (False)?
     outdir, path. Default = './'
         Where to save things to.
     save_dye_trj, bool, default=False
@@ -308,10 +479,10 @@ def calc_lifetimes(pdb_center_num, d_centers, d_tcounts, a_centers, a_tcounts, r
     
     #Model dye onto residue of interest and remake MSM.
     d_tprobs, d_mod_eqs, d_indxs = make_dye_msm(d_centers,d_tcounts, pdb[0], resSeqs[0], dyenames[0], 
-        dyelibrary, center_n = center_n, outdir=outdir,save_dye_xtc=save_dye_trj)
+        dyelibrary, center_n = center_n, outdir=outdir,save_dye_xtc=save_dye_centers)
 
     a_tprobs, a_mod_eqs, a_indxs = make_dye_msm(a_centers,a_tcounts, pdb[0], resSeqs[1], dyenames[1], 
-        dyelibrary, center_n = center_n, outdir=outdir,save_dye_xtc=save_dye_trj)
+        dyelibrary, center_n = center_n, outdir=outdir,save_dye_xtc=save_dye_centers)
     
     #Check if no feasible labeling positions
     if np.sum(a_mod_eqs) == 0 or np.sum(d_mod_eqs) == 0:
@@ -319,26 +490,45 @@ def calc_lifetimes(pdb_center_num, d_centers, d_tcounts, a_centers, a_tcounts, r
         return [],[]
     
     if save_dye_msm:
-        np.save(f'{outdir}/center{center_n}-{"".join(dyenames[0].split(" "))}-eqs.npy',d_mod_eqs)
-        np.save(f'{outdir}/center{center_n}-{"".join(dyenames[1].split(" "))}-eqs.npy',a_mod_eqs)
-        np.save(f'{outdir}/center{center_n}-{"".join(dyenames[0].split(" "))}-tps.npy',d_tprobs)
-        np.save(f'{outdir}/center{center_n}-{"".join(dyenames[1].split(" "))}-tps.npy',a_tprobs)
+        np.save(f'{outdir}/center{center_n}-{"".join(dyenames[0].split(" "))}-{resSeqs[0]}-eqs.npy',d_mod_eqs)
+        np.save(f'{outdir}/center{center_n}-{"".join(dyenames[1].split(" "))}-{resSeqs[1]}-eqs.npy',a_mod_eqs)
+        np.save(f'{outdir}/center{center_n}-{"".join(dyenames[0].split(" "))}-{resSeqs[0]}-tps.npy',d_tprobs)
+        np.save(f'{outdir}/center{center_n}-{"".join(dyenames[1].split(" "))}-{resSeqs[1]}-tps.npy',a_tprobs)
 
-    events = np.array([resolve_excitation(dyenames[0], dyenames[1], d_tprobs, a_tprobs, d_mod_eqs, a_mod_eqs, 
-                        d_centers, a_centers, dye_params, dye_lagtime, dyelibrary, rng_seed) for i in range(n_samples)], dtype='O')
-    
-    if save_dye_trj:
-        #Dyes are reindexed, events are original indexing. Search to find the 
-        #corresponding value in the reindexed array.
-        if len(d_indxs) > 0:
-            dtrj = np.array([np.searchsorted(d_indxs, event) for event in events[:,2]])
-            np.save(f'{outdir}/center{center_n}-{dyenames[0]}-dtrj.npy',dtrj)
-        if len(a_indxs) > 0:
-            atrj = np.array([np.searchsorted(a_indxs, event) for event in events[:,3]])
-            np.save(f'{outdir}/center{center_n}-{dyenames[1]}-atrj.npy',atrj)
+    if dye_treatment == 'Monte-carlo':
+        events = np.array([resolve_excitation(dyenames[0], dyenames[1], d_tprobs, a_tprobs, d_mod_eqs, a_mod_eqs, 
+                            d_centers, a_centers, dye_params, dye_lagtime, dyelibrary, rng_seed) for i in range(n_samples)], dtype='O')
+        
+        if save_dye_trj:
+            #Dyes are reindexed, events are original indexing. Search to find the 
+            #corresponding value in the reindexed array.
+            if len(d_indxs) > 0:
+                dtrj = np.array([np.searchsorted(d_indxs, event) for event in events[:,2]])
+                np.save(f'{outdir}/center{center_n}-{dyenames[0]}-{resSeqs[0]}-dtrj.npy',dtrj)
+            if len(a_indxs) > 0:
+                atrj = np.array([np.searchsorted(a_indxs, event) for event in events[:,3]])
+                np.save(f'{outdir}/center{center_n}-{dyenames[1]}-{resSeqs[1]}-atrj.npy',atrj)
+        lifetimes = events[:,0]
+        outcomes = events[:,1]
 
-    lifetimes = events[:,0].astype(float)*dye_lagtime #ns
-    outcomes = events[:,1]
+    elif dye_treatment == 'static':
+        events = np.array(explicit_static_dyes(dyenames[0], dyenames[1], d_mod_eqs, a_mod_eqs, 
+                            d_centers, a_centers, dye_params, dyelibrary, n_samples, rng_seed), dtype='O')
+
+        lifetimes = events[:,0]
+        outcomes = events[:,1]
+
+    elif dye_treatment == 'isotropic':
+        lifetimes, outcomes, k2s, FEs, eqs = np.array(fully_averaged_explict_dyes(dyenames[0], dyenames[1], d_mod_eqs, a_mod_eqs, 
+                            d_centers, a_centers, dye_params, dyelibrary, n_samples, rng_seed), dtype='O')
+
+        if save_k2_r2:
+            np.save(f'{outdir}/{resSeqs[0]}-{resSeqs[1]}-per_state_k2s.npy', k2s)
+            np.save(f'{outdir}/{resSeqs[0]}-{resSeqs[1]}-per_state_FEs.npy', FEs)
+            np.save(f'{outdir}/{resSeqs[0]}-{resSeqs[1]}-per_state_eqs.npy', eqs)
+
+
+    lifetimes = np.array(lifetimes, dtype=float)*dye_lagtime #ns
     
     return lifetimes, outcomes
 
@@ -438,7 +628,7 @@ def sample_lifetimes_guarenteed_photon(frames, t_probs, eqs, lifetimes, outcomes
     #Pull lifetimes and outcomes for each MSM frame
     photons, lifetimes = _sample_lifetimes_guarenteed_photon(trj[frames],lifetimes,outcomes)
 
-    return photons, lifetimes
+    return photons, lifetimes, trj[frames]
 
 def remake_prot_MSM_from_lifetimes(lifetimes, prot_tcounts, resSeqs, dyenames, outdir='./', prot_eqs=None):
     """
@@ -509,7 +699,8 @@ def remake_msms(resSeq, prot_tcounts, dye_dir, dyenames, orig_eqs, outdir):
     new_tprobs, new_eqs = remake_prot_MSM_from_lifetimes(lifets, prot_tcounts, 
                                                 resSeq, dyenames, outdir= f'{outdir}/MSMs', prot_eqs = orig_eqs)
 
-def run_mc(resSeq, prot_tcounts, dyenames, MSM_frames, dye_dir, outdir, time_correction):
+def run_mc(resSeq, prot_tcounts, dyenames, MSM_frames, dye_dir, outdir, time_correction, 
+    save_photon_trjs=False, save_burst_frames=False):
     import os
     
     lifetime_outcomes_path = f'{dye_dir}/events-{resSeq[0]}-{resSeq[1]}.npy'
@@ -530,6 +721,10 @@ def run_mc(resSeq, prot_tcounts, dyenames, MSM_frames, dye_dir, outdir, time_cor
         sample_lifetimes_guarenteed_photon(
         frames, new_tprobs, new_eqs, lifets, outcomes) for frames in MSM_frames], dtype='O')
 
+    if save_burst_frames:
+        os.makedirs(f'{outdir}/protein-trajs/', exist_ok=True)
+        np.save(f'{outdir}/protein-trajs/{resSeq[0]}-{resSeq[1]}-{time_correction}.npy', sampling[:,2])
+
     print(f'Extracting FEs and lifetimes for {resSeq[0]}-{resSeq[1]} and time factor {time_correction}.', flush=True)
 
     FEs, d_lifetimes, a_lifetimes = extract_fret_efficiency_lifetimes(
@@ -541,6 +736,9 @@ def run_mc(resSeq, prot_tcounts, dyenames, MSM_frames, dye_dir, outdir, time_cor
     FEs = np.array([np.sum(FE)/len(FE) for FE in sampling[:,0]])
     os.makedirs(f'{outdir}/Lifetimes', exist_ok=True)
     os.makedirs(f'{outdir}/FEs', exist_ok=True)
+    if save_photon_trjs:
+        photon_ids = ra.RaggedArray([burst for burst in sampling[:,0]])
+        ra.save(f'{outdir}/FEs/photon-trace-{resSeq[0]}-{resSeq[1]}-{time_correction}.h5', photon_ids)
     np.save(f'{outdir}/FEs/FE-{resSeq[0]}-{resSeq[1]}-{time_correction}.npy', FEs)
     np.save(f'{outdir}/Lifetimes/d_lifetimes-{resSeq[0]}-{resSeq[1]}-{time_correction}.npy', d_lifetimes)    
     np.save(f'{outdir}/Lifetimes/a_lifetimes-{resSeq[0]}-{resSeq[1]}-{time_correction}.npy', a_lifetimes)

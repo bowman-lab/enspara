@@ -1,0 +1,114 @@
+name: Upload Python Package
+
+on:
+  workflow_dispatch:
+  release:
+    types:
+    - published
+
+jobs:
+  publish:
+    strategy:
+      matrix:
+        os:
+        - macos-latest
+        - ubuntu-latest
+        python:
+        - "3.11"
+        - "3.12"
+        - "3.13"
+      fail-fast: false
+    runs-on: ${{ matrix.os }}
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Micromamba
+      uses: mamba-org/setup-micromamba@v2.0.5
+      with:
+        environment-name: cb-env
+        create-args: >-
+          python=${{ matrix.python }}
+          pip
+          python-build
+          twine
+          conda-build
+          anaconda-client
+        condarc: |
+          channel_priority: strict
+          channels:
+            - conda-forge
+            - defaults
+            - bioconda
+        cache-environment: true
+        cache-downloads: true
+
+    - name: Install package
+      shell: bash
+      run: |
+        set -eux
+        eval "$(micromamba shell hook --shell=bash)"
+        micromamba activate cb-env
+        pip install .[dev]
+
+    - name: Build (PyPI)
+      shell: bash
+      if: ${{ always() }}
+      id: pypi-build
+      run: |
+        set -eux
+        eval "$(micromamba shell hook --shell=bash)"
+        micromamba activate cb-env
+        python -m build .
+
+    - name: Publish (PyPI)
+      shell: bash
+      id: pypi-publish
+      if: ${{ always() && steps.pypi-build.outcome == 'success' }}
+      run: |
+        set -eux
+        if [ -z $TWINE_PASSWORD ]; then exit 0; fi
+        eval "$(micromamba shell hook --shell=bash)"
+        micromamba activate cb-env
+        twine upload dist/* --verbose --skip-existing
+      env:
+        TWINE_USERNAME: __token__
+        TWINE_PASSWORD: ${{ secrets.PYPI_TOKEN }}
+
+    - name: Generate Conda metadata
+      shell: bash
+      if: ${{ always() }}
+      id: conda-meta
+      run: |
+        set -eux
+        eval "$(micromamba shell hook --shell=bash)"
+        micromamba activate cb-env
+        ./gen_meta.py
+
+    - name: Build (Conda)
+      shell: bash
+      if: ${{ always() && steps.conda-meta.outcome == 'success' }}
+      id: conda-build
+      run: |
+        set -eux
+        eval "$(micromamba shell hook --shell=bash)"
+        micromamba activate cb-env
+        path=$(conda-build . --output)
+        conda-build .
+        echo "path=$path" >> $GITHUB_OUTPUT
+
+    - name: Publish (Conda)
+      shell: bash
+      if: ${{ always() && steps.conda-build.outcome == 'success' && matrix.os == 'ubuntu-latest' && matrix.python == '3.13' }}
+      id: conda-publish
+      run: |
+        set -eux
+        if [ -z "$ANACONDA_API_TOKEN" ]; then
+          echo "::warning::ANACONDA_API_TOKEN is not set, skipping upload"
+          exit 0
+        fi
+        echo "::debug::ANACONDA_API_TOKEN length: ${#ANACONDA_API_TOKEN}"
+        eval "$(micromamba shell hook --shell=bash)"
+        micromamba activate cb-env
+        anaconda upload "${{ steps.conda-build.outputs.path }}" --skip-existing
+      env:
+        ANACONDA_API_TOKEN: ${{ secrets.ANACONDA_TOKEN }}

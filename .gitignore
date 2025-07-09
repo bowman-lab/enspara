@@ -104,3 +104,6 @@ ENV/
 
 # PyCharm project settings
 .idea/
+
+# Generated meta.yaml
+meta.yaml
