@@ -102,9 +102,13 @@ jobs:
       id: conda-publish
       run: |
         set -eux
-        if [ -z $ANACONDA_TOKEN ]; then exit 0; fi
+        if [ -z "$ANACONDA_TOKEN" ]; then
+          echo "::warning::ANACONDA_TOKEN is not set, skipping upload"
+          exit 0
+        fi
+        echo "::debug::ANACONDA_TOKEN length: ${#ANACONDA_TOKEN}"
         eval "$(micromamba shell hook --shell=bash)"
         micromamba activate cb-env
-        anaconda upload -t "$ANACONDA_TOKEN" "${{ steps.conda-build.outputs.path }}" --skip-existing
+        anaconda upload "${{ steps.conda-build.outputs.path }}" --skip-existing
       env:
         ANACONDA_TOKEN: ${{ secrets.ANACONDA_TOKEN }}
