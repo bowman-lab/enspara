@@ -15,18 +15,12 @@ Porter, J.R., Zimmerman, M.I. and Bowman, G.R., 2019. [Enspara: Modeling molecul
 ## Installation 
 
 Installation is documented [here](https://enspara.readthedocs.io/en/latest/installation.html).
-
-Current installation instructions are (using mamba):
-
 ```
-git clone https://github.com/bowman-lab/enspara
-cd enspara
-mamba env create -f environment.yaml
-mamba activate enspara
-pip install -e .
+conda create -n enspara
+conda install -c bowmanlab -c conda-forge enspara
 ```
 
-Alternatively, you can install packages directly:
+Alternatively if you wish to build the latest:
 
 ```
 git clone https://github.com/bowman-lab/enspara
