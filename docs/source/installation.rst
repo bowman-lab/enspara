@@ -1,7 +1,15 @@
 Installation
 ============
 
-Enspara can be installed from our github repository in the following way:
+The easiest way to install Enspara is via conda, to do so:
+
+.. code-block:: bash
+
+	conda create --name enspara
+	conda install -c bowmanlab -c conda-forge enspara
+
+
+Enspara can also be installed from our github repository in the following way:
 
 1. Create a pip/anaconda environment for enspara. For anaconda,
 
