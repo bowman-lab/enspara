@@ -3,7 +3,7 @@ import numpy as np
 import mdtraj as md
 
 
-def rmsf_calc(centers, populations=None, ref_frame=0, per_residue=True):
+def rmsf_calc(centers, populations=None, ref_frame=0, per_residue=True, atom_indices=None):
     """Calculated the population weighted RMSF from a frame in a MSM
 
     Attributes
@@ -19,6 +19,9 @@ def rmsf_calc(centers, populations=None, ref_frame=0, per_residue=True):
     per_residue : bool, default=True,
         Optionally returns rmsf averaged over residues. If False, will
         return the rmsf per atom.
+    atom_indices : np.array, shape=(n_atoms), default=None,
+        atom_indices to superpose the structure on. If not supplied, uses
+        all atoms.
 
     Returns
     ----------
@@ -26,7 +29,7 @@ def rmsf_calc(centers, populations=None, ref_frame=0, per_residue=True):
         Returns the population weighted RMSF of each residue.
     """
     # align all states to reference frame
-    centers = centers.superpose(centers[ref_frame])
+    centers = centers.superpose(centers[ref_frame], atom_indices=atom_indices)
 
     # if no populations are supplied, generate a uniform distribution
     if populations is None:
