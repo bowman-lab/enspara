@@ -49,7 +49,7 @@ jobs:
       if: ${{ matrix.os == 'macos-latest' }}
       run: |
         set -eux
-        brew install mpich
+        brew install mpich hdf5
 
     - name: Build and install package
       run: |
