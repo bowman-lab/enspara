@@ -50,6 +50,8 @@ jobs:
       run: |
         set -eux
         brew install mpich hdf5
+        brew uninstall --ignore-dependencies c-blosc2 || true
+        export HDF5_DIR=$(brew --frefix hdf5)
 
     - name: Build and install package
       run: |
