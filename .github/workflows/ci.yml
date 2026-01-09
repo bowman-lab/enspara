@@ -52,7 +52,7 @@ jobs:
         set -eux
         brew install mpich hdf5 lzo bzip2 c-blosc pkg-config
         
-        # Set environment variables for the build process to find headers/libs
+        echo "TABLES_NO_BLOSC2=1" >> $GITHUB_ENV
         echo "HDF5_DIR=$(brew --prefix hdf5)" >> $GITHUB_ENV
 
     - name: Build and install package
