@@ -44,14 +44,19 @@ jobs:
       run: |
         set -eux
         sudo apt-get update
-        sudo apt install -y libmpich12 libmpich-dev build-essential ca-certificates libhdf5-dev pkg-config lzo libbz2-dev c-blosc
-        export HDF5_DIR=/usr/include/hdf5/serial      
+        sudo apt install -y libmpich12 libmpich-dev build-essential ca-certificates libhdf5-dev pkg-config liblzo2-dev libbz2-dev libblosc-dev
+        export HDF5_DIR=/usr/include/hdf5/serial
         
     - name: Install Dependencies (Darwin)
       if: ${{ matrix.os == 'macos-latest' }}
       run: |
         set -eux
         brew install mpich hdf5 lzo bzip2 c-blosc pkg-config
+        export HDF5_DIR=$(brew --prefix hdf5)
+        export LZO_DIR=$(brew --prefix lzo)
+        export BZIP2_DIR=$(brew --prefix bzip2)
+        export BLOSC_DIR=$(brew --prefix c-blosc)
+        export PKG_CONFIG_PATH=$(brew --prefix pkg-config)/lib/pkgconfig:$PKG_CONFIG_PATH
 
     - name: Build and install package
       run: |
