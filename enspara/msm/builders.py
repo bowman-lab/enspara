@@ -241,7 +241,7 @@ def _prinz_mle_py(C, tol=1e-10, max_iter=10**5):
     [1] Prinz, Jan-Hendrik, et al. "Markov models of molecular kinetics:
         Generation and validation." J Chem. Phys. 134.17 (2011): 174105.
     """
-    C = C.copy().astype(float)
+    C = np.asarray(C, dtype=float).copy()
     X = C + C.T
 
     X_rs = X.sum(axis=1)
