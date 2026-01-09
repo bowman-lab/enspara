@@ -44,13 +44,13 @@ jobs:
       run: |
         set -eux
         sudo apt-get update
-        sudo apt install libmpich12 libmpich-dev build-essential ca-certificates
-    
+        sudo apt install -y libmpich12 libmpich-dev build-essential ca-certificates libhdf5-dev pkg-config
+        
     - name: Install Dependencies (Darwin)
       if: ${{ matrix.os == 'macos-latest' }}
       run: |
         set -eux
-        brew install mpich hdf5
+        brew install mpich hdf5 lzo bzip2 blosc pkg-config
 
     - name: Build and install package
       run: |
