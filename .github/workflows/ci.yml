@@ -67,6 +67,9 @@ jobs:
         set -eux
         python -m venv .venv
         source .venv/bin/activate
+        if [[ "$RUNNER_OS" == "macOS" ]]; then
+          pip install "tables<3.10"
+        fi
         python -m pip install -e .[dev,docs,mpi]
 
     - name: pytest (no MPI)
