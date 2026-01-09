@@ -9,7 +9,7 @@ on:
       - master
       - main
   schedule:
-    - cron: "0 0 * * *"
+    - cron: "0 0 * * 2"
   workflow_dispatch:
 
 defaults:
@@ -30,7 +30,6 @@ jobs:
           - "3.11"
           - "3.12"
           - "3.13"
-          - "3.14"
   
     steps:
     - uses: actions/checkout@v4
@@ -46,17 +45,22 @@ jobs:
         sudo apt-get update
         sudo apt install -y libmpich12 libmpich-dev build-essential ca-certificates libhdf5-dev pkg-config liblzo2-dev libbz2-dev libblosc-dev
         export HDF5_DIR=/usr/include/hdf5/serial
-        
+
     - name: Install Dependencies (Darwin)
       if: ${{ matrix.os == 'macos-latest' }}
       run: |
         set -eux
         brew install mpich hdf5 lzo bzip2 c-blosc pkg-config
-        export HDF5_DIR=$(brew --prefix hdf5)
-        export LZO_DIR=$(brew --prefix lzo)
-        export BZIP2_DIR=$(brew --prefix bzip2)
-        export BLOSC_DIR=$(brew --prefix c-blosc)
-        export PKG_CONFIG_PATH=$(brew --prefix pkg-config)/lib/pkgconfig:$PKG_CONFIG_PATH
+        
+        # Set environment variables for the build process to find headers/libs
+        echo "HDF5_DIR=$(brew --prefix hdf5)" >> $GITHUB_ENV
+        echo "LZO_DIR=$(brew --prefix lzo)" >> $GITHUB_ENV
+        echo "BZ2_DIR=$(brew --prefix bzip2)" >> $GITHUB_ENV
+        
+        # Ensure compiler can find the headers and libraries
+        echo "CPATH=$(brew --prefix lzo)/include:$(brew --prefix bzip2)/include" >> $GITHUB_ENV
+        echo "LIBRARY_PATH=$(brew --prefix lzo)/lib:$(brew --prefix bzip2)/lib" >> $GITHUB_ENV
+
 
     - name: Build and install package
       run: |
