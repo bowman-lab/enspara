@@ -50,14 +50,13 @@ jobs:
       if: ${{ matrix.os == 'macos-latest' }}
       run: |
         set -eux
-        brew install mpich hdf5 lzo bzip2 c-blosc pkg-config c-blosc2
-        
+        brew install mpich hdf5 lzo bzip2 c-blosc pkg-config
         
         # Set environment variables for the build process to find headers/libs
         echo "HDF5_DIR=$(brew --prefix hdf5)" >> $GITHUB_ENV
         echo "LZO_DIR=$(brew --prefix lzo)" >> $GITHUB_ENV
         echo "BZ2_DIR=$(brew --prefix bzip2)" >> $GITHUB_ENV
-        echo "BLOSC2_DIR=$(brew --prefix c-blosc2)" >> $GITHUB_ENV
+        echo "TABLES_NO_BLOSC2=1" >> $GITHUB_ENV
         
         # Ensure compiler can find the headers and libraries
         echo "CPATH=$(brew --prefix lzo)/include:$(brew --prefix bzip2)/include" >> $GITHUB_ENV
