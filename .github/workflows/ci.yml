@@ -9,7 +9,7 @@ on:
       - master
       - main
   schedule:
-    - cron: "0 0 * * 2"
+    - cron: "0 0 * * *"
   workflow_dispatch:
 
 defaults:
@@ -34,22 +34,12 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
-    - uses: actions/setup-python@v5
+    - name: Set up conda environment
+      uses: mamba-org/setup-micromamba@v2
       with:
-        python-version: ${{ matrix.python-version }}
-
-    - name: Install Dependencies (Linux)
-      if: ${{ matrix.os == 'ubuntu-latest' }}
-      run: |
-        set -eux
-        sudo apt-get update
-        sudo apt install libmpich12 libmpich-dev build-essential ca-certificates
-    
-    - name: Install Dependencies (Darwin)
-      if: ${{ matrix.os == 'macos-latest' }}
-      run: |
-        set -eux
-        brew install mpich hdf5
+        environment-file: environment.yaml
+        create-args: >-
+          python=${{ matrix.python-version }}
 
     - name: Build and install package
       run: |
