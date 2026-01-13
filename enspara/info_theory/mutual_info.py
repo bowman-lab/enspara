@@ -297,15 +297,15 @@ def mutual_information(jc):
     n_obs = n_obs_a_i.sum(axis=-1)
 
     P_a = np.divide(n_obs_a_i, n_obs[..., None],
-                    where=n_obs[..., None] > 0)
+                    where=n_obs[..., None] > 0, out=None)
     P_b = np.divide(n_obs_b_i, n_obs[..., None],
-                    where=n_obs[..., None] > 0)
+                    where=n_obs[..., None] > 0, out=None)
 
     assert np.all(~np.isnan(P_a))
     assert np.all(~np.isnan(P_b))
 
     P_a_b = np.divide(jc, n_obs[..., None, None],
-                      where=n_obs[..., None, None] > 0)
+                      where=n_obs[..., None, None] > 0, out=None)
 
     assert np.all(~np.isnan(P_a_b))
     mi = np.zeros(shape=jc.shape[0:2])

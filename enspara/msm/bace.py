@@ -12,6 +12,7 @@ import scipy.io
 import scipy.sparse
 
 from enspara import exception
+import warnings
 
 logger = logging.getLogger(__name__)
 
@@ -233,6 +234,12 @@ def multiDist(indicesList, c, w, statesKeep, unmerged, chunkSize):
 
 
 def multiDistHelper(indices, c1, w1, c, w, statesKeep, unmerged):
+    if isinstance(c, scipy.sparse.coo_matrix):
+        warnings.warn("was given scipy.sparse.coo_matrix this "
+                "is no longer supported, converting to ",
+                FutureWarning, stacklevel=2)
+        c = c.tocsr()
+
     d = np.zeros(indices.shape[0], dtype=np.float32)
     p1 = c1 / w1
     for i in range(indices.shape[0]):
