@@ -178,7 +178,7 @@ def load(input_name, keys=..., stride=1):
                         " Dimension  %s didn't match. Got shapes: %s"
                         % (dim, shapes))
 
-            lengths = [(shape[0] + stride - 1) // stride for shape in shapes]
+            lengths = [int((shape[0] + stride - 1) // stride) for shape in shapes]
             concat_shape = (sum(lengths),) + (shapes[0][1:])
 
             dtype = handle.get_node(where='/', name=keys[0]).dtype
